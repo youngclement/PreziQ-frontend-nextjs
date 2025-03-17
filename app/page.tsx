@@ -12,7 +12,7 @@ const iconMap = {
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <main className="min-h-screen bg-gradient-to-b from-background to-muted pt-16">
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-4xl font-bold tracking-tight sm:text-6xl mb-6">
