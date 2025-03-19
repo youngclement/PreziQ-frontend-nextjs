@@ -102,7 +102,7 @@ export function NavBar() {
                             )}
                         </Button>
                         <div className="hidden sm:block">
-                            <InteractiveHoverButton>Sign In</InteractiveHoverButton>
+                            <Link href='/auth'><InteractiveHoverButton>Sign In</InteractiveHoverButton></Link>
                         </div>
                         <Button
                             variant="ghost"
