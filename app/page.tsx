@@ -5,6 +5,7 @@ import { FeaturesSection } from "@/components/sections/features-section";
 import ActionSearchBar from "@/components/clement-kit-ui/action-search-bar";
 
 
+
 export default function HomePage() {
 
 
@@ -15,6 +16,7 @@ export default function HomePage() {
 
       {/* Features Bento Grid */}
       <FeaturesSection />
+
 
       {/* You can add the ActionSearchBar component where needed */}
       {/* <ActionSearchBar actions={customActions} /> */}
