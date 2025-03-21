@@ -302,8 +302,54 @@ export default function HeroGeometric({
                             Learn More
                         </button>
                     </motion.div>
+
+                    <motion.div
+                        custom={4}
+                        variants={fadeUpVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="w-full max-w-md mx-auto mt-8"
+                    >
+                        <div className={cn(
+                            "relative rounded-full overflow-hidden",
+                            isDark
+                                ? "bg-white/10 border border-white/20"
+                                : "bg-black/5 border border-black/10",
+                            "focus-within:ring-2 focus-within:ring-primary/50 transition-all"
+                        )}>
+                            <input
+                                type="text"
+                                placeholder="Search for presentations..."
+                                className={cn(
+                                    "w-full py-3 px-5 pr-12 bg-transparent text-foreground",
+                                    "placeholder:text-foreground/50 focus:outline-none"
+                                )}
+                            />
+                            <button
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-primary text-primary-foreground"
+                                aria-label="Search"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </motion.div>
                 </div>
             </div>
+
+
 
             {/* Gradient overlay */}
             <div className={cn(
@@ -312,6 +358,8 @@ export default function HeroGeometric({
                     ? "bg-gradient-to-t from-black via-transparent to-black/80"
                     : "bg-gradient-to-t from-white via-transparent to-white/80"
             )} />
+
+
         </div>
     );
 }
