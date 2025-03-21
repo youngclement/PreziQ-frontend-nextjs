@@ -1,6 +1,6 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import { NavBar } from "@/components/nav-bar";
-
+import "aos/dist/aos.css";
 import "./globals.css";
 
 export default function RootLayout({
