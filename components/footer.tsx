@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
+import Logo from "./common/logo";
 // import Logo from "@/components/logo";
 
 const Footer = () => {
@@ -16,7 +17,7 @@ const Footer = () => {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5 }}
                         >
-                            {/* <Logo /> */}
+                            <Logo />
                         </motion.h2>
                         <p className="">Shaping the future of web development</p>
                         <div className="relative">
