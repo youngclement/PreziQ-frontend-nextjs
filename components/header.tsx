@@ -5,6 +5,8 @@ import { Menu, LogIn, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
+import UserMenu from './user-menu';
+import { useAuth } from '@/contexts/auth-context';
 
 import {
     Sheet,
@@ -148,7 +150,7 @@ const Header = () => {
     const [scroll, setScroll] = useState(false);
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
-
+    const { isLoggedIn } = useAuth();
     // Handle scroll logic
     const handleScroll = () => {
         if (window.scrollY > 20) {
@@ -175,50 +177,48 @@ const Header = () => {
     }, []);
 
     return (
-        <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3">
-            <header
-                className={cn(
-                    "mx-auto max-w-7xl rounded-full border border-border/40 bg-background/60 px-4 backdrop-blur-md transition-all duration-300",
-                    scroll
-                        ? "shadow-lg shadow-primary/5"
-                        : "bg-background/30"
-                )}
-            >
-                <div className="flex h-14 items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Logo />
-                        <DesktopNav />
-                    </div>
+      <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3">
+        <header
+          className={cn(
+            'mx-auto max-w-7xl rounded-full border border-border/40 bg-background/60 px-4 backdrop-blur-md transition-all duration-300',
+            scroll ? 'shadow-lg shadow-primary/5' : 'bg-background/30'
+          )}
+        >
+          <div className="flex h-14 items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Logo />
+              <DesktopNav />
+            </div>
 
-                    <div className="flex items-center gap-3">
-
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                            className="hover:bg-muted rounded-full h-9 w-9 flex items-center justify-center"
-                            aria-label="Toggle theme"
-                        >
-                            {mounted && (
-                                theme === "dark" ? (
-                                    <Sun className="h-4 w-4" />
-                                ) : (
-                                    <Moon className="h-4 w-4" />
-                                )
-                            )}
-                        </Button>
-                        <div className="hidden md:block">
-                            <Link href="/auth/login">
-                                <InteractiveHoverButton>
-                                    Sign In
-                                </InteractiveHoverButton>
-                            </Link>
-                        </div>
-                        <MobileNav />
-                    </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="hover:bg-muted rounded-full h-9 w-9 flex items-center justify-center"
+                aria-label="Toggle theme"
+              >
+                {mounted &&
+                  (theme === 'dark' ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  ))}
+              </Button>
+              {isLoggedIn ? (
+                <UserMenu />
+              ) : (
+                <div className="hidden sm:block">
+                  <Link href="/auth/login">
+                    <InteractiveHoverButton>Sign In</InteractiveHoverButton>
+                  </Link>
                 </div>
-            </header>
-        </div>
+              )}
+              <MobileNav />
+            </div>
+          </div>
+        </header>
+      </div>
     );
 };
 
