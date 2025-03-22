@@ -11,6 +11,8 @@ import Faq02 from "@/components/sections/faq-section";
 import SplashCursor from "@/components/clement-kit-ui/splash-cursor";
 import Newsletter from "@/components/sections/newsletter-section";
 import { TestimonialsSection } from "@/components/sections/testimonials-section";
+import TextMarqueeSection from "@/components/sections/text-marquee-section";
+import { DemoUISection } from "@/components/sections/demo-ui-section";
 
 export default function HomePage() {
   useEffect(() => {
@@ -62,9 +64,11 @@ export default function HomePage() {
       />
       <HeroSection />
       <WobbleCardSection />
-      <BentoGrid />
+      {/* <BentoGrid /> */}
       <TestimonialsSection />
+      <TextMarqueeSection />
       <Newsletter />
+      <DemoUISection />
       <Faq02 />
       <Footer />
     </main>
