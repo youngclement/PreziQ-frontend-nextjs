@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { API_URL, ACCESS_TOKEN } from '@/api/http';
+import { Switch } from '@/components/ui/switch';
 
 type UpdateUserData = {
 	email?: string;
@@ -204,146 +205,196 @@ export function UsersActionDialog({
 				onOpenChange(state);
 			}}
 		>
-			<DialogContent className="sm:max-w-lg">
-				<DialogHeader className="text-left">
-					<DialogTitle>Chỉnh sửa người dùng</DialogTitle>
-					<DialogDescription>
+			<DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-0">
+				<DialogHeader className="px-6 py-4 border-b bg-slate-50">
+					<DialogTitle className="text-xl font-semibold text-slate-900">
+						Chỉnh sửa người dùng
+					</DialogTitle>
+					<DialogDescription className="text-sm text-slate-500">
 						Cập nhật thông tin người dùng. Nhấn lưu khi hoàn tất.
 					</DialogDescription>
 				</DialogHeader>
-				<ScrollArea className="h-[26.25rem] w-full pr-4 -mr-4 py-1">
+
+				<ScrollArea className="flex-1 max-h-[80vh]">
 					<Form {...form}>
 						<form
 							id="user-form"
 							onSubmit={form.handleSubmit(onSubmit)}
-							className="space-y-4 p-0.5"
+							className="space-y-6"
 						>
-							<FormField
-								control={form.control}
-								name="email"
-								render={({ field }) => (
-									<FormItem className="grid grid-cols-6 items-center gap-x-4 gap-y-1 space-y-0">
-										<FormLabel className="col-span-2 text-right">
-											Email
-										</FormLabel>
-										<FormControl>
-											<Input
-												placeholder="john.doe@gmail.com"
-												className="col-span-4"
-												{...field}
-											/>
-										</FormControl>
-										<FormMessage className="col-span-4 col-start-3" />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="firstName"
-								render={({ field }) => (
-									<FormItem className="grid grid-cols-6 items-center gap-x-4 gap-y-1 space-y-0">
-										<FormLabel className="col-span-2 text-right">Họ</FormLabel>
-										<FormControl>
-											<Input
-												placeholder="Nguyễn"
-												className="col-span-4"
-												{...field}
-											/>
-										</FormControl>
-										<FormMessage className="col-span-4 col-start-3" />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="lastName"
-								render={({ field }) => (
-									<FormItem className="grid grid-cols-6 items-center gap-x-4 gap-y-1 space-y-0">
-										<FormLabel className="col-span-2 text-right">Tên</FormLabel>
-										<FormControl>
-											<Input
-												placeholder="Văn A"
-												className="col-span-4"
-												{...field}
-											/>
-										</FormControl>
-										<FormMessage className="col-span-4 col-start-3" />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="isVerified"
-								render={({ field }) => (
-									<FormItem className="grid grid-cols-6 items-center gap-x-4 gap-y-1 space-y-0">
-										<FormLabel className="col-span-2 text-right">
-											Xác thực
-										</FormLabel>
-										<FormControl>
-											<Checkbox
-												checked={field.value}
-												onCheckedChange={field.onChange}
-												className="col-span-4"
-											/>
-										</FormControl>
-										<FormMessage className="col-span-4 col-start-3" />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="roles"
-								render={({ field }) => (
-									<FormItem className="grid grid-cols-6 items-center gap-x-4 gap-y-1 space-y-0">
-										<FormLabel className="col-span-2 text-right">
-											Vai trò
-										</FormLabel>
-										<FormControl>
-											<div className="col-span-4">
-												<Select
-													value={field.value[0]?.id || ''}
-													onValueChange={(value: string) => {
-														const selectedRole = roles.find(
-															(role) => role.id === value
-														);
-														if (selectedRole) {
-															field.onChange([selectedRole]);
-														}
-													}}
-												>
-													<SelectTrigger>
-														<SelectValue placeholder="Chọn vai trò" />
-													</SelectTrigger>
-													<SelectContent>
-														{Array.isArray(roles) &&
-															roles.map((role) => (
-																<SelectItem key={role.id} value={role.id}>
-																	{role.name}
-																</SelectItem>
-															))}
-													</SelectContent>
-												</Select>
-											</div>
-										</FormControl>
-										<FormMessage className="col-span-4 col-start-3" />
-									</FormItem>
-								)}
-							/>
+							<div className="px-6 py-4 space-y-6">
+								{/* Basic Info Section */}
+								<div className="space-y-4 p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
+									<h3 className="text-sm font-medium text-slate-900 mb-3">
+										Thông tin cơ bản
+									</h3>
+
+									<div className="grid grid-cols-2 gap-4">
+										<FormField
+											control={form.control}
+											name="firstName"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel className="text-sm font-medium text-slate-700">
+														Họ
+													</FormLabel>
+													<FormControl>
+														<Input
+															placeholder="Nguyễn"
+															className="bg-white border-slate-200 focus:border-slate-900 focus:ring-slate-900"
+															{...field}
+														/>
+													</FormControl>
+													<FormMessage className="text-xs text-red-500" />
+												</FormItem>
+											)}
+										/>
+
+										<FormField
+											control={form.control}
+											name="lastName"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel className="text-sm font-medium text-slate-700">
+														Tên
+													</FormLabel>
+													<FormControl>
+														<Input
+															placeholder="Văn A"
+															className="bg-white border-slate-200 focus:border-slate-900 focus:ring-slate-900"
+															{...field}
+														/>
+													</FormControl>
+													<FormMessage className="text-xs text-red-500" />
+												</FormItem>
+											)}
+										/>
+									</div>
+
+									<FormField
+										control={form.control}
+										name="email"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel className="text-sm font-medium text-slate-700">
+													Email
+												</FormLabel>
+												<FormControl>
+													<Input
+														placeholder="john.doe@gmail.com"
+														className="bg-white border-slate-200 focus:border-slate-900 focus:ring-slate-900"
+														{...field}
+													/>
+												</FormControl>
+												<FormMessage className="text-xs text-red-500" />
+											</FormItem>
+										)}
+									/>
+								</div>
+
+								{/* Role Section */}
+								<div className="space-y-4 p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
+									<h3 className="text-sm font-medium text-slate-900 mb-3">
+										Vai trò
+									</h3>
+
+									<FormField
+										control={form.control}
+										name="roles"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel className="text-sm font-medium text-slate-700">
+													Chọn vai trò
+												</FormLabel>
+												<FormControl>
+													<Select
+														value={field.value[0]?.id || ''}
+														onValueChange={(value: string) => {
+															const selectedRole = roles.find(
+																(role) => role.id === value
+															);
+															if (selectedRole) {
+																field.onChange([selectedRole]);
+															}
+														}}
+													>
+														<SelectTrigger className="bg-white border-slate-200 focus:border-slate-900 focus:ring-slate-900">
+															<SelectValue placeholder="Chọn vai trò" />
+														</SelectTrigger>
+														<SelectContent>
+															{Array.isArray(roles) &&
+																roles.map((role) => (
+																	<SelectItem
+																		key={role.id}
+																		value={role.id}
+																		className="text-slate-900"
+																	>
+																		{role.name}
+																	</SelectItem>
+																))}
+														</SelectContent>
+													</Select>
+												</FormControl>
+												<FormMessage className="text-xs text-red-500" />
+											</FormItem>
+										)}
+									/>
+								</div>
+
+								{/* Verification Section */}
+								<div className="space-y-4 p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
+									<h3 className="text-sm font-medium text-slate-900 mb-3">
+										Xác thực
+									</h3>
+
+									<FormField
+										control={form.control}
+										name="isVerified"
+										render={({ field }) => (
+											<FormItem className="flex items-center justify-between rounded-lg bg-slate-50 p-4 border border-slate-200">
+												<div className="space-y-1">
+													<FormLabel className="text-sm font-medium text-slate-700">
+														Trạng thái xác thực
+													</FormLabel>
+													<div className="text-sm text-slate-500">
+														Tài khoản{' '}
+														{field.value ? 'đã xác thực' : 'chưa xác thực'}
+													</div>
+												</div>
+												<FormControl>
+													<Switch
+														checked={field.value}
+														onCheckedChange={field.onChange}
+														className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300"
+													/>
+												</FormControl>
+											</FormItem>
+										)}
+									/>
+								</div>
+							</div>
+
+							{/* Footer */}
+							<div className="flex justify-end gap-4 px-6 py-4 border-t bg-slate-50">
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => onOpenChange(false)}
+									className="border-slate-200 hover:bg-slate-100"
+								>
+									Hủy
+								</Button>
+								<Button
+									type="submit"
+									form="user-form"
+									className="bg-slate-900 hover:bg-slate-800 text-white"
+								>
+									Lưu
+								</Button>
+							</div>
 						</form>
 					</Form>
 				</ScrollArea>
-				<DialogFooter>
-					<Button
-						type="button"
-						variant="outline"
-						onClick={() => onOpenChange(false)}
-					>
-						Hủy
-					</Button>
-					<Button type="submit" form="user-form">
-						Lưu
-					</Button>
-				</DialogFooter>
 			</DialogContent>
 		</Dialog>
 	);

@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import Main from '@/components/dashboard/layout/MainDB';
+import { Main } from '@/components/dashboard/layout/MainDB';
 // Fake Data
 import { conversations } from './data/convo.json';
 

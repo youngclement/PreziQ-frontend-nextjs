@@ -3,28 +3,28 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect, useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
-  Collapse,
-  CollapseContent,
-  CollapseTrigger,
+	Collapse,
+	CollapseContent,
+	CollapseTrigger,
 } from '@/components/ui/collapse';
 import { useRoles } from '../context/roles-context';
 import { toast } from '@/hooks/use-toast';
@@ -38,386 +38,426 @@ import { Role } from '../data/schema';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const formSchema = z.object({
-  name: z.string().min(1, 'Tên vai trò không được để trống'),
-  description: z.string().min(1, 'Mô tả không được để trống'),
-  active: z.boolean().default(true),
-  permissionIds: z.array(z.string()).min(1, 'Phải chọn ít nhất một quyền'),
+	name: z.string().min(1, 'Tên vai trò không được để trống'),
+	description: z.string().min(1, 'Mô tả không được để trống'),
+	active: z.boolean().default(true),
+	permissionIds: z.array(z.string()).min(1, 'Phải chọn ít nhất một quyền'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 interface Props {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  currentRow: Role | null;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	currentRow: Role | null;
 }
 
 interface GroupedPermissions {
-  [key: string]: Permission[];
+	[key: string]: Permission[];
 }
 
 export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
-  const { permissions: allPermissions } = usePermissions();
-  const { updateRole, deleteRolePermissions, createRole } = useRoles();
-  const isEdit = !!currentRow;
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
+	const { permissions: allPermissions } = usePermissions();
+	const { updateRole, deleteRolePermissions, createRole } = useRoles();
+	const isEdit = !!currentRow;
+	const [permissions, setPermissions] = useState<Permission[]>([]);
+	const [isLoading, setIsLoading] = useState(false);
+	const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
 
-  // State để theo dõi các trường thay đổi
-  const [changedFields, setChangedFields] = useState<{
-    name?: string;
-    description?: string;
-    active?: boolean;
-    permissionIds?: string[];
-  }>({});
+	// State để theo dõi các trường thay đổi
+	const [changedFields, setChangedFields] = useState<{
+		name?: string;
+		description?: string;
+		active?: boolean;
+		permissionIds?: string[];
+	}>({});
 
-  // State để lưu permissions ban đầu
-  const [initialPermissions, setInitialPermissions] = useState<string[]>([]);
-  const [groupedPermissions, setGroupedPermissions] =
-    useState<GroupedPermissions>({});
+	// State để lưu permissions ban đầu
+	const [initialPermissions, setInitialPermissions] = useState<string[]>([]);
+	const [groupedPermissions, setGroupedPermissions] =
+		useState<GroupedPermissions>({});
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: currentRow?.name || '',
-      description: currentRow?.description || '',
-      active: currentRow?.active ?? true,
-      permissionIds: currentRow?.permissions.map((p) => p.id) || [],
-    },
-  });
+	const form = useForm<FormValues>({
+		resolver: zodResolver(formSchema),
+		defaultValues: {
+			name: currentRow?.name || '',
+			description: currentRow?.description || '',
+			active: currentRow?.active ?? true,
+			permissionIds: currentRow?.permissions.map((p) => p.id) || [],
+		},
+	});
 
-  useEffect(() => {
-    const fetchPermissions = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`${API_URL}/permissions?page=1&size=100`, {
-          headers: {
-            Authorization: `Bearer ${ACCESS_TOKEN}`,
-          },
-        });
-        const data = await response.json();
-        if (data.data?.content) {
-          setPermissions(data.data.content);
-        }
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Có lỗi xảy ra',
-          description: 'Không thể tải danh sách quyền. Vui lòng thử lại sau.',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+	useEffect(() => {
+		const fetchPermissions = async () => {
+			try {
+				setIsLoading(true);
+				const response = await fetch(`${API_URL}/permissions?page=1&size=100`, {
+					headers: {
+						Authorization: `Bearer ${ACCESS_TOKEN}`,
+					},
+				});
+				const data = await response.json();
+				if (data.data?.content) {
+					setPermissions(data.data.content);
+				}
+			} catch (error) {
+				toast({
+					variant: 'destructive',
+					title: 'Có lỗi xảy ra',
+					description: 'Không thể tải danh sách quyền. Vui lòng thử lại sau.',
+				});
+			} finally {
+				setIsLoading(false);
+			}
+		};
 
-    fetchPermissions();
-  }, []);
+		fetchPermissions();
+	}, []);
 
-  // Group permissions by module
-  useEffect(() => {
-    const grouped = allPermissions.reduce((acc, permission) => {
-      const module = permission.module ?? 'Other';
-      if (!acc[module]) {
-        acc[module] = [];
-      }
-      acc[module].push(permission);
-      return acc;
-    }, {} as GroupedPermissions);
-    setGroupedPermissions(grouped);
-  }, [allPermissions]);
+	// Group permissions by module
+	useEffect(() => {
+		const grouped = allPermissions.reduce((acc, permission) => {
+			const module = permission.module ?? 'Other';
+			if (!acc[module]) {
+				acc[module] = [];
+			}
+			acc[module].push(permission);
+			return acc;
+		}, {} as GroupedPermissions);
+		setGroupedPermissions(grouped);
+	}, [allPermissions]);
 
-  // Reset form và state khi dialog mở/đóng
-  useEffect(() => {
-    if (currentRow) {
-      const currentPermissions = currentRow.permissions.map((p) => p.id);
-      form.reset({
-        name: currentRow.name,
-        description: currentRow.description,
-        active: currentRow.active,
-        permissionIds: currentPermissions,
-      });
-      setInitialPermissions(currentPermissions);
-    }
-  }, [currentRow, form]);
+	// Reset form và state khi dialog mở/đóng
+	useEffect(() => {
+		if (currentRow) {
+			const currentPermissions = currentRow.permissions.map((p) => p.id);
+			form.reset({
+				name: currentRow.name,
+				description: currentRow.description,
+				active: currentRow.active,
+				permissionIds: currentPermissions,
+			});
+			setInitialPermissions(currentPermissions);
+		}
+	}, [currentRow, form]);
 
-  const handleModulePermissionChange = (module: string, checked: boolean) => {
-    const currentPermissions = form.getValues('permissionIds');
-    const modulePermissionIds = groupedPermissions[module].map((p) => p.id);
+	const handleModulePermissionChange = (module: string, checked: boolean) => {
+		const currentPermissions = form.getValues('permissionIds');
+		const modulePermissionIds = groupedPermissions[module].map((p) => p.id);
 
-    if (checked) {
-      // Add all permissions in module
-      const newPermissions = Array.from(
-        new Set([...currentPermissions, ...modulePermissionIds]),
-      );
-      form.setValue('permissionIds', newPermissions);
-    } else {
-      // Remove all permissions in module
-      const newPermissions = currentPermissions.filter(
-        (id) => !modulePermissionIds.includes(id),
-      );
-      form.setValue('permissionIds', newPermissions);
-    }
-  };
+		if (checked) {
+			// Add all permissions in module
+			const newPermissions = Array.from(
+				new Set([...currentPermissions, ...modulePermissionIds])
+			);
+			form.setValue('permissionIds', newPermissions);
+		} else {
+			// Remove all permissions in module
+			const newPermissions = currentPermissions.filter(
+				(id) => !modulePermissionIds.includes(id)
+			);
+			form.setValue('permissionIds', newPermissions);
+		}
+	};
 
-  const handlePermissionChange = (
-    module: string,
-    permissionId: string,
-    checked: boolean,
-  ) => {
-    const currentPermissions = form.getValues('permissionIds');
+	const handlePermissionChange = (
+		module: string,
+		permissionId: string,
+		checked: boolean
+	) => {
+		const currentPermissions = form.getValues('permissionIds');
 
-    if (checked) {
-      form.setValue('permissionIds', [...currentPermissions, permissionId]);
-    } else {
-      form.setValue(
-        'permissionIds',
-        currentPermissions.filter((id) => id !== permissionId),
-      );
-    }
-  };
+		if (checked) {
+			form.setValue('permissionIds', [...currentPermissions, permissionId]);
+		} else {
+			form.setValue(
+				'permissionIds',
+				currentPermissions.filter((id) => id !== permissionId)
+			);
+		}
+	};
 
-  const onSubmit = async (data: FormValues) => {
-    try {
-      if (isEdit && currentRow) {
-        // Logic update role
-        const updatedData: {
-          name?: string;
-          description?: string;
-          active?: boolean;
-          permissionIds?: string[];
-        } = {};
+	const onSubmit = async (data: FormValues) => {
+		try {
+			if (isEdit && currentRow) {
+				// Logic update role
+				const updatedData: {
+					name?: string;
+					description?: string;
+					active?: boolean;
+					permissionIds?: string[];
+				} = {};
 
-        if (data.name !== currentRow.name) {
-          updatedData.name = data.name;
-        }
-        if (data.description !== currentRow.description) {
-          updatedData.description = data.description;
-        }
-        if (data.active !== currentRow.active) {
-          updatedData.active = data.active;
-        }
+				if (data.name !== currentRow.name) {
+					updatedData.name = data.name;
+				}
+				if (data.description !== currentRow.description) {
+					updatedData.description = data.description;
+				}
+				if (data.active !== currentRow.active) {
+					updatedData.active = data.active;
+				}
 
-        // Calculate added and removed permissions
-        const addedPermissions = data.permissionIds.filter(
-          (id) => !initialPermissions.includes(id),
-        );
-        const removedPermissions = initialPermissions.filter(
-          (id) => !data.permissionIds.includes(id),
-        );
+				// Calculate added and removed permissions
+				const addedPermissions = data.permissionIds.filter(
+					(id) => !initialPermissions.includes(id)
+				);
+				const removedPermissions = initialPermissions.filter(
+					(id) => !data.permissionIds.includes(id)
+				);
 
-        if (removedPermissions.length > 0) {
-          await deleteRolePermissions(currentRow.id, removedPermissions);
-        }
+				if (removedPermissions.length > 0) {
+					await deleteRolePermissions(currentRow.id, removedPermissions);
+				}
 
-        if (
-          Object.keys(updatedData).length > 0 ||
-          addedPermissions.length > 0
-        ) {
-          if (addedPermissions.length > 0) {
-            updatedData.permissionIds = addedPermissions;
-          }
-          await updateRole(currentRow.id, updatedData);
-        }
-      } else {
-        // Logic create role
-        await createRole({
-          name: data.name,
-          description: data.description,
-          active: data.active,
-          permissionIds: data.permissionIds,
-        });
-      }
+				if (
+					Object.keys(updatedData).length > 0 ||
+					addedPermissions.length > 0
+				) {
+					if (addedPermissions.length > 0) {
+						updatedData.permissionIds = addedPermissions;
+					}
+					await updateRole(currentRow.id, updatedData);
+				}
+			} else {
+				// Logic create role
+				await createRole({
+					name: data.name,
+					description: data.description,
+					active: data.active,
+					permissionIds: data.permissionIds,
+				});
+			}
 
-      onOpenChange(false);
-    } catch (error) {
-      console.error('Submit error:', error);
-    }
-  };
+			onOpenChange(false);
+		} catch (error) {
+			console.error('Submit error:', error);
+		}
+	};
 
-  // Reset form khi dialog đóng
-  useEffect(() => {
-    if (!open) {
-      form.reset();
-    }
-  }, [open, form]);
+	// Reset form khi dialog đóng
+	useEffect(() => {
+		if (!open) {
+			form.reset();
+		}
+	}, [open, form]);
 
-  const toggleModule = (module: string) => {
-    setOpenModules((prev) => ({
-      ...prev,
-      [module]: !prev[module],
-    }));
-  };
+	const toggleModule = (module: string) => {
+		setOpenModules((prev) => ({
+			...prev,
+			[module]: !prev[module],
+		}));
+	};
 
-  const isModuleChecked = (modulePermissions: Permission[]) => {
-    const currentPermissions = form.getValues('permissionIds');
-    return modulePermissions.every((p) => currentPermissions.includes(p.id));
-  };
+	const isModuleChecked = (modulePermissions: Permission[]) => {
+		const currentPermissions = form.getValues('permissionIds');
+		return modulePermissions.every((p) => currentPermissions.includes(p.id));
+	};
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit ? 'Chỉnh sửa vai trò' : 'Thêm vai trò mới'}
-          </DialogTitle>
-        </DialogHeader>
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-0">
+				<DialogHeader className="px-6 py-4 border-b bg-slate-50">
+					<DialogTitle className="text-xl font-semibold text-slate-900">
+						{isEdit ? 'Chỉnh sửa vai trò' : 'Thêm vai trò mới'}
+					</DialogTitle>
+				</DialogHeader>
 
-        <ScrollArea className="max-h-[80vh]">
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="space-y-6 p-6"
-            >
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tên vai trò</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Nhập tên vai trò" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+				<ScrollArea className="flex-1 max-h-[80vh]">
+					<Form {...form}>
+						<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+							<div className="px-6 py-4 space-y-6">
+								{/* Basic Info Section */}
+								<div className="space-y-4 p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
+									<h3 className="text-sm font-medium text-slate-900 mb-3">
+										Thông tin cơ bản
+									</h3>
 
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mô tả</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Nhập mô tả cho vai trò"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+									<FormField
+										control={form.control}
+										name="name"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel className="text-sm font-medium text-slate-700">
+													Tên vai trò
+												</FormLabel>
+												<FormControl>
+													<Input
+														placeholder="Nhập tên vai trò"
+														className="bg-white border-slate-200 focus:border-slate-300 focus:ring-slate-300"
+														{...field}
+													/>
+												</FormControl>
+												<FormMessage className="text-xs text-red-500" />
+											</FormItem>
+										)}
+									/>
 
-                <FormField
-                  control={form.control}
-                  name="active"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel>Trạng thái</FormLabel>
-                        <div className="text-sm text-muted-foreground">
-                          Vai trò{' '}
-                          {field.value ? 'đang hoạt động' : 'đã bị vô hiệu hóa'}
-                        </div>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+									<FormField
+										control={form.control}
+										name="description"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel className="text-sm font-medium text-slate-700">
+													Mô tả
+												</FormLabel>
+												<FormControl>
+													<Textarea
+														placeholder="Nhập mô tả cho vai trò"
+														className="bg-white resize-none min-h-[100px] border-slate-200 focus:border-slate-300 focus:ring-slate-300"
+														{...field}
+													/>
+												</FormControl>
+												<FormMessage className="text-xs text-red-500" />
+											</FormItem>
+										)}
+									/>
 
-                <FormField
-                  control={form.control}
-                  name="permissionIds"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="mt-6 mb-4">
-                        <FormLabel className="text-base">Quyền hạn</FormLabel>
-                      </div>
-                      <FormControl>
-                        <div className="space-y-2">
-                          {isLoading ? (
-                            <div className="flex items-center justify-center py-4">
-                              <Loader2 className="h-6 w-6 animate-spin" />
-                            </div>
-                          ) : (
-                            Object.entries(groupedPermissions).map(
-                              ([module, modulePermissions]) => (
-                                <Collapse
-                                  key={module}
-                                  open={openModules[module]}
-                                  onOpenChange={() => toggleModule(module)}
-                                >
-                                  <CollapseTrigger className="w-full rounded-lg border bg-white px-4 py-2">
-                                    <div className="flex items-center justify-between w-full">
-                                      <div className="flex items-center gap-2">
-                                        <IconChevronRight
-                                          className={cn(
-                                            'h-4 w-4 shrink-0 transition-transform duration-200',
-                                            openModules[module] && 'rotate-90',
-                                          )}
-                                        />
-                                        <span className="text-sm font-medium">
-                                          {module}
-                                        </span>
-                                      </div>
-                                      <Switch
-                                        checked={isModuleChecked(
-                                          modulePermissions,
-                                        )}
-                                        onCheckedChange={(checked) =>
-                                          handleModulePermissionChange(
-                                            module,
-                                            checked,
-                                          )
-                                        }
-                                        onClick={(e) => e.stopPropagation()}
-                                      />
-                                    </div>
-                                  </CollapseTrigger>
-                                  <CollapseContent className="divide-y divide-gray-100 border-x border-b rounded-b-lg">
-                                    {modulePermissions.map((permission) => (
-                                      <div
-                                        key={permission.id}
-                                        className="flex items-center justify-between px-4 py-2"
-                                      >
-                                        <div className="flex flex-col">
-                                          <span className="text-sm font-medium text-gray-700 max-w-sm truncate">
-                                            {permission.name}
-                                          </span>
-                                        </div>
-                                        <Switch
-                                          checked={field.value.includes(
-                                            permission.id,
-                                          )}
-                                          onCheckedChange={(checked) => {
-                                            handlePermissionChange(
-                                              module,
-                                              permission.id,
-                                              checked,
-                                            );
-                                          }}
-                                        />
-                                      </div>
-                                    ))}
-                                  </CollapseContent>
-                                </Collapse>
-                              ),
-                            )
-                          )}
-                        </div>
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
+									<FormField
+										control={form.control}
+										name="active"
+										render={({ field }) => (
+											<FormItem className="flex items-center justify-between rounded-lg bg-slate-50 p-4 border border-slate-200">
+												<div className="space-y-1">
+													<FormLabel className="text-sm font-medium text-slate-700">
+														Trạng thái
+													</FormLabel>
+													<div className="text-sm text-slate-900">
+														Vai trò{' '}
+														{field.value
+															? 'đang hoạt động'
+															: 'đã bị vô hiệu hóa'}
+													</div>
+												</div>
+												<FormControl>
+													<Switch
+														checked={field.value}
+														onCheckedChange={field.onChange}
+														className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300"
+													/>
+												</FormControl>
+											</FormItem>
+										)}
+									/>
+								</div>
 
-              <div className="flex justify-end pt-4">
-                <Button type="submit">
-                  {isEdit ? 'Cập nhật' : 'Thêm mới'}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
-  );
+								{/* Permissions Section */}
+								<FormField
+									control={form.control}
+									name="permissionIds"
+									render={({ field }) => (
+										<FormItem className="space-y-4">
+											<div className="flex items-center justify-between">
+												<FormLabel className="text-base font-semibold text-slate-900">
+													Quyền hạn
+												</FormLabel>
+											</div>
+											<FormControl>
+												<div className="space-y-2">
+													{isLoading ? (
+														<div className="flex items-center justify-center py-8">
+															<Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+														</div>
+													) : (
+														Object.entries(groupedPermissions).map(
+															([module, modulePermissions]) => (
+																<Collapse
+																	key={module}
+																	open={openModules[module]}
+																	onOpenChange={() => toggleModule(module)}
+																>
+																	<CollapseTrigger className="w-full rounded-t-lg border bg-white hover:bg-slate-50 transition-colors px-4 py-3">
+																		<div className="flex items-center justify-between w-full">
+																			<div className="flex items-center gap-3">
+																				<IconChevronRight
+																					className={cn(
+																						'h-4 w-4 shrink-0 transition-transform duration-200 text-slate-900',
+																						openModules[module] && 'rotate-90'
+																					)}
+																				/>
+																				<span className="text-sm font-medium text-slate-900 border-b-slate-900">
+																					{module}
+																				</span>
+																			</div>
+																			<Switch
+																				checked={isModuleChecked(
+																					modulePermissions
+																				)}
+																				onCheckedChange={(checked) =>
+																					handleModulePermissionChange(
+																						module,
+																						checked
+																					)
+																				}
+																				onClick={(e) => e.stopPropagation()}
+																				className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300"
+																			/>
+																		</div>
+																	</CollapseTrigger>
+																	<CollapseContent className="divide-y divide-slate-100 border-x border-b rounded-b-lg bg-white">
+																		{modulePermissions.map((permission) => (
+																			<div
+																				key={permission.id}
+																				className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 transition-colors"
+																			>
+																				<div className="flex flex-col gap-1">
+																					<span className="text-sm font-medium text-slate-700">
+																						{permission.name}
+																					</span>
+																					<span className="text-xs text-slate-900">
+																						{permission.apiPath} (
+																						{permission.httpMethod})
+																					</span>
+																				</div>
+																				<Switch
+																					checked={field.value.includes(
+																						permission.id
+																					)}
+																					onCheckedChange={(checked) => {
+																						handlePermissionChange(
+																							module,
+																							permission.id,
+																							checked
+																						);
+																					}}
+																					className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300"
+																				/>
+																			</div>
+																		))}
+																	</CollapseContent>
+																</Collapse>
+															)
+														)
+													)}
+												</div>
+											</FormControl>
+											<FormMessage className="text-xs text-red-500" />
+										</FormItem>
+									)}
+								/>
+							</div>
+
+							{/* Footer */}
+							<div className="flex justify-end gap-4 px-6 py-4 border-t bg-slate-50">
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => onOpenChange(false)}
+									className="border-slate-200 hover:bg-slate-100"
+								>
+									Hủy
+								</Button>
+								<Button
+									type="submit"
+									className="bg-slate-900 hover:bg-slate-600 text-white"
+								>
+									{isEdit ? 'Cập nhật' : 'Thêm mới'}
+								</Button>
+							</div>
+						</form>
+					</Form>
+				</ScrollArea>
+			</DialogContent>
+		</Dialog>
+	);
 }
