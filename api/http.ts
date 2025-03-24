@@ -1,0 +1,4 @@
+export const API_URL =
+	'http://ec2-54-169-33-117.ap-southeast-1.compute.amazonaws.com/api/v1';
+export const ACCESS_TOKEN =
+	'eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJwcml6aXEiLCJzdWIiOiI4ZjdlYzMzNC0wMjk4LTQ2MTUtOTA2NC00MmY0ZWY2Yjc1ODciLCJleHAiOjE3NDI4MTA1ODcsImlhdCI6MTc0MjgwNjk4NywiZW1haWwiOiJ0cmFucXVhbm1pa2F6QGdtYWlsLmNvbSIsImp0aSI6IjU5ZTU3Njg4LWM5NTQtNGM2NC1iMDc1LTQ5YmUwZmEyYTk0NCJ9.jQH-MXvUjcNCJHdgjGQ9F-pGNYKBlwPmIXYZh8DEeuuHBm99CRm2oEeIw4ud522DauoJ_nN5OtktEoqWN0kkrw';
