@@ -20,4 +20,4 @@ export const modules: Option[] = [
   { label: 'Categories', value: 'categories' },
   { label: 'Orders', value: 'orders' },
   { label: 'Customers', value: 'customers' },
-]; 
+];

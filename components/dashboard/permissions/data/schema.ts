@@ -10,4 +10,4 @@ export const permissionSchema = z.object({
   updatedAt: z.date(),
 });
 
-export type Permission = z.infer<typeof permissionSchema>; 
+export type Permission = z.infer<typeof permissionSchema>;
