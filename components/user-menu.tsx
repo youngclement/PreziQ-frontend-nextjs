@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ export default function UserMenu() {
   const router = useRouter();
   const { isLoggedIn, logout } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
 
   const handleLogout = async () => {
     setLoading(true);
@@ -30,6 +31,19 @@ export default function UserMenu() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchAccount = async () => {
+     
+        const res = await authApi.getAccount();
+        console.log('user: ', res.data.data.lastName);
+        setUserInfo(res?.data?.data);
+    };
+
+    if (isLoggedIn) {
+      fetchAccount();
+    }
+  }, [isLoggedIn]);
 
   if (!isLoggedIn) return null;
 

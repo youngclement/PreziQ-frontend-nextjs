@@ -15,8 +15,6 @@ export const authApi = {
         if (accessToken) {
           localStorage.setItem('accessToken', accessToken);
           return response;
-        } else {
-          throw new Error('Login failed: No access token received');
         }
       })
       .catch((error) => {
@@ -48,4 +46,12 @@ export const authApi = {
   resetPassword(payload: ResetPasswordPayload) {
     return axiosClient.post('/auth/reset-password', payload);
   },
+  
+  getAccount() { 
+    return axiosClient.get('/auth/account');
+  },
+  
+  refreshToken: () => axiosClient.get('/auth/refresh', {
+      withCredentials: true,
+    }),
 };

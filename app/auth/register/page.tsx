@@ -12,7 +12,6 @@ import { useRouter } from 'next/navigation';
 import { authApi } from '@/api/index';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
-import { error } from 'console';
 
 export default function RegisterPage() {
   const [isClient, setIsClient] = useState(false);
@@ -70,7 +69,7 @@ export default function RegisterPage() {
       if (error.response && error.response.data) {
         const backendErrors = error.response.data.errors;
 
-        backendErrors.forEach((err: any) => {
+        backendErrors?.forEach((err: any) => {
           if (err.code === 1120 || err.code === 1119 || err.code === 1123) {
             setError('confirmPassword', {
               type: 'server',
@@ -116,7 +115,7 @@ export default function RegisterPage() {
               type="text"
               id="firstName"
               {...register('firstName', {
-                required: 'FirstName không được để trống',
+                required: 'First name is required',
               })}
               className="mt-1 w-full rounded-md shadow-sm"
             />
@@ -133,7 +132,7 @@ export default function RegisterPage() {
               type="text"
               id="lastName"
               {...register('lastName', {
-                required: 'LastName không được để trống',
+                required: 'Last name is required',
               })}
               className="mt-1 w-full rounded-md shadow-sm"
             />
@@ -165,7 +164,7 @@ export default function RegisterPage() {
               type="tel"
               id="phoneNumber"
               {...register('phoneNumber', {
-                required: 'Vui lòng xác nhận phoneNumber',
+                required: 'Phone number is required',
               })}
               className="mt-1 w-full rounded-md shadow-sm"
               placeholder="e.g., 0886332809"
@@ -183,7 +182,7 @@ export default function RegisterPage() {
               type="password"
               id="password"
               {...register('password', {
-                required: 'Mật khẩu không được để trống',
+                required: 'Password is required',
               })}
               className="mt-1 w-full rounded-md shadow-sm"
             />
@@ -200,7 +199,7 @@ export default function RegisterPage() {
               type="password"
               id="confirmPassword"
               {...register('confirmPassword', {
-                required: 'Vui lòng xác nhận mật khẩu',
+                required: 'Confirm password is required',
               })}
               className="mt-1 w-full rounded-md shadow-sm"
             />

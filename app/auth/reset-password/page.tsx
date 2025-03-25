@@ -68,14 +68,14 @@ export default function ResetPasswordPage() {
         } else {
           toast({
             variant: 'destructive',
-            title: 'Lỗi',
+            title: 'Error',
             description: err.message,
           });
         }
       });
       toast({
         variant: 'destructive',
-        title: 'Lỗi',
+        title: 'Error',
         description: error.response.data.message,
       });
     } finally {
@@ -95,12 +95,12 @@ export default function ResetPasswordPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2 w-full">
-              <Label htmlFor="newPassword">Mật khẩu mới</Label>
+              <Label htmlFor="newPassword">New password</Label>
               <Input
                 id="newPassword"
                 type="password"
                 {...register('newPassword', {
-                  required: 'Mật khẩu mới không được để trống',
+                  required: 'New password is required',
                 })}
                 className=""
               />
@@ -112,12 +112,12 @@ export default function ResetPasswordPage() {
             </div>
 
             <div className="space-y-2 w-full">
-              <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
+              <Label htmlFor="confirmPassword">Confirm password</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 {...register('confirmPassword', {
-                  required: 'Xác nhận mật khẩu không được để trống',
+                  required: 'Confirm password is required',
                 })}
               />
               {errors.confirmPassword && (
@@ -128,7 +128,7 @@ export default function ResetPasswordPage() {
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Đang xử lý...' : 'Cập nhật mật khẩu'}
+              {isLoading ? 'Loading...' : 'Update password'}
             </Button>
           </form>
         </CardContent>
