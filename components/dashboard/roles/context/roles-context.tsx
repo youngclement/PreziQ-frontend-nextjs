@@ -21,6 +21,10 @@ interface RolesContextType {
 		data: { name?: string; description?: string }
 	) => Promise<void>;
 	deleteRole: (id: string) => Promise<void>;
+	deleteRolePermissions: (
+		roleId: string,
+		permissionIds: string[]
+	) => Promise<void>;
 	open: RolesDialogType | null;
 	setOpen: (type: RolesDialogType | null) => void;
 	currentRow: Role | null;
@@ -154,6 +158,39 @@ export default function RolesProvider({ children }: Props) {
 		},
 	});
 
+	// Mutation cho việc xóa quyền của role
+	const deleteRolePermissionsMutation = useMutation({
+		mutationFn: async ({
+			roleId,
+			permissionIds,
+		}: {
+			roleId: string;
+			permissionIds: string[];
+		}) => {
+			const response = await fetch(`${API_URL}/roles/${roleId}/permissions`, {
+				method: 'DELETE',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${ACCESS_TOKEN}`,
+				},
+				body: JSON.stringify({ permissionIds }),
+			});
+
+			if (!response.ok) {
+				throw new Error('Không thể xóa quyền');
+			}
+
+			return response.json();
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['roles'] });
+			toast.success('Xóa quyền thành công');
+		},
+		onError: (error: Error) => {
+			toast.error(error.message);
+		},
+	});
+
 	const createRole = useCallback(
 		async (data: { name: string; description: string }) => {
 			await createRoleMutation.mutateAsync(data);
@@ -172,6 +209,16 @@ export default function RolesProvider({ children }: Props) {
 		await deleteRoleMutation.mutateAsync(id);
 	}, []);
 
+	const deleteRolePermissions = useCallback(
+		async (roleId: string, permissionIds: string[]) => {
+			await deleteRolePermissionsMutation.mutateAsync({
+				roleId,
+				permissionIds,
+			});
+		},
+		[]
+	);
+
 	return (
 		<RolesContext.Provider
 			value={{
@@ -182,6 +229,7 @@ export default function RolesProvider({ children }: Props) {
 				createRole,
 				updateRole,
 				deleteRole,
+				deleteRolePermissions,
 				open,
 				setOpen,
 				currentRow,
