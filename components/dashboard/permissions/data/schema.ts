@@ -6,8 +6,8 @@ export const permissionSchema = z.object({
 	apiPath: z.string(),
 	httpMethod: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']),
 	module: z.string(),
-	createdAt: z.date(),
-	updatedAt: z.date(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
 	createdBy: z.string(),
 });
 

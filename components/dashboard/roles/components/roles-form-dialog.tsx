@@ -60,7 +60,16 @@ interface Props {
 }
 
 interface GroupedPermissions {
-	[key: string]: Permission[];
+	[key: string]: {
+		id: string;
+		name: string;
+		apiPath: string;
+		httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+		module: string;
+		createdAt: string;
+		updatedAt: string;
+		createdBy: string;
+	}[];
 }
 
 export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {

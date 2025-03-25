@@ -85,8 +85,6 @@ export function PermissionsProvider({
 					(permission: any) => ({
 						...permission,
 						httpMethod: permission.httpMethod,
-						createdAt: new Date(permission.createdAt),
-						updatedAt: new Date(permission.updatedAt),
 					})
 				);
 				setPermissions(permissions);

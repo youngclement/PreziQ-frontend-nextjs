@@ -17,15 +17,19 @@ export default function DashboardLayout({
 			<div className="flex min-h-screen flex-col w-full">
 				<div className="flex flex-1">
 					<AppSidebar />
-					<div className="flex flex-1 flex-col">
+					<div className="flex flex-1 flex-col min-w-0">
 						<Header fixed>
-							<Search />
-							<div className="ml-auto flex items-center gap-2">
-								<ThemeSwitch />
-								<ProfileDropdown />
+							<div className="flex items-center gap-2 w-full">
+								<div className="flex-1 max-w-[300px]">
+									<Search />
+								</div>
+								<div className="flex items-center gap-2 ml-auto">
+									<ThemeSwitch />
+									<ProfileDropdown />
+								</div>
 							</div>
 						</Header>
-						{children}
+						<main className="flex-1 overflow-x-hidden">{children}</main>
 					</div>
 				</div>
 			</div>

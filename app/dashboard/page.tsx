@@ -16,7 +16,7 @@ export default function Dashboard() {
 		<>
 			{/* ===== Main ===== */}
 			<Main>
-				<div className="mb-2 flex items-center justify-between space-y-2">
+				<div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 					<h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
 					<div className="flex items-center space-x-2">
 						<Button>Download</Button>
@@ -28,7 +28,7 @@ export default function Dashboard() {
 					className="space-y-4"
 				>
 					<div className="w-full overflow-x-auto pb-2">
-						<TabsList>
+						<TabsList className="w-full sm:w-auto">
 							<TabsTrigger value="overview">Overview</TabsTrigger>
 							<TabsTrigger value="analytics" disabled>
 								Analytics
@@ -42,7 +42,7 @@ export default function Dashboard() {
 						</TabsList>
 					</div>
 					<TabsContent value="overview" className="space-y-4">
-						<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+						<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
 							<Card>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle className="text-sm font-medium">
@@ -151,7 +151,9 @@ export default function Dashboard() {
 									<CardTitle>Overview</CardTitle>
 								</CardHeader>
 								<CardContent className="pl-2">
-									<Overview />
+									<div className="h-[350px]">
+										<Overview />
+									</div>
 								</CardContent>
 							</Card>
 							<Card className="col-span-1 lg:col-span-3">
@@ -162,7 +164,9 @@ export default function Dashboard() {
 									</CardDescription>
 								</CardHeader>
 								<CardContent>
-									<RecentSales />
+									<div className="h-[350px] overflow-y-auto">
+										<RecentSales />
+									</div>
 								</CardContent>
 							</Card>
 						</div>
