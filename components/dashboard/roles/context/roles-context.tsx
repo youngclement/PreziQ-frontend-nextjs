@@ -15,6 +15,12 @@ interface RolesContextType {
 	isLoading: boolean;
 	error: string | null;
 	refetch: () => void;
+	meta: {
+		totalPages: number;
+		currentPage: number;
+		totalElements: number;
+	};
+	fetchRoles: (page: number) => void;
 	createRole: (data: { name: string; description: string }) => Promise<void>;
 	updateRole: (
 		id: string,
@@ -41,6 +47,11 @@ export default function RolesProvider({ children }: Props) {
 	const queryClient = useQueryClient();
 	const [open, setOpen] = useDialogState<RolesDialogType>(null);
 	const [currentRow, setCurrentRow] = useState<Role | null>(null);
+	const [meta, setMeta] = useState({
+		totalPages: 1,
+		currentPage: 1,
+		totalElements: 0,
+	});
 
 	// Fetch roles với React Query
 	const {
@@ -62,11 +73,25 @@ export default function RolesProvider({ children }: Props) {
 			}
 
 			const data = await response.json();
+			setMeta(data.data.meta);
 			return data.data.content;
 		},
 		staleTime: 5 * 60 * 1000, // Cache trong 5 phút
 		gcTime: 30 * 60 * 1000, // Giữ cache 30 phút
 	});
+
+	const fetchRoles = useCallback(
+		(page: number) => {
+			queryClient.setQueryData(['roles', page], () => {
+				fetch(`${API_URL}/roles?page=${page}`, {
+					headers: {
+						Authorization: `Bearer ${ACCESS_TOKEN}`,
+					},
+				}).then((res) => res.json());
+			});
+		},
+		[queryClient]
+	);
 
 	// Mutation cho việc tạo role mới
 	const createRoleMutation = useMutation({
@@ -226,6 +251,8 @@ export default function RolesProvider({ children }: Props) {
 				isLoading,
 				error: error as string | null,
 				refetch,
+				meta,
+				fetchRoles,
 				createRole,
 				updateRole,
 				deleteRole,
