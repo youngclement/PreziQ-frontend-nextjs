@@ -5,9 +5,8 @@ import { columns } from '@/components/dashboard/roles/components/roles-columns';
 import { RolesDialogs } from '@/components/dashboard/roles/components/roles-dialogs';
 import { RolesPrimaryButtons } from '@/components/dashboard/roles/components/roles-primary-buttons';
 import { RolesTable } from '@/components/dashboard/roles/components/roles-table';
-import RolesProvider, {
-	useRoles,
-} from '@/components/dashboard/roles/context/roles-context';
+import RolesProvider from '@/components/dashboard/roles/context/roles-context';
+import { useRoles } from '@/components/dashboard/roles/context/roles-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { PermissionsProvider } from '@/components/dashboard/permissions/context/permissions-context';
