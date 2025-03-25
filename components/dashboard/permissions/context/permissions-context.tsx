@@ -76,6 +76,9 @@ export function PermissionsProvider({
 			);
 			const permissionsData = await permissionsResponse.json();
 
+			console.log('Dữ liệu modules từ API:', modulesData);
+			console.log('Dữ liệu permissions từ API:', permissionsData);
+
 			if (modulesData.data) {
 				setModules(modulesData.data);
 			}
@@ -84,10 +87,13 @@ export function PermissionsProvider({
 				const permissions = permissionsData.data.content.map(
 					(permission: any) => ({
 						...permission,
+						// Đảm bảo module là một chuỗi rỗng nếu null hoặc undefined
+						module: permission.module || '',
 						httpMethod: permission.httpMethod,
 					})
 				);
 				setPermissions(permissions);
+				console.log('Permissions đã xử lý:', permissions);
 			}
 		} catch (error) {
 			const message =

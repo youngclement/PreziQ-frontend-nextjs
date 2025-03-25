@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -57,23 +57,8 @@ interface Props {
 }
 
 export function CreateModuleDialog({ open, onOpenChange }: Props) {
-	const { permissions = [], modules = [], refetch } = usePermissions();
+	const { permissions, modules, refetch } = usePermissions();
 	const [isLoading, setIsLoading] = useState(false);
-	const [availablePermissions, setAvailablePermissions] = useState<any[]>([]);
-
-	useEffect(() => {
-		if (permissions && Array.isArray(permissions)) {
-			// Lọc ra các permission chưa có module
-			const filtered = permissions.filter((p) => !p.module);
-			setAvailablePermissions(filtered);
-
-			if (open) {
-				console.log('Permissions từ context:', permissions);
-				console.log('Modules từ context:', modules);
-				console.log('Các permission chưa có module:', filtered);
-			}
-		}
-	}, [permissions, modules, open]);
 
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
@@ -83,11 +68,14 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 		},
 	});
 
+	// Lọc ra các permission chưa có module
+	const availablePermissions = permissions.filter((p) => !p.module);
+
 	const onSubmit = async (values: z.infer<typeof formSchema>) => {
 		setIsLoading(true);
 		try {
 			// Kiểm tra tên module đã tồn tại chưa
-			if (Array.isArray(modules) && modules.includes(values.moduleName)) {
+			if (modules.includes(values.moduleName)) {
 				form.setError('moduleName', {
 					message: 'Tên module đã tồn tại',
 				});
@@ -173,7 +161,7 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 														!field.value && 'text-muted-foreground'
 													)}
 												>
-													{Array.isArray(field.value) && field.value.length
+													{field.value?.length
 														? `Đã chọn ${field.value.length} permission`
 														: 'Chọn permissions'}
 													<IconChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -185,13 +173,11 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 												<CommandInput placeholder="Tìm permission..." />
 												<CommandEmpty>Không tìm thấy permission</CommandEmpty>
 												<CommandGroup className="max-h-[300px] overflow-auto">
-													{(availablePermissions || []).map((permission) => (
+													{availablePermissions.map((permission) => (
 														<CommandItem
 															key={permission.id}
 															onSelect={() => {
-																const currentValue = new Set(
-																	Array.isArray(field.value) ? field.value : []
-																);
+																const currentValue = new Set(field.value);
 																if (currentValue.has(permission.id)) {
 																	currentValue.delete(permission.id);
 																} else {
@@ -203,8 +189,7 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 															<IconCheck
 																className={cn(
 																	'mr-2 h-4 w-4',
-																	Array.isArray(field.value) &&
-																		field.value.includes(permission.id)
+																	field.value?.includes(permission.id)
 																		? 'opacity-100'
 																		: 'opacity-0'
 																)}
