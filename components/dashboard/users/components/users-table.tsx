@@ -27,6 +27,9 @@ import {
 import { User } from '../data/schema';
 import { DataTablePagination } from './data-table-pagination';
 import { DataTableToolbar } from './data-table-toolbar';
+import { DataTableViewOptions } from './data-table-view-options';
+import { useUsers } from '../context/users-context';
+import { columns } from './users-columns';
 
 declare module '@tanstack/react-table' {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -35,40 +38,26 @@ declare module '@tanstack/react-table' {
 	}
 }
 
-interface DataTableProps {
-	columns: ColumnDef<User>[];
-	data: User[];
-}
-
-export function UsersTable({ columns, data }: DataTableProps) {
-	console.log('Table data:', data);
-	console.log('Table columns:', columns);
-
+export function UsersTable({ data }: { data: User[] }) {
 	const [rowSelection, setRowSelection] = useState({});
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 	const [sorting, setSorting] = useState<SortingState>([]);
-	const [pagination, setPagination] = useState({
-		pageIndex: 0,
-		pageSize: 10,
-	});
 
 	const table = useReactTable({
 		data,
-		columns,
+		columns: columns as ColumnDef<User, any>[],
 		state: {
 			sorting,
 			columnVisibility,
 			rowSelection,
 			columnFilters,
-			pagination,
 		},
 		enableRowSelection: true,
 		onRowSelectionChange: setRowSelection,
 		onSortingChange: setSorting,
 		onColumnFiltersChange: setColumnFilters,
 		onColumnVisibilityChange: setColumnVisibility,
-		onPaginationChange: setPagination,
 		getCoreRowModel: getCoreRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
@@ -77,8 +66,6 @@ export function UsersTable({ columns, data }: DataTableProps) {
 		getFacetedUniqueValues: getFacetedUniqueValues(),
 	});
 
-	console.log('Table rows:', table.getRowModel().rows);
-
 	return (
 		<div className="space-y-4">
 			<DataTableToolbar table={table} />
@@ -86,23 +73,17 @@ export function UsersTable({ columns, data }: DataTableProps) {
 				<Table>
 					<TableHeader>
 						{table.getHeaderGroups().map((headerGroup) => (
-							<TableRow key={headerGroup.id} className="group/row">
-								{headerGroup.headers.map((header) => {
-									return (
-										<TableHead
-											key={header.id}
-											colSpan={header.colSpan}
-											className={header.column.columnDef.meta?.className ?? ''}
-										>
-											{header.isPlaceholder
-												? null
-												: flexRender(
-														header.column.columnDef.header,
-														header.getContext()
-												  )}
-										</TableHead>
-									);
-								})}
+							<TableRow key={headerGroup.id}>
+								{headerGroup.headers.map((header) => (
+									<TableHead key={header.id} colSpan={header.colSpan}>
+										{header.isPlaceholder
+											? null
+											: flexRender(
+													header.column.columnDef.header,
+													header.getContext()
+											  )}
+									</TableHead>
+								))}
 							</TableRow>
 						))}
 					</TableHeader>
@@ -112,13 +93,9 @@ export function UsersTable({ columns, data }: DataTableProps) {
 								<TableRow
 									key={row.id}
 									data-state={row.getIsSelected() && 'selected'}
-									className="group/row"
 								>
 									{row.getVisibleCells().map((cell) => (
-										<TableCell
-											key={cell.id}
-											className={cell.column.columnDef.meta?.className ?? ''}
-										>
+										<TableCell key={cell.id}>
 											{flexRender(
 												cell.column.columnDef.cell,
 												cell.getContext()
@@ -133,7 +110,7 @@ export function UsersTable({ columns, data }: DataTableProps) {
 									colSpan={columns.length}
 									className="h-24 text-center"
 								>
-									No results.
+									Không tìm thấy kết quả
 								</TableCell>
 							</TableRow>
 						)}

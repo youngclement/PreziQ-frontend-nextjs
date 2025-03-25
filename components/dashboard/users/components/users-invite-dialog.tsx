@@ -1,14 +1,12 @@
 'use client';
 
-import { z } from 'zod';
+import { useUsers } from '../context/users-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { IconMailPlus, IconSend } from '@tabler/icons-react';
-import { toast } from '@/hooks/use-toast';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import {
 	Dialog,
-	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -24,96 +22,48 @@ import {
 	FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { SelectDropdown } from '@/components/dashboard/select-dropdown';
-import { userTypes } from '../../users/data/data';
-import { API_URL, ACCESS_TOKEN } from '@/api/http';
 
 const formSchema = z.object({
-	email: z
-		.string()
-		.min(1, { message: 'Email is required.' })
-		.email({ message: 'Email is invalid.' }),
-	role: z.string().min(1, { message: 'Role is required.' }),
-	desc: z.string().optional(),
+	email: z.string().email('Email không hợp lệ'),
+	firstName: z.string().min(1, 'Vui lòng nhập tên'),
+	lastName: z.string().min(1, 'Vui lòng nhập họ'),
 });
-type UserInviteForm = z.infer<typeof formSchema>;
+
+type UserForm = z.infer<typeof formSchema>;
 
 interface Props {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	refetch: () => Promise<void>;
 }
 
-export function UsersInviteDialog({ open, onOpenChange, refetch }: Props) {
-	const form = useForm<UserInviteForm>({
+export function UsersInviteDialog({ open, onOpenChange }: Props) {
+	const { createUser } = useUsers();
+
+	const form = useForm<UserForm>({
 		resolver: zodResolver(formSchema),
-		defaultValues: { email: '', role: '', desc: '' },
+		defaultValues: {
+			email: '',
+			firstName: '',
+			lastName: '',
+		},
 	});
 
-	const onSubmit = async (values: UserInviteForm) => {
-		try {
-			const response = await fetch(`${API_URL}/users/invite`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${ACCESS_TOKEN}`,
-				},
-				body: JSON.stringify({
-					email: values.email,
-					roles: [values.role],
-					description: values.desc,
-				}),
-			});
-
-			if (!response.ok) {
-				throw new Error('Failed to invite user');
-			}
-
-			toast({
-				title: 'Thành công',
-				description: 'Đã gửi lời mời thành công.',
-			});
-
-			// Refetch lại dữ liệu sau khi mời thành công
-			await refetch();
-
-			form.reset();
-			onOpenChange(false);
-		} catch (error) {
-			console.error('Error inviting user:', error);
-			toast({
-				title: 'Lỗi',
-				description: 'Không thể gửi lời mời.',
-				variant: 'destructive',
-			});
-		}
+	const onSubmit = async (values: UserForm) => {
+		await createUser(values);
+		onOpenChange(false);
 	};
 
 	return (
-		<Dialog
-			open={open}
-			onOpenChange={(state) => {
-				form.reset();
-				onOpenChange(state);
-			}}
-		>
-			<DialogContent className="sm:max-w-md">
-				<DialogHeader className="text-left">
-					<DialogTitle className="flex items-center gap-2">
-						<IconMailPlus /> Invite User
-					</DialogTitle>
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-[425px]">
+				<DialogHeader>
+					<DialogTitle>Mời người dùng mới</DialogTitle>
 					<DialogDescription>
-						Invite new user to join your team by sending them an email
-						invitation. Assign a role to define their access level.
+						Gửi lời mời cho người dùng mới tham gia hệ thống.
 					</DialogDescription>
 				</DialogHeader>
 				<Form {...form}>
-					<form
-						id="user-invite-form"
-						onSubmit={form.handleSubmit(onSubmit)}
-						className="space-y-4"
-					>
+					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 						<FormField
 							control={form.control}
 							name="email"
@@ -121,11 +71,7 @@ export function UsersInviteDialog({ open, onOpenChange, refetch }: Props) {
 								<FormItem>
 									<FormLabel>Email</FormLabel>
 									<FormControl>
-										<Input
-											type="email"
-											placeholder="eg: john.doe@gmail.com"
-											{...field}
-										/>
+										<Input placeholder="example@email.com" {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -133,50 +79,35 @@ export function UsersInviteDialog({ open, onOpenChange, refetch }: Props) {
 						/>
 						<FormField
 							control={form.control}
-							name="role"
+							name="firstName"
 							render={({ field }) => (
-								<FormItem className="space-y-1">
-									<FormLabel>Role</FormLabel>
-									<SelectDropdown
-										defaultValue={field.value}
-										onValueChange={field.onChange}
-										placeholder="Select a role"
-										items={userTypes.map(({ label, value }) => ({
-											label,
-											value,
-										}))}
-									/>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="desc"
-							render={({ field }) => (
-								<FormItem className="">
-									<FormLabel>Description (optional)</FormLabel>
+								<FormItem>
+									<FormLabel>Tên</FormLabel>
 									<FormControl>
-										<Textarea
-											className="resize-none"
-											placeholder="Add a personal note to your invitation (optional)"
-											{...field}
-										/>
+										<Input placeholder="Tên" {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
 							)}
 						/>
+						<FormField
+							control={form.control}
+							name="lastName"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Họ</FormLabel>
+									<FormControl>
+										<Input placeholder="Họ" {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<DialogFooter>
+							<Button type="submit">Gửi lời mời</Button>
+						</DialogFooter>
 					</form>
 				</Form>
-				<DialogFooter className="gap-y-2">
-					<DialogClose asChild>
-						<Button variant="outline">Cancel</Button>
-					</DialogClose>
-					<Button type="submit" form="user-invite-form">
-						Invite <IconSend />
-					</Button>
-				</DialogFooter>
 			</DialogContent>
 		</Dialog>
 	);
