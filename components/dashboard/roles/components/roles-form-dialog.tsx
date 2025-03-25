@@ -1,12 +1,19 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect, useState } from 'react';
+import {
+	useEffect,
+	useState,
+	useRef,
+	useLayoutEffect,
+	useCallback,
+} from 'react';
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
+	DialogDescription,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -58,19 +65,14 @@ interface GroupedPermissions {
 
 export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 	const { permissions: allPermissions } = usePermissions();
-	const { updateRole, deleteRolePermissions, createRole } = useRoles();
+	const { updateRole, deleteRolePermissions, createRole, handleCloseDialog } =
+		useRoles();
 	const isEdit = !!currentRow;
 	const [permissions, setPermissions] = useState<Permission[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
-
-	// State để theo dõi các trường thay đổi
-	const [changedFields, setChangedFields] = useState<{
-		name?: string;
-		description?: string;
-		active?: boolean;
-		permissionIds?: string[];
-	}>({});
+	const dialogRef = useRef<HTMLDivElement>(null);
+	const previousFocusRef = useRef<HTMLElement | null>(null);
 
 	// State để lưu permissions ban đầu
 	const [initialPermissions, setInitialPermissions] = useState<string[]>([]);
@@ -80,56 +82,16 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
-			name: currentRow?.name || '',
-			description: currentRow?.description || '',
-			active: currentRow?.active ?? true,
-			permissionIds: currentRow?.permissions.map((p) => p.id) || [],
+			name: '',
+			description: '',
+			active: true,
+			permissionIds: [],
 		},
 	});
 
+	// Reset form khi mở dialog và có currentRow
 	useEffect(() => {
-		const fetchPermissions = async () => {
-			try {
-				setIsLoading(true);
-				const response = await fetch(`${API_URL}/permissions?page=1&size=100`, {
-					headers: {
-						Authorization: `Bearer ${ACCESS_TOKEN}`,
-					},
-				});
-				const data = await response.json();
-				if (data.data?.content) {
-					setPermissions(data.data.content);
-				}
-			} catch (error) {
-				toast({
-					variant: 'destructive',
-					title: 'Có lỗi xảy ra',
-					description: 'Không thể tải danh sách quyền. Vui lòng thử lại sau.',
-				});
-			} finally {
-				setIsLoading(false);
-			}
-		};
-
-		fetchPermissions();
-	}, []);
-
-	// Group permissions by module
-	useEffect(() => {
-		const grouped = allPermissions.reduce((acc, permission) => {
-			const module = permission.module ?? 'Other';
-			if (!acc[module]) {
-				acc[module] = [];
-			}
-			acc[module].push(permission);
-			return acc;
-		}, {} as GroupedPermissions);
-		setGroupedPermissions(grouped);
-	}, [allPermissions]);
-
-	// Reset form và state khi dialog mở/đóng
-	useEffect(() => {
-		if (currentRow) {
+		if (open && currentRow) {
 			const currentPermissions = currentRow.permissions.map((p) => p.id);
 			form.reset({
 				name: currentRow.name,
@@ -138,47 +100,41 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 				permissionIds: currentPermissions,
 			});
 			setInitialPermissions(currentPermissions);
+		} else if (!open) {
+			// Reset form khi đóng dialog
+			form.reset({
+				name: '',
+				description: '',
+				active: true,
+				permissionIds: [],
+			});
+			setInitialPermissions([]);
 		}
-	}, [currentRow, form]);
+	}, [open, currentRow, form]);
 
-	const handleModulePermissionChange = (module: string, checked: boolean) => {
-		const currentPermissions = form.getValues('permissionIds');
-		const modulePermissionIds = groupedPermissions[module].map((p) => p.id);
+	const handleClose = useCallback(() => {
+		console.log('handleClose called in form dialog');
+		console.log('Current open state:', open);
+		console.log('Current form state:', form.getValues());
 
-		if (checked) {
-			// Add all permissions in module
-			const newPermissions = Array.from(
-				new Set([...currentPermissions, ...modulePermissionIds])
-			);
-			form.setValue('permissionIds', newPermissions);
-		} else {
-			// Remove all permissions in module
-			const newPermissions = currentPermissions.filter(
-				(id) => !modulePermissionIds.includes(id)
-			);
-			form.setValue('permissionIds', newPermissions);
-		}
-	};
+		// Reset form trước khi đóng
+		form.reset({
+			name: '',
+			description: '',
+			active: true,
+			permissionIds: [],
+		});
+		setInitialPermissions([]);
 
-	const handlePermissionChange = (
-		module: string,
-		permissionId: string,
-		checked: boolean
-	) => {
-		const currentPermissions = form.getValues('permissionIds');
+		// Gọi handleCloseDialog để reset state trong context
+		handleCloseDialog();
 
-		if (checked) {
-			form.setValue('permissionIds', [...currentPermissions, permissionId]);
-		} else {
-			form.setValue(
-				'permissionIds',
-				currentPermissions.filter((id) => id !== permissionId)
-			);
-		}
-	};
+		console.log('After handleCloseDialog');
+	}, [form, handleCloseDialog]);
 
 	const onSubmit = async (data: FormValues) => {
 		try {
+			console.log('Form submitted with data:', data);
 			if (isEdit && currentRow) {
 				// Logic update role
 				const updatedData: {
@@ -228,19 +184,89 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 					permissionIds: data.permissionIds,
 				});
 			}
-
-			onOpenChange(false);
+			console.log('Before handleClose in onSubmit');
+			handleClose();
+			console.log('After handleClose in onSubmit');
 		} catch (error) {
 			console.error('Submit error:', error);
 		}
 	};
 
-	// Reset form khi dialog đóng
 	useEffect(() => {
-		if (!open) {
-			form.reset();
+		const fetchPermissions = async () => {
+			try {
+				setIsLoading(true);
+				const response = await fetch(`${API_URL}/permissions?page=1&size=100`, {
+					headers: {
+						Authorization: `Bearer ${ACCESS_TOKEN}`,
+					},
+				});
+				const data = await response.json();
+				if (data.data?.content) {
+					setPermissions(data.data.content);
+				}
+			} catch (error) {
+				toast({
+					variant: 'destructive',
+					title: 'Có lỗi xảy ra',
+					description: 'Không thể tải danh sách quyền. Vui lòng thử lại sau.',
+				});
+			} finally {
+				setIsLoading(false);
+			}
+		};
+
+		fetchPermissions();
+	}, []);
+
+	// Group permissions by module
+	useEffect(() => {
+		const grouped = allPermissions.reduce((acc, permission) => {
+			const module = permission.module ?? 'Other';
+			if (!acc[module]) {
+				acc[module] = [];
+			}
+			acc[module].push(permission);
+			return acc;
+		}, {} as GroupedPermissions);
+		setGroupedPermissions(grouped);
+	}, [allPermissions]);
+
+	const handleModulePermissionChange = (module: string, checked: boolean) => {
+		const currentPermissions = form.getValues('permissionIds');
+		const modulePermissionIds = groupedPermissions[module].map((p) => p.id);
+
+		if (checked) {
+			// Add all permissions in module
+			const newPermissions = Array.from(
+				new Set([...currentPermissions, ...modulePermissionIds])
+			);
+			form.setValue('permissionIds', newPermissions);
+		} else {
+			// Remove all permissions in module
+			const newPermissions = currentPermissions.filter(
+				(id) => !modulePermissionIds.includes(id)
+			);
+			form.setValue('permissionIds', newPermissions);
 		}
-	}, [open, form]);
+	};
+
+	const handlePermissionChange = (
+		module: string,
+		permissionId: string,
+		checked: boolean
+	) => {
+		const currentPermissions = form.getValues('permissionIds');
+
+		if (checked) {
+			form.setValue('permissionIds', [...currentPermissions, permissionId]);
+		} else {
+			form.setValue(
+				'permissionIds',
+				currentPermissions.filter((id) => id !== permissionId)
+			);
+		}
+	};
 
 	const toggleModule = (module: string) => {
 		setOpenModules((prev) => ({
@@ -255,15 +281,40 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-0">
-				<DialogHeader className="px-6 py-4 border-b bg-slate-50">
+		<Dialog
+			open={open}
+			onOpenChange={(newOpen) => {
+				console.log('Dialog onOpenChange called with:', newOpen);
+				if (!newOpen) {
+					handleClose();
+				}
+			}}
+		>
+			<DialogContent
+				ref={dialogRef}
+				className="max-w-2xl h-[90vh] p-0 flex flex-col"
+				onPointerDownOutside={(e) => {
+					e.preventDefault();
+				}}
+				onEscapeKeyDown={(e) => {
+					e.preventDefault();
+				}}
+				onFocusOutside={(e) => {
+					e.preventDefault();
+				}}
+			>
+				<DialogHeader className="px-6 py-4 border-b bg-slate-50 flex-none">
 					<DialogTitle className="text-xl font-semibold text-slate-900">
 						{isEdit ? 'Chỉnh sửa vai trò' : 'Thêm vai trò mới'}
 					</DialogTitle>
+					<DialogDescription className="text-sm text-slate-500">
+						{isEdit
+							? 'Chỉnh sửa thông tin và quyền hạn của vai trò'
+							: 'Tạo vai trò mới với các quyền hạn được chỉ định'}
+					</DialogDescription>
 				</DialogHeader>
 
-				<ScrollArea className="flex-1 max-h-[80vh]">
+				<ScrollArea className="flex-1">
 					<Form {...form}>
 						<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 							<div className="px-6 py-4 space-y-6">
@@ -366,9 +417,9 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 																	open={openModules[module]}
 																	onOpenChange={() => toggleModule(module)}
 																>
-																	<CollapseTrigger className="w-full rounded-t-lg border bg-white hover:bg-slate-50 transition-colors px-4 py-3">
+																	<div className="w-full rounded-t-lg border bg-white hover:bg-slate-50 transition-colors px-4 py-3">
 																		<div className="flex items-center justify-between w-full">
-																			<div className="flex items-center gap-3">
+																			<CollapseTrigger className="flex items-center gap-3">
 																				<IconChevronRight
 																					className={cn(
 																						'h-4 w-4 shrink-0 transition-transform duration-200 text-slate-900',
@@ -378,7 +429,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 																				<span className="text-sm font-medium text-slate-900 border-b-slate-900">
 																					{module}
 																				</span>
-																			</div>
+																			</CollapseTrigger>
 																			<Switch
 																				checked={isModuleChecked(
 																					modulePermissions
@@ -389,11 +440,10 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 																						checked
 																					)
 																				}
-																				onClick={(e) => e.stopPropagation()}
 																				className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300"
 																			/>
 																		</div>
-																	</CollapseTrigger>
+																	</div>
 																	<CollapseContent className="divide-y divide-slate-100 border-x border-b rounded-b-lg bg-white">
 																		{modulePermissions.map((permission) => (
 																			<div
@@ -438,11 +488,11 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 							</div>
 
 							{/* Footer */}
-							<div className="flex justify-end gap-4 px-6 py-4 border-t bg-slate-50">
+							<div className="flex justify-end gap-4 px-6 py-4 border-t bg-slate-50 sticky bottom-0">
 								<Button
 									type="button"
 									variant="outline"
-									onClick={() => onOpenChange(false)}
+									onClick={handleClose}
 									className="border-slate-200 hover:bg-slate-100"
 								>
 									Hủy

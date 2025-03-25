@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import useDialogState from '@/hooks/use-dialog-state';
 import { Role } from '../data/schema';
 import { createContext, useContext } from 'react';
@@ -21,10 +21,20 @@ interface RolesContextType {
 		totalElements: number;
 	};
 	fetchRoles: (page: number) => void;
-	createRole: (data: { name: string; description: string }) => Promise<void>;
+	createRole: (data: {
+		name: string;
+		description: string;
+		active: boolean;
+		permissionIds: string[];
+	}) => Promise<void>;
 	updateRole: (
 		id: string,
-		data: { name?: string; description?: string }
+		data: {
+			name?: string;
+			description?: string;
+			active?: boolean;
+			permissionIds?: string[];
+		}
 	) => Promise<void>;
 	deleteRole: (id: string) => Promise<void>;
 	deleteRolePermissions: (
@@ -35,6 +45,7 @@ interface RolesContextType {
 	setOpen: (type: RolesDialogType | null) => void;
 	currentRow: Role | null;
 	setCurrentRow: (role: Role | null) => void;
+	handleCloseDialog: () => void;
 }
 
 const RolesContext = createContext<RolesContextType | undefined>(undefined);
@@ -244,6 +255,40 @@ export default function RolesProvider({ children }: Props) {
 		[]
 	);
 
+	const handleCloseDialog = useCallback(() => {
+		console.log('handleCloseDialog called in context');
+		setOpen(null);
+		setCurrentRow(null);
+		// Đảm bảo focus được chuyển ra khỏi dialog
+		const activeElement = document.activeElement as HTMLElement;
+		if (activeElement) {
+			activeElement.blur();
+		}
+		// Chuyển focus đến body
+		document.body.focus();
+		// Đảm bảo không có element nào có focus
+		document.querySelectorAll('[tabindex]').forEach((el) => {
+			(el as HTMLElement).blur();
+		});
+	}, []);
+
+	// Thêm useEffect để theo dõi open state
+	useEffect(() => {
+		console.log('Open state changed in context:', open);
+		if (!open) {
+			// Reset focus khi dialog đóng
+			const activeElement = document.activeElement as HTMLElement;
+			if (activeElement) {
+				activeElement.blur();
+			}
+			document.body.focus();
+			// Đảm bảo không có element nào có focus
+			document.querySelectorAll('[tabindex]').forEach((el) => {
+				(el as HTMLElement).blur();
+			});
+		}
+	}, [open]);
+
 	return (
 		<RolesContext.Provider
 			value={{
@@ -261,6 +306,7 @@ export default function RolesProvider({ children }: Props) {
 				setOpen,
 				currentRow,
 				setCurrentRow,
+				handleCloseDialog,
 			}}
 		>
 			{children}
