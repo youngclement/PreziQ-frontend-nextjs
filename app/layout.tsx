@@ -1,7 +1,8 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import { NavBar } from "@/components/nav-bar";
-
+import "aos/dist/aos.css";
 import "./globals.css";
+import Header from "@/components/header";
 
 export default function RootLayout({
   children,
@@ -18,7 +19,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
 
-          <NavBar />
+          <Header />
           {children}
 
         </ThemeProvider>

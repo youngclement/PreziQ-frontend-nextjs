@@ -15,9 +15,18 @@
     --background-end-rgb: 0, 0, 0;
   }
 }
+html {
+  overflow-x: hidden;
+}
 
+body {
+  overflow-x: hidden;
+  width: 100%;
+  position: relative;
+}
 @layer base {
   :root {
+    --highlight: 210 75% 80%;
     --background: 0 0% 100%; /* trắng */
     --foreground: 0 0% 0%; /* đen */
     --card: 0 0% 100%; /* trắng */
@@ -43,8 +52,16 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+
+    /* Game-inspired highlight colors for animation */
+    --game-color-1: 210 100% 70%; /* Bright blue */
+    --game-color-2: 280 100% 65%; /* Purple */
+    --game-color-3: 320 100% 65%; /* Pink */
+    --game-color-4: 160 100% 50%; /* Neon green */
+    --game-color-5: 30 100% 60%; /* Orange */
   }
   .dark {
+    --highlight: 210 75% 60%;
     --background: 0 0% 0%; /* đen */
     --foreground: 0 0% 100%; /* trắng */
     --card: 0 0% 0%; /* đen */
@@ -69,6 +86,13 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    /* Brighter colors for dark mode */
+    --game-color-1: 210 100% 75%; /* Bright blue */
+    --game-color-2: 280 100% 70%; /* Purple */
+    --game-color-3: 320 100% 70%; /* Pink */
+    --game-color-4: 160 100% 55%; /* Neon green */
+    --game-color-5: 30 100% 65%; /* Orange */
   }
 }
 
@@ -78,5 +102,140 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+html,
+body {
+  overflow-x: hidden;
+  position: relative;
+  width: 100%;
+}
+
+[data-aos] {
+  pointer-events: none;
+}
+
+[data-aos].aos-animate {
+  pointer-events: auto;
+}
+
+@layer utilities {
+  .text-highlight {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--game-color-1)),
+      hsl(var(--game-color-2))
+    );
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 10px hsla(var(--game-color-1), 0.6);
+    animation: gameGradientText 6s ease infinite alternate;
+  }
+
+  .bg-highlight {
+    background: linear-gradient(
+      45deg,
+      hsl(var(--game-color-1)),
+      hsl(var(--game-color-2)),
+      hsl(var(--game-color-4))
+    );
+    background-size: 300% 300%;
+    box-shadow: 0 0 20px hsla(var(--game-color-1), 0.7);
+    animation: gameGradientBg 8s ease infinite;
+  }
+
+  .border-highlight {
+    border-color: hsl(var(--game-color-1));
+    box-shadow: 0 0 12px hsla(var(--game-color-1), 0.5);
+    animation: gameGlowPulse 4s ease-in-out infinite alternate;
+  }
+
+  /* Game-inspired button hover effect */
+  .bg-highlight-hover:hover {
+    background: linear-gradient(
+      -45deg,
+      hsl(var(--game-color-4)),
+      hsl(var(--game-color-2)),
+      hsl(var(--game-color-3))
+    );
+    background-size: 300% 300%;
+    box-shadow: 0 0 25px hsla(var(--game-color-2), 0.8);
+    animation: gameGradientBg 4s ease infinite;
+    transform: translateY(-2px);
+    transition: transform 0.3s ease;
+  }
+
+  /* Game-style animations */
+  @keyframes gameGradientText {
+    0% {
+      background-position: 0% 50%;
+      text-shadow: 0 0 10px hsla(var(--game-color-1), 0.6);
+    }
+    50% {
+      background-position: 100% 50%;
+      text-shadow: 0 0 15px hsla(var(--game-color-2), 0.7);
+    }
+    100% {
+      background-position: 0% 50%;
+      text-shadow: 0 0 10px hsla(var(--game-color-3), 0.6);
+    }
+  }
+
+  @keyframes gameGradientBg {
+    0% {
+      background-position: 0% 50%;
+      box-shadow: 0 0 20px hsla(var(--game-color-1), 0.7);
+    }
+    50% {
+      background-position: 100% 50%;
+      box-shadow: 0 0 25px hsla(var(--game-color-2), 0.8);
+    }
+    100% {
+      background-position: 0% 50%;
+      box-shadow: 0 0 20px hsla(var(--game-color-4), 0.7);
+    }
+  }
+
+  @keyframes gameGlowPulse {
+    0% {
+      box-shadow: 0 0 8px hsla(var(--game-color-1), 0.5);
+    }
+    33% {
+      box-shadow: 0 0 15px hsla(var(--game-color-2), 0.6);
+    }
+    66% {
+      box-shadow: 0 0 12px hsla(var(--game-color-3), 0.7);
+    }
+    100% {
+      box-shadow: 0 0 18px hsla(var(--game-color-4), 0.8);
+    }
+  }
+
+  /* Random color animation for special elements */
+  .random-highlight {
+    animation: randomColors 10s linear infinite;
+  }
+
+  @keyframes randomColors {
+    0% {
+      color: hsl(var(--game-color-1));
+    }
+    20% {
+      color: hsl(var(--game-color-2));
+    }
+    40% {
+      color: hsl(var(--game-color-3));
+    }
+    60% {
+      color: hsl(var(--game-color-4));
+    }
+    80% {
+      color: hsl(var(--game-color-5));
+    }
+    100% {
+      color: hsl(var(--game-color-1));
+    }
   }
 }
