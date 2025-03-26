@@ -4,320 +4,320 @@ import React, { useState, useCallback, useEffect } from 'react';
 import useDialogState from '@/hooks/use-dialog-state';
 import { Role } from '../data/schema';
 import { createContext, useContext } from 'react';
-import { API_URL, ACCESS_TOKEN } from '@/api/http';
+import { API_URL, ACCESS_TOKEN } from '@/api-mock/http';
 import { toast } from 'react-toastify';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 type RolesDialogType = 'add' | 'edit' | 'delete';
 
 interface RolesContextType {
-	roles: Role[];
-	isLoading: boolean;
-	error: string | null;
-	refetch: () => void;
-	meta: {
-		totalPages: number;
-		currentPage: number;
-		totalElements: number;
-	};
-	fetchRoles: (page: number) => void;
-	createRole: (data: {
-		name: string;
-		description: string;
-		active: boolean;
-		permissionIds: string[];
-	}) => Promise<void>;
-	updateRole: (
-		id: string,
-		data: {
-			name?: string;
-			description?: string;
-			active?: boolean;
-			permissionIds?: string[];
-		}
-	) => Promise<void>;
-	deleteRole: (id: string) => Promise<void>;
-	deleteRolePermissions: (
-		roleId: string,
-		permissionIds: string[]
-	) => Promise<void>;
-	open: RolesDialogType | null;
-	setOpen: (type: RolesDialogType | null) => void;
-	currentRow: Role | null;
-	setCurrentRow: (role: Role | null) => void;
-	handleCloseDialog: () => void;
+  roles: Role[];
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => void;
+  meta: {
+    totalPages: number;
+    currentPage: number;
+    totalElements: number;
+  };
+  fetchRoles: (page: number) => void;
+  createRole: (data: {
+    name: string;
+    description: string;
+    active: boolean;
+    permissionIds: string[];
+  }) => Promise<void>;
+  updateRole: (
+    id: string,
+    data: {
+      name?: string;
+      description?: string;
+      active?: boolean;
+      permissionIds?: string[];
+    }
+  ) => Promise<void>;
+  deleteRole: (id: string) => Promise<void>;
+  deleteRolePermissions: (
+    roleId: string,
+    permissionIds: string[]
+  ) => Promise<void>;
+  open: RolesDialogType | null;
+  setOpen: (type: RolesDialogType | null) => void;
+  currentRow: Role | null;
+  setCurrentRow: (role: Role | null) => void;
+  handleCloseDialog: () => void;
 }
 
 const RolesContext = createContext<RolesContextType | undefined>(undefined);
 
 interface Props {
-	children: React.ReactNode;
+  children: React.ReactNode;
 }
 
 export default function RolesProvider({ children }: Props) {
-	const queryClient = useQueryClient();
-	const [open, setOpen] = useDialogState<RolesDialogType>(null);
-	const [currentRow, setCurrentRow] = useState<Role | null>(null);
-	const [meta, setMeta] = useState({
-		totalPages: 1,
-		currentPage: 1,
-		totalElements: 0,
-	});
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useDialogState<RolesDialogType>(null);
+  const [currentRow, setCurrentRow] = useState<Role | null>(null);
+  const [meta, setMeta] = useState({
+    totalPages: 1,
+    currentPage: 1,
+    totalElements: 0,
+  });
 
-	// Fetch roles với React Query
-	const {
-		data: roles = [],
-		isLoading,
-		error,
-		refetch,
-	} = useQuery({
-		queryKey: ['roles'],
-		queryFn: async () => {
-			const response = await fetch(`${API_URL}/roles`, {
-				headers: {
-					Authorization: `Bearer ${ACCESS_TOKEN}`,
-				},
-			});
+  // Fetch roles với React Query
+  const {
+    data: roles = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['roles'],
+    queryFn: async () => {
+      const response = await fetch(`${API_URL}/roles`, {
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+        },
+      });
 
-			if (!response.ok) {
-				throw new Error('Không thể tải danh sách vai trò');
-			}
+      if (!response.ok) {
+        throw new Error('Không thể tải danh sách vai trò');
+      }
 
-			const data = await response.json();
-			setMeta(data.data.meta);
-			return data.data.content;
-		},
-		staleTime: 5 * 60 * 1000, // Cache trong 5 phút
-		gcTime: 30 * 60 * 1000, // Giữ cache 30 phút
-	});
+      const data = await response.json();
+      setMeta(data.data.meta);
+      return data.data.content;
+    },
+    staleTime: 5 * 60 * 1000, // Cache trong 5 phút
+    gcTime: 30 * 60 * 1000, // Giữ cache 30 phút
+  });
 
-	const fetchRoles = useCallback(
-		(page: number) => {
-			queryClient.setQueryData(['roles', page], () => {
-				fetch(`${API_URL}/roles?page=${page}`, {
-					headers: {
-						Authorization: `Bearer ${ACCESS_TOKEN}`,
-					},
-				}).then((res) => res.json());
-			});
-		},
-		[queryClient]
-	);
+  const fetchRoles = useCallback(
+    (page: number) => {
+      queryClient.setQueryData(['roles', page], () => {
+        fetch(`${API_URL}/roles?page=${page}`, {
+          headers: {
+            Authorization: `Bearer ${ACCESS_TOKEN}`,
+          },
+        }).then((res) => res.json());
+      });
+    },
+    [queryClient]
+  );
 
-	// Mutation cho việc tạo role mới
-	const createRoleMutation = useMutation({
-		mutationFn: async (roleData: { name: string; description: string }) => {
-			const response = await fetch(`${API_URL}/roles`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${ACCESS_TOKEN}`,
-				},
-				body: JSON.stringify(roleData),
-			});
+  // Mutation cho việc tạo role mới
+  const createRoleMutation = useMutation({
+    mutationFn: async (roleData: { name: string; description: string }) => {
+      const response = await fetch(`${API_URL}/roles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+        },
+        body: JSON.stringify(roleData),
+      });
 
-			if (!response.ok) {
-				throw new Error('Không thể tạo vai trò');
-			}
+      if (!response.ok) {
+        throw new Error('Không thể tạo vai trò');
+      }
 
-			return response.json();
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['roles'] });
-			toast.success('Tạo vai trò thành công');
-			setOpen(null);
-		},
-		onError: (error: Error) => {
-			toast.error(error.message);
-		},
-	});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      toast.success('Tạo vai trò thành công');
+      setOpen(null);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
 
-	// Mutation cho việc cập nhật role
-	const updateRoleMutation = useMutation({
-		mutationFn: async ({
-			id,
-			data,
-		}: {
-			id: string;
-			data: { name?: string; description?: string };
-		}) => {
-			const response = await fetch(`${API_URL}/roles/${id}`, {
-				method: 'PATCH',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${ACCESS_TOKEN}`,
-				},
-				body: JSON.stringify(data),
-			});
+  // Mutation cho việc cập nhật role
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: { name?: string; description?: string };
+    }) => {
+      const response = await fetch(`${API_URL}/roles/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+        },
+        body: JSON.stringify(data),
+      });
 
-			if (!response.ok) {
-				throw new Error('Không thể cập nhật vai trò');
-			}
+      if (!response.ok) {
+        throw new Error('Không thể cập nhật vai trò');
+      }
 
-			return response.json();
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['roles'] });
-			toast.success('Cập nhật vai trò thành công');
-			setOpen(null);
-			setCurrentRow(null);
-		},
-		onError: (error: Error) => {
-			toast.error(error.message);
-		},
-	});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      toast.success('Cập nhật vai trò thành công');
+      setOpen(null);
+      setCurrentRow(null);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
 
-	// Mutation cho việc xóa role
-	const deleteRoleMutation = useMutation({
-		mutationFn: async (id: string) => {
-			const response = await fetch(`${API_URL}/roles/${id}`, {
-				method: 'DELETE',
-				headers: {
-					Authorization: `Bearer ${ACCESS_TOKEN}`,
-				},
-			});
+  // Mutation cho việc xóa role
+  const deleteRoleMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`${API_URL}/roles/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+        },
+      });
 
-			if (!response.ok) {
-				throw new Error('Không thể xóa vai trò');
-			}
+      if (!response.ok) {
+        throw new Error('Không thể xóa vai trò');
+      }
 
-			return response.json();
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['roles'] });
-			toast.success('Xóa vai trò thành công');
-			setOpen(null);
-			setCurrentRow(null);
-		},
-		onError: (error: Error) => {
-			toast.error(error.message);
-		},
-	});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      toast.success('Xóa vai trò thành công');
+      setOpen(null);
+      setCurrentRow(null);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
 
-	// Mutation cho việc xóa quyền của role
-	const deleteRolePermissionsMutation = useMutation({
-		mutationFn: async ({
-			roleId,
-			permissionIds,
-		}: {
-			roleId: string;
-			permissionIds: string[];
-		}) => {
-			const response = await fetch(`${API_URL}/roles/${roleId}/permissions`, {
-				method: 'DELETE',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${ACCESS_TOKEN}`,
-				},
-				body: JSON.stringify({ permissionIds }),
-			});
+  // Mutation cho việc xóa quyền của role
+  const deleteRolePermissionsMutation = useMutation({
+    mutationFn: async ({
+      roleId,
+      permissionIds,
+    }: {
+      roleId: string;
+      permissionIds: string[];
+    }) => {
+      const response = await fetch(`${API_URL}/roles/${roleId}/permissions`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+        },
+        body: JSON.stringify({ permissionIds }),
+      });
 
-			if (!response.ok) {
-				throw new Error('Không thể xóa quyền');
-			}
+      if (!response.ok) {
+        throw new Error('Không thể xóa quyền');
+      }
 
-			return response.json();
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['roles'] });
-			toast.success('Xóa quyền thành công');
-		},
-		onError: (error: Error) => {
-			toast.error(error.message);
-		},
-	});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      toast.success('Xóa quyền thành công');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
 
-	const createRole = useCallback(
-		async (data: { name: string; description: string }) => {
-			await createRoleMutation.mutateAsync(data);
-		},
-		[]
-	);
+  const createRole = useCallback(
+    async (data: { name: string; description: string }) => {
+      await createRoleMutation.mutateAsync(data);
+    },
+    []
+  );
 
-	const updateRole = useCallback(
-		async (id: string, data: { name?: string; description?: string }) => {
-			await updateRoleMutation.mutateAsync({ id, data });
-		},
-		[]
-	);
+  const updateRole = useCallback(
+    async (id: string, data: { name?: string; description?: string }) => {
+      await updateRoleMutation.mutateAsync({ id, data });
+    },
+    []
+  );
 
-	const deleteRole = useCallback(async (id: string) => {
-		await deleteRoleMutation.mutateAsync(id);
-	}, []);
+  const deleteRole = useCallback(async (id: string) => {
+    await deleteRoleMutation.mutateAsync(id);
+  }, []);
 
-	const deleteRolePermissions = useCallback(
-		async (roleId: string, permissionIds: string[]) => {
-			await deleteRolePermissionsMutation.mutateAsync({
-				roleId,
-				permissionIds,
-			});
-		},
-		[]
-	);
+  const deleteRolePermissions = useCallback(
+    async (roleId: string, permissionIds: string[]) => {
+      await deleteRolePermissionsMutation.mutateAsync({
+        roleId,
+        permissionIds,
+      });
+    },
+    []
+  );
 
-	const handleCloseDialog = useCallback(() => {
-		console.log('handleCloseDialog called in context');
-		setOpen(null);
-		setCurrentRow(null);
-		// Đảm bảo focus được chuyển ra khỏi dialog
-		const activeElement = document.activeElement as HTMLElement;
-		if (activeElement) {
-			activeElement.blur();
-		}
-		// Chuyển focus đến body
-		document.body.focus();
-		// Đảm bảo không có element nào có focus
-		document.querySelectorAll('[tabindex]').forEach((el) => {
-			(el as HTMLElement).blur();
-		});
-	}, []);
+  const handleCloseDialog = useCallback(() => {
+    console.log('handleCloseDialog called in context');
+    setOpen(null);
+    setCurrentRow(null);
+    // Đảm bảo focus được chuyển ra khỏi dialog
+    const activeElement = document.activeElement as HTMLElement;
+    if (activeElement) {
+      activeElement.blur();
+    }
+    // Chuyển focus đến body
+    document.body.focus();
+    // Đảm bảo không có element nào có focus
+    document.querySelectorAll('[tabindex]').forEach((el) => {
+      (el as HTMLElement).blur();
+    });
+  }, []);
 
-	// Thêm useEffect để theo dõi open state
-	useEffect(() => {
-		console.log('Open state changed in context:', open);
-		if (!open) {
-			// Reset focus khi dialog đóng
-			const activeElement = document.activeElement as HTMLElement;
-			if (activeElement) {
-				activeElement.blur();
-			}
-			document.body.focus();
-			// Đảm bảo không có element nào có focus
-			document.querySelectorAll('[tabindex]').forEach((el) => {
-				(el as HTMLElement).blur();
-			});
-		}
-	}, [open]);
+  // Thêm useEffect để theo dõi open state
+  useEffect(() => {
+    console.log('Open state changed in context:', open);
+    if (!open) {
+      // Reset focus khi dialog đóng
+      const activeElement = document.activeElement as HTMLElement;
+      if (activeElement) {
+        activeElement.blur();
+      }
+      document.body.focus();
+      // Đảm bảo không có element nào có focus
+      document.querySelectorAll('[tabindex]').forEach((el) => {
+        (el as HTMLElement).blur();
+      });
+    }
+  }, [open]);
 
-	return (
-		<RolesContext.Provider
-			value={{
-				roles,
-				isLoading,
-				error: error as string | null,
-				refetch,
-				meta,
-				fetchRoles,
-				createRole,
-				updateRole,
-				deleteRole,
-				deleteRolePermissions,
-				open,
-				setOpen,
-				currentRow,
-				setCurrentRow,
-				handleCloseDialog,
-			}}
-		>
-			{children}
-		</RolesContext.Provider>
-	);
+  return (
+    <RolesContext.Provider
+      value={{
+        roles,
+        isLoading,
+        error: error as string | null,
+        refetch,
+        meta,
+        fetchRoles,
+        createRole,
+        updateRole,
+        deleteRole,
+        deleteRolePermissions,
+        open,
+        setOpen,
+        currentRow,
+        setCurrentRow,
+        handleCloseDialog,
+      }}
+    >
+      {children}
+    </RolesContext.Provider>
+  );
 }
 
 export function useRoles() {
-	const context = useContext(RolesContext);
-	if (context === undefined) {
-		throw new Error('useRoles must be used within a RolesProvider');
-	}
-	return context;
+  const context = useContext(RolesContext);
+  if (context === undefined) {
+    throw new Error('useRoles must be used within a RolesProvider');
+  }
+  return context;
 }

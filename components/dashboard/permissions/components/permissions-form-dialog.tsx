@@ -28,7 +28,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { httpMethods, modules } from '../data/data';
 import { Permission } from '../data/schema';
-import { API_URL, ACCESS_TOKEN } from '@/api/http';
+import { API_URL, ACCESS_TOKEN } from '@/api-mock/http';
 import { toast } from 'react-toastify';
 import { usePermissions } from '@/components/dashboard/permissions/context/permissions-context';
 
@@ -143,7 +143,7 @@ export function PermissionsFormDialog({
             }
             return acc;
           },
-          {} as Record<string, any>,
+          {} as Record<string, any>
         );
 
         // Nếu module không thay đổi, thêm lại giá trị module ban đầu
@@ -151,7 +151,10 @@ export function PermissionsFormDialog({
           changedFields.module = currentRow.module;
         }
 
-        payload = { ...changedFields, module: changedFields.module ?? currentRow.module };
+        payload = {
+          ...changedFields,
+          module: changedFields.module ?? currentRow.module,
+        };
 
         // Nếu không có thay đổi gì, đóng dialog
         if (
@@ -172,7 +175,7 @@ export function PermissionsFormDialog({
             Authorization: `Bearer ${ACCESS_TOKEN}`,
           },
           body: JSON.stringify(payload),
-        },
+        }
       );
 
       const data = await response.json();
@@ -208,15 +211,15 @@ export function PermissionsFormDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
             <FormField
               control={form.control}
-              name="name"
+              name='name'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tên Permission</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nhập tên permission" {...field} />
+                    <Input placeholder='Nhập tên permission' {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -225,12 +228,12 @@ export function PermissionsFormDialog({
 
             <FormField
               control={form.control}
-              name="apiPath"
+              name='apiPath'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>API Path</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nhập API path" {...field} />
+                    <Input placeholder='Nhập API path' {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -239,7 +242,7 @@ export function PermissionsFormDialog({
 
             <FormField
               control={form.control}
-              name="httpMethod"
+              name='httpMethod'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>HTTP Method</FormLabel>
@@ -266,7 +269,7 @@ export function PermissionsFormDialog({
 
             <FormField
               control={form.control}
-              name="module"
+              name='module'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Module</FormLabel>
@@ -276,11 +279,11 @@ export function PermissionsFormDialog({
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Chọn module" />
+                        <SelectValue placeholder='Chọn module' />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">
+                      <SelectItem value='none'>
                         Không thuộc module nào
                       </SelectItem>
                       {availableModules.map((module) => (
@@ -295,15 +298,15 @@ export function PermissionsFormDialog({
               )}
             />
 
-            <div className="flex justify-end gap-2">
+            <div className='flex justify-end gap-2'>
               <Button
-                type="button"
-                variant="outline"
+                type='button'
+                variant='outline'
                 onClick={() => onOpenChange(false)}
               >
                 Hủy
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type='submit' disabled={isLoading}>
                 {isLoading ? 'Đang xử lý...' : currentRow ? 'Cập nhật' : 'Tạo'}
               </Button>
             </div>

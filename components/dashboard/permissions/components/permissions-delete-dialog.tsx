@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
-import { API_URL, ACCESS_TOKEN } from '@/api/http';
+import { API_URL, ACCESS_TOKEN } from '@/api-mock/http';
 import { usePermissions } from '../context/permissions-context';
 
 interface Props {
@@ -85,7 +85,7 @@ export function PermissionsDeleteDialog({
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isLoading}
-            className="bg-red-600 hover:bg-red-700"
+            className='bg-red-600 hover:bg-red-700'
           >
             Xóa
           </AlertDialogAction>
