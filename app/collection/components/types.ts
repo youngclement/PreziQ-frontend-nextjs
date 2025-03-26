@@ -1,3 +1,16 @@
+export interface SlideItem {
+  id: string;
+  title: string;
+  content: any[];
+  background?: string;
+  backgroundImage?: string;
+}
+export interface ContentItem {
+  id: string;
+  type: "quiz" | "slide";
+  content: QuizQuestion | SlideItem;
+  order: number; // for explicit ordering
+}
 export interface Activity {
   id: string;
   title: string;
@@ -12,8 +25,10 @@ export interface QuizQuestion {
   id?: string;
   activity_id: string;
   question_text: string;
-  question_type: string;
+  question_type: string; // Now includes "slide" type
   options: QuizOption[];
+  slide_content?: string; // New field for slide content (rich text or markdown)
+  slide_image?: string; // Optional image for slides
 }
 
 export interface QuizOption {
