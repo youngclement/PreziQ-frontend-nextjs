@@ -1,31 +1,37 @@
+import { Providers } from '@/lib/providers';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+import './globals.css';
 import { ThemeProvider } from "@/components/theme-provider";
-import { NavBar } from "@/components/nav-bar";
-import "aos/dist/aos.css";
-import "./globals.css";
 import Header from "@/components/header";
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/contexts/auth-context';
+
 export default function RootLayout({
-  children,
+	children,
 }: {
-  children: React.ReactNode;
+	children: React.ReactNode;
 }) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
-        <AuthProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <Header />
-            {children}
-            <Toaster />
-          </ThemeProvider>
-        </AuthProvider>
-      </body>
-    </html>
-  );
+	return (
+		<html lang="en" suppressHydrationWarning>
+			<body>
+				<AuthProvider>
+					<ThemeProvider
+						attribute="class"
+						defaultTheme="system"
+						enableSystem
+						disableTransitionOnChange
+					>
+						<Providers>
+							<Header />
+							{children}
+							<ToastContainer position="top-right" />
+							<Toaster />
+						</Providers>
+					</ThemeProvider>
+				</AuthProvider>
+			</body>
+		</html>
+	);
 }
