@@ -35,7 +35,7 @@ import { IconCheck, IconChevronDown } from '@tabler/icons-react';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '../context/permissions-context';
 import { toast } from 'react-toastify';
-import { API_URL, ACCESS_TOKEN } from '@/api/http';
+import { API_URL, ACCESS_TOKEN } from '@/api-mock/http';
 
 const formSchema = z.object({
 	moduleName: z
