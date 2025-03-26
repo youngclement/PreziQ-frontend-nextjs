@@ -230,7 +230,7 @@ export function TestimonialsSection() {
                                                 ))}
                                             </div>
 
-                                            <blockquote className="text-foreground flex-1 mb-6 text-lg italic font-medium leading-relaxed">
+                                            <blockquote className="text-foreground flex-1 mb-6 text-base italic leading-relaxed">
                                                 "{testimonial.content}"
                                             </blockquote>
 
