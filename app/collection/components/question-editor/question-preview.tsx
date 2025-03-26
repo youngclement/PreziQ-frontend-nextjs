@@ -2,7 +2,7 @@
 
 // Update the imports at the top of question-preview.tsx
 import {
-    Clock, Image, Zap, Pencil, ChevronDown, ArrowUp,
+    Clock, Image, Zap, Pencil, ChevronDown, ArrowUp, FileText,
     Search, Monitor, Tablet, Smartphone
 } from "lucide-react";
 import {
@@ -47,45 +47,74 @@ export function QuestionPreview({
     const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
     // Function to handle scroll to question
+    // Improved scrollToQuestion function
     const scrollToQuestion = (index: number) => {
         if (questionRefs.current[index]) {
-            questionRefs.current[index]?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-            onChangeQuestion(index);
+            // Use the scrollContainerRef to get relative position
+            const container = scrollContainerRef.current;
+            const question = questionRefs.current[index];
+
+            if (container && question) {
+                const containerRect = container.getBoundingClientRect();
+                const questionRect = question.getBoundingClientRect();
+
+                // Calculate the scroll position needed
+                const scrollPosition = container.scrollTop + (questionRect.top - containerRect.top) - 16; // 16px offset for better positioning
+
+                // Smooth scroll to that position
+                container.scrollTo({
+                    top: scrollPosition,
+                    behavior: 'smooth'
+                });
+
+                // Update the active question index
+                onChangeQuestion(index);
+            }
         }
     };
 
     // Setup scroll event listener
+    // Fix the scroll calculation and active question detection
     useEffect(() => {
         const handleScroll = () => {
             if (scrollContainerRef.current) {
                 setShowScrollTop(scrollContainerRef.current.scrollTop > 300);
 
-                // Find which question is most visible
-                const containerTop = scrollContainerRef.current.scrollTop;
-                const containerHeight = scrollContainerRef.current.clientHeight;
+                // Get container details
+                const containerRect = scrollContainerRef.current.getBoundingClientRect();
+                const containerTop = containerRect.top;
+                const containerHeight = containerRect.height;
                 const containerCenter = containerTop + containerHeight / 2;
 
-                let closestIndex = 0;
-                let closestDistance = Infinity;
+                // Find which question is most visible in the viewport
+                let bestVisibleArea = 0;
+                let mostVisibleIndex = activeQuestionIndex;
 
                 questionRefs.current.forEach((ref, index) => {
                     if (ref) {
                         const rect = ref.getBoundingClientRect();
-                        const refCenter = rect.top + rect.height / 2;
-                        const distance = Math.abs(refCenter - containerCenter);
 
-                        if (distance < closestDistance) {
-                            closestDistance = distance;
-                            closestIndex = index;
+                        // Skip if the element is not visible at all
+                        if (rect.bottom < containerTop || rect.top > containerTop + containerHeight) {
+                            return;
+                        }
+
+                        // Calculate how much of the element is visible
+                        const visibleTop = Math.max(rect.top, containerTop);
+                        const visibleBottom = Math.min(rect.bottom, containerTop + containerHeight);
+                        const visibleHeight = visibleBottom - visibleTop;
+
+                        // If this element has more visible area than our current best, update
+                        if (visibleHeight > bestVisibleArea) {
+                            bestVisibleArea = visibleHeight;
+                            mostVisibleIndex = index;
                         }
                     }
                 });
 
-                if (closestIndex !== activeQuestionIndex) {
-                    onChangeQuestion(closestIndex);
+                // Only update if we found a different question
+                if (mostVisibleIndex !== activeQuestionIndex) {
+                    onChangeQuestion(mostVisibleIndex);
                 }
             }
         };
@@ -116,13 +145,13 @@ export function QuestionPreview({
 
     return (
         <motion.div
-            className="flex flex-col h-full space-y-4"
+            className="flex flex-col h-full space-y-4 w-full"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
         >
             {/* Enhanced Preview Header */}
-            <Card className="border border-gray-100 dark:border-gray-800 shadow-md overflow-hidden">
+            <Card className="border border-gray-100 dark:border-gray-800 shadow-md overflow-hidden w-full">
                 <CardHeader className="p-3 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
@@ -193,7 +222,7 @@ export function QuestionPreview({
             {/* Main Scrollable Preview Area */}
             <div
                 ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto pr-2 pb-20"
+                className="flex-1 overflow-y-auto pr-2 pb-20 w-full"
                 style={{ maxHeight: 'calc(100vh - 14rem)' }}
             >
                 <div className="space-y-16 pb-8">
@@ -207,7 +236,7 @@ export function QuestionPreview({
                             )}
                         >
                             {/* Question number indicator */}
-                            <div className="absolute -left-16 top-1/2 transform -translate-y-1/2 hidden md:flex flex-col items-center">
+                            <div className="absolute -left-12 top-1/2 transform -translate-y-1/2 hidden md:flex flex-col items-center">
                                 <div className={cn(
                                     "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold",
                                     questionIndex === activeQuestionIndex
@@ -223,10 +252,13 @@ export function QuestionPreview({
 
                             {/* Question Card */}
                             <Card className={cn(
-                                "border-none shadow-xl overflow-hidden transition-all duration-200",
+                                "border-none shadow-xl overflow-hidden transition-all duration-200 mx-auto",
                                 questionIndex === activeQuestionIndex
                                     ? "ring-2 ring-primary/20 scale-100"
-                                    : "scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]"
+                                    : "scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]",
+                                viewMode === "desktop" && "max-w-4xl", // Wider on desktop 
+                                viewMode === "tablet" && "max-w-2xl",
+                                viewMode === "mobile" && "max-w-sm"
                             )}>
                                 <div className={cn(
                                     "transition-all duration-300",
@@ -276,35 +308,84 @@ export function QuestionPreview({
                                             </div>
                                         </div>
 
-                                        {/* Question Area */}
+                                        {/* Question Area - Modified to support slides */}
                                         <div className="flex-1 flex flex-col items-center justify-center p-8 z-10">
-                                            {!previewMode ? (
-                                                <div className="relative w-full max-w-3xl group">
-                                                    <Textarea
-                                                        value={question.question_text}
-                                                        onChange={(e) => onQuestionTextChange(e.target.value, questionIndex)}
-                                                        placeholder="Type your question here..."
-                                                        className="text-2xl md:text-3xl font-bold text-center bg-transparent border-none resize-none focus-visible:ring-2 focus-visible:ring-white/20 text-white placeholder-white/50 p-0 min-h-[120px]"
-                                                    />
-                                                    <motion.div
-                                                        className="absolute top-2 right-2"
-                                                        initial={{ opacity: 0 }}
-                                                        whileHover={{ opacity: 1 }}
-                                                    >
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30">
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                    </motion.div>
-                                                </div>
+                                            {question.question_type === "slide" ? (
+                                                // Render slide content
+                                                !previewMode ? (
+                                                    <div className="relative w-full max-w-3xl group">
+                                                        <div className="flex flex-col items-center gap-4 w-full">
+                                                            <Textarea
+                                                                value={question.question_text}
+                                                                onChange={(e) => onQuestionTextChange(e.target.value, questionIndex)}
+                                                                placeholder="Enter slide title..."
+                                                                className="text-2xl md:text-3xl font-bold text-center bg-transparent border-none resize-none focus-visible:ring-2 focus-visible:ring-white/20 text-white placeholder-white/50 p-0 min-h-[60px]"
+                                                            />
+                                                            <Textarea
+                                                                value={question.slide_content || ""}
+                                                                onChange={(e) => {
+                                                                    const updatedQuestions = [...questions];
+                                                                    updatedQuestions[questionIndex].slide_content = e.target.value;
+                                                                    // You'll need to add an onSlideContentChange prop to handle this
+                                                                }}
+                                                                placeholder="Enter slide content..."
+                                                                className="text-lg md:text-xl text-center bg-transparent border-none resize-none focus-visible:ring-2 focus-visible:ring-white/20 text-white placeholder-white/50 p-0 min-h-[120px] w-full"
+                                                                rows={5}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-6 w-full max-w-3xl">
+                                                        <motion.h2
+                                                            className="text-2xl md:text-3xl font-bold text-center max-w-3xl text-white drop-shadow-lg"
+                                                            initial={{ y: 20, opacity: 0 }}
+                                                            whileInView={{ y: 0, opacity: 1 }}
+                                                            transition={{ delay: 0.1 }}
+                                                        >
+                                                            {question.question_text || `Slide ${questionIndex + 1}`}
+                                                        </motion.h2>
+                                                        <motion.div
+                                                            className="text-lg md:text-xl text-center max-w-3xl text-white drop-shadow-lg"
+                                                            initial={{ y: 20, opacity: 0 }}
+                                                            whileInView={{ y: 0, opacity: 1 }}
+                                                            transition={{ delay: 0.2 }}
+                                                        >
+                                                            {question.slide_content?.split('\n').map((line, i) => (
+                                                                <p key={i} className="mb-2">{line}</p>
+                                                            )) || "Slide content goes here"}
+                                                        </motion.div>
+                                                    </div>
+                                                )
                                             ) : (
-                                                <motion.h2
-                                                    className="text-2xl md:text-3xl font-bold text-center max-w-3xl text-white drop-shadow-lg"
-                                                    initial={{ y: 20, opacity: 0 }}
-                                                    whileInView={{ y: 0, opacity: 1 }}
-                                                    transition={{ delay: 0.1 }}
-                                                >
-                                                    {question.question_text || `Question ${questionIndex + 1}`}
-                                                </motion.h2>
+                                                // Existing code for regular questions
+                                                !previewMode ? (
+                                                    <div className="relative w-full max-w-3xl group">
+                                                        <Textarea
+                                                            value={question.question_text}
+                                                            onChange={(e) => onQuestionTextChange(e.target.value, questionIndex)}
+                                                            placeholder="Type your question here..."
+                                                            className="text-2xl md:text-3xl font-bold text-center bg-transparent border-none resize-none focus-visible:ring-2 focus-visible:ring-white/20 text-white placeholder-white/50 p-0 min-h-[120px]"
+                                                        />
+                                                        <motion.div
+                                                            className="absolute top-2 right-2"
+                                                            initial={{ opacity: 0 }}
+                                                            whileHover={{ opacity: 1 }}
+                                                        >
+                                                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30">
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                        </motion.div>
+                                                    </div>
+                                                ) : (
+                                                    <motion.h2
+                                                        className="text-2xl md:text-3xl font-bold text-center max-w-3xl text-white drop-shadow-lg"
+                                                        initial={{ y: 20, opacity: 0 }}
+                                                        whileInView={{ y: 0, opacity: 1 }}
+                                                        transition={{ delay: 0.1 }}
+                                                    >
+                                                        {question.question_text || `Question ${questionIndex + 1}`}
+                                                    </motion.h2>
+                                                )
                                             )}
                                         </div>
 
@@ -321,25 +402,38 @@ export function QuestionPreview({
                                         )}
                                     </motion.div>
 
-                                    {/* Options Grid */}
-                                    <div className={cn(
-                                        "grid gap-4 p-6 bg-card z-10",
-                                        question.options.length <= 4 ? "grid-cols-2" : "grid-cols-3",
-                                        viewMode === "mobile" && "grid-cols-1"
-                                    )}>
-                                        {question.options.map((option, optionIndex) => (
-                                            <OptionItem
-                                                key={optionIndex}
-                                                option={option}
-                                                index={optionIndex}
-                                                previewMode={previewMode}
-                                                onOptionChange={(index, field, value) =>
-                                                    onOptionChange(questionIndex, index, field, value)
-                                                }
-                                                questionType={question.question_type}
+                                    {/* Only show options grid for question types, not for slides */}
+                                    {question.question_type !== "slide" && (
+                                        <div className={cn(
+                                            "grid gap-4 p-6 bg-card z-10",
+                                            question.options.length <= 4 ? "grid-cols-2" : "grid-cols-3",
+                                            viewMode === "mobile" && "grid-cols-1"
+                                        )}>
+                                            {question.options.map((option, optionIndex) => (
+                                                <OptionItem
+                                                    key={optionIndex}
+                                                    option={option}
+                                                    index={optionIndex}
+                                                    previewMode={previewMode}
+                                                    onOptionChange={(index, field, value) =>
+                                                        onOptionChange(questionIndex, index, field, value)
+                                                    }
+                                                    questionType={question.question_type}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* If it's a slide and has an image, show it */}
+                                    {question.question_type === "slide" && question.slide_image && (
+                                        <div className="px-6 pb-6">
+                                            <img
+                                                src={question.slide_image}
+                                                alt="Slide illustration"
+                                                className="max-h-60 mx-auto rounded-lg object-contain"
                                             />
-                                        ))}
-                                    </div>
+                                        </div>
+                                    )}
 
                                     {/* Next question indicator */}
                                     {questionIndex < questions.length - 1 && (

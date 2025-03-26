@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CheckCircle, XCircle, Type, Radio, CheckSquare, AlignLeft } from "lucide-react";
+import { CheckCircle, XCircle, Type, Radio, CheckSquare, AlignLeft, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import {
 import { QuizQuestion } from "../types";
 import { OptionList } from "./option-list";
 import { AdvancedSettings } from "./advanced-settings";
+import { Textarea } from "@/components/ui/textarea";
 
 interface QuestionSettingsProps {
     activeQuestion: QuizQuestion;
@@ -42,6 +43,8 @@ interface QuestionSettingsProps {
     onOptionChange: (questionIndex: number, optionIndex: number, field: string, value: any) => void;
     onDeleteOption: (index: number) => void;
     onCorrectAnswerChange?: (value: string) => void;
+    onSlideContentChange?: (value: string) => void;
+    onSlideImageChange?: (value: string) => void;
 }
 
 export function QuestionSettings({
@@ -60,7 +63,9 @@ export function QuestionSettings({
     onAddOption,
     onOptionChange,
     onDeleteOption,
-    onCorrectAnswerChange
+    onCorrectAnswerChange,
+    onSlideContentChange,
+    onSlideImageChange
 }: QuestionSettingsProps) {
     // State to store the correct answer text for text_answer type
     const [correctAnswerText, setCorrectAnswerText] = React.useState(
@@ -139,6 +144,40 @@ export function QuestionSettings({
                         </p>
                     </div>
                 );
+            case "slide":
+                return (
+                    <div className="space-y-2 mt-4 p-4 bg-muted/30 rounded-md">
+                        <Label className="font-medium">Slide Content</Label>
+                        <Textarea
+                            value={activeQuestion.slide_content || ""}
+                            onChange={(e) => onSlideContentChange?.(e.target.value)}
+                            placeholder="Enter content for this informational slide"
+                            rows={6}
+                        />
+                        <div className="space-y-2 mt-4">
+                            <Label htmlFor="slide-image">Slide Image URL (optional)</Label>
+                            <Input
+                                id="slide-image"
+                                placeholder="Enter image URL"
+                                value={activeQuestion.slide_image || ""}
+                                onChange={(e) => onSlideImageChange?.(e.target.value)}
+                            />
+                            {activeQuestion.slide_image && (
+                                <div className="mt-2">
+                                    <p className="text-sm text-muted-foreground mb-1">Preview:</p>
+                                    <img
+                                        src={activeQuestion.slide_image}
+                                        alt="Slide preview"
+                                        className="max-h-40 rounded-md object-cover"
+                                        onError={(e) => {
+                                            (e.target as HTMLImageElement).src = "https://via.placeholder.com/300x200?text=Invalid+Image+URL";
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
 
             default:
                 return null;
@@ -146,62 +185,71 @@ export function QuestionSettings({
     };
 
     return (
-        <Card className="h-full">
-            <CardHeader className="p-4">
-                <CardTitle className="text-sm">
-                    <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-                        <TabsList className="grid grid-cols-2 w-full">
-                            <TabsTrigger value="content">Content</TabsTrigger>
-                            <TabsTrigger value="settings">Settings</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-                </CardTitle>
+        <Card className="h-full border-none shadow-md overflow-hidden">
+            <CardHeader className="p-3 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20 border-b border-gray-200 dark:border-gray-700">
+                <CardTitle className="text-sm font-medium">Settings</CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
-                <Tabs value={activeTab}>
-                    <TabsContent value="content" className="mt-0">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Question Type</Label>
-                                <Select
-                                    value={activeQuestion.question_type}
-                                    onValueChange={onQuestionTypeChange}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="multiple_choice">
-                                            <div className="flex items-center">
-                                                <Radio className="h-4 w-4 mr-2 text-primary" />
-                                                Single Choice
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="multiple_response">
-                                            <div className="flex items-center">
-                                                <CheckSquare className="h-4 w-4 mr-2 text-primary" />
-                                                Multiple Choice
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="true_false">
-                                            <div className="flex items-center">
-                                                <div className="flex mr-2">
-                                                    <CheckCircle className="h-4 w-4 text-green-500" />
-                                                    <XCircle className="h-4 w-4 text-red-500 -ml-1" />
-                                                </div>
-                                                True/False
-                                            </div>
-                                        </SelectItem>
-                                        <SelectItem value="text_answer">
-                                            <div className="flex items-center">
-                                                <AlignLeft className="h-4 w-4 mr-2 text-primary" />
-                                                Text Answer
-                                            </div>
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+            <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 14rem)' }}>
+                <Tabs value={activeTab} onValueChange={onTabChange}>
+                    <TabsList className="w-full justify-start px-4 pt-4">
+                        <TabsTrigger value="type" className="flex-1">Type</TabsTrigger>
+                        <TabsTrigger value="content" className="flex-1">Content</TabsTrigger>
+                        <TabsTrigger value="settings" className="flex-1">Settings</TabsTrigger>
+                    </TabsList>
 
+                    {/* Compact the content of each tab */}
+                    <TabsContent value="type" className="p-4 pt-3">
+                        {/* Make select more compact */}
+                        <div className="space-y-3">
+                            <Label htmlFor="question-type" className="text-sm">Question Type</Label>
+                            <Select
+                                value={activeQuestion?.question_type || "multiple_choice"}
+                                onValueChange={onQuestionTypeChange}
+                            >
+                                <SelectTrigger id="question-type" className="w-full">
+                                    <SelectValue placeholder="Select question type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="multiple_choice">
+                                        <div className="flex items-center">
+                                            <Radio className="h-4 w-4 mr-2 text-primary" />
+                                            Single Choice
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="multiple_response">
+                                        <div className="flex items-center">
+                                            <CheckSquare className="h-4 w-4 mr-2 text-primary" />
+                                            Multiple Choice
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="true_false">
+                                        <div className="flex items-center">
+                                            <div className="flex mr-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                <XCircle className="h-4 w-4 text-red-500 -ml-1" />
+                                            </div>
+                                            True/False
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="text_answer">
+                                        <div className="flex items-center">
+                                            <AlignLeft className="h-4 w-4 mr-2 text-primary" />
+                                            Text Answer
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="slide">
+                                        <div className="flex items-center">
+                                            <FileText className="h-4 w-4 mr-2 text-primary" />
+                                            Information Slide
+                                        </div>
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="content" className="p-4 pt-3">
+                        <div className="space-y-4">
                             {/* Show correct answer UI for true/false and text answers */}
                             {renderCorrectAnswerUI()}
 
@@ -220,7 +268,7 @@ export function QuestionSettings({
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="settings" className="mt-0">
+                    <TabsContent value="settings" className="p-4 pt-3">
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="time-limit">Time Limit (seconds)</Label>
@@ -261,7 +309,7 @@ export function QuestionSettings({
                         </div>
                     </TabsContent>
                 </Tabs>
-            </CardContent>
+            </div>
         </Card>
     );
 }
