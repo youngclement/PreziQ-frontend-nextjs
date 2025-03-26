@@ -1,4 +1,5 @@
 {
+
 	"name": "nextjs",
 	"version": "0.1.0",
 	"private": true,
@@ -9,6 +10,7 @@
 		"lint": "next lint"
 	},
 	"dependencies": {
+    "@gsap/react": "^2.1.2",
 		"@dnd-kit/core": "^6.3.1",
 		"@dnd-kit/sortable": "^10.0.0",
 		"@faker-js/faker": "^9.6.0",
@@ -81,6 +83,11 @@
 		"three": "^0.160.1",
 		"typescript": "5.2.2",
 		"vaul": "^0.9.9",
+       "@motionone/utils": "^10.18.0",
+ "axios": "^1.8.4",
+      "@studio-freight/lenis": "^1.0.42",
+    "gsap": "^3.12.7",
 		"zod": "^3.23.8"
 	}
+
 }

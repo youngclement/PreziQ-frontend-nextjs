@@ -3,6 +3,10 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import './globals.css';
+import { ThemeProvider } from "@/components/theme-provider";
+import Header from "@/components/header";
+import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/contexts/auth-context';
 
 export default function RootLayout({
 	children,
@@ -12,11 +16,21 @@ export default function RootLayout({
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body>
-				<Providers>
-					{/* <NavBar /> */}
-					{children}
-					<ToastContainer position="top-right" />
-				</Providers>
+				<AuthProvider>
+					<ThemeProvider
+						attribute="class"
+						defaultTheme="system"
+						enableSystem
+						disableTransitionOnChange
+					>
+						<Providers>
+							<Header />
+							{children}
+							<ToastContainer position="top-right" />
+							<Toaster />
+						</Providers>
+					</ThemeProvider>
+				</AuthProvider>
 			</body>
 		</html>
 	);
