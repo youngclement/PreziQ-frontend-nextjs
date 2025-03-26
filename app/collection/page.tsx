@@ -68,13 +68,32 @@ export default function QuestionsPage({ params }: { params: { id: string } }) {
             { option_text: "", is_correct: false, display_order: 3 }
         ]
     });
-
-    const handleAddQuestion = () => {
-        const newQuestion = createEmptyQuestion();
-        setQuestions([...questions, newQuestion]);
-        setActiveQuestionIndex(questions.length);
+    const handleSlideContentChange = (value: string) => {
+        const updatedQuestions = [...questions];
+        updatedQuestions[activeQuestionIndex] = {
+            ...updatedQuestions[activeQuestionIndex],
+            slide_content: value
+        };
+        setQuestions(updatedQuestions);
     };
 
+    // Add a handler for slide image changes
+    const handleSlideImageChange = (value: string) => {
+        const updatedQuestions = [...questions];
+        updatedQuestions[activeQuestionIndex] = {
+            ...updatedQuestions[activeQuestionIndex],
+            slide_image: value
+        };
+        setQuestions(updatedQuestions);
+    };
+    const handleAddQuestion = (newQuestion?: QuizQuestion) => {
+        // If a newQuestion is provided (like a slide), use it
+        // Otherwise create an empty question with the default function
+        const questionToAdd = newQuestion || createEmptyQuestion();
+
+        setQuestions([...questions, questionToAdd]);
+        setActiveQuestionIndex(questions.length);
+    };
     const handleDeleteQuestion = (index: number) => {
         if (questions.length <= 1) {
             return; // Don't delete the last question
@@ -323,7 +342,7 @@ export default function QuestionsPage({ params }: { params: { id: string } }) {
             </div>
 
             <div className="grid grid-cols-12 gap-4">
-                {/* Left sidebar - Questions list */}
+                {/* Left sidebar - Questions list - make smaller */}
                 <div className="col-span-12 md:col-span-2">
                     <QuestionList
                         questions={questions}
@@ -334,10 +353,9 @@ export default function QuestionsPage({ params }: { params: { id: string } }) {
                     />
                 </div>
 
-                {/* Main content area */}
-                <div className="col-span-12 md:col-span-7">
+                {/* Main content area - make larger */}
+                <div className="col-span-12 md:col-span-8">
                     {activeQuestion && (
-                        // In your main page component (page.tsx)
                         <QuestionPreview
                             questions={questions}
                             activeQuestionIndex={activeQuestionIndex}
@@ -351,8 +369,8 @@ export default function QuestionsPage({ params }: { params: { id: string } }) {
                     )}
                 </div>
 
-                {/* Right sidebar - Settings */}
-                <div className="col-span-12 md:col-span-3">
+                {/* Right sidebar - Settings - make smaller */}
+                <div className="col-span-12 md:col-span-2">
                     <QuestionSettings
                         activeQuestion={activeQuestion}
                         activeQuestionIndex={activeQuestionIndex}
@@ -370,6 +388,8 @@ export default function QuestionsPage({ params }: { params: { id: string } }) {
                         onOptionChange={handleOptionChange}
                         onDeleteOption={handleDeleteOption}
                         onCorrectAnswerChange={handleCorrectAnswerChange}
+                        onSlideContentChange={handleSlideContentChange}
+                        onSlideImageChange={handleSlideImageChange}
                     />
                 </div>
             </div>
