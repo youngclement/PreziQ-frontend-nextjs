@@ -1,0 +1,71 @@
+import { Collection } from '@/app/collections/components/types';
+import axiosClient from './axios-client';
+
+interface CreateCollectionPayload {
+	title: string;
+	description?: string;
+	coverImage?: string;
+	isPublished?: boolean;
+	defaultBackgroundMusic?: string;
+}
+
+interface UpdateCollectionPayload {
+	title?: string;
+	description?: string;
+	coverImage?: string;
+	isPublished?: boolean;
+	defaultBackgroundMusic?: string;
+}
+
+interface GetCollectionsParams {
+	page?: number;
+	size?: number;
+}
+
+export const collectionsApi = {
+	/**
+	 * Tạo một collection mới
+	 * @param payload Thông tin collection cần tạo (title là bắt buộc)
+	 * @returns Promise với kết quả từ API
+	 */
+	createCollection(payload: CreateCollectionPayload) {
+		return axiosClient.post('/collections', payload);
+	},
+
+	/**
+	 * Lấy thông tin một collection theo ID
+	 * @param id ID của collection
+	 * @returns Promise với kết quả từ API
+	 */
+	getCollectionById(id: string) {
+		return axiosClient.get(`/collections/${id}`);
+	},
+
+	/**
+	 * Lấy danh sách tất cả collections với phân trang
+	 * @param params Các tham số phân trang và tìm kiếm
+	 * @returns Promise với kết quả từ API
+	 */
+	getCollections(params: GetCollectionsParams = { page: 1, size: 100 }) {
+		return axiosClient.get('/collections', { params });
+	},
+
+	/**
+	 * Cập nhật thông tin một collection
+	 * @param id ID của collection
+	 * @param payload Thông tin cần cập nhật (tất cả đều là optional)
+	 * @returns Promise với kết quả từ API
+	 */
+	updateCollection(id: string, payload: UpdateCollectionPayload) {
+		return axiosClient.patch(`/collections/${id}`, payload);
+	},
+
+	/**
+	 * Xóa một collection
+	 * @param id ID của collection cần xóa
+	 * @returns Promise với kết quả từ API
+	 */
+	deleteCollection(id: string) {
+		return axiosClient.delete(`/collections/${id}`);
+	},
+};

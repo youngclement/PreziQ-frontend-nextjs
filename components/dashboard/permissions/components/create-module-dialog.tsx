@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -57,8 +57,9 @@ interface Props {
 }
 
 export function CreateModuleDialog({ open, onOpenChange }: Props) {
-	const { permissions, modules, refetch } = usePermissions();
+	const { permissions = [], modules = [], refetch } = usePermissions();
 	const [isLoading, setIsLoading] = useState(false);
+	const [availablePermissions, setAvailablePermissions] = useState<any[]>([]);
 
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
@@ -68,8 +69,25 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 		},
 	});
 
-	// Lọc ra các permission chưa có module
-	const availablePermissions = permissions.filter((p) => !p.module);
+	// Cập nhật danh sách permissions mỗi khi dialog mở hoặc permissions thay đổi
+	useEffect(() => {
+		if (permissions && Array.isArray(permissions)) {
+			// Lọc ra các permission chưa có module hoặc module là chuỗi rỗng
+			const filtered = permissions.filter(
+				(p) =>
+					!p.module ||
+					p.module === '' ||
+					p.module === null ||
+					p.module === undefined
+			);
+			setAvailablePermissions(filtered);
+
+			if (open) {
+				console.log('Tổng số permissions:', permissions.length);
+				console.log('Số permissions khả dụng:', filtered.length);
+			}
+		}
+	}, [permissions, open]);
 
 	const onSubmit = async (values: z.infer<typeof formSchema>) => {
 		setIsLoading(true);
@@ -79,8 +97,11 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 				form.setError('moduleName', {
 					message: 'Tên module đã tồn tại',
 				});
+				setIsLoading(false);
 				return;
 			}
+
+			console.log('Gửi dữ liệu:', values);
 
 			const response = await fetch(`${API_URL}/permissions/module`, {
 				method: 'POST',
@@ -98,8 +119,7 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 				return;
 			}
 
-			toast.success(data.message);
-
+			toast.success(data.message || 'Tạo module thành công');
 			onOpenChange(false);
 			form.reset();
 			refetch(); // Cập nhật lại danh sách
@@ -158,7 +178,7 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 													role="combobox"
 													className={cn(
 														'w-full justify-between',
-														!field.value && 'text-muted-foreground'
+														!field.value?.length && 'text-muted-foreground'
 													)}
 												>
 													{field.value?.length
@@ -173,35 +193,67 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 												<CommandInput placeholder="Tìm permission..." />
 												<CommandEmpty>Không tìm thấy permission</CommandEmpty>
 												<CommandGroup className="max-h-[300px] overflow-auto">
-													{availablePermissions.map((permission) => (
-														<CommandItem
-															key={permission.id}
-															onSelect={() => {
-																const currentValue = new Set(field.value);
-																if (currentValue.has(permission.id)) {
-																	currentValue.delete(permission.id);
-																} else {
-																	currentValue.add(permission.id);
-																}
-																field.onChange(Array.from(currentValue));
-															}}
-														>
-															<IconCheck
-																className={cn(
-																	'mr-2 h-4 w-4',
-																	field.value?.includes(permission.id)
-																		? 'opacity-100'
-																		: 'opacity-0'
-																)}
-															/>
-															<div className="flex flex-col">
-																<span>{permission.name}</span>
-																<span className="text-xs text-muted-foreground">
-																	{permission.httpMethod} {permission.apiPath}
-																</span>
-															</div>
-														</CommandItem>
-													))}
+													{availablePermissions.length === 0 ? (
+														<div className="px-4 py-2 text-sm text-muted-foreground">
+															Không có permission nào khả dụng
+														</div>
+													) : (
+														availablePermissions.map((permission) => (
+															<CommandItem
+																key={permission.id}
+																value={permission.id}
+																onSelect={() => {
+																	const currentValue = Array.isArray(
+																		field.value
+																	)
+																		? [...field.value]
+																		: [];
+
+																	const index = currentValue.indexOf(
+																		permission.id
+																	);
+																	if (index > -1) {
+																		// Nếu đã chọn thì bỏ chọn
+																		currentValue.splice(index, 1);
+																	} else {
+																		// Nếu chưa chọn thì thêm vào
+																		currentValue.push(permission.id);
+																	}
+
+																	field.onChange(currentValue);
+																	console.log(
+																		'Đã cập nhật permissionIds:',
+																		currentValue
+																	);
+																}}
+																className="cursor-pointer hover:bg-accent hover:text-accent-foreground"
+															>
+																<div className="flex items-center space-x-2">
+																	<div
+																		className={cn(
+																			'flex h-4 w-4 items-center justify-center rounded-sm border',
+																			field.value?.includes(permission.id)
+																				? 'bg-primary border-primary'
+																				: 'opacity-50'
+																		)}
+																	>
+																		{field.value?.includes(permission.id) && (
+																			<IconCheck className="h-3 w-3 text-white" />
+																		)}
+																	</div>
+																	<div className="flex flex-col">
+																		<span className="font-medium">
+																			{permission.name}
+																		</span>
+																		<span className="text-xs text-muted-foreground">
+																			{permission.httpMethod}{' '}
+																			{permission.apiPath}
+																		</span>
+																	</div>
+																</div>
+															</CommandItem>
+														))
+													)}
 												</CommandGroup>
 											</Command>
 										</PopoverContent>
@@ -213,7 +265,7 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 
 						<div className="flex justify-end pt-4">
 							<Button type="submit" disabled={isLoading}>
-								Tạo module
+								{isLoading ? 'Đang xử lý...' : 'Tạo module'}
 							</Button>
 						</div>
 					</form>
