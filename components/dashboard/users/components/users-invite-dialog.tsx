@@ -22,6 +22,8 @@ import {
 	FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { usersApi } from '@/api-client';
+import { toast } from 'react-toastify';
 
 const formSchema = z.object({
 	email: z.string().email('Email không hợp lệ'),
@@ -37,7 +39,7 @@ interface Props {
 }
 
 export function UsersInviteDialog({ open, onOpenChange }: Props) {
-	const { createUser } = useUsers();
+	const { refetch } = useUsers();
 
 	const form = useForm<UserForm>({
 		resolver: zodResolver(formSchema),
@@ -49,8 +51,23 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
 	});
 
 	const onSubmit = async (values: UserForm) => {
-		await createUser(values);
-		onOpenChange(false);
+		try {
+			// Sử dụng API inviteUser cho chức năng mời người dùng
+			const response = await usersApi.inviteUser(values);
+
+			if (response.data.success) {
+				toast.success('Đã gửi lời mời thành công');
+				refetch(); // Cập nhật lại danh sách user
+				onOpenChange(false);
+				form.reset();
+			} else {
+				toast.error(response.data.message || 'Không thể gửi lời mời');
+			}
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Không thể gửi lời mời';
+			toast.error(message);
+		}
 	};
 
 	return (

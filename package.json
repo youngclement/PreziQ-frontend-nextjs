@@ -154,6 +154,8 @@
 
 		"react-dom": "18.2.0",
 
+		"react-easy-crop": "^5.4.1",
+
 		"react-hook-form": "^7.53.0",
 
 		"react-resizable-panels": "^2.1.3",

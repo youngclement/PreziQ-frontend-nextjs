@@ -1,19 +1,16 @@
 'use client';
 
-import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
-import { IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconTrash, IconUserSearch } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuShortcut,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useUsers } from '../context/users-context';
 import { User } from '../data/schema';
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DataTableRowActionsProps {
 	row: Row<User>;
@@ -21,45 +18,103 @@ interface DataTableRowActionsProps {
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
 	const { setOpen, setCurrentRow } = useUsers();
+
+	// Kiểm tra tính hợp lệ của dữ liệu hàng
+	const isValidRow = () => {
+		try {
+			const user = row.original;
+			return !!(user && typeof user === 'object' && user.id);
+		} catch (error) {
+			console.error('Lỗi khi kiểm tra tính hợp lệ của dữ liệu:', error);
+			return false;
+		}
+	};
+
+	const handleView = () => {
+		if (!isValidRow()) return;
+		setCurrentRow(row.original);
+		setOpen('view');
+	};
+
+	const handleEdit = () => {
+		if (!isValidRow()) return;
+		setCurrentRow(row.original);
+		setOpen('edit');
+	};
+
+	const handleDelete = () => {
+		if (!isValidRow()) return;
+		setCurrentRow(row.original);
+		setOpen('delete');
+	};
+
 	return (
-		<>
-			<DropdownMenu modal={false}>
-				<DropdownMenuTrigger asChild>
-					<Button
-						variant="ghost"
-						className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
+		<div className="flex items-center justify-end gap-1">
+			<TooltipProvider>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={handleView}
+							className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-700 transition-colors rounded-full"
+							disabled={!isValidRow()}
+						>
+							<IconUserSearch className="h-4 w-4" />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent
+						side="top"
+						className="bg-slate-800 text-white max-w-[200px]"
 					>
-						<DotsHorizontalIcon className="h-4 w-4" />
-						<span className="sr-only">Open menu</span>
-					</Button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end" className="w-[160px]">
-					<DropdownMenuItem
-						onClick={() => {
-							setCurrentRow(row.original);
-							setOpen('edit');
-						}}
+						<p className="truncate">Xem chi tiết</p>
+					</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+
+			<TooltipProvider>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={handleEdit}
+							className="h-8 w-8 p-0 hover:bg-amber-100 hover:text-amber-700 transition-colors rounded-full"
+							disabled={!isValidRow()}
+						>
+							<IconEdit className="h-4 w-4" />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent
+						side="top"
+						className="bg-slate-800 text-white max-w-[200px]"
 					>
-						Edit
-						<DropdownMenuShortcut>
-							<IconEdit size={16} />
-						</DropdownMenuShortcut>
-					</DropdownMenuItem>
-					<DropdownMenuSeparator />
-					<DropdownMenuItem
-						onClick={() => {
-							setCurrentRow(row.original);
-							setOpen('delete');
-						}}
-						className="!text-red-500"
+						<p className="truncate">Chỉnh sửa</p>
+					</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+
+			<TooltipProvider>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={handleDelete}
+							className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-700 transition-colors rounded-full"
+							disabled={!isValidRow()}
+						>
+							<IconTrash className="h-4 w-4" />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent
+						side="top"
+						className="bg-slate-800 text-white max-w-[200px]"
 					>
-						Delete
-						<DropdownMenuShortcut>
-							<IconTrash size={16} />
-						</DropdownMenuShortcut>
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
-		</>
+						<p className="truncate">Xóa</p>
+					</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+		</div>
 	);
 }

@@ -27,8 +27,14 @@ export interface Role {
 export interface User {
 	id: string;
 	email: string;
+	phoneNumber?: string;
 	firstName: string;
 	lastName: string;
+	nickname?: string;
+	avatar?: string;
+	birthDate?: string;
+	gender?: string;
+	nationality?: string;
 	isVerified: boolean;
 	roles: Role[];
 	createdAt: string;

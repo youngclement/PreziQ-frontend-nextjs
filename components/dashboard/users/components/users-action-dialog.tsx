@@ -8,20 +8,20 @@ import * as z from 'zod';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,202 +31,894 @@ import { userTypes } from '../../users/data/data';
 import { User } from '../data/schema';
 import { useState, useEffect } from 'react';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { API_URL, ACCESS_TOKEN } from '@/api-mock/http';
 import { Switch } from '@/components/ui/switch';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+	IconMail,
+	IconPhone,
+	IconUser,
+	IconCalendar,
+	IconFlag,
+	IconShield,
+	IconPhoto,
+	IconUserCircle,
+	IconUpload,
+	IconAlertCircle,
+} from '@tabler/icons-react';
+import { motion } from 'framer-motion';
+import { storageApi } from '@/api-client/storage-api';
+import dynamic from 'next/dynamic';
+import { getCroppedImg } from '../../../../utils/crop-image';
+
+// Dùng any thay vì CropperProps để tránh lỗi
+const Cropper = dynamic(
+	() => import('react-easy-crop').then((mod) => mod.default),
+	{
+		ssr: false,
+	}
+);
 
 type UpdateUserData = {
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  isVerified?: boolean;
-  roles?: string[];
+	email?: string;
+	phoneNumber?: string;
+	firstName?: string;
+	lastName?: string;
+	nickname?: string;
+	avatar?: string;
+	birthDate?: string;
+	gender?: string;
+	nationality?: string;
+	isVerified?: boolean;
+	roleIds?: string[];
 };
 
 const formSchema = z.object({
-  email: z.string().email('Email không hợp lệ'),
-  firstName: z.string().min(1, 'Vui lòng nhập tên'),
-  lastName: z.string().min(1, 'Vui lòng nhập họ'),
-  isVerified: z.boolean(),
-  roles: z.array(z.string()),
+	email: z.string().email('Email không hợp lệ'),
+	phoneNumber: z.string().optional(),
+	firstName: z.string().min(1, 'Vui lòng nhập tên'),
+	lastName: z.string().min(1, 'Vui lòng nhập họ'),
+	nickname: z.string().optional(),
+	avatar: z.string().optional(),
+	avatarFile: z
+		.instanceof(File)
+		.optional()
+		.refine(
+			(file) => !file || file.size >= 1024, // 1KB
+			'File phải lớn hơn 1KB'
+		)
+		.refine(
+			(file) => !file || file.size <= 5 * 1024 * 1024, // 5MB
+			'File không được vượt quá 5MB'
+		)
+		.refine(
+			(file) =>
+				!file || ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type),
+			'Chỉ chấp nhận file định dạng JPG, JPEG hoặc PNG'
+		),
+	birthDate: z.string().optional(),
+	gender: z.string().optional(),
+	nationality: z.string().optional(),
+	isVerified: z.boolean(),
+	roleIds: z.array(z.string()),
 });
 
 type UserForm = z.infer<typeof formSchema>;
 
 interface Props {
-  currentRow?: User | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+	currentRow?: User | null;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}
+
+// Thêm interface cho kết quả crop
+interface CropArea {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
 }
 
 export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
-  const { updateUser, createUser } = useUsers();
-  const { roles } = useRoles();
-  const isEdit = !!currentRow;
+	const { updateUser, createUser } = useUsers();
+	const { roles } = useRoles();
+	const isEdit = !!currentRow;
+	const [isUploading, setIsUploading] = useState(false);
 
-  const form = useForm<UserForm>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: currentRow?.email || '',
-      firstName: currentRow?.firstName || '',
-      lastName: currentRow?.lastName || '',
-      isVerified: currentRow?.isVerified || false,
-      roles: currentRow?.roles.map((role) => role.id) || [],
-    },
-  });
+	const form = useForm<UserForm>({
+		resolver: zodResolver(formSchema),
+		defaultValues: {
+			email: currentRow?.email || '',
+			phoneNumber: currentRow?.phoneNumber || '',
+			firstName: currentRow?.firstName || '',
+			lastName: currentRow?.lastName || '',
+			nickname: currentRow?.nickname || '',
+			avatar: currentRow?.avatar || '',
+			avatarFile: undefined,
+			birthDate: currentRow?.birthDate || '',
+			gender: currentRow?.gender || '',
+			nationality: currentRow?.nationality || '',
+			isVerified: currentRow?.isVerified || false,
+			roleIds: currentRow?.roles.map((role) => role.id) || [],
+		},
+	});
 
-  const onSubmit = async (values: UserForm) => {
-    if (isEdit && currentRow?.id) {
-      const changedFields: any = {};
+	const onSubmit = async (values: UserForm) => {
+		try {
+			setIsUploading(true);
 
-      // Kiểm tra từng trường và chỉ thêm vào changedFields nếu có thay đổi
-      if (values.email !== currentRow.email) {
-        changedFields.email = values.email;
-      }
-      if (values.firstName !== currentRow.firstName) {
-        changedFields.firstName = values.firstName;
-      }
-      if (values.lastName !== currentRow.lastName) {
-        changedFields.lastName = values.lastName;
-      }
-      if (values.isVerified !== currentRow.isVerified) {
-        changedFields.isVerified = values.isVerified;
-      }
-      if (
-        JSON.stringify(values.roles) !==
-        JSON.stringify(currentRow.roles.map((role) => role.id))
-      ) {
-        changedFields.roles = values.roles;
-      }
+			// Đã upload ảnh khi chọn file, không cần upload lại
+			const avatarUrl = values.avatar;
 
-      // Nếu không có trường nào thay đổi, không gửi request
-      if (Object.keys(changedFields).length === 0) {
-        toast({
-          title: 'Thông báo',
-          description: 'Không có thông tin nào được thay đổi.',
-        });
-        return;
-      }
+			if (isEdit && currentRow?.id) {
+				const changedFields: any = {};
 
-      await updateUser(currentRow.id, changedFields);
-    } else {
-      await createUser(values);
-    }
-    onOpenChange(false);
-  };
+				// Kiểm tra từng trường và chỉ thêm vào changedFields nếu có thay đổi
+				if (values.email !== currentRow.email) {
+					changedFields.email = values.email;
+				}
+				if (values.phoneNumber !== currentRow.phoneNumber) {
+					changedFields.phoneNumber = values.phoneNumber;
+				}
+				if (values.firstName !== currentRow.firstName) {
+					changedFields.firstName = values.firstName;
+				}
+				if (values.lastName !== currentRow.lastName) {
+					changedFields.lastName = values.lastName;
+				}
+				if (values.nickname !== currentRow.nickname) {
+					changedFields.nickname = values.nickname;
+				}
+				if (avatarUrl !== currentRow.avatar) {
+					changedFields.avatar = avatarUrl;
+				}
+				if (values.birthDate !== currentRow.birthDate) {
+					changedFields.birthDate = values.birthDate;
+				}
+				if (values.gender !== currentRow.gender) {
+					changedFields.gender = values.gender;
+				}
+				if (values.nationality !== currentRow.nationality) {
+					changedFields.nationality = values.nationality;
+				}
+				if (values.isVerified !== currentRow.isVerified) {
+					changedFields.isVerified = values.isVerified;
+				}
+				if (
+					JSON.stringify(values.roleIds) !==
+					JSON.stringify(currentRow.roles.map((role) => role.id))
+				) {
+					changedFields.roleIds = values.roleIds;
+				}
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-[425px]'>
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'}
-          </DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? 'Chỉnh sửa thông tin người dùng tại đây.'
-              : 'Thêm người dùng mới vào hệ thống.'}
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
-            <FormField
-              control={form.control}
-              name='email'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder='example@email.com' {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name='firstName'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tên</FormLabel>
-                  <FormControl>
-                    <Input placeholder='Tên' {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name='lastName'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Họ</FormLabel>
-                  <FormControl>
-                    <Input placeholder='Họ' {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name='roles'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Vai trò</FormLabel>
-                  <Select
-                    value={field.value[0] || ''}
-                    onValueChange={(value) => {
-                      field.onChange([value]);
-                    }}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder='Chọn vai trò' />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {roles.map((role) => (
-                        <SelectItem key={role.id} value={role.id}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name='isVerified'
-              render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>Xác thực email</FormLabel>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button type='submit'>{isEdit ? 'Cập nhật' : 'Thêm mới'}</Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
+				// Nếu không có trường nào thay đổi, không gửi request
+				if (Object.keys(changedFields).length === 0) {
+					toast({
+						title: 'Thông báo',
+						description: 'Không có thông tin nào được thay đổi.',
+					});
+					setIsUploading(false);
+					return;
+				}
+
+				await updateUser(currentRow.id, changedFields);
+			} else {
+				const userData = {
+					...values,
+				};
+				delete userData.avatarFile; // Vẫn xóa trường avatarFile vì không cần gửi lên server
+				await createUser(userData);
+			}
+			setIsUploading(false);
+			onOpenChange(false);
+		} catch (error) {
+			console.error('Error:', error);
+			toast({
+				title: 'Lỗi',
+				description: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+				variant: 'destructive',
+			});
+			setIsUploading(false);
+		}
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-[800px] p-0 gap-0 overflow-hidden border-slate-200 shadow-lg">
+				<motion.div
+					initial={{ opacity: 0, scale: 0.95, y: 10 }}
+					animate={{ opacity: 1, scale: 1, y: 0 }}
+					transition={{ duration: 0.2, ease: 'easeOut' }}
+					className="w-full"
+				>
+					<DialogHeader className="p-6 pb-2 border-b bg-slate-50">
+						<DialogTitle className="text-xl">
+							{isEdit
+								? 'Chỉnh sửa thông tin người dùng'
+								: 'Thêm người dùng mới'}
+						</DialogTitle>
+						<DialogDescription className="text-slate-500">
+							{isEdit
+								? 'Cập nhật thông tin của người dùng hiện tại'
+								: 'Điền thông tin đầy đủ để tạo tài khoản người dùng mới'}
+						</DialogDescription>
+					</DialogHeader>
+					<ScrollArea className="h-[65vh] px-6 py-4">
+						<Form {...form}>
+							<form
+								onSubmit={form.handleSubmit(onSubmit)}
+								className="space-y-6"
+							>
+								<motion.div
+									initial={{ opacity: 0, y: 20 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ duration: 0.3, delay: 0.1 }}
+									className="bg-white p-5 rounded-md border border-slate-200 shadow-sm"
+								>
+									<h3 className="text-md font-medium text-slate-900 mb-4">
+										Thông tin cơ bản
+									</h3>
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+										<FormField
+											control={form.control}
+											name="email"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Email</FormLabel>
+													<FormControl>
+														<div className="relative">
+															<IconMail className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+															<Input
+																placeholder="example@email.com"
+																{...field}
+																className="bg-slate-50 pl-10"
+															/>
+														</div>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="phoneNumber"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Số điện thoại</FormLabel>
+													<FormControl>
+														<div className="relative">
+															<IconPhone className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+															<Input
+																placeholder="Số điện thoại"
+																{...field}
+																className="bg-slate-50 pl-10"
+															/>
+														</div>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="lastName"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Họ</FormLabel>
+													<FormControl>
+														<div className="relative">
+															<IconUser className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+															<Input
+																placeholder="Họ"
+																{...field}
+																className="bg-slate-50 pl-10"
+															/>
+														</div>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="firstName"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Tên</FormLabel>
+													<FormControl>
+														<div className="relative">
+															<IconUser className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+															<Input
+																placeholder="Tên"
+																{...field}
+																className="bg-slate-50 pl-10"
+															/>
+														</div>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+									</div>
+								</motion.div>
+
+								<motion.div
+									initial={{ opacity: 0, y: 20 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ duration: 0.3, delay: 0.2 }}
+									className="bg-white p-5 rounded-md border border-slate-200 shadow-sm"
+								>
+									<h3 className="text-md font-medium text-slate-900 mb-4">
+										Thông tin bổ sung
+									</h3>
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+										<FormField
+											control={form.control}
+											name="nickname"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Nickname</FormLabel>
+													<FormControl>
+														<Input
+															placeholder="Nickname"
+															{...field}
+															className="bg-slate-50"
+														/>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="birthDate"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Ngày sinh</FormLabel>
+													<FormControl>
+														<div className="relative">
+															<IconCalendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+															<Input
+																type="date"
+																placeholder="Ngày sinh"
+																{...field}
+																className="bg-slate-50 pl-10"
+															/>
+														</div>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="gender"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Giới tính</FormLabel>
+													<Select
+														value={field.value || ''}
+														onValueChange={field.onChange}
+													>
+														<FormControl>
+															<SelectTrigger className="bg-slate-50">
+																<SelectValue placeholder="Chọn giới tính" />
+															</SelectTrigger>
+														</FormControl>
+														<SelectContent>
+															<SelectItem value="Nam">Nam</SelectItem>
+															<SelectItem value="Nữ">Nữ</SelectItem>
+															<SelectItem value="Khác">Khác</SelectItem>
+														</SelectContent>
+													</Select>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="nationality"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Quốc tịch</FormLabel>
+													<FormControl>
+														<div className="relative">
+															<IconFlag className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+															<Input
+																placeholder="Quốc tịch"
+																{...field}
+																className="bg-slate-50 pl-10"
+															/>
+														</div>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+									</div>
+								</motion.div>
+
+								<motion.div
+									initial={{ opacity: 0, y: 20 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ duration: 0.3, delay: 0.3 }}
+									className="bg-white p-5 rounded-md border border-slate-200 shadow-sm"
+								>
+									<h3 className="text-md font-medium text-slate-900 mb-4">
+										Hình ảnh & Phân quyền
+									</h3>
+									<div className="grid grid-cols-1 gap-4">
+										<FormField
+											control={form.control}
+											name="avatar"
+											render={({ field }) => {
+												const [previewUrl, setPreviewUrl] = useState<string>(
+													field.value || ''
+												);
+												const [localFile, setLocalFile] = useState<File | null>(
+													null
+												);
+												const [isUploadingAvatar, setIsUploadingAvatar] =
+													useState(false);
+												// Thêm các state cho việc crop ảnh
+												const [showCropper, setShowCropper] = useState(false);
+												const [crop, setCrop] = useState({ x: 0, y: 0 });
+												const [zoom, setZoom] = useState(1);
+												const [croppedAreaPixels, setCroppedAreaPixels] =
+													useState<CropArea | null>(null);
+												const [originalImageUrl, setOriginalImageUrl] =
+													useState<string>('');
+
+												useEffect(() => {
+													if (field.value && !localFile) {
+														setPreviewUrl(field.value);
+													}
+												}, [field.value, localFile]);
+
+												const handleFileChange = async (
+													e: React.ChangeEvent<HTMLInputElement>
+												) => {
+													const file = e.target.files?.[0];
+													if (!file) return;
+
+													// Check file type
+													if (
+														!['image/jpeg', 'image/jpg', 'image/png'].includes(
+															file.type
+														)
+													) {
+														toast({
+															title: 'Định dạng không hỗ trợ',
+															description:
+																'Chỉ chấp nhận file định dạng JPG, JPEG hoặc PNG',
+															variant: 'destructive',
+														});
+														return;
+													}
+
+													// Check file size
+													if (file.size < 1024) {
+														toast({
+															title: 'File quá nhỏ',
+															description: 'File phải lớn hơn 1KB',
+															variant: 'destructive',
+														});
+														return;
+													}
+
+													if (file.size > 5 * 1024 * 1024) {
+														toast({
+															title: 'File quá lớn',
+															description: 'File không được vượt quá 5MB',
+															variant: 'destructive',
+														});
+														return;
+													}
+
+													// Tạo preview URL
+													const objectUrl = URL.createObjectURL(file);
+													setOriginalImageUrl(objectUrl);
+													setShowCropper(true);
+													setLocalFile(file);
+												};
+
+												const onCropComplete = (
+													croppedArea: any,
+													croppedAreaPixels: any
+												) => {
+													setCroppedAreaPixels(croppedAreaPixels);
+												};
+
+												const uploadCroppedImage = async () => {
+													try {
+														if (
+															!croppedAreaPixels ||
+															!localFile ||
+															!originalImageUrl
+														)
+															return;
+
+														setIsUploadingAvatar(true);
+
+														// Tạo ảnh đã crop
+														const croppedImageBlob = await getCroppedImg(
+															originalImageUrl,
+															croppedAreaPixels
+														);
+
+														if (!croppedImageBlob) {
+															throw new Error('Không thể tạo ảnh đã cắt');
+														}
+
+														// Tạo file từ blob
+														const croppedFile = new File(
+															[croppedImageBlob],
+															localFile.name,
+															{ type: localFile.type }
+														);
+
+														// Tạo preview URL
+														const croppedPreviewUrl =
+															URL.createObjectURL(croppedImageBlob);
+														setPreviewUrl(croppedPreviewUrl);
+
+														// Upload file đã cắt
+														const response = await storageApi.uploadSingleFile(
+															croppedFile,
+															'users'
+														);
+
+														console.log('Upload response:', response);
+
+														// Sử dụng kiểu any để tránh lỗi kiểu dữ liệu
+														const responseData = response.data as any;
+
+														if (
+															responseData &&
+															responseData.success === true &&
+															responseData.data
+														) {
+															// Lấy URL từ response data (với kiểu 'any')
+															const fileUrl = responseData.data.fileUrl;
+
+															if (fileUrl) {
+																console.log('File URL:', fileUrl);
+																// Cập nhật trường avatar trong form
+																field.onChange(fileUrl);
+
+																// Hiển thị thông báo thành công
+																toast({
+																	title: 'Thành công',
+																	description: 'Đã tải lên ảnh đại diện đã cắt',
+																});
+
+																// Đóng cropper
+																setShowCropper(false);
+															} else {
+																toast({
+																	title: 'Lỗi',
+																	description:
+																		'Không tìm thấy URL file trong phản hồi',
+																	variant: 'destructive',
+																});
+															}
+														} else {
+															toast({
+																title: 'Lỗi',
+																description:
+																	'Không thể tải lên hình ảnh. Vui lòng thử lại.',
+																variant: 'destructive',
+															});
+														}
+													} catch (error) {
+														console.error(
+															'Error uploading cropped file:',
+															error
+														);
+														toast({
+															title: 'Lỗi',
+															description:
+																'Đã xảy ra lỗi khi tải lên. Vui lòng thử lại.',
+															variant: 'destructive',
+														});
+													} finally {
+														setIsUploadingAvatar(false);
+													}
+												};
+
+												return (
+													<FormItem>
+														<FormLabel>Avatar</FormLabel>
+														<div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+															<Avatar className="h-20 w-20 rounded-md border-2 border-slate-200">
+																<AvatarImage
+																	src={
+																		previewUrl ||
+																		`https://ui-avatars.com/api/?name=${form.watch(
+																			'firstName'
+																		)}+${form.watch(
+																			'lastName'
+																		)}&size=80&background=random`
+																	}
+																	alt="Avatar preview"
+																/>
+																<AvatarFallback className="rounded-md bg-slate-100">
+																	<IconUserCircle className="h-10 w-10 text-slate-400" />
+																</AvatarFallback>
+															</Avatar>
+															<div className="flex-1 space-y-2">
+																<FormControl>
+																	<div className="relative">
+																		<IconPhoto className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+																		<Input
+																			placeholder="https://example.com/avatar.jpg"
+																			{...field}
+																			className="bg-slate-50 pl-10"
+																			onChange={(e) => {
+																				field.onChange(e);
+																				if (e.target.value) {
+																					form.setValue(
+																						'avatarFile',
+																						undefined
+																					);
+																					setLocalFile(null);
+																				}
+																				setPreviewUrl(e.target.value);
+																			}}
+																		/>
+																	</div>
+																</FormControl>
+
+																<div className="flex flex-col gap-2">
+																	<label
+																		htmlFor="avatar-upload"
+																		className={`flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300 transition-all cursor-pointer w-full ${
+																			isUploadingAvatar
+																				? 'opacity-50 cursor-not-allowed'
+																				: ''
+																		}`}
+																	>
+																		{isUploadingAvatar ? (
+																			<>
+																				<svg
+																					className="animate-spin h-4 w-4 text-slate-700"
+																					xmlns="http://www.w3.org/2000/svg"
+																					fill="none"
+																					viewBox="0 0 24 24"
+																				>
+																					<circle
+																						className="opacity-25"
+																						cx="12"
+																						cy="12"
+																						r="10"
+																						stroke="currentColor"
+																						strokeWidth="4"
+																					></circle>
+																					<path
+																						className="opacity-75"
+																						fill="currentColor"
+																						d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+																					></path>
+																				</svg>
+																				<span>Đang tải lên...</span>
+																			</>
+																		) : (
+																			<>
+																				<IconUpload className="h-4 w-4" />
+																				<span>Tải lên ảnh đại diện</span>
+																			</>
+																		)}
+																	</label>
+																	<input
+																		id="avatar-upload"
+																		type="file"
+																		accept=".jpg,.jpeg,.png"
+																		className="hidden"
+																		onChange={handleFileChange}
+																		disabled={isUploadingAvatar}
+																	/>
+
+																	{localFile && !showCropper && (
+																		<div className="text-xs text-slate-500 flex items-center">
+																			<IconAlertCircle className="h-3 w-3 mr-1" />
+																			{localFile.name} (
+																			{(localFile.size / 1024).toFixed(1)}KB)
+																		</div>
+																	)}
+
+																	<p className="text-xs text-slate-500">
+																		Định dạng: JPG, JPEG, PNG (1KB - 5MB)
+																	</p>
+																</div>
+															</div>
+														</div>
+														{showCropper && (
+															<div className="mt-4 border rounded-md p-4 bg-slate-50">
+																<h4 className="text-sm font-medium mb-2">
+																	Cắt ảnh đại diện
+																</h4>
+																<div className="relative h-[300px] w-full mb-4">
+																	{originalImageUrl && (
+																		<Cropper
+																			image={originalImageUrl}
+																			crop={crop}
+																			zoom={zoom}
+																			aspect={1}
+																			onCropChange={setCrop}
+																			onCropComplete={onCropComplete}
+																			onZoomChange={setZoom}
+																			rotation={0}
+																			minZoom={1}
+																			maxZoom={3}
+																			cropShape="rect"
+																			{...({} as any)}
+																		/>
+																	)}
+																</div>
+																<div className="flex items-center justify-between mb-4">
+																	<span className="text-xs">Phóng to:</span>
+																	<input
+																		type="range"
+																		value={zoom}
+																		min={1}
+																		max={3}
+																		step={0.1}
+																		aria-labelledby="Zoom"
+																		onChange={(e) =>
+																			setZoom(Number(e.target.value))
+																		}
+																		className="w-full mx-2"
+																	/>
+																</div>
+																<div className="flex justify-end gap-2">
+																	<Button
+																		type="button"
+																		variant="outline"
+																		size="sm"
+																		onClick={() => {
+																			setShowCropper(false);
+																			setOriginalImageUrl('');
+																			setLocalFile(null);
+																		}}
+																	>
+																		Hủy
+																	</Button>
+																	<Button
+																		type="button"
+																		variant="default"
+																		size="sm"
+																		onClick={uploadCroppedImage}
+																		disabled={isUploadingAvatar}
+																	>
+																		{isUploadingAvatar
+																			? 'Đang tải lên...'
+																			: 'Cắt và tải lên'}
+																	</Button>
+																</div>
+															</div>
+														)}
+														<FormMessage />
+													</FormItem>
+												);
+											}}
+										/>
+										<FormField
+											control={form.control}
+											name="roleIds"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Vai trò</FormLabel>
+													<Select
+														value={field.value[0] || ''}
+														onValueChange={(value) => {
+															field.onChange([value]);
+														}}
+													>
+														<FormControl>
+															<div className="relative">
+																<IconShield className="absolute left-3 top-2.5 h-4 w-4 text-slate-500 z-10" />
+																<SelectTrigger className="bg-slate-50 pl-10">
+																	<SelectValue placeholder="Chọn vai trò" />
+																</SelectTrigger>
+															</div>
+														</FormControl>
+														<SelectContent>
+															{roles.map((role) => (
+																<SelectItem key={role.id} value={role.id}>
+																	{role.name}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+									</div>
+									<div className="mt-4">
+										<FormField
+											control={form.control}
+											name="isVerified"
+											render={({ field }) => (
+												<FormItem className="flex flex-row items-center justify-between rounded-lg border border-slate-200 p-4 bg-slate-50">
+													<div className="space-y-0.5">
+														<FormLabel className="text-base">
+															Xác thực email
+														</FormLabel>
+														<div className="text-sm text-slate-500">
+															{field.value
+																? 'Người dùng đã xác thực email'
+																: 'Người dùng chưa xác thực email'}
+														</div>
+													</div>
+													<FormControl>
+														<Switch
+															checked={field.value}
+															onCheckedChange={field.onChange}
+															className="data-[state=checked]:bg-slate-900"
+														/>
+													</FormControl>
+												</FormItem>
+											)}
+										/>
+									</div>
+								</motion.div>
+							</form>
+						</Form>
+					</ScrollArea>
+					<DialogFooter className="p-6 border-t flex gap-2">
+						<Button
+							variant="outline"
+							onClick={() => onOpenChange(false)}
+							className="transition-all duration-200 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900"
+						>
+							Hủy
+						</Button>
+						<Button
+							type="submit"
+							onClick={form.handleSubmit(onSubmit)}
+							disabled={form.formState.isSubmitting || isUploading}
+							className="bg-primary transition-all duration-200 hover:bg-primary/90 hover:shadow-lg hover:scale-105"
+						>
+							{form.formState.isSubmitting || isUploading ? (
+								<div className="flex items-center gap-2">
+									<svg
+										className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+									>
+										<circle
+											className="opacity-25"
+											cx="12"
+											cy="12"
+											r="10"
+											stroke="currentColor"
+											strokeWidth="4"
+										></circle>
+										<path
+											className="opacity-75"
+											fill="currentColor"
+											d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+										></path>
+									</svg>
+									Đang xử lý...
+								</div>
+							) : isEdit ? (
+								'Cập nhật'
+							) : (
+								'Thêm người dùng'
+							)}
+						</Button>
+					</DialogFooter>
+				</motion.div>
+			</DialogContent>
+		</Dialog>
+	);
 }
