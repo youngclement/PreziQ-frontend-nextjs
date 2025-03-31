@@ -26,7 +26,7 @@ export function FormActions({ isSubmitting }: FormActionsProps) {
 				disabled={isSubmitting}
 			>
 				<Save className="mr-2 h-4 w-4" />
-				{isSubmitting ? 'Đang tạo...' : 'Tạo bộ sưu tập'}
+				{isSubmitting ? 'Đang tạo...' : 'Lưu'}
 			</Button>
 		</div>
 	);

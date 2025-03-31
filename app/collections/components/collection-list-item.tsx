@@ -1,15 +1,14 @@
 import { motion } from 'framer-motion';
-import { BookOpen, CalendarIcon, Edit, Eye, Trash2 } from 'lucide-react';
+import { BookOpen, CalendarIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Collection, Activity } from './types';
+import { CollectionActionButtons } from './collection-action-buttons';
 
 interface CollectionListItemProps {
 	collection: Collection;
 	index: number;
 	activities: Activity[];
-	onEdit: (id: string) => void;
 	onDelete: (id: string) => void;
 	onView: (id: string) => void;
 	onPreview: (collection: Collection) => void;
@@ -20,7 +19,6 @@ export function CollectionListItem({
 	collection,
 	index,
 	activities,
-	onEdit,
 	onDelete,
 	onView,
 	onPreview,
@@ -64,45 +62,14 @@ export function CollectionListItem({
 						<p className="text-sm text-zinc-500 dark:text-zinc-400 mb-5">
 							{collection.description}
 						</p>
-						<div className="flex items-center justify-between">
-							<div className="flex gap-2">
-								<Button
-									className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/60 dark:text-indigo-300 rounded-none"
-									size="sm"
-									onClick={() => onView(collection.id)}
-								>
-									<BookOpen className="mr-2 h-4 w-4" />
-									View Activities
-								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									className="rounded-none"
-									onClick={() => onPreview(collection)}
-								>
-									<Eye className="mr-2 h-4 w-4" />
-									Preview
-								</Button>
-							</div>
-							<div className="flex gap-1">
-								<Button
-									variant="ghost"
-									size="icon"
-									className="h-8 w-8 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 rounded-none"
-									onClick={() => onEdit(collection.id)}
-								>
-									<Edit className="h-4 w-4" />
-								</Button>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="h-8 w-8 text-zinc-500 hover:text-red-600 dark:hover:text-red-500 rounded-none"
-									onClick={() => onDelete(collection.id)}
-								>
-									<Trash2 className="h-4 w-4" />
-								</Button>
-							</div>
-						</div>
+						<CollectionActionButtons
+							collectionId={collection.id}
+							onDelete={onDelete}
+							onPreview={() => onPreview(collection)}
+							onView={onView}
+							activitiesCount={activities.length}
+							isGridView={false}
+						/>
 					</div>
 				</div>
 			</Card>
