@@ -32,14 +32,14 @@ interface CreateRolePayload {
 	name: string;
 	description: string;
 	active: boolean;
-	permissions: string[];
+	permissionIds: string[];
 }
 
 interface UpdateRolePayload {
 	name?: string;
 	description?: string;
 	active?: boolean;
-	permissions?: string[];
+	permissionIds?: string[];
 }
 
 interface GetRolesParams {

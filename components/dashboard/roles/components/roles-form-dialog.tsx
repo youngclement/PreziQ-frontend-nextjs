@@ -133,7 +133,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 					name?: string;
 					description?: string;
 					active?: boolean;
-					permissions?: string[];
+					permissionIds?: string[];
 				} = {};
 
 				if (data.name !== currentRow.name) {
@@ -157,7 +157,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 				// Thêm permissions mới vào updatedData
 				if (addedPermissions.length > 0 || removedPermissions.length > 0) {
 					// Chỉ gửi tất cả permissions hiện tại
-					updatedData.permissions = data.permissionIds;
+					updatedData.permissionIds = data.permissionIds;
 				}
 
 				if (Object.keys(updatedData).length > 0) {
@@ -169,7 +169,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 					name: data.name,
 					description: data.description,
 					active: data.active,
-					permissions: data.permissionIds,
+					permissionIds: data.permissionIds,
 				});
 			}
 			handleClose();

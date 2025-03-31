@@ -25,7 +25,7 @@ interface RolesContextType {
 		name: string;
 		description: string;
 		active: boolean;
-		permissions: string[];
+		permissionIds: string[];
 	}) => Promise<void>;
 	updateRole: (
 		id: string,
@@ -33,7 +33,7 @@ interface RolesContextType {
 			name?: string;
 			description?: string;
 			active?: boolean;
-			permissions?: string[];
+			permissionIds?: string[];
 		}
 	) => Promise<void>;
 	deleteRole: (id: string) => Promise<void>;
@@ -98,9 +98,14 @@ export default function RolesProvider({ children }: Props) {
 			name: string;
 			description: string;
 			active: boolean;
-			permissions: string[];
+			permissionIds: string[];
 		}) => {
-			const response = await rolesApi.createRole(roleData);
+			const response = await rolesApi.createRole({
+				name: roleData.name,
+				description: roleData.description,
+				active: roleData.active,
+				permissionIds: roleData.permissionIds,
+			});
 			if (!response.data.success) {
 				throw new Error(response.data.message || 'Không thể tạo vai trò');
 			}
@@ -196,7 +201,7 @@ export default function RolesProvider({ children }: Props) {
 			name: string;
 			description: string;
 			active: boolean;
-			permissions: string[];
+			permissionIds: string[];
 		}) => {
 			await createRoleMutation.mutateAsync(data);
 		},
@@ -210,7 +215,7 @@ export default function RolesProvider({ children }: Props) {
 				name?: string;
 				description?: string;
 				active?: boolean;
-				permissions?: string[];
+				permissionIds?: string[];
 			}
 		) => {
 			await updateRoleMutation.mutateAsync({ id, data });
