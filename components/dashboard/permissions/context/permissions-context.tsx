@@ -1,15 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
-import { API_URL, ACCESS_TOKEN } from '@/api-mock/http';
 import { Permission } from '../data/schema';
+import { permissionsApi } from '@/api-client';
 
 type DialogType = 'add' | 'edit' | 'delete' | null;
-
-interface ModuleResponse {
-	code: number;
-	message: string;
-	data: string[];
-}
 
 interface PermissionsContextType {
 	open: DialogType;
@@ -58,42 +52,25 @@ export function PermissionsProvider({
 			setError(null);
 
 			// Fetch modules
-			const modulesResponse = await fetch(`${API_URL}/permissions/modules`, {
-				headers: {
-					Authorization: `Bearer ${ACCESS_TOKEN}`,
-				},
-			});
-			const modulesData: ModuleResponse = await modulesResponse.json();
-
-			// Fetch permissions
-			const permissionsResponse = await fetch(
-				`${API_URL}/permissions?page=1&size=100`,
-				{
-					headers: {
-						Authorization: `Bearer ${ACCESS_TOKEN}`,
-					},
-				}
-			);
-			const permissionsData = await permissionsResponse.json();
-
-			console.log('Dữ liệu modules từ API:', modulesData);
-			console.log('Dữ liệu permissions từ API:', permissionsData);
-
-			if (modulesData.data) {
-				setModules(modulesData.data);
+			const modulesResponse = await permissionsApi.getModules();
+			if (modulesResponse.data.success) {
+				setModules(modulesResponse.data.data);
 			}
 
-			if (permissionsData.data?.content) {
-				const permissions = permissionsData.data.content.map(
-					(permission: any) => ({
+			// Fetch permissions
+			const permissionsResponse = await permissionsApi.getPermissions({
+				page: 1,
+				size: 100,
+			});
+			if (permissionsResponse.data.success) {
+				const permissions = permissionsResponse.data.data.content.map(
+					(permission: Permission) => ({
 						...permission,
-						// Đảm bảo module là một chuỗi rỗng nếu null hoặc undefined
 						module: permission.module || '',
 						httpMethod: permission.httpMethod,
 					})
 				);
 				setPermissions(permissions);
-				console.log('Permissions đã xử lý:', permissions);
 			}
 		} catch (error) {
 			const message =

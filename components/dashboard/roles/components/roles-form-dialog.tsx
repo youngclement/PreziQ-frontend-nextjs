@@ -1,522 +1,496 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import {
-  useEffect,
-  useState,
-  useRef,
-  useLayoutEffect,
-  useCallback,
-} from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
-  Collapse,
-  CollapseContent,
-  CollapseTrigger,
+	Collapse,
+	CollapseContent,
+	CollapseTrigger,
 } from '@/components/ui/collapse';
 import { useRoles } from '../context/roles-context';
 import { toast } from '@/hooks/use-toast';
-import { API_URL, ACCESS_TOKEN } from '@/api-mock/http';
 import { Permission } from '../data/schema';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IconChevronRight } from '@tabler/icons-react';
 import { usePermissions } from '@/components/dashboard/permissions/context/permissions-context';
 import { Role } from '../data/schema';
-import { Checkbox } from '@/components/ui/checkbox';
+import { permissionsApi } from '@/api-client';
 
 const formSchema = z.object({
-  name: z.string().min(1, 'Tên vai trò không được để trống'),
-  description: z.string().min(1, 'Mô tả không được để trống'),
-  active: z.boolean().default(true),
-  permissionIds: z.array(z.string()).min(1, 'Phải chọn ít nhất một quyền'),
+	name: z.string().min(1, 'Tên vai trò không được để trống'),
+	description: z.string().min(1, 'Mô tả không được để trống'),
+	active: z.boolean().default(true),
+	permissionIds: z.array(z.string()).min(1, 'Phải chọn ít nhất một quyền'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 interface Props {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  currentRow: Role | null;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	currentRow: Role | null;
 }
 
 interface GroupedPermissions {
-  [key: string]: {
-    id: string;
-    name: string;
-    apiPath: string;
-    httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-    module: string;
-    createdAt: string;
-    updatedAt: string;
-    createdBy: string;
-  }[];
+	[key: string]: {
+		id: string;
+		name: string;
+		apiPath: string;
+		httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+		module: string;
+		createdAt: string;
+		updatedAt: string;
+		createdBy: string;
+	}[];
 }
 
 export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
-  const { permissions: allPermissions } = usePermissions();
-  const { updateRole, deleteRolePermissions, createRole, handleCloseDialog } =
-    useRoles();
-  const isEdit = !!currentRow;
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
+	const { permissions: allPermissions } = usePermissions();
+	const { updateRole, createRole, handleCloseDialog } = useRoles();
+	const isEdit = !!currentRow;
+	const [isLoading, setIsLoading] = useState(false);
+	const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
+	const dialogRef = useRef<HTMLDivElement>(null);
 
-  // State để lưu permissions ban đầu
-  const [initialPermissions, setInitialPermissions] = useState<string[]>([]);
-  const [groupedPermissions, setGroupedPermissions] =
-    useState<GroupedPermissions>({});
+	// State để lưu permissions ban đầu
+	const [initialPermissions, setInitialPermissions] = useState<string[]>([]);
+	const [groupedPermissions, setGroupedPermissions] =
+		useState<GroupedPermissions>({});
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: '',
-      description: '',
-      active: true,
-      permissionIds: [],
-    },
-  });
+	const form = useForm<FormValues>({
+		resolver: zodResolver(formSchema),
+		defaultValues: {
+			name: '',
+			description: '',
+			active: true,
+			permissionIds: [],
+		},
+	});
 
-  // Reset form khi mở dialog và có currentRow
-  useEffect(() => {
-    if (open && currentRow) {
-      const currentPermissions = currentRow.permissions.map((p) => p.id);
-      form.reset({
-        name: currentRow.name,
-        description: currentRow.description,
-        active: currentRow.active,
-        permissionIds: currentPermissions,
-      });
-      setInitialPermissions(currentPermissions);
-    } else if (!open) {
-      // Reset form khi đóng dialog
-      form.reset({
-        name: '',
-        description: '',
-        active: true,
-        permissionIds: [],
-      });
-      setInitialPermissions([]);
-    }
-  }, [open, currentRow, form]);
+	// Reset form khi mở dialog và có currentRow
+	useEffect(() => {
+		if (open && currentRow) {
+			const currentPermissions = currentRow.permissions.map((p) => p.id);
+			form.reset({
+				name: currentRow.name,
+				description: currentRow.description,
+				active: currentRow.active,
+				permissionIds: currentPermissions,
+			});
+			setInitialPermissions(currentPermissions);
+		} else if (!open) {
+			// Reset form khi đóng dialog
+			form.reset({
+				name: '',
+				description: '',
+				active: true,
+				permissionIds: [],
+			});
+			setInitialPermissions([]);
+		}
+	}, [open, currentRow, form]);
 
-  const handleClose = useCallback(() => {
-    console.log('handleClose called in form dialog');
-    console.log('Current open state:', open);
-    console.log('Current form state:', form.getValues());
+	const handleClose = useCallback(() => {
+		// Reset form trước khi đóng
+		form.reset({
+			name: '',
+			description: '',
+			active: true,
+			permissionIds: [],
+		});
+		setInitialPermissions([]);
 
-    // Reset form trước khi đóng
-    form.reset({
-      name: '',
-      description: '',
-      active: true,
-      permissionIds: [],
-    });
-    setInitialPermissions([]);
+		// Gọi handleCloseDialog để reset state trong context
+		handleCloseDialog();
+	}, [form, handleCloseDialog]);
 
-    // Gọi handleCloseDialog để reset state trong context
-    handleCloseDialog();
+	const onSubmit = async (data: FormValues) => {
+		try {
+			if (isEdit && currentRow) {
+				// Logic update role
+				const updatedData: {
+					name?: string;
+					description?: string;
+					active?: boolean;
+					permissions?: string[];
+				} = {};
 
-    console.log('After handleCloseDialog');
-  }, [form, handleCloseDialog]);
+				if (data.name !== currentRow.name) {
+					updatedData.name = data.name;
+				}
+				if (data.description !== currentRow.description) {
+					updatedData.description = data.description;
+				}
+				if (data.active !== currentRow.active) {
+					updatedData.active = data.active;
+				}
 
-  const onSubmit = async (data: FormValues) => {
-    try {
-      console.log('Form submitted with data:', data);
-      if (isEdit && currentRow) {
-        // Logic update role
-        const updatedData: {
-          name?: string;
-          description?: string;
-          active?: boolean;
-          permissionIds?: string[];
-        } = {};
+				// Calculate added and removed permissions
+				const addedPermissions = data.permissionIds.filter(
+					(id) => !initialPermissions.includes(id)
+				);
+				const removedPermissions = initialPermissions.filter(
+					(id) => !data.permissionIds.includes(id)
+				);
 
-        if (data.name !== currentRow.name) {
-          updatedData.name = data.name;
-        }
-        if (data.description !== currentRow.description) {
-          updatedData.description = data.description;
-        }
-        if (data.active !== currentRow.active) {
-          updatedData.active = data.active;
-        }
+				// Thêm permissions mới vào updatedData
+				if (addedPermissions.length > 0 || removedPermissions.length > 0) {
+					// Chỉ gửi tất cả permissions hiện tại
+					updatedData.permissions = data.permissionIds;
+				}
 
-        // Calculate added and removed permissions
-        const addedPermissions = data.permissionIds.filter(
-          (id) => !initialPermissions.includes(id)
-        );
-        const removedPermissions = initialPermissions.filter(
-          (id) => !data.permissionIds.includes(id)
-        );
+				if (Object.keys(updatedData).length > 0) {
+					await updateRole(currentRow.id, updatedData);
+				}
+			} else {
+				// Logic create role
+				await createRole({
+					name: data.name,
+					description: data.description,
+					active: data.active,
+					permissions: data.permissionIds,
+				});
+			}
+			handleClose();
+		} catch (error) {
+			console.error('Submit error:', error);
+		}
+	};
 
-        if (removedPermissions.length > 0) {
-          await deleteRolePermissions(currentRow.id, removedPermissions);
-        }
+	// Fetch permissions
+	useEffect(() => {
+		const fetchPermissions = async () => {
+			try {
+				setIsLoading(true);
+				const response = await permissionsApi.getPermissions({
+					page: 1,
+					size: 100,
+				});
+				setIsLoading(false);
+			} catch (error) {
+				toast({
+					variant: 'destructive',
+					title: 'Có lỗi xảy ra',
+					description: 'Không thể tải danh sách quyền. Vui lòng thử lại sau.',
+				});
+				setIsLoading(false);
+			}
+		};
 
-        if (
-          Object.keys(updatedData).length > 0 ||
-          addedPermissions.length > 0
-        ) {
-          if (addedPermissions.length > 0) {
-            updatedData.permissionIds = addedPermissions;
-          }
-          await updateRole(currentRow.id, updatedData);
-        }
-      } else {
-        // Logic create role
-        await createRole({
-          name: data.name,
-          description: data.description,
-          active: data.active,
-          permissionIds: data.permissionIds,
-        });
-      }
-      console.log('Before handleClose in onSubmit');
-      handleClose();
-      console.log('After handleClose in onSubmit');
-    } catch (error) {
-      console.error('Submit error:', error);
-    }
-  };
+		if (open) {
+			fetchPermissions();
+		}
+	}, [open]);
 
-  useEffect(() => {
-    const fetchPermissions = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`${API_URL}/permissions?page=1&size=100`, {
-          headers: {
-            Authorization: `Bearer ${ACCESS_TOKEN}`,
-          },
-        });
-        const data = await response.json();
-        if (data.data?.content) {
-          setPermissions(data.data.content);
-        }
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Có lỗi xảy ra',
-          description: 'Không thể tải danh sách quyền. Vui lòng thử lại sau.',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+	// Group permissions by module
+	useEffect(() => {
+		const grouped = allPermissions.reduce((acc, permission) => {
+			const module = permission.module ?? 'Other';
+			if (!acc[module]) {
+				acc[module] = [];
+			}
+			acc[module].push(permission);
+			return acc;
+		}, {} as GroupedPermissions);
+		setGroupedPermissions(grouped);
+	}, [allPermissions]);
 
-    fetchPermissions();
-  }, []);
+	const handleModulePermissionChange = (module: string, checked: boolean) => {
+		const currentPermissions = form.getValues('permissionIds');
+		const modulePermissionIds = groupedPermissions[module].map((p) => p.id);
 
-  // Group permissions by module
-  useEffect(() => {
-    const grouped = allPermissions.reduce((acc, permission) => {
-      const module = permission.module ?? 'Other';
-      if (!acc[module]) {
-        acc[module] = [];
-      }
-      acc[module].push(permission);
-      return acc;
-    }, {} as GroupedPermissions);
-    setGroupedPermissions(grouped);
-  }, [allPermissions]);
+		if (checked) {
+			// Add all permissions in module
+			const newPermissions = Array.from(
+				new Set([...currentPermissions, ...modulePermissionIds])
+			);
+			form.setValue('permissionIds', newPermissions);
+		} else {
+			// Remove all permissions in module
+			const newPermissions = currentPermissions.filter(
+				(id) => !modulePermissionIds.includes(id)
+			);
+			form.setValue('permissionIds', newPermissions);
+		}
+	};
 
-  const handleModulePermissionChange = (module: string, checked: boolean) => {
-    const currentPermissions = form.getValues('permissionIds');
-    const modulePermissionIds = groupedPermissions[module].map((p) => p.id);
+	const handlePermissionChange = (
+		module: string,
+		permissionId: string,
+		checked: boolean
+	) => {
+		const currentPermissions = form.getValues('permissionIds');
 
-    if (checked) {
-      // Add all permissions in module
-      const newPermissions = Array.from(
-        new Set([...currentPermissions, ...modulePermissionIds])
-      );
-      form.setValue('permissionIds', newPermissions);
-    } else {
-      // Remove all permissions in module
-      const newPermissions = currentPermissions.filter(
-        (id) => !modulePermissionIds.includes(id)
-      );
-      form.setValue('permissionIds', newPermissions);
-    }
-  };
+		if (checked) {
+			form.setValue('permissionIds', [...currentPermissions, permissionId]);
+		} else {
+			form.setValue(
+				'permissionIds',
+				currentPermissions.filter((id) => id !== permissionId)
+			);
+		}
+	};
 
-  const handlePermissionChange = (
-    module: string,
-    permissionId: string,
-    checked: boolean
-  ) => {
-    const currentPermissions = form.getValues('permissionIds');
+	const toggleModule = (module: string) => {
+		setOpenModules((prev) => ({
+			...prev,
+			[module]: !prev[module],
+		}));
+	};
 
-    if (checked) {
-      form.setValue('permissionIds', [...currentPermissions, permissionId]);
-    } else {
-      form.setValue(
-        'permissionIds',
-        currentPermissions.filter((id) => id !== permissionId)
-      );
-    }
-  };
+	const isModuleChecked = (modulePermissions: Permission[]) => {
+		const currentPermissions = form.getValues('permissionIds');
+		return modulePermissions.every((p) => currentPermissions.includes(p.id));
+	};
 
-  const toggleModule = (module: string) => {
-    setOpenModules((prev) => ({
-      ...prev,
-      [module]: !prev[module],
-    }));
-  };
+	return (
+		<Dialog
+			open={open}
+			onOpenChange={(newOpen) => {
+				if (!newOpen) {
+					handleClose();
+				}
+			}}
+		>
+			<DialogContent
+				ref={dialogRef}
+				className="max-w-2xl h-[90vh] p-0 flex flex-col"
+				onPointerDownOutside={(e) => {
+					e.preventDefault();
+				}}
+				onEscapeKeyDown={(e) => {
+					e.preventDefault();
+				}}
+				onFocusOutside={(e) => {
+					e.preventDefault();
+				}}
+			>
+				<DialogHeader className="px-6 py-4 border-b bg-slate-50 flex-none">
+					<DialogTitle className="text-xl font-semibold text-slate-900">
+						{isEdit ? 'Chỉnh sửa vai trò' : 'Thêm vai trò mới'}
+					</DialogTitle>
+					<DialogDescription className="text-sm text-slate-500">
+						{isEdit
+							? 'Chỉnh sửa thông tin và quyền hạn của vai trò'
+							: 'Tạo vai trò mới với các quyền hạn được chỉ định'}
+					</DialogDescription>
+				</DialogHeader>
 
-  const isModuleChecked = (modulePermissions: Permission[]) => {
-    const currentPermissions = form.getValues('permissionIds');
-    return modulePermissions.every((p) => currentPermissions.includes(p.id));
-  };
+				<ScrollArea className="flex-1">
+					<Form {...form}>
+						<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+							<div className="px-6 py-4 space-y-6">
+								{/* Basic Info Section */}
+								<div className="space-y-4 p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
+									<h3 className="text-sm font-medium text-slate-900 mb-3">
+										Thông tin cơ bản
+									</h3>
 
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(newOpen) => {
-        console.log('Dialog onOpenChange called with:', newOpen);
-        if (!newOpen) {
-          handleClose();
-        }
-      }}
-    >
-      <DialogContent
-        ref={dialogRef}
-        className='max-w-2xl h-[90vh] p-0 flex flex-col'
-        onPointerDownOutside={(e) => {
-          e.preventDefault();
-        }}
-        onEscapeKeyDown={(e) => {
-          e.preventDefault();
-        }}
-        onFocusOutside={(e) => {
-          e.preventDefault();
-        }}
-      >
-        <DialogHeader className='px-6 py-4 border-b bg-slate-50 flex-none'>
-          <DialogTitle className='text-xl font-semibold text-slate-900'>
-            {isEdit ? 'Chỉnh sửa vai trò' : 'Thêm vai trò mới'}
-          </DialogTitle>
-          <DialogDescription className='text-sm text-slate-500'>
-            {isEdit
-              ? 'Chỉnh sửa thông tin và quyền hạn của vai trò'
-              : 'Tạo vai trò mới với các quyền hạn được chỉ định'}
-          </DialogDescription>
-        </DialogHeader>
+									<FormField
+										control={form.control}
+										name="name"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel className="text-sm font-medium text-slate-700">
+													Tên vai trò
+												</FormLabel>
+												<FormControl>
+													<Input
+														placeholder="Nhập tên vai trò"
+														className="bg-white border-slate-200 focus:border-slate-300 focus:ring-slate-300"
+														{...field}
+													/>
+												</FormControl>
+												<FormMessage className="text-xs text-red-500" />
+											</FormItem>
+										)}
+									/>
 
-        <ScrollArea className='flex-1'>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-              <div className='px-6 py-4 space-y-6'>
-                {/* Basic Info Section */}
-                <div className='space-y-4 p-4 bg-white rounded-lg border border-slate-200 shadow-sm'>
-                  <h3 className='text-sm font-medium text-slate-900 mb-3'>
-                    Thông tin cơ bản
-                  </h3>
+									<FormField
+										control={form.control}
+										name="description"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel className="text-sm font-medium text-slate-700">
+													Mô tả
+												</FormLabel>
+												<FormControl>
+													<Textarea
+														placeholder="Nhập mô tả cho vai trò"
+														className="bg-white resize-none min-h-[100px] border-slate-200 focus:border-slate-300 focus:ring-slate-300"
+														{...field}
+													/>
+												</FormControl>
+												<FormMessage className="text-xs text-red-500" />
+											</FormItem>
+										)}
+									/>
 
-                  <FormField
-                    control={form.control}
-                    name='name'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className='text-sm font-medium text-slate-700'>
-                          Tên vai trò
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder='Nhập tên vai trò'
-                            className='bg-white border-slate-200 focus:border-slate-300 focus:ring-slate-300'
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage className='text-xs text-red-500' />
-                      </FormItem>
-                    )}
-                  />
+									<FormField
+										control={form.control}
+										name="active"
+										render={({ field }) => (
+											<FormItem className="flex items-center justify-between rounded-lg bg-slate-50 p-4 border border-slate-200">
+												<div className="space-y-1">
+													<FormLabel className="text-sm font-medium text-slate-700">
+														Trạng thái
+													</FormLabel>
+													<div className="text-sm text-slate-900">
+														Vai trò{' '}
+														{field.value
+															? 'đang hoạt động'
+															: 'đã bị vô hiệu hóa'}
+													</div>
+												</div>
+												<FormControl>
+													<Switch
+														checked={field.value}
+														onCheckedChange={field.onChange}
+														className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300"
+													/>
+												</FormControl>
+											</FormItem>
+										)}
+									/>
+								</div>
 
-                  <FormField
-                    control={form.control}
-                    name='description'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className='text-sm font-medium text-slate-700'>
-                          Mô tả
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder='Nhập mô tả cho vai trò'
-                            className='bg-white resize-none min-h-[100px] border-slate-200 focus:border-slate-300 focus:ring-slate-300'
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage className='text-xs text-red-500' />
-                      </FormItem>
-                    )}
-                  />
+								{/* Permissions Section */}
+								<FormField
+									control={form.control}
+									name="permissionIds"
+									render={({ field }) => (
+										<FormItem className="space-y-4">
+											<div className="flex items-center justify-between">
+												<FormLabel className="text-base font-semibold text-slate-900">
+													Quyền hạn
+												</FormLabel>
+											</div>
+											<FormControl>
+												<div className="space-y-2">
+													{isLoading ? (
+														<div className="flex items-center justify-center py-8">
+															<Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+														</div>
+													) : (
+														Object.entries(groupedPermissions).map(
+															([module, modulePermissions]) => (
+																<Collapse
+																	key={module}
+																	open={openModules[module]}
+																	onOpenChange={() => toggleModule(module)}
+																>
+																	<div className="w-full rounded-t-lg border bg-white hover:bg-slate-50 transition-colors px-4 py-3">
+																		<div className="flex items-center justify-between w-full">
+																			<CollapseTrigger className="flex items-center gap-3">
+																				<IconChevronRight
+																					className={cn(
+																						'h-4 w-4 shrink-0 transition-transform duration-200 text-slate-900',
+																						openModules[module] && 'rotate-90'
+																					)}
+																				/>
+																				<span className="text-sm font-medium text-slate-900 border-b-slate-900">
+																					{module}
+																				</span>
+																			</CollapseTrigger>
+																			<Switch
+																				checked={isModuleChecked(
+																					modulePermissions
+																				)}
+																				onCheckedChange={(checked) =>
+																					handleModulePermissionChange(
+																						module,
+																						checked
+																					)
+																				}
+																				className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300"
+																			/>
+																		</div>
+																	</div>
+																	<CollapseContent className="divide-y divide-slate-100 border-x border-b rounded-b-lg bg-white">
+																		{modulePermissions.map((permission) => (
+																			<div
+																				key={permission.id}
+																				className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 transition-colors"
+																			>
+																				<div className="flex flex-col gap-1">
+																					<span className="text-sm font-medium text-slate-700">
+																						{permission.name}
+																					</span>
+																					<span className="text-xs text-slate-900">
+																						{permission.apiPath} (
+																						{permission.httpMethod})
+																					</span>
+																				</div>
+																				<Switch
+																					checked={field.value.includes(
+																						permission.id
+																					)}
+																					onCheckedChange={(checked) => {
+																						handlePermissionChange(
+																							module,
+																							permission.id,
+																							checked
+																						);
+																					}}
+																					className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300"
+																				/>
+																			</div>
+																		))}
+																	</CollapseContent>
+																</Collapse>
+															)
+														)
+													)}
+												</div>
+											</FormControl>
+											<FormMessage className="text-xs text-red-500" />
+										</FormItem>
+									)}
+								/>
+							</div>
 
-                  <FormField
-                    control={form.control}
-                    name='active'
-                    render={({ field }) => (
-                      <FormItem className='flex items-center justify-between rounded-lg bg-slate-50 p-4 border border-slate-200'>
-                        <div className='space-y-1'>
-                          <FormLabel className='text-sm font-medium text-slate-700'>
-                            Trạng thái
-                          </FormLabel>
-                          <div className='text-sm text-slate-900'>
-                            Vai trò{' '}
-                            {field.value
-                              ? 'đang hoạt động'
-                              : 'đã bị vô hiệu hóa'}
-                          </div>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            className='data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300'
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Permissions Section */}
-                <FormField
-                  control={form.control}
-                  name='permissionIds'
-                  render={({ field }) => (
-                    <FormItem className='space-y-4'>
-                      <div className='flex items-center justify-between'>
-                        <FormLabel className='text-base font-semibold text-slate-900'>
-                          Quyền hạn
-                        </FormLabel>
-                      </div>
-                      <FormControl>
-                        <div className='space-y-2'>
-                          {isLoading ? (
-                            <div className='flex items-center justify-center py-8'>
-                              <Loader2 className='h-6 w-6 animate-spin text-slate-400' />
-                            </div>
-                          ) : (
-                            Object.entries(groupedPermissions).map(
-                              ([module, modulePermissions]) => (
-                                <Collapse
-                                  key={module}
-                                  open={openModules[module]}
-                                  onOpenChange={() => toggleModule(module)}
-                                >
-                                  <div className='w-full rounded-t-lg border bg-white hover:bg-slate-50 transition-colors px-4 py-3'>
-                                    <div className='flex items-center justify-between w-full'>
-                                      <CollapseTrigger className='flex items-center gap-3'>
-                                        <IconChevronRight
-                                          className={cn(
-                                            'h-4 w-4 shrink-0 transition-transform duration-200 text-slate-900',
-                                            openModules[module] && 'rotate-90'
-                                          )}
-                                        />
-                                        <span className='text-sm font-medium text-slate-900 border-b-slate-900'>
-                                          {module}
-                                        </span>
-                                      </CollapseTrigger>
-                                      <Switch
-                                        checked={isModuleChecked(
-                                          modulePermissions
-                                        )}
-                                        onCheckedChange={(checked) =>
-                                          handleModulePermissionChange(
-                                            module,
-                                            checked
-                                          )
-                                        }
-                                        className='data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300'
-                                      />
-                                    </div>
-                                  </div>
-                                  <CollapseContent className='divide-y divide-slate-100 border-x border-b rounded-b-lg bg-white'>
-                                    {modulePermissions.map((permission) => (
-                                      <div
-                                        key={permission.id}
-                                        className='flex items-center justify-between px-6 py-3 hover:bg-slate-50 transition-colors'
-                                      >
-                                        <div className='flex flex-col gap-1'>
-                                          <span className='text-sm font-medium text-slate-700'>
-                                            {permission.name}
-                                          </span>
-                                          <span className='text-xs text-slate-900'>
-                                            {permission.apiPath} (
-                                            {permission.httpMethod})
-                                          </span>
-                                        </div>
-                                        <Switch
-                                          checked={field.value.includes(
-                                            permission.id
-                                          )}
-                                          onCheckedChange={(checked) => {
-                                            handlePermissionChange(
-                                              module,
-                                              permission.id,
-                                              checked
-                                            );
-                                          }}
-                                          className='data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300'
-                                        />
-                                      </div>
-                                    ))}
-                                  </CollapseContent>
-                                </Collapse>
-                              )
-                            )
-                          )}
-                        </div>
-                      </FormControl>
-                      <FormMessage className='text-xs text-red-500' />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Footer */}
-              <div className='flex justify-end gap-4 px-6 py-4 border-t bg-slate-50 sticky bottom-0'>
-                <Button
-                  type='button'
-                  variant='outline'
-                  onClick={handleClose}
-                  className='border-slate-200 hover:bg-slate-100'
-                >
-                  Hủy
-                </Button>
-                <Button
-                  type='submit'
-                  className='bg-slate-900 hover:bg-slate-600 text-white'
-                >
-                  {isEdit ? 'Cập nhật' : 'Thêm mới'}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
-  );
+							{/* Footer */}
+							<div className="flex justify-end gap-4 px-6 py-4 border-t bg-slate-50 sticky bottom-0">
+								<Button
+									type="button"
+									variant="outline"
+									onClick={handleClose}
+									className="border-slate-200 hover:bg-slate-100"
+								>
+									Hủy
+								</Button>
+								<Button
+									type="submit"
+									className="bg-slate-900 hover:bg-slate-600 text-white"
+								>
+									{isEdit ? 'Cập nhật' : 'Thêm mới'}
+								</Button>
+							</div>
+						</form>
+					</Form>
+				</ScrollArea>
+			</DialogContent>
+		</Dialog>
+	);
 }

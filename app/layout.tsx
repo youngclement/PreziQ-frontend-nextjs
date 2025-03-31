@@ -24,7 +24,7 @@ export default function RootLayout({
 						disableTransitionOnChange
 					>
 						<Providers>
-							<Header />
+							{/* <Header /> */}
 							{children}
 							<ToastContainer position="top-right" />
 							<Toaster />
