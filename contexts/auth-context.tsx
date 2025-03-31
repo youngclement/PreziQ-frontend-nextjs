@@ -14,14 +14,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
-    console.log('đã vào đây lấy token', token);
     setIsLoggedIn(!!token);
   }, []);
 
   const login = (token: string) => {
     localStorage.setItem('accessToken', token);
     if (!token) return;
-    console.log('đã vào đây', isLoggedIn);
     setIsLoggedIn(true);
   };
 

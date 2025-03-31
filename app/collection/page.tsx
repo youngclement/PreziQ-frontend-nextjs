@@ -78,14 +78,15 @@ export default function QuestionsPage({ params }: { params: { id: string } }) {
     };
 
     // Add a handler for slide image changes
-    const handleSlideImageChange = (value: string) => {
-        const updatedQuestions = [...questions];
-        updatedQuestions[activeQuestionIndex] = {
-            ...updatedQuestions[activeQuestionIndex],
-            slide_image: value
-        };
-        setQuestions(updatedQuestions);
+    const handleSlideImageChange = (url: string, questionIndex: number) => {
+      const updatedQuestions = [...questions];
+      updatedQuestions[questionIndex] = {
+        ...updatedQuestions[questionIndex],
+        slide_image: url,
+      };
+      setQuestions(updatedQuestions);
     };
+
     const handleAddQuestion = (newQuestion?: QuizQuestion) => {
         // If a newQuestion is provided (like a slide), use it
         // Otherwise create an empty question with the default function
@@ -299,100 +300,109 @@ export default function QuestionsPage({ params }: { params: { id: string } }) {
     };
 
     return (
-        <div className="container mx-auto py-4">
-            <div className="flex justify-between items-center mb-4 bg-card p-4 rounded-lg shadow-sm">
-                <div className="flex items-center">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => router.push(`/collections/${activity.collection_id}`)}
-                        className="mr-2"
-                    >
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold">{activity.title}</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Question {activeQuestionIndex + 1} of {questions.length}
-                        </p>
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon">
-                                    <Share2 className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Share quiz with others</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-
-                    <Button variant="outline" onClick={() => setPreviewMode(!previewMode)}>
-                        <Monitor className="mr-2 h-4 w-4" /> {previewMode ? "Edit Mode" : "Preview"}
-                    </Button>
-
-                    <Button onClick={handleSave} className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-none">
-                        <Save className="mr-2 h-4 w-4" /> Save Questions
-                    </Button>
-                </div>
+      <div className="container mx-auto py-4">
+        <div className="flex justify-between items-center mb-4 bg-card p-4 rounded-lg shadow-sm">
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                router.push(`/collections/${activity.collection_id}`)
+              }
+              className="mr-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">{activity.title}</h1>
+              <p className="text-sm text-muted-foreground">
+                Question {activeQuestionIndex + 1} of {questions.length}
+              </p>
             </div>
+          </div>
+          <div className="flex gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Share quiz with others</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-            <div className="grid grid-cols-12 gap-4">
-                {/* Left sidebar - Questions list - make smaller */}
-                <div className="col-span-12 md:col-span-2">
-                    <QuestionList
-                        questions={questions}
-                        activeQuestionIndex={activeQuestionIndex}
-                        onQuestionSelect={setActiveQuestionIndex}
-                        onAddQuestion={handleAddQuestion}
-                        onDeleteQuestion={handleDeleteQuestion}
-                    />
-                </div>
+            <Button
+              variant="outline"
+              onClick={() => setPreviewMode(!previewMode)}
+            >
+              <Monitor className="mr-2 h-4 w-4" />{' '}
+              {previewMode ? 'Edit Mode' : 'Preview'}
+            </Button>
 
-                {/* Main content area - make larger */}
-                <div className="col-span-12 md:col-span-8">
-                    {activeQuestion && (
-                        <QuestionPreview
-                            questions={questions}
-                            activeQuestionIndex={activeQuestionIndex}
-                            timeLimit={timeLimit}
-                            backgroundImage={backgroundImage}
-                            previewMode={previewMode}
-                            onQuestionTextChange={handleQuestionTextChange}
-                            onOptionChange={handleOptionChange}
-                            onChangeQuestion={setActiveQuestionIndex}
-                        />
-                    )}
-                </div>
-
-                {/* Right sidebar - Settings - make smaller */}
-                <div className="col-span-12 md:col-span-2">
-                    <QuestionSettings
-                        activeQuestion={activeQuestion}
-                        activeQuestionIndex={activeQuestionIndex}
-                        activeTab={activeTab}
-                        timeLimit={timeLimit}
-                        backgroundImage={backgroundImage}
-                        questionTypeIcons={questionTypeIcons}
-                        questionTypeLabels={questionTypeLabels}
-                        onTabChange={setActiveTab}
-                        onQuestionTypeChange={handleQuestionTypeChange}
-                        onTimeLimitChange={setTimeLimit}
-                        onBackgroundImageChange={(value) => setBackgroundImage(value)}
-                        onClearBackground={() => setBackgroundImage("")}
-                        onAddOption={handleAddOption}
-                        onOptionChange={handleOptionChange}
-                        onDeleteOption={handleDeleteOption}
-                        onCorrectAnswerChange={handleCorrectAnswerChange}
-                        onSlideContentChange={handleSlideContentChange}
-                        onSlideImageChange={handleSlideImageChange}
-                    />
-                </div>
-            </div>
+            <Button
+              onClick={handleSave}
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-none"
+            >
+              <Save className="mr-2 h-4 w-4" /> Save Questions
+            </Button>
+          </div>
         </div>
+
+        <div className="grid grid-cols-12 gap-4">
+          {/* Left sidebar - Questions list - make smaller */}
+          <div className="col-span-12 md:col-span-2">
+            <QuestionList
+              questions={questions}
+              activeQuestionIndex={activeQuestionIndex}
+              onQuestionSelect={setActiveQuestionIndex}
+              onAddQuestion={handleAddQuestion}
+              onDeleteQuestion={handleDeleteQuestion}
+            />
+          </div>
+
+          {/* Main content area - make larger */}
+          <div className="col-span-12 md:col-span-8">
+            {activeQuestion && (
+              <QuestionPreview
+                questions={questions}
+                activeQuestionIndex={activeQuestionIndex}
+                timeLimit={timeLimit}
+                backgroundImage={backgroundImage}
+                previewMode={previewMode}
+                onQuestionTextChange={handleQuestionTextChange}
+                onOptionChange={handleOptionChange}
+                onChangeQuestion={setActiveQuestionIndex}
+                onSlideImageChange={handleSlideImageChange}
+              />
+            )}
+          </div>
+
+          {/* Right sidebar - Settings - make smaller */}
+          <div className="col-span-12 md:col-span-2">
+            <QuestionSettings
+              activeQuestion={activeQuestion}
+              activeQuestionIndex={activeQuestionIndex}
+              activeTab={activeTab}
+              timeLimit={timeLimit}
+              backgroundImage={backgroundImage}
+              questionTypeIcons={questionTypeIcons}
+              questionTypeLabels={questionTypeLabels}
+              onTabChange={setActiveTab}
+              onQuestionTypeChange={handleQuestionTypeChange}
+              onTimeLimitChange={setTimeLimit}
+              onBackgroundImageChange={(value) => setBackgroundImage(value)}
+              onClearBackground={() => setBackgroundImage('')}
+              onAddOption={handleAddOption}
+              onOptionChange={handleOptionChange}
+              onDeleteOption={handleDeleteOption}
+              onCorrectAnswerChange={handleCorrectAnswerChange}
+              onSlideContentChange={handleSlideContentChange}
+            />
+          </div>
+        </div>
+      </div>
     );
 }
