@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { usersApi } from '@/api-client';
-import { toast } from 'react-toastify';
+import { toast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
 	email: z.string().email('Email không hợp lệ'),
@@ -56,17 +56,28 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
 			const response = await usersApi.inviteUser(values);
 
 			if (response.data.success) {
-				toast.success('Đã gửi lời mời thành công');
+				toast({
+					title: 'Thành công',
+					description: 'Đã gửi lời mời thành công',
+				});
 				refetch(); // Cập nhật lại danh sách user
 				onOpenChange(false);
 				form.reset();
 			} else {
-				toast.error(response.data.message || 'Không thể gửi lời mời');
+				toast({
+					title: 'Lỗi',
+					description: response.data.message || 'Không thể gửi lời mời',
+					variant: 'destructive',
+				});
 			}
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Không thể gửi lời mời';
-			toast.error(message);
+			toast({
+				title: 'Lỗi',
+				description: message,
+				variant: 'destructive',
+			});
 		}
 	};
 

@@ -31,7 +31,6 @@ export default function EditCollectionClient({
 	const { toast } = useToast();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
-	const [imageUrl, setImageUrl] = useState<string>('');
 
 	const form = useForm<z.infer<typeof collectionSchema>>({
 		resolver: zodResolver(collectionSchema),
@@ -58,7 +57,6 @@ export default function EditCollectionClient({
 						isPublished: collection.isPublished,
 						defaultBackgroundMusic: collection.defaultBackgroundMusic || '',
 					});
-					setImageUrl(collection.coverImage || '');
 				} else {
 					toast({
 						title: 'Lỗi',
@@ -90,18 +88,10 @@ export default function EditCollectionClient({
 					'Vui lòng đợi trong khi chúng tôi cập nhật bộ sưu tập của bạn.',
 			});
 
-			const payload = {
-				...values,
-				coverImage: imageUrl,
-			};
-
-			console.log('Payload gửi đi:', payload);
+			console.log('Payload gửi đi:', values);
 
 			// Gọi API cập nhật collection
-			const response = await collectionsApi.updateCollection(
-				params.id,
-				payload
-			);
+			const response = await collectionsApi.updateCollection(params.id, values);
 			console.log('API Response:', response);
 
 			// Xử lý phản hồi API

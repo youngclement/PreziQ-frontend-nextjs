@@ -81,7 +81,19 @@ type UpdateUserData = {
 
 const formSchema = z.object({
 	email: z.string().email('Email không hợp lệ'),
-	phoneNumber: z.string().optional(),
+	phoneNumber: z
+		.string()
+		.optional()
+		.refine(
+			(phone) =>
+				!phone ||
+				phone === '' ||
+				/^(0|84|\+84)([3|5|7|8|9])([0-9]{8})$/.test(phone.replace(/\s/g, '')),
+			{
+				message:
+					'Số điện thoại không hợp lệ. Định dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx',
+			}
+		),
 	firstName: z.string().min(1, 'Vui lòng nhập tên'),
 	lastName: z.string().min(1, 'Vui lòng nhập họ'),
 	nickname: z.string().optional(),
@@ -163,7 +175,13 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
 				if (values.email !== currentRow.email) {
 					changedFields.email = values.email;
 				}
-				if (values.phoneNumber !== currentRow.phoneNumber) {
+				if (
+					values.phoneNumber !== currentRow.phoneNumber &&
+					!(
+						(!currentRow.phoneNumber || currentRow.phoneNumber === '') &&
+						values.phoneNumber === ''
+					)
+				) {
 					changedFields.phoneNumber = values.phoneNumber;
 				}
 				if (values.firstName !== currentRow.firstName) {
