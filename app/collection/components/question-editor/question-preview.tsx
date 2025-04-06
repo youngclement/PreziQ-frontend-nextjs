@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { QuizQuestion, QuizOption } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import React, { useEffect, useRef } from "react";
-const FabricEditor = dynamic(() => import('../slide/slide-editor'), {
+const FabricEditor = dynamic(() => import('../slide/slide-edit/slide-editor'), {
   ssr: false,
 });
 interface QuestionPreviewProps {

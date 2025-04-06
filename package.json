@@ -88,6 +88,7 @@
     "three": "^0.160.1",
     "typescript": "5.2.2",
     "vaul": "^0.9.9",
+    "webfontloader": "^1.6.28",
     "zod": "^3.23.8"
   }
 }

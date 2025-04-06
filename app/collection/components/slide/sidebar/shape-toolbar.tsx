@@ -1,6 +1,6 @@
 'use client';
 
-import { Square, Circle, Trash2 } from 'lucide-react';
+import { Square, Circle, Trash2, ArrowLeft, Triangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -17,6 +17,14 @@ export default function ShapeToolbar() {
 
   const handleAddCircle = () => {
     window.dispatchEvent(new CustomEvent('fabric:add-circle'));
+  };
+
+  const handleAddArrow = () => {
+    window.dispatchEvent(new CustomEvent('fabric:add-arrow'));
+  };
+
+  const handleAddTriangle = () => {
+    window.dispatchEvent(new CustomEvent('fabric:add-triangle'));
   };
 
   const handleClearCanvas = () => {
@@ -42,6 +50,24 @@ export default function ShapeToolbar() {
             </Button>
           </TooltipTrigger>
           <TooltipContent>Add Circle</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" variant="outline" onClick={handleAddTriangle}>
+              <Triangle className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Add Triangle</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" variant="outline" onClick={handleAddArrow}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Add Arrow</TooltipContent>
         </Tooltip>
 
         <Tooltip>

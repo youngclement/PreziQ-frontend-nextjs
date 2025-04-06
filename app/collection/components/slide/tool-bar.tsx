@@ -7,6 +7,7 @@ import { Plus, ImagePlus, Trash2 } from 'lucide-react';
 import PexelsPanel from './sidebar/pexels-penel';
 import ShapeToolbar from './sidebar/shape-toolbar';
 import ColorToolbar from './sidebar/color-toolbar';
+import { TextEditorToolbar } from './sidebar/text-editor-toolbar';
 interface ToolbarProps {
   onAddText: () => void;
   onAddImage: (url: string) => void;
@@ -32,6 +33,7 @@ export const FabricToolbar: React.FC<ToolbarProps> = ({
         </div>
         Add Text
       </Button>
+      <TextEditorToolbar/>
       <PexelsPanel />
       <ShapeToolbar/>
       <ColorToolbar/>

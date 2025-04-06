@@ -11,7 +11,7 @@ let axiosClient = axios.create({
 });
 
 axiosClient.defaults.timeout = 1000 * 60 * 10;
-
+axiosClient.defaults.withCredentials = true;
 
 axiosClient.interceptors.request.use((config) => {
   if (!config?.url.includes('/auth/refresh')) {
@@ -33,7 +33,7 @@ axiosClient.interceptors.response.use(
   (error: AxiosError) => {
     const originalRequest = error.config;
 
-    // Kiểm tra nếu nhận được lỗi 401 và request chưa được retry
+    // Kiểm tra nếu có phản hồi và mã trạng thái là 401
     if (
       error.response?.status === 401 &&
       originalRequest &&
@@ -41,44 +41,77 @@ axiosClient.interceptors.response.use(
     ) {
       originalRequest._retry = true;
 
-      // Nếu chưa có lời gọi refresh nào đang chờ, thực hiện lời gọi refresh token
-      if (!refreshTokenPromise) {
-        refreshTokenPromise = authApi
-          .refreshToken()
-          .then((response) => {
-            const newAccessToken = response?.data?.data?.accessToken;
-            if (newAccessToken) {
-              localStorage.setItem('accessToken', newAccessToken);
-              return newAccessToken;
-            }
-            return Promise.reject(
-              'Không nhận được access token từ API refresh'
-            );
-          })
-          .catch((refreshError) => {
-            // Xử lý lỗi refresh nếu cần (ví dụ: redirect đến trang login)
-            return Promise.reject(refreshError);
-          })
-          .finally(() => {
-            refreshTokenPromise = null;
-          });
+      // Lấy thông tin lỗi từ response
+      const errorData = error.response.data;
+      let shouldRefresh = false;
+
+      // Kiểm tra nếu có mảng errors và tìm code 1005
+      if (errorData.errors && Array.isArray(errorData.errors)) {
+        shouldRefresh = errorData.errors.some((err: any) => err.code === 1005);
+      } else if (errorData.code === 1005) {
+        // Trường hợp lỗi không nằm trong mảng errors
+        shouldRefresh = true;
       }
 
-      // Sau khi refresh token thành công, cập nhật header của request gốc và retry lại request
-      return refreshTokenPromise.then((accessToken) => {
-        originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
-        return axiosClient(originalRequest);
-      });
+      // Chỉ gọi refresh token nếu code là 1005
+      if (shouldRefresh) {
+        if (!refreshTokenPromise) {
+          refreshTokenPromise = authApi
+            .refreshToken()
+            .then((response) => {
+              const newAccessToken = response?.data?.data?.accessToken;
+              if (newAccessToken) {
+                localStorage.setItem('accessToken', newAccessToken);
+                return newAccessToken;
+              }
+              return Promise.reject(
+                'Không nhận được access token từ API refresh'
+              );
+            })
+            .catch((refreshError) => {
+              // Nếu refresh token thất bại, xóa token và yêu cầu đăng nhập lại
+              localStorage.removeItem('accessToken');
+              window.location.href = '/login'; // Chuyển hướng về trang đăng nhập
+              return Promise.reject(refreshError);
+            })
+            .finally(() => {
+              refreshTokenPromise = null;
+            });
+        }
+
+        return refreshTokenPromise.then((accessToken) => {
+          originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+          return axiosClient(originalRequest);
+        });
+      } else {
+        // const errorMessage = error.response?.data?.errors?.length
+        //   ? error.response.data.errors.map((err: any) => err.message).join('; ')
+        //   : error.response?.data?.message ||
+        //     error.message ||
+        //     'Đã xảy ra lỗi. Vui lòng thử lại!';
+
+        // toast({
+        //   title: errorMessage,
+        //   variant: 'destructive',
+        // });
+        return Promise.reject(error);
+      }
     }
 
-    // Nếu lỗi không phải 401, thông báo lỗi cho người dùng
-    const errorMessage = error.response?.data?.message || error.message;
-    toast({
-      title: errorMessage,
-    });
+    // Xử lý các lỗi khác (không phải 401)
+    // const errorMessage = error.response?.data?.errors?.length
+    //   ? error.response.data.errors.map((err: any) => err.message).join('; ')
+    //   : error.response?.data?.message ||
+    //     error.message ||
+    //     'Đã xảy ra lỗi. Vui lòng thử lại!';
+
+        
+    // toast({
+    //   title: errorMessage,
+    // });
+
     return Promise.reject(error);
   }
 );
-
 
 export default axiosClient;
