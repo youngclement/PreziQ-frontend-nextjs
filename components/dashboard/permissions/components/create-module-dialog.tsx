@@ -1,13 +1,15 @@
-import { useState } from 'react';
+'use client';
+
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
 	Dialog,
 	DialogContent,
-	DialogDescription,
 	DialogHeader,
 	DialogTitle,
+	DialogFooter,
 } from '@/components/ui/dialog';
 import {
 	Form,
@@ -19,23 +21,13 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-} from '@/components/ui/command';
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from '@/components/ui/popover';
-import { IconCheck, IconChevronDown } from '@tabler/icons-react';
-import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle2, Circle, Search } from 'lucide-react';
 import { usePermissions } from '../context/permissions-context';
 import { toast } from 'react-toastify';
-import { API_URL, ACCESS_TOKEN } from '@/api-mock/http';
+import { permissionsApi } from '@/api-client';
+import { motion } from 'framer-motion';
 
 const formSchema = z.object({
 	moduleName: z
@@ -43,11 +35,6 @@ const formSchema = z.object({
 		.min(1, 'Tên module không được để trống')
 		.refine((value) => /^[A-Z]+$/.test(value), {
 			message: 'Tên module phải viết hoa và không chứa ký tự đặc biệt',
-		}),
-	permissionIds: z
-		.array(z.string())
-		.refine((value) => new Set(value).size === value.length, {
-			message: 'Không được chọn trùng lặp permission',
 		}),
 });
 
@@ -57,56 +44,87 @@ interface Props {
 }
 
 export function CreateModuleDialog({ open, onOpenChange }: Props) {
-	const { permissions, modules, refetch } = usePermissions();
+	const { permissions = [], modules = [], refetch } = usePermissions();
 	const [isLoading, setIsLoading] = useState(false);
+	const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+	const [searchTerm, setSearchTerm] = useState('');
+
+	// Lọc ra các permission chưa có module
+	const availablePermissions = permissions.filter(
+		(p) =>
+			!p.module ||
+			p.module === '' ||
+			p.module === null ||
+			p.module === undefined
+	);
+
+	// Lọc permissions dựa trên tìm kiếm
+	const filteredPermissions = availablePermissions.filter(
+		(p) =>
+			searchTerm === '' ||
+			p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			p.apiPath.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			p.httpMethod.toLowerCase().includes(searchTerm.toLowerCase())
+	);
 
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
 			moduleName: '',
-			permissionIds: [],
 		},
 	});
 
-	// Lọc ra các permission chưa có module
-	const availablePermissions = permissions.filter((p) => !p.module);
+	// Reset form khi dialog đóng
+	useEffect(() => {
+		if (!open) {
+			form.reset();
+			setSelectedPermissions([]);
+			setSearchTerm('');
+		}
+	}, [open, form]);
+
+	// Toggle permission (chọn hoặc bỏ chọn)
+	const togglePermission = (permissionId: string) => {
+		if (selectedPermissions.includes(permissionId)) {
+			setSelectedPermissions(
+				selectedPermissions.filter((id) => id !== permissionId)
+			);
+		} else {
+			setSelectedPermissions([...selectedPermissions, permissionId]);
+		}
+	};
 
 	const onSubmit = async (values: z.infer<typeof formSchema>) => {
+		if (selectedPermissions.length === 0) {
+			toast.error('Vui lòng chọn ít nhất một permission');
+			return;
+		}
+
 		setIsLoading(true);
 		try {
-			// Kiểm tra tên module đã tồn tại chưa
 			if (modules.includes(values.moduleName)) {
-				form.setError('moduleName', {
-					message: 'Tên module đã tồn tại',
-				});
+				form.setError('moduleName', { message: 'Tên module đã tồn tại' });
+				setIsLoading(false);
 				return;
 			}
 
-			const response = await fetch(`${API_URL}/permissions/module`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${ACCESS_TOKEN}`,
-				},
-				body: JSON.stringify(values),
+			const response = await permissionsApi.createModule({
+				moduleName: values.moduleName,
+				permissionIds: selectedPermissions,
 			});
 
-			const data = await response.json();
-
-			if (!response.ok) {
-				toast.error(data.message || 'Không thể tạo module');
+			if (!response.data.success) {
+				toast.error(response.data.message || 'Không thể tạo module');
 				return;
 			}
 
-			toast.success(data.message);
-
+			toast.success(response.data.message || 'Tạo module thành công');
 			onOpenChange(false);
-			form.reset();
-			refetch(); // Cập nhật lại danh sách
+			refetch();
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : 'Không thể tạo module';
-			toast.error(message);
+			toast.error(
+				error instanceof Error ? error.message : 'Không thể tạo module'
+			);
 		} finally {
 			setIsLoading(false);
 		}
@@ -114,16 +132,13 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-[425px]">
+			<DialogContent className="max-w-md p-6">
 				<DialogHeader>
 					<DialogTitle>Tạo Module Mới</DialogTitle>
-					<DialogDescription>
-						Tạo một module mới và gán các permissions cho module đó.
-					</DialogDescription>
 				</DialogHeader>
 
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
 						<FormField
 							control={form.control}
 							name="moduleName"
@@ -144,78 +159,114 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 							)}
 						/>
 
-						<FormField
-							control={form.control}
-							name="permissionIds"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Permissions</FormLabel>
-									<Popover>
-										<PopoverTrigger asChild>
-											<FormControl>
-												<Button
-													variant="outline"
-													role="combobox"
-													className={cn(
-														'w-full justify-between',
-														!field.value && 'text-muted-foreground'
-													)}
-												>
-													{field.value?.length
-														? `Đã chọn ${field.value.length} permission`
-														: 'Chọn permissions'}
-													<IconChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-												</Button>
-											</FormControl>
-										</PopoverTrigger>
-										<PopoverContent className="w-[400px] p-0">
-											<Command>
-												<CommandInput placeholder="Tìm permission..." />
-												<CommandEmpty>Không tìm thấy permission</CommandEmpty>
-												<CommandGroup className="max-h-[300px] overflow-auto">
-													{availablePermissions.map((permission) => (
-														<CommandItem
-															key={permission.id}
-															onSelect={() => {
-																const currentValue = new Set(field.value);
-																if (currentValue.has(permission.id)) {
-																	currentValue.delete(permission.id);
-																} else {
-																	currentValue.add(permission.id);
-																}
-																field.onChange(Array.from(currentValue));
-															}}
-														>
-															<IconCheck
-																className={cn(
-																	'mr-2 h-4 w-4',
-																	field.value?.includes(permission.id)
-																		? 'opacity-100'
-																		: 'opacity-0'
-																)}
-															/>
-															<div className="flex flex-col">
-																<span>{permission.name}</span>
-																<span className="text-xs text-muted-foreground">
-																	{permission.httpMethod} {permission.apiPath}
-																</span>
-															</div>
-														</CommandItem>
-													))}
-												</CommandGroup>
-											</Command>
-										</PopoverContent>
-									</Popover>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+						<div className="space-y-3">
+							<div className="flex items-center justify-between">
+								<FormLabel>Permissions</FormLabel>
+								<div className="flex items-center gap-2">
+									<Search className="h-4 w-4" />
+									<Input
+										placeholder="Tìm kiếm..."
+										value={searchTerm}
+										onChange={(e) => setSearchTerm(e.target.value)}
+										className="h-8 w-48"
+									/>
+									<Badge variant="secondary" className="font-medium">
+										{selectedPermissions.length} đã chọn
+									</Badge>
+								</div>
+							</div>
 
-						<div className="flex justify-end pt-4">
-							<Button type="submit" disabled={isLoading}>
-								Tạo module
-							</Button>
+							<div className="border rounded-md overflow-hidden">
+								<ScrollArea className="h-[300px]">
+									{filteredPermissions.length === 0 ? (
+										<div className="flex items-center justify-center h-full p-4 text-center text-muted-foreground">
+											<p>Không có permission phù hợp</p>
+										</div>
+									) : (
+										<div className="divide-y">
+											{filteredPermissions.map((permission) => {
+												const isSelected = selectedPermissions.includes(
+													permission.id
+												);
+
+												return (
+													<motion.div
+														key={permission.id}
+														className={`flex items-center justify-between p-3 hover:bg-accent cursor-pointer ${
+															isSelected ? 'bg-accent/40' : ''
+														}`}
+														onClick={() => togglePermission(permission.id)}
+														whileTap={{ scale: 0.98 }}
+														transition={{
+															type: 'spring',
+															stiffness: 500,
+															damping: 30,
+														}}
+													>
+														<div className="flex-1">
+															<div className="flex items-start gap-2">
+																<Badge
+																	variant="outline"
+																	className={`mt-0.5 text-xs whitespace-nowrap ${
+																		isSelected
+																			? 'border-primary/50 bg-primary/5 text-primary'
+																			: ''
+																	}`}
+																>
+																	{permission.httpMethod}
+																</Badge>
+																<div>
+																	<p
+																		className={`font-medium leading-tight ${
+																			isSelected ? 'text-primary' : ''
+																		}`}
+																	>
+																		{permission.name}
+																	</p>
+																	<p className="text-xs text-muted-foreground mt-0.5">
+																		{permission.apiPath}
+																	</p>
+																</div>
+															</div>
+														</div>
+														<div className="pl-2">
+															<motion.div
+																initial={false}
+																animate={{ scale: isSelected ? 1 : 0.85 }}
+																transition={{
+																	type: 'spring',
+																	stiffness: 500,
+																	damping: 30,
+																}}
+															>
+																{isSelected ? (
+																	<CheckCircle2 className="h-5 w-5 text-primary" />
+																) : (
+																	<Circle className="h-5 w-5 text-muted-foreground/70 hover:text-muted-foreground" />
+																)}
+															</motion.div>
+														</div>
+													</motion.div>
+												);
+											})}
+										</div>
+									)}
+								</ScrollArea>
+							</div>
 						</div>
+
+						<DialogFooter className="pt-2">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => onOpenChange(false)}
+							>
+								Hủy
+							</Button>
+							<Button type="submit" disabled={isLoading}>
+								{isLoading ? 'Đang xử lý...' : 'Tạo module'}
+							</Button>
+						</DialogFooter>
 					</form>
 				</Form>
 			</DialogContent>

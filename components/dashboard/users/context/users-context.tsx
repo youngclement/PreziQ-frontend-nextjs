@@ -4,9 +4,9 @@ import React, { useState, useCallback } from 'react';
 import useDialogState from '@/hooks/use-dialog-state';
 import { User } from '../data/schema';
 import { createContext, useContext } from 'react';
-import { API_URL, ACCESS_TOKEN } from '@/api-mock/http';
-import { toast } from 'react-toastify';
+import { toast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usersApi } from '@/api-client';
 
 type UsersDialogType = 'invite' | 'add' | 'edit' | 'delete';
 
@@ -44,18 +44,12 @@ const UsersProvider = ({ children }: Props) => {
   } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      const response = await fetch(`${API_URL}/users`, {
-        headers: {
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
-        },
-      });
-
-      if (!response.ok) {
+      try {
+        const response = await usersApi.getUsers();
+        return response.data.data.content;
+      } catch (error) {
         throw new Error('Không thể tải danh sách người dùng');
       }
-
-      const data = await response.json();
-      return data.data.content;
     },
     staleTime: 5 * 60 * 1000, // Cache trong 5 phút
     gcTime: 30 * 60 * 1000, // Giữ cache 30 phút
@@ -64,98 +58,94 @@ const UsersProvider = ({ children }: Props) => {
   // Mutation cho việc tạo user mới
   const createUserMutation = useMutation({
     mutationFn: async (userData: any) => {
-      const response = await fetch(`${API_URL}/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
-        },
-        body: JSON.stringify(userData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Không thể tạo người dùng');
-      }
-
-      return response.json();
+      const response = await usersApi.createUser(userData);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('Tạo người dùng thành công');
+      toast({
+        title: 'Thành công',
+        description: 'Tạo người dùng thành công',
+      });
       setOpen(null);
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast({
+        title: 'Lỗi',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 
   // Mutation cho việc cập nhật user
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const response = await fetch(`${API_URL}/users/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error('Không thể cập nhật người dùng');
-      }
-
-      return response.json();
+      const response = await usersApi.updateUser(id, data);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('Cập nhật thông tin người dùng thành công');
+      toast({
+        title: 'Thành công',
+        description: 'Cập nhật thông tin người dùng thành công',
+      });
       setOpen(null);
       setCurrentRow(null);
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast({
+        title: 'Lỗi',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 
   // Mutation cho việc xóa user
   const deleteUserMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`${API_URL}/users/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Không thể xóa người dùng');
-      }
-
-      return response.json();
+      const response = await usersApi.deleteUser(id);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('Xóa người dùng thành công');
+      toast({
+        title: 'Thành công',
+        description: 'Xóa người dùng thành công',
+      });
       setOpen(null);
       setCurrentRow(null);
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast({
+        title: 'Lỗi',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 
-  const createUser = useCallback(async (data: any) => {
-    await createUserMutation.mutateAsync(data);
-  }, []);
+  const createUser = useCallback(
+    async (data: any) => {
+      await createUserMutation.mutateAsync(data);
+    },
+    [createUserMutation]
+  );
 
-  const updateUser = useCallback(async (id: string, data: any) => {
-    await updateUserMutation.mutateAsync({ id, data });
-  }, []);
+  const updateUser = useCallback(
+    async (id: string, data: any) => {
+      await updateUserMutation.mutateAsync({ id, data });
+    },
+    [updateUserMutation]
+  );
 
-  const deleteUser = useCallback(async (id: string) => {
-    await deleteUserMutation.mutateAsync(id);
-  }, []);
+  const deleteUser = useCallback(
+    async (id: string) => {
+      await deleteUserMutation.mutateAsync(id);
+    },
+    [deleteUserMutation]
+  );
 
   return (
     <UsersContext.Provider
