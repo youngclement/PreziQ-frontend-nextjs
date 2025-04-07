@@ -103,6 +103,8 @@ export default function LoginPage() {
       router.refresh();
       router.push('/');
     } catch (error: any) {
+      console.log("err: ", error)
+      setIsLoading(false);
       if (error.response && error.response.data) {
         const backendErrors = error.response.data.errors;
         
@@ -114,18 +116,22 @@ export default function LoginPage() {
           } else if (err.code === 1103) {
             setError('email', { type: 'server', message: err.message });
           } else {
-            setError('email', { type: 'server', message: err.message });
+            //setError('email', { type: 'server', message: err.message });
+            toast({
+              variant: 'destructive',
+              description: err.message,
+            });
           }
         });
 
-        if (error.response.data.code == 1116) {
+        if (error.response.data.code === 1116) {
           setResendEmail(data.email);
           setIsResendDialogOpen(true);
-        } else if (error.response.data.code == 1201 || 1002) {
-          toast({
-            variant: 'destructive',
-            description: error.response.data.message,
-          });
+        } else if (error.response.data.code === 1201 || 1002) {
+          // toast({
+          //   variant: 'destructive',
+          //   description: error.response.data.message,
+          // });
         }
 
         setIsLoading(false);

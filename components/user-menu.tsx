@@ -48,6 +48,7 @@ export default function UserMenu() {
 			setUserInfo(res?.data?.data);
 		};
 
+
 		if (isLoggedIn) {
 			fetchAccount();
 		}
