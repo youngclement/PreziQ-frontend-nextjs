@@ -3,86 +3,113 @@ import { toast } from '@/hooks/use-toast';
 import { authApi } from './auth-api';
 
 let axiosClient = axios.create({
-  baseURL:
-    'http://ec2-54-169-33-117.ap-southeast-1.compute.amazonaws.com/api/v1',
+  baseURL: 'https://preziq.duckdns.org/api/v1',
   headers: {
     'Content-Type': 'application/json',
+   //withCredentials: true,
   },
-  withCredentials: true,
 });
 
 axiosClient.defaults.timeout = 1000 * 60 * 10;
+axiosClient.defaults.withCredentials = true;
 
-// axiosClient.interceptors.request.use(
-//   function (config) {
-//     // Do something before request is sent
-//     return config;
-//   },
-//   function (error) {
-//     // Do something with request error
-//     return Promise.reject(error);
-//   }
-// );
-
-// // Add a request interceptor
-axiosClient.interceptors.request.use((config: any) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`; 
+axiosClient.interceptors.request.use((config) => {
+  if (!config?.url.includes('/auth/refresh')) {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
   }
   return config;
 });
 
-// let refreshTokenPromise = null;
+
+let refreshTokenPromise: Promise<string> | null = null;
 
 axiosClient.interceptors.response.use(
-  (response: any) => {
-
+  (response) => {
     return response;
   },
   (error: AxiosError) => {
-    const originalRequests = error.config;
+    const originalRequest = error.config;
 
-    // if (
-    //   (error.response?.status === 401 || isTestingRefresh) ||
-    //   originalRequests
-    // )
-    if ( error.response?.status === 401 &&originalRequests) {
-      if (!refreshTokenPromise) {
-        refreshTokenPromise = authApi
-          .refreshToken()
-          .then((data) => {
-            const newAccessToken = data?.data?.accessToken;
+    // Kiểm tra nếu có phản hồi và mã trạng thái là 401
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry
+    ) {
+      originalRequest._retry = true;
 
-            if (newAccessToken) {
-              localStorage.setItem('accessToken', newAccessToken);
-            }
-            return newAccessToken;
-          })
-          .catch((_error) => {
-            return Promise.reject(_error);
-          })
-          .finally(() => {
-            refreshTokenPromise = null;
-          });
+      // Lấy thông tin lỗi từ response
+      const errorData = error.response.data;
+      let shouldRefresh = false;
+
+      // Kiểm tra nếu có mảng errors và tìm code 1005
+      if (errorData.errors && Array.isArray(errorData.errors)) {
+        shouldRefresh = errorData.errors.some((err: any) => err.code === 1005);
+      } else if (errorData.code === 1005) {
+        // Trường hợp lỗi không nằm trong mảng errors
+        shouldRefresh = true;
       }
 
-      return refreshTokenPromise.then((accessToken) => {
+      // Chỉ gọi refresh token nếu code là 1005
+      if (shouldRefresh) {
+        if (!refreshTokenPromise) {
+          refreshTokenPromise = authApi
+            .refreshToken()
+            .then((response) => {
+              const newAccessToken = response?.data?.data?.accessToken;
+              if (newAccessToken) {
+                localStorage.setItem('accessToken', newAccessToken);
+                return newAccessToken;
+              }
+              return Promise.reject(
+                'Không nhận được access token từ API refresh'
+              );
+            })
+            .catch((refreshError) => {
+              // Nếu refresh token thất bại, xóa token và yêu cầu đăng nhập lại
+              localStorage.removeItem('accessToken');
+              window.location.href = '/login'; // Chuyển hướng về trang đăng nhập
+              return Promise.reject(refreshError);
+            })
+            .finally(() => {
+              refreshTokenPromise = null;
+            });
+        }
 
-        localStorage.setItem('accessToken', accessToken);
-        return axiosClient(originalRequests);
-      });
+        return refreshTokenPromise.then((accessToken) => {
+          originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+          return axiosClient(originalRequest);
+        });
+      } else {
+        // const errorMessage = error.response?.data?.errors?.length
+        //   ? error.response.data.errors.map((err: any) => err.message).join('; ')
+        //   : error.response?.data?.message ||
+        //     error.message ||
+        //     'Đã xảy ra lỗi. Vui lòng thử lại!';
+
+        // toast({
+        //   title: errorMessage,
+        //   variant: 'destructive',
+        // });
+        return Promise.reject(error);
+      }
     }
 
-    let errorMessage = error?.message;
-    if (error.response?.data?.message) {
-      errorMessage = error.response?.data?.message;
-    }
-    if (error.response?.status !== 410) {
-      toast({
-        title: errorMessage,
-      });
-    }
+    // Xử lý các lỗi khác (không phải 401)
+    // const errorMessage = error.response?.data?.errors?.length
+    //   ? error.response.data.errors.map((err: any) => err.message).join('; ')
+    //   : error.response?.data?.message ||
+    //     error.message ||
+    //     'Đã xảy ra lỗi. Vui lòng thử lại!';
+
+        
+    // toast({
+    //   title: errorMessage,
+    // });
+
     return Promise.reject(error);
   }
 );

@@ -34,10 +34,9 @@ export default function UserMenu() {
 
   useEffect(() => {
     const fetchAccount = async () => {
-     
-        const res = await authApi.getAccount();
-        console.log('user: ', res.data.data.lastName);
-        setUserInfo(res?.data?.data);
+      const res = await authApi.getAccount();
+      console.log('user: ', res.data.data.lastName);
+      setUserInfo(res?.data?.data);
     };
 
     if (isLoggedIn) {
