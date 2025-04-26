@@ -57,7 +57,9 @@ export default function PexelsSidebar() {
   };
 
   return (
-    <div className="w-64 h-full bg-white dark:bg-gray-900 border-r border-border shadow-md flex flex-col">
+    <div
+      className="w-[16rem] h-full  bg-white dark:bg-gray-900 border-r border-border shadow-md flex flex-col"
+    >
       <div className="flex items-center gap-2 p-4 border-b">
         <div className="relative w-full">
           <Search className="absolute left-3 top-2.5 text-muted-foreground h-4 w-4" />
