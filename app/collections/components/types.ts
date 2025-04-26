@@ -1,5 +1,5 @@
 export interface Collection {
-	id: string;
+	collectionId: string;
 	title: string;
 	description: string;
 	coverImage: string;

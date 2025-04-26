@@ -874,7 +874,9 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                         <FormItem>
                           <FormLabel>Vai trò</FormLabel>
                           <Select
-                            value={field.value?.length > 0 ? field.value[0] : ''}
+                            value={
+                              field.value?.length > 0 ? field.value[0] : ''
+                            }
                             onValueChange={(value) => {
                               console.log('Role selected:', value);
                               if (value) {
@@ -893,7 +895,6 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                             </FormControl>
                             <SelectContent>
                               {roles.map((role) => {
-                                // Ưu tiên sử dụng roleId, nếu không có thì sử dụng id
                                 const roleIdentifier = role.roleId;
                                 return (
                                   <SelectItem
