@@ -45,7 +45,7 @@ export const permissionSchema = z.object({
 export type Permission = z.infer<typeof permissionSchema>;
 
 export const roleSchema = z.object({
-  id: z.string(),
+  roleId: z.string(),
   name: z.string(),
   description: z.string(),
   active: z.boolean(),
