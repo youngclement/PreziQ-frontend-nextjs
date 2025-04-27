@@ -312,7 +312,7 @@ export default function HeroGeometric({
                 'flex items-center justify-center'
               )}
             >
-              Bắt đầu miễn phí
+              Start for free
             </a>
             <a
               href='/membership'

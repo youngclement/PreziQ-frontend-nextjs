@@ -59,74 +59,74 @@ const MembershipPlansPage = () => {
   // Dữ liệu các gói membership
   const membershipPlans = [
     {
-      name: 'Bạc',
-      description: 'Phù hợp cho người mới bắt đầu và nhóm nhỏ',
+      name: 'Silver',
+      description: 'Perfect for beginners and small teams',
       priceMonthly: '99.000',
       priceYearly: '999.000',
       features: [
-        { name: 'Tạo đến 10 bài thuyết trình', included: true },
-        { name: 'Truy cập 20+ mẫu cơ bản', included: true },
-        { name: 'Hỗ trợ AI cơ bản', included: true },
-        { name: 'Xuất file PDF', included: true },
-        { name: 'Chỉnh sửa cộng tác (2 người)', included: true },
-        { name: 'Phân tích người xem cơ bản', included: false },
-        { name: 'Hỗ trợ kỹ thuật ưu tiên', included: false },
-        { name: 'Tính năng nâng cao', included: false },
+        { name: 'Create up to 10 presentations', included: true },
+        { name: 'Access to 20+ basic templates', included: true },
+        { name: 'Basic AI support', included: true },
+        { name: 'PDF export', included: true },
+        { name: 'Collaborative editing (2 users)', included: true },
+        { name: 'Basic viewer analytics', included: false },
+        { name: 'Priority technical support', included: false },
+        { name: 'Advanced features', included: false },
       ],
       color: 'border-slate-300 bg-slate-50 dark:bg-slate-900/30',
       buttonVariant: 'outline' as const,
     },
     {
-      name: 'Vàng',
-      description: 'Giải pháp tối ưu cho nhóm và doanh nghiệp nhỏ',
+      name: 'Gold',
+      description: 'Optimal solution for teams and small businesses',
       priceMonthly: '199.000',
       priceYearly: '1.999.000',
       features: [
-        { name: 'Tạo đến 30 bài thuyết trình', included: true },
-        { name: 'Truy cập 50+ mẫu chuyên nghiệp', included: true },
-        { name: 'Hỗ trợ AI nâng cao', included: true },
-        { name: 'Xuất file PDF, PPT và các định dạng khác', included: true },
-        { name: 'Chỉnh sửa cộng tác (5 người)', included: true },
-        { name: 'Phân tích người xem cơ bản', included: true },
-        { name: 'Hỗ trợ kỹ thuật ưu tiên', included: false },
-        { name: 'Tính năng nâng cao', included: false },
+        { name: 'Create up to 30 presentations', included: true },
+        { name: 'Access to 50+ professional templates', included: true },
+        { name: 'Advanced AI support', included: true },
+        { name: 'PDF, PPT and other format exports', included: true },
+        { name: 'Collaborative editing (5 users)', included: true },
+        { name: 'Basic viewer analytics', included: true },
+        { name: 'Priority technical support', included: false },
+        { name: 'Advanced features', included: false },
       ],
       color: 'border-yellow-300 bg-yellow-50 dark:bg-yellow-900/30',
       buttonVariant: 'secondary' as const,
     },
     {
-      name: 'Bạch Kim',
-      description: 'Cho doanh nghiệp với nhu cầu chuyên nghiệp',
+      name: 'Platinum',
+      description: 'For businesses with professional needs',
       priceMonthly: '299.000',
       priceYearly: '2.999.000',
       features: [
-        { name: 'Tạo không giới hạn bài thuyết trình', included: true },
-        { name: 'Truy cập tất cả mẫu cao cấp', included: true },
-        { name: 'Hỗ trợ AI toàn diện', included: true },
-        { name: 'Xuất tất cả định dạng, chất lượng cao', included: true },
-        { name: 'Chỉnh sửa cộng tác không giới hạn', included: true },
-        { name: 'Phân tích người xem nâng cao', included: true },
-        { name: 'Hỗ trợ kỹ thuật ưu tiên 24/7', included: true },
-        { name: 'Tính năng nâng cao', included: true },
+        { name: 'Unlimited presentations', included: true },
+        { name: 'Access to all premium templates', included: true },
+        { name: 'Comprehensive AI support', included: true },
+        { name: 'Export all formats, high quality', included: true },
+        { name: 'Unlimited collaborative editing', included: true },
+        { name: 'Advanced viewer analytics', included: true },
+        { name: '24/7 priority technical support', included: true },
+        { name: 'Advanced features', included: true },
       ],
       color: 'border-slate-400 bg-slate-100 dark:bg-slate-800/50',
       buttonVariant: 'default' as const,
       isPopular: true,
     },
     {
-      name: 'Kim Cương',
-      description: 'Giải pháp tối ưu cho doanh nghiệp lớn',
+      name: 'Diamond',
+      description: 'Optimal solution for large businesses',
       priceMonthly: '599.000',
       priceYearly: '5.999.000',
       features: [
-        { name: 'Tất cả tính năng của gói Bạch Kim', included: true },
-        { name: 'Tùy chỉnh thương hiệu hoàn toàn', included: true },
-        { name: 'API tích hợp dành cho doanh nghiệp', included: true },
-        { name: 'Quản lý đội nhóm và phân quyền', included: true },
-        { name: 'Báo cáo phân tích chuyên sâu', included: true },
-        { name: 'Đào tạo sử dụng 1-1', included: true },
-        { name: 'Quản lý tài khoản riêng', included: true },
-        { name: 'Lưu trữ dữ liệu riêng tư', included: true },
+        { name: 'All Platinum features', included: true },
+        { name: 'Complete brand customization', included: true },
+        { name: 'Enterprise API integration', included: true },
+        { name: 'Team management and permissions', included: true },
+        { name: 'In-depth analytical reporting', included: true },
+        { name: '1-on-1 training sessions', included: true },
+        { name: 'Dedicated account manager', included: true },
+        { name: 'Private data storage', included: true },
       ],
       color: 'border-blue-400 bg-blue-50 dark:bg-blue-900/30',
       buttonVariant: 'default' as const,
@@ -148,7 +148,7 @@ const MembershipPlansPage = () => {
             className='text-center mb-16'
           >
             <h1 className='text-4xl md:text-5xl font-bold mb-4 relative inline-block'>
-              Lựa chọn gói Membership
+              Choose Your Membership
               <motion.div
                 className='absolute -right-8 -top-8'
                 initial={{ scale: 0, rotate: -20 }}
@@ -164,8 +164,8 @@ const MembershipPlansPage = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              Nâng tầm bài thuyết trình của bạn với các gói PreziQ đa dạng, phù
-              hợp mọi nhu cầu
+              Elevate your presentations with PreziQ's diverse plans, suitable
+              for all needs
             </motion.p>
           </motion.div>
 
@@ -184,16 +184,16 @@ const MembershipPlansPage = () => {
               className='w-full max-w-md'
             >
               <TabsList className='grid w-full grid-cols-2'>
-                <TabsTrigger value='monthly'>Thanh toán hàng tháng</TabsTrigger>
+                <TabsTrigger value='monthly'>Monthly Billing</TabsTrigger>
                 <TabsTrigger value='yearly'>
-                  Thanh toán hàng năm
+                  Annual Billing
                   <motion.span
                     className='ml-1.5 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400'
                     initial={{ scale: 0.8 }}
                     animate={{ scale: [0.8, 1.05, 1] }}
                     transition={{ delay: 0.8, duration: 0.5 }}
                   >
-                    Tiết kiệm {discount}%
+                    Save {discount}%
                   </motion.span>
                 </TabsTrigger>
               </TabsList>
@@ -226,7 +226,7 @@ const MembershipPlansPage = () => {
                       animate={{ y: 0, opacity: 1 }}
                       transition={{ delay: 0.5 + index * 0.1 }}
                     >
-                      {plan.isPopular ? 'Phổ biến nhất' : 'Doanh nghiệp'}
+                      {plan.isPopular ? 'Most Popular' : 'Enterprise'}
                     </motion.span>
                   )}
                   <CardHeader>
@@ -251,7 +251,7 @@ const MembershipPlansPage = () => {
                         đ
                       </motion.span>
                       <span className='text-muted-foreground ml-1'>
-                        /{billingCycle === 'yearly' ? 'năm' : 'tháng'}
+                        /{billingCycle === 'yearly' ? 'year' : 'month'}
                       </span>
                     </motion.div>
                   </CardHeader>
@@ -291,28 +291,18 @@ const MembershipPlansPage = () => {
                       ))}
                     </ul>
                   </CardContent>
-                  <CardFooter>
-                    <motion.div
+                  <CardFooter className='mt-auto'>
+                    <Link
+                      href={`/membership/payment?plan=${plan.name.toLowerCase()}&billing=${billingCycle}`}
                       className='w-full'
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
                     >
                       <Button
                         variant={plan.buttonVariant}
-                        className={cn(
-                          'w-full',
-                          plan.isPopular &&
-                            'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700'
-                        )}
-                        asChild
+                        className='w-full transition-all'
                       >
-                        <Link href='/auth/signup'>
-                          {plan.isEnterprise
-                            ? 'Liên hệ tư vấn'
-                            : 'Đăng ký ngay'}
-                        </Link>
+                        Sign Up Now
                       </Button>
-                    </motion.div>
+                    </Link>
                   </CardFooter>
                 </Card>
               </motion.div>
@@ -333,7 +323,7 @@ const MembershipPlansPage = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 1.3 }}
                 >
-                  Bạn cần giải pháp đặc biệt?
+                  Need a custom solution?
                 </motion.h2>
                 <motion.p
                   className='text-muted-foreground mb-4'
@@ -341,16 +331,15 @@ const MembershipPlansPage = () => {
                   animate={{ opacity: 1 }}
                   transition={{ delay: 1.4 }}
                 >
-                  Chúng tôi cung cấp các gói tùy chỉnh cho doanh nghiệp có nhu
-                  cầu đặc thù. Hãy liên hệ với đội ngũ bán hàng của chúng tôi để
-                  được tư vấn.
+                  We offer customized packages for businesses with specific
+                  needs. Contact our sales team for a consultation.
                 </motion.p>
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button asChild>
-                    <Link href='/contact'>Liên hệ tư vấn</Link>
+                    <Link href='/contact'>Contact Sales</Link>
                   </Button>
                 </motion.div>
               </div>
@@ -361,7 +350,7 @@ const MembershipPlansPage = () => {
                   animate={{ opacity: 1 }}
                   transition={{ delay: 1.5 }}
                 >
-                  Những khách hàng tin tưởng chúng tôi
+                  Trusted by
                 </motion.h3>
                 <motion.div
                   className='grid grid-cols-3 gap-4'
@@ -406,7 +395,7 @@ const MembershipPlansPage = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.8 }}
             >
-              Câu hỏi thường gặp
+              Frequently Asked Questions
             </motion.h2>
             <motion.div
               className='space-y-4'
@@ -421,12 +410,12 @@ const MembershipPlansPage = () => {
                 whileHover={{ scale: 1.01 }}
               >
                 <h3 className='font-semibold mb-2'>
-                  Tôi có thể thay đổi gói membership không?
+                  Can I change my membership plan?
                 </h3>
                 <p className='text-muted-foreground'>
-                  Vâng, bạn có thể dễ dàng nâng cấp hoặc hạ cấp gói membership
-                  bất kỳ lúc nào. Những thay đổi sẽ có hiệu lực vào kỳ thanh
-                  toán tiếp theo.
+                  Yes, you can easily upgrade or downgrade your membership plan
+                  at any time. Changes will take effect on your next billing
+                  cycle.
                 </p>
               </motion.div>
               <motion.div
@@ -435,12 +424,12 @@ const MembershipPlansPage = () => {
                 whileHover={{ scale: 1.01 }}
               >
                 <h3 className='font-semibold mb-2'>
-                  Chính sách hoàn tiền như thế nào?
+                  What is the refund policy?
                 </h3>
                 <p className='text-muted-foreground'>
-                  Chúng tôi cung cấp chính sách hoàn tiền 14 ngày cho tất cả các
-                  gói membership mới. Nếu bạn không hài lòng, hãy liên hệ với
-                  chúng tôi để được hỗ trợ.
+                  We offer a 14-day money-back guarantee for all new membership
+                  plans. If you're not satisfied, please contact us for
+                  assistance.
                 </p>
               </motion.div>
               <motion.div
@@ -449,12 +438,12 @@ const MembershipPlansPage = () => {
                 whileHover={{ scale: 1.01 }}
               >
                 <h3 className='font-semibold mb-2'>
-                  Tôi có thể thanh toán bằng những phương thức nào?
+                  What payment methods are accepted?
                 </h3>
                 <p className='text-muted-foreground'>
-                  Chúng tôi chấp nhận thanh toán qua thẻ tín dụng/ghi nợ quốc
-                  tế, chuyển khoản ngân hàng, và các ví điện tử phổ biến tại
-                  Việt Nam như Momo, VNPay, ZaloPay.
+                  We accept payment via international credit/debit cards, bank
+                  transfers, and popular e-wallets like Momo, VNPay, and
+                  ZaloPay.
                 </p>
               </motion.div>
               <motion.div
@@ -463,12 +452,12 @@ const MembershipPlansPage = () => {
                 whileHover={{ scale: 1.01 }}
               >
                 <h3 className='font-semibold mb-2'>
-                  Tôi cần hỗ trợ thêm, liên hệ như thế nào?
+                  How can I get additional support?
                 </h3>
                 <p className='text-muted-foreground'>
-                  Đội ngũ hỗ trợ của chúng tôi luôn sẵn sàng giúp đỡ qua email
-                  support@preziq.com hoặc chat trực tuyến trên website. Khách
-                  hàng các gói Bạch Kim và Kim Cương được hỗ trợ qua điện thoại.
+                  Our support team is always ready to help via email at
+                  support@preziq.com or through live chat on our website.
+                  Platinum and Diamond customers receive phone support.
                 </p>
               </motion.div>
             </motion.div>
