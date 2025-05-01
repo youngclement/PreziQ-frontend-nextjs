@@ -11,6 +11,34 @@ export interface ContentItem {
   content: QuizQuestion | SlideItem;
   order: number; // for explicit ordering
 }
+
+export interface QuizOption {
+  option_text: string;
+  is_correct: boolean;
+  display_order: number;
+  explanation?: string;
+}
+
+export interface QuizQuestion {
+  activity_id: string;
+  question_text: string;
+  question_type:
+    | "multiple_choice"
+    | "multiple_response"
+    | "true_false"
+    | "text_answer"
+    | "slide"
+    | "reorder";
+  correct_answer_text: string;
+  options: QuizOption[];
+  explanation?: string;
+  time_limit_seconds?: number;
+  points?: number;
+  slide_content?: string; // For slide-type questions
+  slide_image?: string; // For slide images
+}
+
+// Define API responses
 export interface Activity {
   id: string;
   title: string;
@@ -18,23 +46,20 @@ export interface Activity {
   description: string;
   is_published: boolean;
   activity_type_id: string;
+  backgroundColor?: string;
+  backgroundImage?: string;
+  customBackgroundMusic?: string;
+  orderIndex?: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  quiz?: any; // The original quiz data from the API
 }
 
-export interface QuizQuestion {
-  correct_answer_text: string;
-  id?: string;
-  activity_id: string;
-  question_text: string;
-  question_type: string; // Now includes "slide" type
-  options: QuizOption[];
-  slide_content?: string; // New field for slide content (rich text or markdown)
-  slide_image?: string; // Optional image for slides
-}
-
-export interface QuizOption {
-  id?: string;
-  quiz_question_id?: string;
-  option_text: string;
-  is_correct: boolean;
-  display_order: number;
+export interface Collection {
+  id: string;
+  name: string;
+  description: string;
+  is_public: boolean;
+  activities: Activity[];
 }
