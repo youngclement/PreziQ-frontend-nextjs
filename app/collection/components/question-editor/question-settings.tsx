@@ -9,6 +9,7 @@ import {
   CheckSquare,
   AlignLeft,
   FileText,
+  MoveVertical, // Add this import
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -29,6 +30,7 @@ import { OptionList } from './option-list';
 import { AdvancedSettings } from './advanced-settings';
 import { Textarea } from '@/components/ui/textarea';
 import { FabricToolbar } from '../slide/tool-bar';
+import { ReorderOptions } from './reorder-options';
 
 interface QuestionSettingsProps {
   activeQuestion: QuizQuestion;
@@ -54,8 +56,34 @@ interface QuestionSettingsProps {
   onCorrectAnswerChange?: (value: string) => void;
   onSlideContentChange?: (value: string) => void;
   onSlideImageChange?: (value: string) => void;
+  onReorderOptions?: (sourceIndex: number, destinationIndex: number) => void;
 }
-
+const TextAnswerForm = ({
+  correctAnswerText,
+  onTextAnswerChange,
+  onTextAnswerBlur
+}: {
+  correctAnswerText: string;
+  onTextAnswerChange: (value: string) => void;
+  onTextAnswerBlur: () => void;
+}) => {
+  return (
+    <div className="space-y-2 mt-4 p-4 bg-muted/30 rounded-md">
+      <Label htmlFor="correct-answer">Correct Answer</Label>
+      <Input
+        id="correct-answer"
+        value={correctAnswerText}
+        onChange={(e) => onTextAnswerChange(e.target.value)}
+        onBlur={onTextAnswerBlur}
+        placeholder="Enter the correct answer"
+        className="w-full"
+      />
+      <p className="text-xs text-muted-foreground">
+        Students must type this exact answer to be correct
+      </p>
+    </div>
+  );
+};
 export function QuestionSettings({
   activeQuestion,
   activeQuestionIndex,
@@ -75,17 +103,27 @@ export function QuestionSettings({
   onCorrectAnswerChange,
   onSlideContentChange,
   onSlideImageChange,
+  onReorderOptions,
 }: QuestionSettingsProps) {
   // State to store the correct answer text for text_answer type
   const [correctAnswerText, setCorrectAnswerText] = React.useState(
     activeQuestion.correct_answer_text || ''
   );
 
+  // Update state when activeQuestion changes
+  React.useEffect(() => {
+    setCorrectAnswerText(activeQuestion.correct_answer_text || '');
+  }, [activeQuestion.activity_id, activeQuestion.correct_answer_text]);
+
   // Update text answer when changing
   const handleTextAnswerChange = (value: string) => {
     setCorrectAnswerText(value);
+  };
+
+  // Send to API when input loses focus
+  const handleTextAnswerBlur = () => {
     if (onCorrectAnswerChange) {
-      onCorrectAnswerChange(value);
+      onCorrectAnswerChange(correctAnswerText);
     }
   };
 
@@ -95,72 +133,68 @@ export function QuestionSettings({
       case 'true_false':
         return (
           <div className="space-y-2 mt-4 p-4 bg-muted/30 rounded-md">
-            <Label className="font-medium">Correct Answer</Label>
-            <RadioGroup
-              value={
-                activeQuestion.options.find((opt) => opt.is_correct)
-                  ?.option_text === 'True'
-                  ? 'true'
-                  : 'false'
-              }
-              onValueChange={(value) => {
-                // Find the indices of True and False options
-                const trueIndex = activeQuestion.options.findIndex(
-                  (opt) => opt.option_text === 'True'
-                );
-                const falseIndex = activeQuestion.options.findIndex(
-                  (opt) => opt.option_text === 'False'
-                );
-
-                // Set the correct option based on the value
-                if (trueIndex >= 0 && falseIndex >= 0) {
-                  if (value === 'true') {
-                    onOptionChange(
-                      activeQuestionIndex,
-                      trueIndex,
-                      'is_correct',
-                      true
-                    );
-                    // Setting false will happen automatically in handleOptionChange
-                  } else {
-                    onOptionChange(
-                      activeQuestionIndex,
-                      falseIndex,
-                      'is_correct',
-                      true
-                    );
-                    // Setting false will happen automatically in handleOptionChange
-                  }
-                }
-              }}
-              className="flex flex-col space-y-2"
-            >
+            <Label>Correct Answer</Label>
+            <div className="flex flex-col gap-2">
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="true" id="true" />
-                <Label htmlFor="true" className="flex items-center">
-                  <CheckCircle className="h-4 w-4 mr-2 text-green-500" /> True
-                </Label>
+                <input
+                  type="radio"
+                  id="true-option"
+                  checked={activeQuestion.options.findIndex(
+                    (o) => o.option_text === "True" && o.is_correct
+                  ) > -1}
+                  onChange={() => {
+                    const trueIdx = activeQuestion.options.findIndex(
+                      (o) => o.option_text === "True"
+                    );
+                    if (trueIdx > -1) {
+                      onOptionChange(activeQuestionIndex, trueIdx, "is_correct", true);
+                    }
+                  }}
+                  className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                />
+                <label htmlFor="true-option" className="text-sm font-medium">True</label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="false" id="false" />
-                <Label htmlFor="false" className="flex items-center">
-                  <XCircle className="h-4 w-4 mr-2 text-red-500" /> False
-                </Label>
+                <input
+                  type="radio"
+                  id="false-option"
+                  checked={activeQuestion.options.findIndex(
+                    (o) => o.option_text === "False" && o.is_correct
+                  ) > -1}
+                  onChange={() => {
+                    const falseIdx = activeQuestion.options.findIndex(
+                      (o) => o.option_text === "False"
+                    );
+                    if (falseIdx > -1) {
+                      onOptionChange(activeQuestionIndex, falseIdx, "is_correct", true);
+                    }
+                  }}
+                  className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                />
+                <label htmlFor="false-option" className="text-sm font-medium">False</label>
               </div>
-            </RadioGroup>
+            </div>
           </div>
         );
       case 'text_answer':
         return (
           <div className="space-y-2 mt-4 p-4 bg-muted/30 rounded-md">
-            <Label className="font-medium">Correct Answer Text</Label>
+            <Label htmlFor="correct-answer">Correct Answer</Label>
             <Input
+              id="correct-answer"
               value={correctAnswerText}
               onChange={(e) => handleTextAnswerChange(e.target.value)}
               placeholder="Enter the correct answer"
+              className="w-full"
+              onBlur={() => {
+                // This ensures we trigger the callback after focus is lost
+                if (onCorrectAnswerChange) {
+                  onCorrectAnswerChange(correctAnswerText);
+                }
+              }}
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Student answer will be compared to this text (case insensitive)
+            <p className="text-xs text-muted-foreground">
+              Students must type this exact answer to be correct
             </p>
           </div>
         );
@@ -223,6 +257,58 @@ export function QuestionSettings({
       default:
         return null;
     }
+  };
+
+  const TrueFalseSelector = ({
+    options,
+    onOptionChange,
+    activeQuestionIndex
+  }: {
+    options: any[];
+    onOptionChange: (questionIndex: number, optionIndex: number, field: string, value: any) => void;
+    activeQuestionIndex: number;
+  }) => {
+    const trueIndex = options.findIndex(opt => opt.option_text.toLowerCase() === 'true');
+    const falseIndex = options.findIndex(opt => opt.option_text.toLowerCase() === 'false');
+
+    const isTrueSelected = trueIndex >= 0 && options[trueIndex].is_correct;
+    const isFalseSelected = falseIndex >= 0 && options[falseIndex].is_correct;
+
+    return (
+      <div className="space-y-2 mt-4 p-4 bg-muted/30 rounded-md">
+        <Label>Correct Answer</Label>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center space-x-2">
+            <input
+              type="radio"
+              id="true-option"
+              checked={isTrueSelected}
+              onChange={() => {
+                if (trueIndex >= 0) {
+                  onOptionChange(activeQuestionIndex, trueIndex, "is_correct", true);
+                }
+              }}
+              className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+            />
+            <label htmlFor="true-option" className="text-sm font-medium">True</label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="radio"
+              id="false-option"
+              checked={isFalseSelected}
+              onChange={() => {
+                if (falseIndex >= 0) {
+                  onOptionChange(activeQuestionIndex, falseIndex, "is_correct", true);
+                }
+              }}
+              className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+            />
+            <label htmlFor="false-option" className="text-sm font-medium">False</label>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -289,6 +375,12 @@ export function QuestionSettings({
                       Text Answer
                     </div>
                   </SelectItem>
+                  <SelectItem value="reorder">
+                    <div className="flex items-center">
+                      <MoveVertical className="h-4 w-4 mr-2 text-primary" />
+                      Reorder
+                    </div>
+                  </SelectItem>
                   <SelectItem value="slide">
                     <div className="flex items-center">
                       <FileText className="h-4 w-4 mr-2 text-primary" />
@@ -308,13 +400,33 @@ export function QuestionSettings({
               {/* Only show options list for multiple choice and multiple response */}
               {(activeQuestion.question_type === 'multiple_choice' ||
                 activeQuestion.question_type === 'multiple_response') && (
-                <OptionList
+                  <OptionList
+                    options={activeQuestion.options}
+                    activeQuestionIndex={activeQuestionIndex}
+                    onAddOption={onAddOption}
+                    onOptionChange={onOptionChange}
+                    onDeleteOption={onDeleteOption}
+                    questionType={activeQuestion.question_type}
+                  />
+                )}
+
+              {activeQuestion.question_type === "reorder" && activeTab === "content" && (
+                <div className="space-y-4 mt-4">
+                  <ReorderOptions
+                    options={activeQuestion.options}
+                    onOptionChange={onOptionChange}
+                    onDeleteOption={onDeleteOption}
+                    onAddOption={onAddOption}
+                    onReorder={onReorderOptions}
+                  />
+                </div>
+              )}
+
+              {activeQuestion.question_type === 'true_false' && activeTab === 'content' && (
+                <TrueFalseSelector
                   options={activeQuestion.options}
-                  activeQuestionIndex={activeQuestionIndex}
-                  onAddOption={onAddOption}
                   onOptionChange={onOptionChange}
-                  onDeleteOption={onDeleteOption}
-                  questionType={activeQuestion.question_type}
+                  activeQuestionIndex={activeQuestionIndex}
                 />
               )}
             </div>

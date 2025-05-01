@@ -66,19 +66,17 @@ export function OptionList({
                             </div>
                         </div>
                         <div className="flex space-x-1 ml-2">
-                            <Button
-                                variant={option.is_correct ? "default" : "outline"}
-                                size="sm"
-                                className={cn(
-                                    "h-7 w-7 p-0",
-                                    option.is_correct && "bg-green-500 hover:bg-green-600"
-                                )}
-                                onClick={() =>
-                                    onOptionChange(activeQuestionIndex, index, 'is_correct', !option.is_correct)
-                                }
-                            >
-                                <CheckCircle className="h-3.5 w-3.5" />
-                            </Button>
+                            <input
+                                type={questionType === 'multiple_choice' ? 'radio' : 'checkbox'}
+                                checked={option.is_correct}
+                                onChange={(e) => {
+                                    // For checkbox (multiple_response), directly use the checked state
+                                    // For radio (multiple_choice), always true when selected
+                                    const newValue = questionType === 'multiple_choice' ? true : e.target.checked;
+                                    onOptionChange(activeQuestionIndex, index, "is_correct", newValue);
+                                }}
+                                className="h-4 w-4"
+                            />
                             <Button
                                 variant="outline"
                                 size="sm"
