@@ -5,3 +5,4 @@ export * from './roles-api';
 export * from './storage-api';
 export * from './users-api';
 export * from './user-update-api';
+export * from './activities-api';

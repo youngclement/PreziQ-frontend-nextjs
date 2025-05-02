@@ -3,45 +3,30 @@
 // Update the imports at the top of question-preview.tsx
 import dynamic from 'next/dynamic';
 import {
-  Clock,
-  Image,
-  Zap,
-  Pencil,
-  ChevronDown,
-  ArrowUp,
-  FileText,
-  Search,
-  Monitor,
-  Tablet,
-  Smartphone,
-} from 'lucide-react';
+  Clock, Image, Zap, Pencil, ChevronDown, ArrowUp, FileText,
+  Search, Monitor, Tablet, Smartphone
+} from "lucide-react";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+  Card, CardHeader, CardTitle, CardDescription, CardContent
+} from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { QuizQuestion, QuizOption } from '../types';
-import { motion, AnimatePresence } from 'framer-motion';
-import React, { useEffect, useRef } from 'react';
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { QuizQuestion, QuizOption } from "../types";
+import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useRef } from "react";
+
 const FabricEditor = dynamic(() => import('../slide/slide-edit/slide-editor'), {
   ssr: false,
 });
+
 interface QuestionPreviewProps {
   questions: QuizQuestion[];
   activeQuestionIndex: number;
@@ -49,12 +34,7 @@ interface QuestionPreviewProps {
   backgroundImage: string;
   previewMode: boolean;
   onQuestionTextChange: (value: string, questionIndex: number) => void;
-  onOptionChange: (
-    questionIndex: number,
-    optionIndex: number,
-    field: string,
-    value: any
-  ) => void;
+  onOptionChange: (questionIndex: number, optionIndex: number, field: string, value: any) => void;
   onChangeQuestion: (index: number) => void;
   onSlideImageChange?: (value: string, index: number) => void;
 }
@@ -68,9 +48,9 @@ export function QuestionPreview({
   onQuestionTextChange,
   onOptionChange,
   onChangeQuestion,
-  onSlideImageChange,
+  onSlideImageChange
 }: QuestionPreviewProps) {
-  const [viewMode, setViewMode] = React.useState('desktop');
+  const [viewMode, setViewMode] = React.useState("desktop");
   const [showScrollTop, setShowScrollTop] = React.useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -88,13 +68,12 @@ export function QuestionPreview({
         const questionRect = question.getBoundingClientRect();
 
         // Calculate the scroll position needed
-        const scrollPosition =
-          container.scrollTop + (questionRect.top - containerRect.top) - 16; // 16px offset for better positioning
+        const scrollPosition = container.scrollTop + (questionRect.top - containerRect.top) - 16; // 16px offset for better positioning
 
         // Smooth scroll to that position
         container.scrollTo({
           top: scrollPosition,
-          behavior: 'smooth',
+          behavior: 'smooth'
         });
 
         // Update the active question index
@@ -111,8 +90,7 @@ export function QuestionPreview({
         setShowScrollTop(scrollContainerRef.current.scrollTop > 300);
 
         // Get container details
-        const containerRect =
-          scrollContainerRef.current.getBoundingClientRect();
+        const containerRect = scrollContainerRef.current.getBoundingClientRect();
         const containerTop = containerRect.top;
         const containerHeight = containerRect.height;
         const containerCenter = containerTop + containerHeight / 2;
@@ -126,19 +104,13 @@ export function QuestionPreview({
             const rect = ref.getBoundingClientRect();
 
             // Skip if the element is not visible at all
-            if (
-              rect.bottom < containerTop ||
-              rect.top > containerTop + containerHeight
-            ) {
+            if (rect.bottom < containerTop || rect.top > containerTop + containerHeight) {
               return;
             }
 
             // Calculate how much of the element is visible
             const visibleTop = Math.max(rect.top, containerTop);
-            const visibleBottom = Math.min(
-              rect.bottom,
-              containerTop + containerHeight
-            );
+            const visibleBottom = Math.min(rect.bottom, containerTop + containerHeight);
             const visibleHeight = visibleBottom - visibleTop;
 
             // If this element has more visible area than our current best, update
@@ -176,12 +148,10 @@ export function QuestionPreview({
   const scrollToTop = () => {
     scrollContainerRef.current?.scrollTo({
       top: 0,
-      behavior: 'smooth',
+      behavior: 'smooth'
     });
   };
 
-  const activeQuestion = questions[activeQuestionIndex];
-  console.log("activeQuestion", )
   return (
     <motion.div
       className="flex flex-col h-full space-y-4 w-full"
@@ -310,7 +280,7 @@ export function QuestionPreview({
                 )}
               </div>
 
-              {/* Conditional rendering dựa trên question_type */}
+              {/* Conditional rendering based on question_type */}
               {question.question_type === 'slide' ? (
                 <div
                   className={cn(
@@ -349,11 +319,11 @@ export function QuestionPreview({
                           : 375
                       }
                       backgroundColor="transparent"
-                      // onImageDrop={(url) => {
-                      //   if (onSlideImageChange) {
-                      //     onSlideImageChange(url, questionIndex);
-                      //   }
-                      // }}
+                      onImageDrop={(url) => {
+                        if (onSlideImageChange) {
+                          onSlideImageChange(url, questionIndex);
+                        }
+                      }}
                     />
                   ) : (
                     <div className="flex flex-col items-center gap-6 w-full max-w-3xl">
@@ -496,6 +466,30 @@ export function QuestionPreview({
                             `Question ${questionIndex + 1}`}
                         </motion.h2>
                       )}
+
+                      {/* Handle reorder question type */}
+                      {question.question_type === "reorder" && (
+                        <div className="space-y-6">
+                          <div className="text-2xl font-medium text-center">
+                            {question.question_text || "Arrange in the correct order"}
+                          </div>
+                          <div className="space-y-2">
+                            {question.options
+                              .sort((a, b) => a.display_order - b.display_order)
+                              .map((option, idx) => (
+                                <div
+                                  key={idx}
+                                  className="p-4 bg-white rounded-md border shadow-sm flex items-center"
+                                >
+                                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-3">
+                                    {idx + 1}
+                                  </div>
+                                  <div className="font-medium">{option.option_text}</div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Image Attribution */}
@@ -515,7 +509,7 @@ export function QuestionPreview({
                     )}
                   </motion.div>
 
-                  {/* Options grid cho question */}
+                  {/* Options grid for question */}
                   {question.question_type !== 'slide' && (
                     <div
                       className={cn(
@@ -572,41 +566,17 @@ interface OptionItemProps {
   onOptionChange: (index: number, field: string, value: any) => void;
 }
 
-function OptionItem({
-  option,
-  index,
-  previewMode,
-  questionType,
-  onOptionChange,
-}: OptionItemProps) {
+function OptionItem({ option, index, previewMode, questionType, onOptionChange }: OptionItemProps) {
   const optionLetter = ['A', 'B', 'C', 'D', 'E', 'F'][index];
 
   const getOptionStyle = () => {
     const styles = [
-      {
-        bg: 'bg-gradient-to-r from-pink-500 to-rose-500',
-        hover: 'hover:from-pink-600 hover:to-rose-600',
-      },
-      {
-        bg: 'bg-gradient-to-r from-blue-500 to-indigo-500',
-        hover: 'hover:from-blue-600 hover:to-indigo-600',
-      },
-      {
-        bg: 'bg-gradient-to-r from-green-500 to-emerald-500',
-        hover: 'hover:from-green-600 hover:to-emerald-600',
-      },
-      {
-        bg: 'bg-gradient-to-r from-yellow-500 to-amber-500',
-        hover: 'hover:from-yellow-600 hover:to-amber-600',
-      },
-      {
-        bg: 'bg-gradient-to-r from-purple-500 to-violet-500',
-        hover: 'hover:from-purple-600 hover:to-violet-600',
-      },
-      {
-        bg: 'bg-gradient-to-r from-red-500 to-orange-500',
-        hover: 'hover:from-red-600 hover:to-orange-600',
-      },
+      { bg: "bg-gradient-to-r from-pink-500 to-rose-500", hover: "hover:from-pink-600 hover:to-rose-600" },
+      { bg: "bg-gradient-to-r from-blue-500 to-indigo-500", hover: "hover:from-blue-600 hover:to-indigo-600" },
+      { bg: "bg-gradient-to-r from-green-500 to-emerald-500", hover: "hover:from-green-600 hover:to-emerald-600" },
+      { bg: "bg-gradient-to-r from-yellow-500 to-amber-500", hover: "hover:from-yellow-600 hover:to-amber-600" },
+      { bg: "bg-gradient-to-r from-purple-500 to-violet-500", hover: "hover:from-purple-600 hover:to-violet-600" },
+      { bg: "bg-gradient-to-r from-red-500 to-orange-500", hover: "hover:from-red-600 hover:to-orange-600" },
     ];
     return styles[index % styles.length];
   };
@@ -616,25 +586,21 @@ function OptionItem({
   return (
     <motion.div
       className={cn(
-        'group rounded-xl transition-all duration-200 overflow-hidden shadow-md',
-        previewMode && 'cursor-pointer hover:shadow-lg',
-        previewMode && option.is_correct && 'ring-4 ring-green-400/30'
+        "group rounded-xl transition-all duration-200 overflow-hidden shadow-md",
+        previewMode && "cursor-pointer hover:shadow-lg",
+        previewMode && option.is_correct && "ring-4 ring-green-400/30"
       )}
       whileHover={{ scale: 1.03 }}
       whileTap={{ scale: 0.98 }}
       layout
     >
-      <div
-        className={cn(
-          'p-4 h-full bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 flex items-center',
-          previewMode &&
-            option.is_correct &&
-            'bg-green-100/95 dark:bg-green-900/50'
-        )}
-      >
+      <div className={cn(
+        "p-4 h-full bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 flex items-center",
+        previewMode && option.is_correct && "bg-green-100/95 dark:bg-green-900/50"
+      )}>
         <div
           className={cn(
-            'w-10 h-10 rounded-lg flex items-center justify-center mr-4 flex-shrink-0 text-white font-semibold shadow-md',
+            "w-10 h-10 rounded-lg flex items-center justify-center mr-4 flex-shrink-0 text-white font-semibold shadow-md",
             optionStyle.bg
           )}
         >
@@ -645,9 +611,7 @@ function OptionItem({
           <div className="flex-1 flex items-center min-w-0 gap-3">
             <Input
               value={option.option_text}
-              onChange={(e) =>
-                onOptionChange(index, 'option_text', e.target.value)
-              }
+              onChange={(e) => onOptionChange(index, 'option_text', e.target.value)}
               placeholder={`Option ${optionLetter}`}
               className="border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0 py-1 text-base font-medium"
             />

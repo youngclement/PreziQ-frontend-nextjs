@@ -1,24 +1,27 @@
-import axios, { AxiosError } from 'axios';
-import { toast } from '@/hooks/use-toast';
-import { authApi } from './auth-api';
+import axios, { AxiosError } from "axios";
+import { toast } from "@/hooks/use-toast";
+import { authApi } from "./auth-api";
 
 let axiosClient = axios.create({
-  baseURL: 'https://preziq.duckdns.org/api/v1',
+  baseURL:
+    "http://ec2-54-169-33-117.ap-southeast-1.compute.amazonaws.com/api/v1",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   withCredentials: true,
 });
 
+
 axiosClient.defaults.timeout = 1000 * 60 * 10;
+
 axiosClient.defaults.withCredentials = true;
 
 // Interceptor cho request
 axiosClient.interceptors.request.use((config) => {
-  if (!config?.url?.includes('/auth/refresh')) {
-    const token = localStorage.getItem('accessToken');
+  if (!config?.url?.includes("/auth/refresh")) {
+    const token = localStorage.getItem("accessToken");
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers["Authorization"] = `Bearer ${token}`;
     }
   }
   return config;
@@ -36,7 +39,11 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config as any;
 
     // Xử lý lỗi 401
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry
+    ) {
       originalRequest._retry = true;
 
       // Lấy thông tin lỗi từ response
@@ -55,16 +62,20 @@ axiosClient.interceptors.response.use(
           refreshTokenPromise = authApi
             .refreshToken()
             .then((response) => {
-              const newAccessToken = response?.data?.data?.accessToken || response?.data?.accessToken;
+              const newAccessToken =
+                response?.data?.data?.accessToken ||
+                response?.data?.accessToken;
               if (newAccessToken) {
-                localStorage.setItem('accessToken', newAccessToken);
+                localStorage.setItem("accessToken", newAccessToken);
                 return newAccessToken;
               }
-              return Promise.reject('Không nhận được access token từ API refresh');
+              return Promise.reject(
+                "Không nhận được access token từ API refresh"
+              );
             })
             .catch((refreshError) => {
-              localStorage.removeItem('accessToken');
-              window.location.href = '/login'; // Chuyển hướng về trang đăng nhập
+              localStorage.removeItem("accessToken");
+              window.location.href = "/login"; // Chuyển hướng về trang đăng nhập
               return Promise.reject(refreshError);
             })
             .finally(() => {
@@ -73,7 +84,7 @@ axiosClient.interceptors.response.use(
         }
 
         return refreshTokenPromise.then((accessToken) => {
-          originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+          originalRequest.headers["Authorization"] = `Bearer ${accessToken}`;
           return axiosClient(originalRequest);
         });
       }
@@ -81,10 +92,10 @@ axiosClient.interceptors.response.use(
 
     // Xử lý thông báo lỗi
     let errorMessage = error.message;
-    if (error.response?.data && typeof error.response.data === 'object') {
+    if (error.response?.data && typeof error.response.data === "object") {
       const data = error.response.data as Record<string, any>;
       if (data.errors && Array.isArray(data.errors)) {
-        errorMessage = data.errors.map((err: any) => err.message).join('; ');
+        errorMessage = data.errors.map((err: any) => err.message).join("; ");
       } else if (data.message) {
         errorMessage = data.message;
       }
@@ -93,7 +104,7 @@ axiosClient.interceptors.response.use(
     if (error.response?.status !== 410) {
       toast({
         title: errorMessage,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
 
