@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 // Update the imports at the top of question-preview.tsx
 import dynamic from 'next/dynamic';
@@ -14,15 +14,19 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { QuizQuestion, QuizOption } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import React, { useEffect, useRef } from "react";
+
 const FabricEditor = dynamic(() => import('../slide/slide-edit/slide-editor'), {
   ssr: false,
 });
+
 interface QuestionPreviewProps {
   questions: QuizQuestion[];
   activeQuestionIndex: number;
@@ -276,23 +280,96 @@ export function QuestionPreview({
                 )}
               </div>
 
-              {/* Question Card */}
-              <Card
-                className={cn(
-                  'border-none shadow-xl overflow-hidden transition-all duration-200 mx-auto',
-                  questionIndex === activeQuestionIndex
-                    ? 'ring-2 ring-primary/20 scale-100'
-                    : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
-                  viewMode === 'desktop' && 'max-w-4xl', // Wider on desktop
-                  viewMode === 'tablet' && 'max-w-2xl',
-                  viewMode === 'mobile' && 'max-w-sm'
-                )}
-              >
+              {/* Conditional rendering based on question_type */}
+              {question.question_type === 'slide' ? (
                 <div
                   className={cn(
-                    'transition-all duration-300',
-                    viewMode === 'tablet' && 'max-w-2xl mx-auto',
-                    viewMode === 'mobile' && 'max-w-sm mx-auto'
+                    'border-none shadow-xl overflow-hidden transition-all duration-200 mx-auto',
+                    questionIndex === activeQuestionIndex
+                      ? 'ring-2 ring-primary/20 scale-100'
+                      : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
+                    viewMode === 'desktop' && 'max-w-4xl',
+                    viewMode === 'tablet' && 'max-w-2xl',
+                    viewMode === 'mobile' && 'max-w-sm'
+                  )}
+                  style={{
+                    backgroundImage: backgroundImage
+                      ? `url(${backgroundImage})`
+                      : 'none',
+                    backgroundColor: backgroundImage ? 'transparent' : 'white',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
+                >
+                  {!previewMode ? (
+                    <FabricEditor
+                      slideTitle={question.question_text}
+                      slideContent={question.slide_content || ''}
+                      onUpdate={(updated) => {
+                        onQuestionTextChange(updated.title, questionIndex);
+                        const updatedQuestions = [...questions];
+                        updatedQuestions[questionIndex].slide_content =
+                          updated.content;
+                      }}
+                      width={
+                        viewMode === 'desktop'
+                          ? 1024
+                          : viewMode === 'tablet'
+                          ? 768
+                          : 375
+                      }
+                      backgroundColor="transparent"
+                      onImageDrop={(url) => {
+                        if (onSlideImageChange) {
+                          onSlideImageChange(url, questionIndex);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-6 w-full max-w-3xl">
+                      <motion.h2
+                        className="text-2xl md:text-3xl font-bold text-center text-gray-800 dark:text-white"
+                        initial={{ y: 20, opacity: 0 }}
+                        whileInView={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.1 }}
+                      >
+                        {question.question_text || `Slide ${questionIndex + 1}`}
+                      </motion.h2>
+                      <motion.div
+                        className="text-lg md:text-xl text-center text-gray-600 dark:text-gray-300"
+                        initial={{ y: 20, opacity: 0 }}
+                        whileInView={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        {question.slide_content?.split('\n').map((line, i) => (
+                          <p key={i} className="mb-2">
+                            {line}
+                          </p>
+                        )) || 'Slide content goes here'}
+                      </motion.div>
+                      {question.slide_image && (
+                        <motion.img
+                          src={question.slide_image}
+                          alt="Slide image"
+                          className="max-h-64 mt-4 rounded-md object-contain"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.3 }}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Card
+                  className={cn(
+                    'border-none shadow-xl overflow-hidden transition-all duration-200 mx-auto',
+                    questionIndex === activeQuestionIndex
+                      ? 'ring-2 ring-primary/20 scale-100'
+                      : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
+                    viewMode === 'desktop' && 'max-w-4xl',
+                    viewMode === 'tablet' && 'max-w-2xl',
+                    viewMode === 'mobile' && 'max-w-sm'
                   )}
                 >
                   <motion.div
@@ -303,14 +380,15 @@ export function QuestionPreview({
                     style={{
                       backgroundImage: backgroundImage
                         ? `url(${backgroundImage})`
-                        : `linear-gradient(135deg, ${[
-                          '#60a5fa, #3b82f6',
-                          '#f472b6, #ec4899',
-                          '#34d399, #10b981',
-                          '#a78bfa, #8b5cf6',
-                          '#fbbf24, #f59e0b',
-                        ][questionIndex % 5]
-                        })`,
+                        : `linear-gradient(135deg, ${
+                            [
+                              '#60a5fa, #3b82f6',
+                              '#f472b6, #ec4899',
+                              '#34d399, #10b981',
+                              '#a78bfa, #8b5cf6',
+                              '#fbbf24, #f59e0b',
+                            ][questionIndex % 5]
+                          })`,
                     }}
                     initial={{ opacity: 0.8 }}
                     whileInView={{ opacity: 1 }}
@@ -348,111 +426,48 @@ export function QuestionPreview({
                       </div>
                     </div>
 
-                    {/* Question Area - Modified to support slides */}
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 z-10">
-                      {question.question_type === 'slide' ? (
-                        // Render slide content
-                        !previewMode ? (
-                          <div className="relative w-full max-w-3xl group">
-                            <FabricEditor
-                              slideTitle={question.question_text}
-                              slideContent={question.slide_content || ''}
-                              onUpdate={(updated) => {
-                                onQuestionTextChange(
-                                  updated.title,
-                                  questionIndex
-                                );
-                                const updatedQuestions = [...questions];
-                                updatedQuestions[
-                                  questionIndex
-                                ].slide_content = updated.content;
-                              }}
-                              backgroundColor="transparent"
-                              onImageDrop={(url) => {
-                                if (onSlideImageChange) {
-                                  onSlideImageChange(url, questionIndex);
-                                }
-                              }}
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center gap-6 w-full max-w-3xl">
-                            <motion.h2
-                              className="text-2xl md:text-3xl font-bold text-center max-w-3xl text-white drop-shadow-lg"
-                              initial={{ y: 20, opacity: 0 }}
-                              whileInView={{ y: 0, opacity: 1 }}
-                              transition={{ delay: 0.1 }}
-                            >
-                              {question.question_text ||
-                                `Slide ${questionIndex + 1}`}
-                            </motion.h2>
-                            <motion.div
-                              className="text-lg md:text-xl text-center max-w-3xl text-white drop-shadow-lg"
-                              initial={{ y: 20, opacity: 0 }}
-                              whileInView={{ y: 0, opacity: 1 }}
-                              transition={{ delay: 0.2 }}
-                            >
-                              {question.slide_content
-                                ?.split('\n')
-                                .map((line, i) => (
-                                  <p key={i} className="mb-2">
-                                    {line}
-                                  </p>
-                                )) || 'Slide content goes here'}
-                            </motion.div>
-                            {question.slide_image && (
-                              <motion.img
-                                src={question.slide_image}
-                                alt="Slide image"
-                                className="max-h-64 mt-4 rounded-md object-contain"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.3 }}
-                              />
-                            )}
-                          </div>
-                        )
-                      ) : // Existing code for regular questions
-                        !previewMode ? (
-                          <div className="relative w-full max-w-3xl group">
-                            <Textarea
-                              value={question.question_text}
-                              onChange={(e) =>
-                                onQuestionTextChange(
-                                  e.target.value,
-                                  questionIndex
-                                )
-                              }
-                              placeholder="Type your question here..."
-                              className="text-2xl md:text-3xl font-bold text-center bg-transparent border-none resize-none focus-visible:ring-2 focus-visible:ring-white/20 text-white placeholder-white/50 p-0 min-h-[120px]"
-                            />
-                            <motion.div
-                              className="absolute top-2 right-2"
-                              initial={{ opacity: 0 }}
-                              whileHover={{ opacity: 1 }}
-                            >
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </motion.div>
-                          </div>
-                        ) : (
-                          <motion.h2
-                            className="text-2xl md:text-3xl font-bold text-center max-w-3xl text-white drop-shadow-lg"
-                            initial={{ y: 20, opacity: 0 }}
-                            whileInView={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.1 }}
+                    {/* Question Area */}
+                    <div className="flex-1 flex flex-col items-center justify-center z-10">
+                      {!previewMode ? (
+                        <div className="relative w-full max-w-3xl group">
+                          <Textarea
+                            value={question.question_text}
+                            onChange={(e) =>
+                              onQuestionTextChange(
+                                e.target.value,
+                                questionIndex
+                              )
+                            }
+                            placeholder="Type your question here..."
+                            className="text-2xl md:text-3xl font-bold text-center bg-transparent border-none resize-none focus-visible:ring-2 focus-visible:ring-white/20 text-white placeholder-white/50 p-0 min-h-[120px]"
+                          />
+                          <motion.div
+                            className="absolute top-2 right-2"
+                            initial={{ opacity: 0 }}
+                            whileHover={{ opacity: 1 }}
                           >
-                            {question.question_text ||
-                              `Question ${questionIndex + 1}`}
-                          </motion.h2>
-                        )}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </motion.div>
+                        </div>
+                      ) : (
+                        <motion.h2
+                          className="text-2xl md:text-3xl font-bold text-center max-w-3xl text-white drop-shadow-lg"
+                          initial={{ y: 20, opacity: 0 }}
+                          whileInView={{ y: 0, opacity: 1 }}
+                          transition={{ delay: 0.1 }}
+                        >
+                          {question.question_text ||
+                            `Question ${questionIndex + 1}`}
+                        </motion.h2>
+                      )}
 
-                      {/* In the preview mode section for different question types, add: */}
+                      {/* Handle reorder question type */}
                       {question.question_type === "reorder" && (
                         <div className="space-y-6">
                           <div className="text-2xl font-medium text-center">
@@ -494,7 +509,7 @@ export function QuestionPreview({
                     )}
                   </motion.div>
 
-                  {/* Only show options grid for question types, not for slides */}
+                  {/* Options grid for question */}
                   {question.question_type !== 'slide' && (
                     <div
                       className={cn(
@@ -520,16 +535,6 @@ export function QuestionPreview({
                     </div>
                   )}
 
-                  {/* If it's a slide and has an image, show it */}
-                  {/* {question.question_type === 'slide' &&
-                      question.slide_image && (
-                        <img
-                          src={question.slide_image}
-                          alt="Slide image"
-                          className="max-h-80 mt-6 rounded-md object-contain"
-                        />
-                      )} */}
-
                   {/* Next question indicator */}
                   {questionIndex < questions.length - 1 && (
                     <div className="flex justify-center py-4">
@@ -543,8 +548,8 @@ export function QuestionPreview({
                       </Button>
                     </div>
                   )}
-                </div>
-              </Card>
+                </Card>
+              )}
             </div>
           ))}
         </div>

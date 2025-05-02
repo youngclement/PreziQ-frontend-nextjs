@@ -30,7 +30,8 @@ function PexelsPanel() {
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="h-[calc(100%-48px)] overflow-y-auto">
+          {/* h-[calc(100%-12px)] */}
+          <div className="h-[20rem] overflow-y-auto">
             <PexelsSidebar />
           </div>
         </div>

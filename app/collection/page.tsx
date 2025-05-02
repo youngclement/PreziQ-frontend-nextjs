@@ -1294,12 +1294,64 @@ export default function QuestionsPage({ params }: { params: { id: string } }) {
     });
 
     return (
+
       <div className="container mx-auto py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Collection Activities</h1>
           <Button onClick={handleAddQuestion} className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-none">
             + Add New Activity
           </Button>
+
+      <div className="container mx-auto py-4 w-[90vw]">
+        <div className="flex justify-between items-center mb-4 bg-card p-4 rounded-lg shadow-sm">
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                router.push(`/collections/${activity.collection_id}`)
+              }
+              className="mr-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">{activity.title}</h1>
+              <p className="text-sm text-muted-foreground">
+                Question {activeQuestionIndex + 1} of {questions.length}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Share quiz with others</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <Button
+              variant="outline"
+              onClick={() => setPreviewMode(!previewMode)}
+            >
+              <Monitor className="mr-2 h-4 w-4" />{' '}
+              {previewMode ? 'Edit Mode' : 'Preview'}
+            </Button>
+
+            <Button
+              onClick={handleSave}
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-none"
+            >
+              <Save className="mr-2 h-4 w-4" /> Save Questions
+            </Button>
+          </div>
+
         </div>
 
         <div className="grid grid-cols-1 gap-4">
@@ -1498,11 +1550,13 @@ export default function QuestionsPage({ params }: { params: { id: string } }) {
           />
         </div>
 
+
         {/* Main content area - make larger */}
         <div className="col-span-12 md:col-span-8">
           {activeQuestion && (
             <QuestionPreview
               questions={questions}
+
               activeQuestionIndex={activeQuestionIndex}
               timeLimit={timeLimit}
               backgroundImage={backgroundImage}

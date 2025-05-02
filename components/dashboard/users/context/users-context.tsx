@@ -46,8 +46,39 @@ const UsersProvider = ({ children }: Props) => {
     queryFn: async () => {
       try {
         const response = await usersApi.getUsers();
+        console.log('API Response:', response);
+        console.log('API Response structure:', {
+          data: response.data,
+          success: response.data?.success,
+          dataKey: response.data?.data,
+          content: response.data?.data?.content,
+          isArray: Array.isArray(response.data?.data?.content),
+        });
+
+        // Kiểm tra cấu trúc dữ liệu
+        if (!response.data?.data?.content) {
+          console.error('Cấu trúc dữ liệu không đúng:', response.data);
+
+          // Tìm kiếm mảng dữ liệu trong response
+          if (Array.isArray(response.data?.data)) {
+            console.log('Tìm thấy mảng dữ liệu trong response.data.data');
+            return response.data.data;
+          } else if (Array.isArray((response.data as any)?.content)) {
+            console.log('Tìm thấy mảng dữ liệu trong response.data.content');
+            return (response.data as any).content;
+          } else if (Array.isArray(response.data)) {
+            console.log('Tìm thấy mảng dữ liệu trong response.data');
+            return response.data;
+          }
+
+          // Nếu không tìm thấy mảng, trả về mảng rỗng
+          return [];
+        }
+
+        // Trả về dữ liệu theo cấu trúc mặc định
         return response.data.data.content;
       } catch (error) {
+        console.error('API Error:', error);
         throw new Error('Không thể tải danh sách người dùng');
       }
     },

@@ -14,11 +14,11 @@ import { sidebarData } from '../data/sidebarData';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" variant="floating" {...props}>
+    <Sidebar collapsible='icon' variant='floating' {...props}>
       <SidebarHeader>PreziQ</SidebarHeader>
       <SidebarContent>
         {sidebarData.navGroups.map((props) => (
-          <NavGroup key={props.title} {...props} />
+          <NavGroup key={props.title} {...(props as any)} />
         ))}
       </SidebarContent>
       <SidebarFooter>
@@ -27,4 +27,4 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarRail />
     </Sidebar>
   );
-} 
+}

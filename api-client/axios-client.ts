@@ -11,7 +11,9 @@ let axiosClient = axios.create({
   withCredentials: true,
 });
 
-axiosClient.defaults.timeout = 1000 * 60 * 10; // 10 minutes in milliseconds
+
+axiosClient.defaults.timeout = 1000 * 60 * 10;
+
 axiosClient.defaults.withCredentials = true;
 
 // Interceptor cho request
