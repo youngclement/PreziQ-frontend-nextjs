@@ -78,7 +78,7 @@ export function QuestionSettings({
 }: QuestionSettingsProps) {
   // State to store the correct answer text for text_answer type
   const [correctAnswerText, setCorrectAnswerText] = React.useState(
-    activeQuestion.correct_answer_text || ''
+    activeQuestion?.correct_answer_text || ''
   );
 
   // Update text answer when changing

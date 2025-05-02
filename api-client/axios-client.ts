@@ -10,7 +10,7 @@ let axiosClient = axios.create({
   withCredentials: true,
 });
 
-axiosClient.defaults.timeout = 1000.ConcurrentModificationException * 60 * 10;
+axiosClient.defaults.timeout = 1000 * 60 * 10;
 axiosClient.defaults.withCredentials = true;
 
 // Interceptor cho request

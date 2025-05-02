@@ -1,17 +1,18 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import * as fabric from 'fabric';
 import { useFabricCanvas } from './useFabricCanvas';
 import { initFabricEvents } from './useFabricEvents';
 import { ToolbarHandlers } from './useToolbarHandlers';
-import * as fabric from 'fabric';
 import { EditorContextMenu } from '../sidebar/editor-context-menu';
+
 export interface FabricEditorProps {
   slideTitle: string;
   slideContent: string;
   onUpdate: (data: { title: string; content: string }) => void;
   backgroundColor?: string;
-  onImageDrop?: (url: string) => void;
+  width?: number;
 }
 
 const FabricEditor: React.FC<FabricEditorProps> = ({
@@ -19,73 +20,20 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   slideContent,
   onUpdate,
   backgroundColor,
+  width = 1024,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { fabricCanvas, initCanvas } = useFabricCanvas();
 
-
-  useEffect(() => {
-    const observer = new MutationObserver((mutationsList) => {
-      for (const mutation of mutationsList) {
-        mutation.addedNodes.forEach((node) => {
-          if (
-            node instanceof HTMLElement &&
-            node.tagName.toLowerCase() === 'textarea' &&
-            node.getAttribute('data-fabric') === 'textarea'
-          ) {
-            node.addEventListener('drop', (e: Event) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log(
-                'Blocked drop on Fabric textarea via MutationObserver.'
-              );
-            });
-          }
-        });
-      }
-    });
-
-    if (containerRef.current) {
-      observer.observe(containerRef.current, {
-        childList: true,
-        subtree: true,
-      });
-    }
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleDropOnTextbox = (e: DragEvent) => {
-      // Lấy event path (bao gồm tất cả các element trong chuỗi event)
-      const path = e.composedPath() as HTMLElement[];
-      const isOverTextbox = path.some((el) => {
-        console.log('isOverTextbox', el);
-        return el.getAttribute && el.getAttribute('data-fabric') === 'textarea';
-      });
-      if (isOverTextbox) {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Blocked drop on textbox');
-      }
-    };
-
-     window.addEventListener('drop', handleDropOnTextbox, true);
-     return () => {
-       window.removeEventListener('drop', handleDropOnTextbox, true);
-     };
-  }, []);
-
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    const canvas = initCanvas(canvasRef.current, backgroundColor || '#fff');
+    const canvas = initCanvas(
+      canvasRef.current,
+      backgroundColor || '#fff',
+      width
+    );
     const { title, content } = initFabricEvents(canvas, onUpdate);
     ToolbarHandlers(canvas, title, content);
 
@@ -106,66 +54,137 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       }
     };
 
+    // Sự kiện khi đối tượng được chọn
+    canvas.on('selection:created', (e) => {
+      const active = e.selected?.[0];
+      if (active && active.type === 'image') {
+        console.log('Thuộc tính của hình ảnh được chọn:');
+        console.log(JSON.stringify(active.toJSON(), null, 2));
+      }
+    });
+
+    // Sự kiện khi lựa chọn được cập nhật
+    canvas.on('selection:updated', (e) => {
+      const active = e.selected?.[0];
+      if (active && active.type === 'image') {
+        console.log('Thuộc tính của hình ảnh được cập nhật:');
+        console.log(JSON.stringify(active.toJSON(), null, 2));
+      }
+    });
+
+    // Thêm sự kiện khi đối tượng được tạo
+    canvas.on('object:added', (e) => {
+      const obj = e.target;
+      if (obj) {
+        console.log('Đối tượng vừa được tạo:');
+        console.log(JSON.stringify(obj.toJSON(), null, 2));
+      }
+    });
+
+    // Thêm sự kiện khi đối tượng được thay đổi
+    canvas.on('object:modified', (e) => {
+      const obj = e.target;
+      if (obj) {
+        console.log('Đối tượng vừa được thay đổi:');
+        console.log(JSON.stringify(obj.toJSON(), null, 2));
+      }
+    });
+
+    // Ngăn Fabric.js chèn URL vào textbox nhưng không chặn sự kiện hoàn toàn
+    canvas.on('drop', (e) => {
+      const target = e.target;
+        console.log('Đối tượng target: ', target);
+      if (target && target instanceof fabric.Textbox) {
+        e.e.preventDefault(); // Ngăn Fabric.js chèn URL vào textbox
+        return false; // Ngăn Fabric.js xử lý thêm
+      }
+    });
+
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
       canvas.dispose();
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [backgroundColor]);
+  }, [backgroundColor, width]);
 
-  const blurFabricTextArea = () => {
-    const fabricTextArea = document.querySelector(
-      'textarea[data-fabric="textarea"]'
-    ) as HTMLTextAreaElement | null;
-    if (fabricTextArea) {
-      fabricTextArea.blur();
-    }
-  };
-
-  const handleDragEnter = (e: React.DragEvent) => {
-    //e.preventDefault();
-    e.stopPropagation();
-
-    if (fabricCanvas.current) {
-      // Thoát tất cả các textbox đang ở chế độ editing
-      fabricCanvas.current.getObjects().forEach((obj) => {
-        if (obj.type === 'textbox' && (obj as fabric.Textbox).isEditing) {
-          (obj as fabric.Textbox).exitEditing();
-        }
-      });
-
-      // Blur bất kỳ phần tử nào đang focus trong DOM
-      if (
-        document.activeElement instanceof HTMLElement &&
-        document.activeElement !== document.body
-      ) {
-        document.activeElement.blur();
+  useEffect(() => {
+    const handleDragStart = () => {
+      if (fabricCanvas.current) {
+        fabricCanvas.current.getObjects().forEach((obj) => {
+          if (obj instanceof fabric.Textbox) {
+            obj.lockMovementX = true;
+            obj.lockMovementY = true;
+            obj.set('editable', false); // Tạm thời vô hiệu hóa khả năng chỉnh sửa
+          }
+        });
       }
+    };
+    const handleDragEnd = () => {
+      if (fabricCanvas.current) {
+        fabricCanvas.current.getObjects().forEach((obj) => {
+          if (obj instanceof fabric.Textbox) {
+            obj.lockMovementX = false;
+            obj.lockMovementY = false;
+            obj.set('editable', true); // Khôi phục khả năng chỉnh sửa
+          }
+        });
+      }
+    };
+    window.addEventListener('dragstart', handleDragStart);
+    window.addEventListener('dragend', handleDragEnd);
+    return () => {
+      window.removeEventListener('dragstart', handleDragStart);
+      window.removeEventListener('dragend', handleDragEnd);
+    };
+  }, []);
 
-      // Đảm bảo không có textarea của Fabric.js đang focus
-      const fabricTextAreas = document.querySelectorAll(
-        'textarea[data-fabric="textarea"]'
-      );
-      fabricTextAreas.forEach((textarea) => {
-        (textarea as HTMLTextAreaElement).blur();
-      });
-    }
-  };
+  useEffect(() => {
+    const handleDragOver = (e: DragEvent) => {
+      // Thoát chế độ chỉnh sửa của tất cả textbox khi kéo qua
+      if (fabricCanvas.current) {
+        fabricCanvas.current.getObjects().forEach((obj) => {
+          if (obj instanceof fabric.Textbox && obj.isEditing) {
+            obj.exitEditing();
+          }
+        });
+      }
+    };
+
+    document.addEventListener('dragover', handleDragOver, true);
+
+    return () => {
+      document.removeEventListener('dragover', handleDragOver, true);
+    };
+  }, []);
 
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation(); // ngăn propagate vào textbox
-
-    console.log(document.activeElement);
-
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
+    if (fabricCanvas.current) {
+      fabricCanvas.current.getObjects().forEach((obj) => {
+        if (obj instanceof fabric.Textbox && obj.isEditing) {
+          obj.exitEditing();
+        }
+      });
     }
 
-    blurFabricTextArea();
+    const target = e.target as HTMLElement;
+    console.log('target: ', target);
+    const isInputOrTextarea =
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.getAttribute('data-fabric') === 'textarea';
+
+    if (isInputOrTextarea) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
 
     const url = e.dataTransfer.getData('image-url');
+    console.log('image-url: ', url); // Kiểm tra giá trị URL
     if (!url || !fabricCanvas.current) return;
 
     const canvas = fabricCanvas.current;
@@ -173,6 +192,9 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
 
     const tempImg = new Image();
     tempImg.crossOrigin = 'anonymous';
+    tempImg.onerror = () => {
+      console.error('Failed to load image from URL:', url);
+    };
     tempImg.onload = () => {
       const scale = Math.min(
         1,
@@ -195,59 +217,15 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     tempImg.src = url;
   };
 
-  useEffect(() => {
-    // Chặn drop vào textarea Fabric ở giai đoạn capture
-    const handleDropCapture = (e: DragEvent) => {
-      // Kiểm tra xem đường đi của event có chứa textarea Fabric hay không
-      const path = e.composedPath();
-      const isFabricTextarea = path.some(
-        (el) =>
-          el instanceof HTMLElement &&
-          el.getAttribute('data-fabric') === 'textarea'
-      );
-
-      if (isFabricTextarea) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        console.log('Blocked drop/dragover on Fabric textarea (capture).');
-      }
-    };
-
-    const handleDragOverCapture = (e: DragEvent) => {
-      const path = e.composedPath();
-      const isFabricTextarea = path.some(
-        (el) =>
-          el instanceof HTMLElement &&
-          el.getAttribute('data-fabric') === 'textarea'
-      );
-
-      if (isFabricTextarea) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    document.addEventListener('drop', handleDropCapture, true);
-    document.addEventListener('dragover', handleDragOverCapture, true);
-
-    return () => {
-      document.removeEventListener('drop', handleDropCapture, true);
-      document.removeEventListener('dragover', handleDragOverCapture, true);
-    };
-  }, []);
-
-
   return (
     <EditorContextMenu>
       <div
         ref={containerRef}
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
-        onDragEnter={handleDragEnter}
         className="relative w-full max-w-3xl h-full"
       >
-        <canvas ref={canvasRef} className="z-20" />
+        <canvas ref={canvasRef} />
       </div>
     </EditorContextMenu>
   );
