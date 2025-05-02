@@ -63,18 +63,66 @@ export const ToolbarHandlers = (
     canvas.renderAll();
   };
 
-  const changeColor = (e: CustomEvent<{ color?: string; gradient?: any }>) => {
-    const active = canvas.getActiveObjects();
-    active.forEach((obj) => {
-      if ('set' in obj) {
-        const fill = e.detail.gradient
-          ? createGradientFill(obj, e.detail.gradient)
-          : e.detail.color;
-        obj.set('fill', fill);
-        obj.dirty = true;
-      }
-    });
+  function applyStyleToSelection(
+    textbox: fabric.Textbox,
+    styleName: string,
+    styleValue: any
+  ) {
+    if (!textbox.isEditing) return; // Chỉ xử lý khi đang chỉnh sửa
+
+    const start = textbox.selectionStart || 0;
+    const end = textbox.selectionEnd || 0;
+
+    if (start === end) return; // Không có văn bản được chọn
+
+    // Chia văn bản thành các dòng
+    // const lines = textbox.text.split('\n');
+    // let currentCharIndex = 0;
+
+    // // Duyệt qua từng dòng và ký tự
+    // for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    //   const line = lines[lineIndex];
+    //   const lineLength = line.length;
+
+    //   for (let charIndex = 0; charIndex < lineLength; charIndex++) {
+    //     if (currentCharIndex >= start && currentCharIndex < end) {
+    //       // Khởi tạo styles nếu chưa có
+    //       if (!textbox.styles[lineIndex]) {
+    //         textbox.styles[lineIndex] = {};
+    //       }
+    //       if (!textbox.styles[lineIndex][charIndex]) {
+    //         textbox.styles[lineIndex][charIndex] = {};
+    //       }
+    //       // Áp dụng kiểu dáng
+    //       textbox.styles[lineIndex][charIndex][styleName] = styleValue;
+    //     }
+    //     currentCharIndex++;
+    //   }
+    //   currentCharIndex++; // Cộng thêm 1 cho ký tự xuống dòng
+    // }
+
+      textbox.setSelectionStyles({ [styleName]: styleValue }, start, end);
+
+    textbox.dirty = true; // Đánh dấu cần render lại
     canvas.requestRenderAll();
+  }
+
+  const changeColor = (e: CustomEvent<{ color?: string; gradient?: any }>) => {
+    const active = canvas.getActiveObject();
+    if (!active || active.type !== 'textbox') return;
+
+    const obj = canvas.getActiveObject();
+    console.log(JSON.stringify(obj?.toJSON(), null, 2));
+
+    const textbox = active as fabric.Textbox;
+    if (textbox.isEditing && e.detail.color) {
+      applyStyleToSelection(textbox, 'fill', e.detail.color);
+    } else {
+      // Áp dụng cho toàn bộ nếu không ở chế độ chỉnh sửa
+      active.set('fill', e.detail.color);
+      active.dirty = true;
+      canvas.requestRenderAll();
+    }
   };
 
   const changeAlign = (
@@ -102,27 +150,44 @@ export const ToolbarHandlers = (
 
     const textbox = obj as fabric.Textbox;
 
+    if (!textbox.isEditing) {
+      // Áp dụng cho toàn bộ nếu không ở chế độ chỉnh sửa
+      if (e.detail.style === 'bold') {
+        const current = textbox.fontWeight;
+        textbox.set('fontWeight', current === 'bold' ? 'normal' : 'bold');
+      }
+      if (e.detail.style === 'italic') {
+        const current = textbox.fontStyle;
+        textbox.set('fontStyle', current === 'italic' ? 'normal' : 'italic');
+      }
+      if (e.detail.style === 'underline') {
+        textbox.set('underline', !textbox.underline);
+      }
+      canvas.requestRenderAll();
+      return;
+    }
+
+    // Áp dụng cho phần được chọn
     if (e.detail.style === 'bold') {
-      const current = textbox.fontWeight;
-      textbox.set('fontWeight', current === 'bold' ? 'normal' : 'bold');
+      applyStyleToSelection(textbox, 'fontWeight', 'bold');
     }
-
     if (e.detail.style === 'italic') {
-      const current = textbox.fontStyle;
-      textbox.set('fontStyle', current === 'italic' ? 'normal' : 'italic');
+      applyStyleToSelection(textbox, 'fontStyle', 'italic');
     }
-
     if (e.detail.style === 'underline') {
-      textbox.set('underline', !textbox.underline);
+      applyStyleToSelection(textbox, 'underline', true);
     }
-
-    canvas.requestRenderAll();
   };
 
   const handleFontSizeChange = (e: CustomEvent<{ size: number }>) => {
     const obj = canvas.getActiveObject();
-    if (obj && obj.type === 'textbox') {
-      (obj as fabric.Textbox).set('fontSize', e.detail.size);
+    if (!obj || obj.type !== 'textbox') return;
+
+    const textbox = obj as fabric.Textbox;
+    if (textbox.isEditing) {
+      applyStyleToSelection(textbox, 'fontSize', e.detail.size);
+    } else {
+      textbox.set('fontSize', e.detail.size);
       canvas.requestRenderAll();
     }
   };
@@ -133,26 +198,14 @@ export const ToolbarHandlers = (
 
     if (!active) return;
 
-    if (active.type === 'activeselection') {
-      // Đổi font cho tất cả object trong selection
-      (active as fabric.ActiveSelection).getObjects().forEach((obj) => {
-        if (obj.type === 'textbox') {
-          (obj as fabric.Textbox).set('fontFamily', font);
-        }
-      });
-
-      canvas.requestRenderAll();
-    }
-
-    // ✅ Đổi font cho 1 textbox
-    else if (active.type === 'textbox') {
-      (active as fabric.Textbox).set('fontFamily', font);
-      canvas.requestRenderAll();
-    }
-
-    // ❗ Nếu đang là 'group' thì KHÔNG xử lý được
-    else if (active.type === 'group') {
-      alert('Hãy ungroup trước khi chỉnh font');
+    if (active.type === 'textbox') {
+      const textbox = active as fabric.Textbox;
+      if (textbox.isEditing) {
+        applyStyleToSelection(textbox, 'fontFamily', font);
+      } else {
+        textbox.set('fontFamily', font);
+        canvas.requestRenderAll();
+      }
     }
   };
 
