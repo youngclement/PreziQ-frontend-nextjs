@@ -28,7 +28,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { IconGripVertical } from '@tabler/icons-react';
 import { SortableTreeItem } from './sortable-tree';
 import { toast } from 'react-toastify';
-import { API_URL, ACCESS_TOKEN } from '@/api/http';
+import { permissionsApi } from '@/api-client';
 
 // Component cho mỗi permission item có thể kéo thả
 function SortablePermissionItem({
@@ -203,31 +203,22 @@ export function PermissionsTable() {
 
 			// Chỉ gọi API nếu module thực sự thay đổi
 			if (newModule !== draggedPermission.module) {
-				const response = await fetch(
-					`${API_URL}/permissions/${draggedPermission.id}`,
+				const response = await permissionsApi.updatePermission(
+					draggedPermission.id,
 					{
-						method: 'PATCH',
-						headers: {
-							'Content-Type': 'application/json',
-							Authorization: `Bearer ${ACCESS_TOKEN}`,
-						},
-						body: JSON.stringify({
-							module: newModule,
-						}),
+						module: newModule || undefined,
 					}
 				);
 
-				const data = await response.json();
-
-				if (!response.ok) {
+				if (!response.data.success) {
 					toast.error(
-						data.message || 'Không thể cập nhật module cho permission'
+						response.data.message || 'Không thể cập nhật module cho permission'
 					);
 					return;
 				}
 
 				await refetch();
-				toast.success(data.message);
+				toast.success(response.data.message || 'Cập nhật module thành công');
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Có lỗi xảy ra';

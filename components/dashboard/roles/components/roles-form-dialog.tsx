@@ -1,13 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-	useEffect,
-	useState,
-	useRef,
-	useLayoutEffect,
-	useCallback,
-} from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import {
 	Dialog,
 	DialogContent,
@@ -35,14 +29,13 @@ import {
 } from '@/components/ui/collapse';
 import { useRoles } from '../context/roles-context';
 import { toast } from '@/hooks/use-toast';
-import { API_URL, ACCESS_TOKEN } from '@/api/http';
 import { Permission } from '../data/schema';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IconChevronRight } from '@tabler/icons-react';
 import { usePermissions } from '@/components/dashboard/permissions/context/permissions-context';
 import { Role } from '../data/schema';
-import { Checkbox } from '@/components/ui/checkbox';
+import { permissionsApi } from '@/api-client';
 
 const formSchema = z.object({
 	name: z.string().min(1, 'Tên vai trò không được để trống'),
@@ -74,14 +67,11 @@ interface GroupedPermissions {
 
 export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 	const { permissions: allPermissions } = usePermissions();
-	const { updateRole, deleteRolePermissions, createRole, handleCloseDialog } =
-		useRoles();
+	const { updateRole, createRole, handleCloseDialog } = useRoles();
 	const isEdit = !!currentRow;
-	const [permissions, setPermissions] = useState<Permission[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
 	const dialogRef = useRef<HTMLDivElement>(null);
-	const previousFocusRef = useRef<HTMLElement | null>(null);
 
 	// State để lưu permissions ban đầu
 	const [initialPermissions, setInitialPermissions] = useState<string[]>([]);
@@ -122,10 +112,6 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 	}, [open, currentRow, form]);
 
 	const handleClose = useCallback(() => {
-		console.log('handleClose called in form dialog');
-		console.log('Current open state:', open);
-		console.log('Current form state:', form.getValues());
-
 		// Reset form trước khi đóng
 		form.reset({
 			name: '',
@@ -137,13 +123,10 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 
 		// Gọi handleCloseDialog để reset state trong context
 		handleCloseDialog();
-
-		console.log('After handleCloseDialog');
 	}, [form, handleCloseDialog]);
 
 	const onSubmit = async (data: FormValues) => {
 		try {
-			console.log('Form submitted with data:', data);
 			if (isEdit && currentRow) {
 				// Logic update role
 				const updatedData: {
@@ -171,17 +154,13 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 					(id) => !data.permissionIds.includes(id)
 				);
 
-				if (removedPermissions.length > 0) {
-					await deleteRolePermissions(currentRow.id, removedPermissions);
+				// Thêm permissions mới vào updatedData
+				if (addedPermissions.length > 0 || removedPermissions.length > 0) {
+					// Chỉ gửi tất cả permissions hiện tại
+					updatedData.permissionIds = data.permissionIds;
 				}
 
-				if (
-					Object.keys(updatedData).length > 0 ||
-					addedPermissions.length > 0
-				) {
-					if (addedPermissions.length > 0) {
-						updatedData.permissionIds = addedPermissions;
-					}
+				if (Object.keys(updatedData).length > 0) {
 					await updateRole(currentRow.id, updatedData);
 				}
 			} else {
@@ -193,40 +172,36 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 					permissionIds: data.permissionIds,
 				});
 			}
-			console.log('Before handleClose in onSubmit');
 			handleClose();
-			console.log('After handleClose in onSubmit');
 		} catch (error) {
 			console.error('Submit error:', error);
 		}
 	};
 
+	// Fetch permissions
 	useEffect(() => {
 		const fetchPermissions = async () => {
 			try {
 				setIsLoading(true);
-				const response = await fetch(`${API_URL}/permissions?page=1&size=100`, {
-					headers: {
-						Authorization: `Bearer ${ACCESS_TOKEN}`,
-					},
+				const response = await permissionsApi.getPermissions({
+					page: 1,
+					size: 100,
 				});
-				const data = await response.json();
-				if (data.data?.content) {
-					setPermissions(data.data.content);
-				}
+				setIsLoading(false);
 			} catch (error) {
 				toast({
 					variant: 'destructive',
 					title: 'Có lỗi xảy ra',
 					description: 'Không thể tải danh sách quyền. Vui lòng thử lại sau.',
 				});
-			} finally {
 				setIsLoading(false);
 			}
 		};
 
-		fetchPermissions();
-	}, []);
+		if (open) {
+			fetchPermissions();
+		}
+	}, [open]);
 
 	// Group permissions by module
 	useEffect(() => {
@@ -293,7 +268,6 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
 		<Dialog
 			open={open}
 			onOpenChange={(newOpen) => {
-				console.log('Dialog onOpenChange called with:', newOpen);
 				if (!newOpen) {
 					handleClose();
 				}

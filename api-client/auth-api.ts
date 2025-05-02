@@ -9,7 +9,7 @@ import axiosClient from './axios-client';
 export const authApi = {
   login(payload: BodyLogin) {
     return axiosClient
-      .post('/auth/login', payload)
+      .post('/auth/login', payload, { withCredentials: true })
       .then((response) => {
         const accessToken: string = response.data.data.accessToken;
         if (accessToken) {
@@ -46,12 +46,11 @@ export const authApi = {
   resetPassword(payload: ResetPasswordPayload) {
     return axiosClient.post('/auth/reset-password', payload);
   },
-  
-  getAccount() { 
+
+  getAccount() {
     return axiosClient.get('/auth/account');
   },
-  
-  refreshToken: () => axiosClient.get('/auth/refresh', {
-      withCredentials: true,
-    }),
+
+  refreshToken: () =>
+    axiosClient.get('/auth/refresh', { withCredentials: true }),
 };
