@@ -300,7 +300,7 @@ export default function QuestionsPage({ params }: { params: { id: string } }) {
     };
 
     return (
-      <div className="container mx-auto py-4">
+      <div className="container mx-auto py-4 w-[90vw]">
         <div className="flex justify-between items-center mb-4 bg-card p-4 rounded-lg shadow-sm">
           <div className="flex items-center">
             <Button
@@ -381,7 +381,7 @@ export default function QuestionsPage({ params }: { params: { id: string } }) {
           </div>
 
           {/* Right sidebar - Settings - make smaller */}
-          <div className="col-span-12 md:col-span-2">
+          <div className="col-span-20 md:col-span-2">
             <QuestionSettings
               activeQuestion={activeQuestion}
               activeQuestionIndex={activeQuestionIndex}

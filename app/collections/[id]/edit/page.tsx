@@ -8,7 +8,7 @@ export async function generateStaticParams() {
 		if (response.data.success) {
 			const collections = response.data.data.content as Collection[];
 			return collections.map((collection) => ({
-				id: collection.id,
+				id: collection.collectionId,
 			}));
 		}
 		console.error('Failed to fetch collections:', response.data);
