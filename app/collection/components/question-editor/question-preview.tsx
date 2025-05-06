@@ -591,7 +591,7 @@ interface OptionItemProps {
   option: QuizOption;
   index: number;
   previewMode: boolean;
-  questionType: string;
+  questionType: "multiple_choice" | "multiple_response" | "true_false" | "text_answer" | "slide" | "reorder";
   onOptionChange: (index: number, field: string, value: any) => void;
 }
 
@@ -613,8 +613,6 @@ function OptionItem({ option, index, previewMode, questionType, onOptionChange }
   const optionStyle = getOptionStyle();
 
   // Add a handler to update reorder question content
-  // In question-editor/question-preview.tsx - Inside the OptionItem component
-
   const handleReorderOptionChange = (value: string) => {
     // Just call the parent's onOptionChange function
     onOptionChange(index, 'option_text', value);
