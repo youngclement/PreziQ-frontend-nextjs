@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { QuizQuestion } from '../types';
+import { QuizOption, QuizQuestion } from '../types';
 import { OptionList } from './option-list';
 import { AdvancedSettings } from './advanced-settings';
 import { Textarea } from '@/components/ui/textarea';
@@ -438,7 +438,7 @@ export function QuestionSettings({
                 <div className="space-y-4 mt-4">
                   <ReorderOptions
                     options={activeQuestion.options}
-                    onOptionChange={onOptionChange}
+                    onOptionChange={(index, field, value) => onOptionChange(activeQuestionIndex, index, field, value)}
                     onDeleteOption={onDeleteOption}
                     onAddOption={onAddOption}
                     onReorder={onReorderOptions}
