@@ -33,7 +33,8 @@ interface QuizActivityProps {
     customBackgroundMusic?: string;
     quiz: Quiz;
   };
-  sessionId: string; // Truyền sessionId trực tiếp từ props
+  sessionId?: string; 
+  sessionCode?: string; 
   onAnswerSubmit?: (answerId: string) => void;
   sessionWebSocket?: SessionWebSocket;
 }
@@ -41,6 +42,7 @@ interface QuizActivityProps {
 const QuizButtonViewer: React.FC<QuizActivityProps> = ({
   activity,
   sessionId,
+  sessionCode,
   onAnswerSubmit,
   sessionWebSocket,
 }) => {
@@ -73,16 +75,22 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
     setIsSubmitted(true);
     setSubmitError(null);
 
-    // Gọi callback nếu được cung cấp
+
     if (onAnswerSubmit) {
       onAnswerSubmit(selectedAnswerId);
     }
 
-    // Gửi câu trả lời qua WebSocket nếu có
-    if (sessionWebSocket && sessionId) {
+
+    if (sessionWebSocket) {
       try {
+        if (!sessionCode && !sessionId) {
+          console.warn('Thiếu cả sessionCode và sessionId');
+          setSubmitError('Không thể xác định phiên. Vui lòng thử lại.');
+          return;
+        }
+
         const payload = {
-          sessionId: sessionId, // Sử dụng sessionId từ props
+          sessionCode: sessionCode,
           activityId: activity.activityId,
           answerContent: selectedAnswerId,
         };
@@ -95,11 +103,10 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
         setSubmitError('Không thể gửi câu trả lời. Vui lòng thử lại.');
       }
     } else {
-      console.warn('Không có kết nối WebSocket hoặc thiếu sessionId');
+      console.warn('Không có kết nối WebSocket');
     }
   };
 
-  // Format time remaining as MM:SS
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -108,7 +115,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
       .padStart(2, '0')}`;
   };
 
-  // Progress percentage
+
   const progressPercentage = Math.max(
     0,
     (timeRemaining / activity.quiz.timeLimitSeconds) * 100

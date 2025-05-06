@@ -70,7 +70,7 @@
     "eslint": "8.49.0",
     "eslint-config-next": "13.5.1",
     "fabric": "^6.6.1",
-    "framer-motion": "^12.9.4",
+    "framer-motion": "^12.10.0",
     "gsap": "^3.12.7",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.446.0",

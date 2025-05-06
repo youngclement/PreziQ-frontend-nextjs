@@ -344,7 +344,7 @@ export default function HostSessionPage() {
   };
 
   const handleSessionEnd = () => {
-    setIsSessionStarted(false);
+    console.log('Session end event received, waiting for summary data...');
   };
 
   if (isLoading) {

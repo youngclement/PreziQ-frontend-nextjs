@@ -8,6 +8,8 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { SessionWebSocket } from '@/websocket/sessionWebSocket';
 import InfoSlideViewer from '../show/components/info-slide-viewer';
 import QuizButtonViewer from './QuizButtonViewer';
+import HostSessionSummary from './HostSessionSummary';
+import { Loader2 } from 'lucide-react';
 
 interface Participant {
   guestName: string;
@@ -22,6 +24,18 @@ interface HostActivitiesProps {
   onSessionEnd?: () => void;
 }
 
+interface ParticipantSummary {
+  displayName: string;
+  displayAvatar: string;
+  finalScore: number;
+  finalRanking: number;
+  finalCorrectCount: number;
+  finalIncorrectCount: number;
+  participantId?: string;
+  participantName?: string;
+  totalScore?: number;
+}
+
 export default function HostActivities({
   sessionId,
   sessionCode,
@@ -29,10 +43,14 @@ export default function HostActivities({
   onSessionEnd,
 }: HostActivitiesProps) {
   const [error, setError] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(true); // Mặc định là đã kết nối
+  const [isConnected, setIsConnected] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState('Đã kết nối');
   const [currentActivity, setCurrentActivity] = useState<any>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [noMoreActivities, setNoMoreActivities] = useState(false);
+  const [sessionSummaries, setSessionSummaries] = useState<
+    ParticipantSummary[]
+  >([]);
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -55,23 +73,66 @@ export default function HostActivities({
     sessionWs.onSessionEndHandler((session) => {
       if (!isMounted.current) return;
       console.log('Session ended:', session);
+
+      // Chỉ gọi callback onSessionEnd
       if (onSessionEnd) onSessionEnd();
     });
 
     sessionWs.onSessionSummaryHandler((summaries) => {
       if (!isMounted.current) return;
-      console.log('Session summaries:', summaries);
+      console.log('Session summaries received:', summaries);
+
+      if (Array.isArray(summaries) && summaries.length > 0) {
+        console.log('Setting session summaries:', summaries);
+        setSessionSummaries(summaries);
+      }
     });
 
     sessionWs.onNextActivityHandler((activity) => {
       if (!isMounted.current) return;
       console.log('Next activity received:', activity);
-      setCurrentActivity(activity);
+
+      if (!activity) {
+        console.log('No more activities in session, preparing to end session');
+        setNoMoreActivities(true);
+
+        setTimeout(() => {
+          if (isMounted.current && sessionId) {
+            console.log(
+              'Automatically ending session due to no more activities'
+            );
+            sessionWs.endSession(sessionId).catch((err) => {
+              console.error('Error ending session automatically:', err);
+            });
+          }
+        }, 1000);
+      } else {
+        setCurrentActivity(activity);
+        setNoMoreActivities(false);
+      }
     });
 
     sessionWs.onErrorHandler((error) => {
       if (!isMounted.current) return;
       console.log('WebSocket error:', error);
+
+      if (error && error.includes('No more activities in session')) {
+        console.log('Detected no more activities message in error handler');
+        setNoMoreActivities(true);
+
+
+        setTimeout(() => {
+          if (isMounted.current && sessionId) {
+            console.log(
+              'Automatically ending session due to no more activities (from error)'
+            );
+            sessionWs.endSession(sessionId).catch((err) => {
+              console.error('Error ending session automatically:', err);
+            });
+          }
+        }, 1000);
+      }
+
       setError(error);
     });
 
@@ -81,7 +142,6 @@ export default function HostActivities({
       setIsConnected(status === 'Connected');
     });
 
-    // Lấy hoạt động đầu tiên
     setTimeout(() => {
       sessionWs.nextActivity(sessionId).catch((err) => {
         console.error('Error starting first activity:', err);
@@ -92,8 +152,6 @@ export default function HostActivities({
     return () => {
       isMounted.current = false;
 
-      // Không đóng kết nối socket khi unmount component
-      // Việc đóng kết nối sẽ được xử lý ở component cha
     };
   }, [sessionWs, sessionId, onSessionEnd, sessionCode]);
 
@@ -131,7 +189,31 @@ export default function HostActivities({
     }
   };
 
+  if (sessionSummaries.length > 0) {
+    return (
+      <HostSessionSummary
+        sessionId={sessionId}
+        sessionCode={sessionCode}
+        participants={sessionSummaries}
+        onNavigateToHome={() => (window.location.href = '/sessions/host')}
+      />
+    );
+  }
+
   const renderActivityContent = () => {
+    if (noMoreActivities) {
+      return (
+        <div className='text-center py-6'>
+          <p className='text-lg font-medium text-amber-600 mb-2'>
+            Không còn hoạt động nào nữa
+          </p>
+          <p className='text-gray-500'>
+            Phiên học sẽ tự động kết thúc trong giây lát...
+          </p>
+        </div>
+      );
+    }
+
     if (!currentActivity) {
       return (
         <div className='text-center text-gray-500'>
@@ -148,6 +230,7 @@ export default function HostActivities({
           <QuizButtonViewer
             activity={currentActivity}
             sessionId={sessionId}
+            sessionCode={sessionCode}
             sessionWebSocket={sessionWs}
           />
         );
@@ -169,7 +252,7 @@ export default function HostActivities({
         {connectionStatus}
       </div>
 
-      {error && (
+      {error && !noMoreActivities && (
         <Alert variant='destructive' className='mb-4'>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -180,7 +263,10 @@ export default function HostActivities({
           <div className='flex justify-between items-center mb-4'>
             <h2 className='text-xl font-semibold'>Hoạt động hiện tại</h2>
             <div className='space-x-2'>
-              <Button onClick={handleNextActivity} disabled={!isConnected}>
+              <Button
+                onClick={handleNextActivity}
+                disabled={!isConnected || noMoreActivities}
+              >
                 Hoạt động tiếp theo
               </Button>
               <Button

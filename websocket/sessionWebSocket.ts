@@ -14,7 +14,8 @@ export interface SessionParticipant {
 }
 
 export interface ActivitySubmission {
-  sessionId: string;
+  sessionId?: string;
+  sessionCode?: string;
   activityId: string;
   answerContent?: string;
 }
@@ -29,10 +30,24 @@ export interface SessionSummary {
 }
 
 export interface EndSessionSummary {
-  participantId: string;
-  participantName: string;
-  totalScore: number;
+  participantId?: string;
+  participantName?: string;
+  totalScore?: number;
+  displayName: string;
+  displayAvatar: string;
+  finalScore: number;
   finalRanking: number;
+  finalCorrectCount: number;
+  finalIncorrectCount: number;
+}
+
+export interface Achievement {
+  achievementId: string;
+  achievementName: string;
+  achievementDescription: string;
+  achievementIcon: string;
+  timestamp: string;
+  userId: string;
 }
 
 export interface ApiResponse<T> {
@@ -54,6 +69,7 @@ export class SessionWebSocket {
   private onNextActivity?: (activity: any) => void;
   private onSessionEnd?: (session: SessionSummary) => void;
   private onSessionSummary?: (summaries: EndSessionSummary[]) => void;
+  private onAchievement?: (achievement: Achievement) => void;
   private errorSubscription: any;
   private participantsSubscription: any;
   private isConnected: boolean = false;
@@ -106,6 +122,7 @@ export class SessionWebSocket {
         }
 
         this.subscribeToErrorsChannel();
+        this.subscribeToAchievementChannel();
 
         if (this.sessionCode) {
           setTimeout(() => {
@@ -199,6 +216,36 @@ export class SessionWebSocket {
         }
       },
       { id: 'error-subscription' }
+    );
+  }
+
+  private subscribeToAchievementChannel() {
+    if (!this.client.connected) {
+      console.warn('Cannot subscribe to achievements: client not connected');
+      return;
+    }
+
+    this.client.subscribe(
+      `/client/private/achievement`,
+      (message) => {
+        try {
+          console.log('Received achievement message:', message);
+          console.log('Raw achievement body:', message.body);
+          const response = JSON.parse(message.body);
+          console.log('Parsed achievement response:', response);
+
+          if (response.success && response.data) {
+            if (this.onAchievement) {
+              this.onAchievement(response.data);
+            }
+          } else {
+            console.error('Invalid achievement format:', response);
+          }
+        } catch (e) {
+          console.error('Error parsing achievement message:', e);
+        }
+      },
+      { id: 'achievement-subscription' }
     );
   }
 
@@ -357,6 +404,10 @@ export class SessionWebSocket {
     this.onSessionSummary = callback;
   }
 
+  public onAchievementHandler(callback: (achievement: Achievement) => void) {
+    this.onAchievement = callback;
+  }
+
   public async joinSession(
     participantName: string,
     userId: string | null = null
@@ -455,9 +506,9 @@ export class SessionWebSocket {
     console.log('Sending activity submission:', submission);
 
     this.client.publish({
-      destination: '/server/session/activity/submit',
+      destination: '/server/session/submit',
       body: JSON.stringify({
-        sessionId: submission.sessionId,
+        sessionCode: this.sessionCode,
         activityId: submission.activityId,
         answerContent: submission.answerContent,
       }),
@@ -514,7 +565,7 @@ export class SessionWebSocket {
     this.client.publish({
       destination: '/server/session/complete',
       body: JSON.stringify({
-        sessionId,
+        sessionId: sessionId,
       }),
     });
   }
