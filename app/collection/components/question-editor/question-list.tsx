@@ -340,10 +340,10 @@ export function QuestionList({
                             <div
                                 className="cursor-pointer transition-all rounded-md overflow-hidden shadow-sm border border-dashed border-gray-300 dark:border-gray-700 hover:border-primary dark:hover:border-primary flex items-center p-3"
                                 onClick={() => {
-                                    const newSlideQuestion = {
+                                    const newSlideQuestion: QuizQuestion = {
                                         activity_id: questions[0]?.activity_id || "",
                                         question_text: "New Slide",
-                                        question_type: "slide",
+                                        question_type: "slide" as const,
                                         correct_answer_text: "",
                                         options: [],
                                         slide_content: ""
@@ -380,10 +380,10 @@ export function QuestionList({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                    const newSlideQuestion = {
+                                    const newSlideQuestion: QuizQuestion = {
                                         activity_id: questions[0]?.activity_id || "",
                                         question_text: "New Slide",
-                                        question_type: "slide",
+                                        question_type: "slide" as const,
                                         correct_answer_text: "",
                                         options: [],
                                         slide_content: ""
