@@ -26,6 +26,8 @@ export default function HostSessionPage() {
   const [participants, setParticipants] = useState<SessionParticipant[]>([]);
   const sessionWsRef = useRef<SessionWebSocket | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [hostName, setHostName] = useState<string>('Host');
+  const [hasJoined, setHasJoined] = useState(false);
 
   useEffect(() => {
     const createSession = async () => {
@@ -68,6 +70,9 @@ export default function HostSessionPage() {
     sessionWs.onParticipantsUpdateHandler((updatedParticipants) => {
       console.log('Participants updated:', updatedParticipants);
       setParticipants(updatedParticipants);
+      if (updatedParticipants.some((p) => p.displayName === hostName)) {
+        setHasJoined(true);
+      }
     });
 
     sessionWs.onSessionStartHandler((session) => {
@@ -114,17 +119,42 @@ export default function HostSessionPage() {
       return;
     }
 
+    if (!hasJoined) {
+      setError('Host must join the session first');
+      return;
+    }
+
     setIsStarting(true);
     setError(null);
 
     try {
       await sessionWsRef.current.startSession();
-      // router.push(`/sessions/show?code=${sessionCode}`);
     } catch (err) {
       setError('Failed to start session');
       console.error('Error starting session:', err);
     } finally {
       setIsStarting(false);
+    }
+  };
+
+  const handleJoinSession = async () => {
+    if (!sessionWsRef.current) {
+      setError('WebSocket not connected');
+      return;
+    }
+
+    if (!sessionCode) {
+      setError('Session code is missing');
+      return;
+    }
+
+    try {
+      await sessionWsRef.current.joinSession(hostName);
+      setHasJoined(true);
+      setError(null);
+    } catch (err) {
+      setError('Failed to join session');
+      console.error('Error joining session:', err);
     }
   };
 
@@ -160,6 +190,21 @@ export default function HostSessionPage() {
                   </span>
                 </div>
               </div>
+
+              {!hasJoined && (
+                <div className='mt-6'>
+                  <div className='flex gap-4 items-center'>
+                    <Input
+                      type='text'
+                      value={hostName}
+                      onChange={(e) => setHostName(e.target.value)}
+                      placeholder='Enter your name'
+                      className='flex-1'
+                    />
+                    <Button onClick={handleJoinSession}>Join as Host</Button>
+                  </div>
+                </div>
+              )}
 
               {participants.length > 0 && (
                 <div className='mt-6'>

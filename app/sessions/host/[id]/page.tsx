@@ -10,6 +10,7 @@ import { sessionsApi } from '@/api-client';
 import { SessionWebSocket } from '@/websocket/sessionWebSocket';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import HostActivities from '../../components/HostActivities';
+import { Input } from '@/components/ui/input';
 
 interface Participant {
   guestName: string;
@@ -29,6 +30,8 @@ export default function HostSessionPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const sessionWsRef = useRef<SessionWebSocket | null>(null);
   const [isSessionStarted, setIsSessionStarted] = useState(false);
+  const [hostName, setHostName] = useState<string>('Host');
+  const [hasJoined, setHasJoined] = useState(false);
 
   useEffect(() => {
     const createSession = async () => {
@@ -92,6 +95,10 @@ export default function HostSessionPage() {
         userId: p.user?.userId || null,
       }));
       setParticipants(participantsData);
+      // Kiểm tra xem host đã join chưa
+      if (updatedParticipants.some(p => p.displayName === hostName)) {
+        setHasJoined(true);
+      }
     });
 
     sessionWs.onSessionStartHandler((session) => {
@@ -101,6 +108,10 @@ export default function HostSessionPage() {
 
     sessionWs.onConnectionStatusChangeHandler((status) => {
       setIsConnected(status === 'Connected');
+      // Tự động join khi kết nối thành công
+      if (status === 'Connected' && !hasJoined) {
+        handleJoinSession();
+      }
     });
 
     sessionWs
@@ -120,6 +131,16 @@ export default function HostSessionPage() {
       return;
     }
 
+    if (!sessionId) {
+      setError('Session ID is missing');
+      return;
+    }
+
+    if (!hasJoined) {
+      setError('Host must join the session first');
+      return;
+    }
+
     try {
       // Đảm bảo đã cập nhật sessionId trong sessionWs
       if (sessionId && sessionWsRef.current) {
@@ -135,6 +156,27 @@ export default function HostSessionPage() {
     } catch (err) {
       setError('Failed to start session');
       console.error('Error starting session:', err);
+    }
+  };
+
+  const handleJoinSession = async () => {
+    if (!sessionWsRef.current) {
+      setError('WebSocket not connected');
+      return;
+    }
+
+    if (!sessionCode) {
+      setError('Session code is missing');
+      return;
+    }
+
+    try {
+      await sessionWsRef.current.joinSession(hostName);
+      setHasJoined(true);
+      setError(null);
+    } catch (err) {
+      setError('Failed to join session');
+      console.error('Error joining session:', err);
     }
   };
 
@@ -189,16 +231,38 @@ export default function HostSessionPage() {
                 </div>
               </div>
 
+              {!hasJoined && (
+                <div className='mt-6'>
+                  <div className='flex gap-4 items-center'>
+                    <Input
+                      type='text'
+                      value={hostName}
+                      onChange={(e) => setHostName(e.target.value)}
+                      placeholder='Nhập tên của bạn'
+                      className='flex-1'
+                    />
+                    <Button onClick={handleJoinSession}>
+                      Tham gia với tư cách Host
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className='flex gap-4'>
                 <Button
                   onClick={handleStartSession}
-                  disabled={!isConnected}
+                  disabled={!isConnected || !hasJoined}
                   className='flex-1'
                 >
                   {!isConnected ? (
                     <span className='flex items-center gap-2'>
                       <Loader2 className='h-4 w-4 animate-spin' />
                       Đang kết nối...
+                    </span>
+                  ) : !hasJoined ? (
+                    <span className='flex items-center gap-2'>
+                      <Loader2 className='h-4 w-4 animate-spin' />
+                      Đang tham gia...
                     </span>
                   ) : (
                     'Bắt đầu phiên'
