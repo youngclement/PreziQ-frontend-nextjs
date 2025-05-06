@@ -32,6 +32,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { FabricToolbar } from '../slide/tool-bar';
 import { ReorderOptions } from './reorder-options';
 
+const AnswerTextEditor = ({
+  option,
+  questionIndex,
+  optionIndex,
+  onOptionChange
+}: {
+  option: QuizOption;
+  questionIndex: number;
+  optionIndex: number;
+  onOptionChange: (questionIndex: number, optionIndex: number, field: string, value: any) => void;
+}) => {
+  return (
+    <div className="mt-2 space-y-2">
+      <Label htmlFor={`answer-text-${optionIndex}`}>Answer Text</Label>
+      <Textarea
+        id={`answer-text-${optionIndex}`}
+        placeholder="Enter answer text"
+        value={option.option_text || ""}
+        onChange={(e) => onOptionChange(questionIndex, optionIndex, "option_text", e.target.value)}
+        className="min-h-[80px] resize-none"
+      />
+    </div>
+  );
+};
 interface QuestionSettingsProps {
   activeQuestion: QuizQuestion;
   activeQuestionIndex: number;

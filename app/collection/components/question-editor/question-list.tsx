@@ -27,6 +27,15 @@ export function QuestionList({
     const [searchQuery, setSearchQuery] = React.useState("");
     const [expandedView, setExpandedView] = React.useState(true);
 
+    // Add handleQuestionClick function to track click timestamp and update selection
+    const handleQuestionClick = (index: number) => {
+        // Set timestamp for the most recent click
+        window.lastQuestionClick = Date.now();
+
+        // Update the active question index
+        onQuestionSelect(index);
+    };
+
     // Question type icons
     const questionTypeIcons = {
         "multiple_choice": <CheckCircle className="h-3.5 w-3.5" />,
@@ -63,7 +72,7 @@ export function QuestionList({
                         ? "border-primary ring-1 ring-primary scale-[1.02]"
                         : "border-transparent hover:border-gray-300"
                 )}
-                onClick={() => onQuestionSelect(index)}
+                onClick={() => handleQuestionClick(index)}
             >
                 <div className="relative">
                     {/* Question number badge */}
@@ -193,7 +202,7 @@ export function QuestionList({
                     "flex items-center p-3 hover:bg-muted/50 cursor-pointer transition-all border-l-2 border-transparent",
                     index === activeQuestionIndex && "bg-muted/70 border-l-2 border-primary"
                 )}
-                onClick={() => onQuestionSelect(index)}
+                onClick={() => handleQuestionClick(index)}
             >
                 <div className="flex items-center flex-1 min-w-0">
                     <div className={cn(

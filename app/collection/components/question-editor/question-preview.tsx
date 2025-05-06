@@ -55,49 +55,54 @@ export function QuestionPreview({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Function to handle scroll to question
-  // Improved scrollToQuestion function
+  // Function to handle scroll to question - let's improve this
   const scrollToQuestion = (index: number) => {
     if (questionRefs.current[index]) {
-      // Use the scrollContainerRef to get relative position
-      const container = scrollContainerRef.current;
-      const question = questionRefs.current[index];
+      // Use a small timeout to ensure DOM is ready
+      setTimeout(() => {
+        const container = scrollContainerRef.current;
+        const question = questionRefs.current[index];
 
-      if (container && question) {
-        const containerRect = container.getBoundingClientRect();
-        const questionRect = question.getBoundingClientRect();
+        if (container && question) {
+          const containerRect = container.getBoundingClientRect();
+          const questionRect = question.getBoundingClientRect();
 
-        // Calculate the scroll position needed
-        const scrollPosition = container.scrollTop + (questionRect.top - containerRect.top) - 16; // 16px offset for better positioning
+          // Calculate the scroll position needed - adjust the offset for better positioning
+          const scrollPosition = container.scrollTop + (questionRect.top - containerRect.top) - 20;
 
-        // Smooth scroll to that position
-        container.scrollTo({
-          top: scrollPosition,
-          behavior: 'smooth'
-        });
-
-        // Update the active question index
-        onChangeQuestion(index);
-      }
+          // Use smooth scrolling
+          container.scrollTo({
+            top: scrollPosition,
+            behavior: 'smooth'
+          });
+        }
+      }, 100); // Increase timeout to ensure refs are up to date
     }
   };
 
-  // Setup scroll event listener
-  // Fix the scroll calculation and active question detection
+  // Setup scroll event listener with a flag to prevent circular updates
   useEffect(() => {
-    const handleScroll = () => {
-      if (scrollContainerRef.current) {
-        setShowScrollTop(scrollContainerRef.current.scrollTop > 300);
+    let isScrolling = false;
 
-        // Get container details
-        const containerRect = scrollContainerRef.current.getBoundingClientRect();
-        const containerTop = containerRect.top;
-        const containerHeight = containerRect.height;
-        const containerCenter = containerTop + containerHeight / 2;
+    const handleScroll = () => {
+      if (isScrolling) return; // Skip if this is a programmatic scroll
+
+      const scrollContainer = scrollContainerRef.current;
+      if (scrollContainer) {
+        setShowScrollTop(scrollContainer.scrollTop > 300);
+
+        // Don't detect active question during programmatic scrolling
+        const now = Date.now();
+        const lastClick = window.lastQuestionClick || 0;
+        if (now - lastClick < 1000) return; // Skip detection for 1 second after a click
 
         // Find which question is most visible in the viewport
         let bestVisibleArea = 0;
         let mostVisibleIndex = activeQuestionIndex;
+
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const containerTop = containerRect.top;
+        const containerHeight = containerRect.height;
 
         questionRefs.current.forEach((ref, index) => {
           if (ref) {
@@ -122,7 +127,7 @@ export function QuestionPreview({
         });
 
         // Only update if we found a different question
-        if (mostVisibleIndex !== activeQuestionIndex) {
+        if (mostVisibleIndex !== activeQuestionIndex && bestVisibleArea > 0) {
           onChangeQuestion(mostVisibleIndex);
         }
       }
@@ -140,8 +145,26 @@ export function QuestionPreview({
     };
   }, [activeQuestionIndex, onChangeQuestion]);
 
-  // Scroll to active question when it changes
+  // Modified useEffect for handling activeQuestionIndex changes
   useEffect(() => {
+    // Set a flag to indicate we're programmatically scrolling
+    const lastClick = window.lastQuestionClick || 0;
+    const now = Date.now();
+
+    // Only scroll if this was triggered by a click or is the initial render
+    if (now - lastClick < 1000) {
+      scrollToQuestion(activeQuestionIndex);
+    }
+  }, [activeQuestionIndex]);
+
+  // Modify the initialization useEffect - this should only run once
+  useEffect(() => {
+    // Initialize the global variable if it doesn't exist yet
+    if (typeof window !== 'undefined' && !window.lastQuestionClick) {
+      window.lastQuestionClick = Date.now();
+    }
+
+    // Initial scroll to active question
     scrollToQuestion(activeQuestionIndex);
   }, []);
 
@@ -315,8 +338,8 @@ export function QuestionPreview({
                         viewMode === 'desktop'
                           ? 1024
                           : viewMode === 'tablet'
-                          ? 768
-                          : 375
+                            ? 768
+                            : 375
                       }
                       backgroundColor="transparent"
                       onImageDrop={(url) => {
@@ -380,15 +403,14 @@ export function QuestionPreview({
                     style={{
                       backgroundImage: backgroundImage
                         ? `url(${backgroundImage})`
-                        : `linear-gradient(135deg, ${
-                            [
-                              '#60a5fa, #3b82f6',
-                              '#f472b6, #ec4899',
-                              '#34d399, #10b981',
-                              '#a78bfa, #8b5cf6',
-                              '#fbbf24, #f59e0b',
-                            ][questionIndex % 5]
-                          })`,
+                        : `linear-gradient(135deg, ${[
+                          '#60a5fa, #3b82f6',
+                          '#f472b6, #ec4899',
+                          '#34d399, #10b981',
+                          '#a78bfa, #8b5cf6',
+                          '#fbbf24, #f59e0b',
+                        ][questionIndex % 5]
+                        })`,
                     }}
                     initial={{ opacity: 0.8 }}
                     whileInView={{ opacity: 1 }}
@@ -583,6 +605,29 @@ function OptionItem({ option, index, previewMode, questionType, onOptionChange }
 
   const optionStyle = getOptionStyle();
 
+  // Add a handler to update reorder question content
+  // In question-editor/question-preview.tsx - Inside the OptionItem component
+
+  const handleReorderOptionChange = (value: string) => {
+    // Just call the parent's onOptionChange function
+    onOptionChange(index, 'option_text', value);
+    // The parent component will handle triggering the API call
+  }
+
+  // Then in your Input component:
+  <Input
+    value={option.option_text}
+    onChange={(e) => {
+      if (questionType === 'reorder') {
+        handleReorderOptionChange(e.target.value);
+      } else {
+        onOptionChange(index, 'option_text', e.target.value);
+      }
+    }}
+    placeholder={`Option ${optionLetter}`}
+    className="border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0 py-1 text-base font-medium"
+  />
+
   return (
     <motion.div
       className={cn(
@@ -611,17 +656,28 @@ function OptionItem({ option, index, previewMode, questionType, onOptionChange }
           <div className="flex-1 flex items-center min-w-0 gap-3">
             <Input
               value={option.option_text}
-              onChange={(e) => onOptionChange(index, 'option_text', e.target.value)}
+              onChange={(e) => {
+                // For reorder questions, we need special handling
+                if (questionType === 'reorder') {
+                  handleReorderOptionChange(e.target.value);
+                } else {
+                  onOptionChange(index, 'option_text', e.target.value);
+                }
+              }}
               placeholder={`Option ${optionLetter}`}
               className="border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0 py-1 text-base font-medium"
             />
-            <Checkbox
-              checked={option.is_correct}
-              onCheckedChange={(checked) =>
-                onOptionChange(index, 'is_correct', checked === true)
-              }
-              className="h-5 w-5 rounded-md border-2 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
-            />
+
+            {/* Only show checkbox for non-reorder questions */}
+            {questionType !== 'reorder' && (
+              <Checkbox
+                checked={option.is_correct}
+                onCheckedChange={(checked) =>
+                  onOptionChange(index, 'is_correct', checked === true)
+                }
+                className="h-5 w-5 rounded-md border-2 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
+              />
+            )}
           </div>
         ) : (
           <span className="flex-1 truncate text-base font-medium text-gray-800 dark:text-gray-200">
