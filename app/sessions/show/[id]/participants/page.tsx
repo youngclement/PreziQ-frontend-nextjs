@@ -101,7 +101,6 @@ const ParticipantPage = () => {
       await sessionWsRef.current.submitActivity({
         sessionId,
         activityId: currentActivity.id,
-        responseScore: answer.score,
       });
     } catch (err) {
       setError('Failed to submit answer');

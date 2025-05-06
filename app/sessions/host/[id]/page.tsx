@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { sessionsApi } from '@/api-client';
 import { SessionWebSocket } from '@/websocket/sessionWebSocket';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import HostActivities from '../../components/HostActivities';
 
 interface Participant {
   guestName: string;
@@ -27,6 +28,7 @@ export default function HostSessionPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const sessionWsRef = useRef<SessionWebSocket | null>(null);
+  const [isSessionStarted, setIsSessionStarted] = useState(false);
 
   useEffect(() => {
     const createSession = async () => {
@@ -51,18 +53,20 @@ export default function HostSessionPage() {
     };
 
     createSession();
-  }, [collectionId]);
 
-  useEffect(() => {
     return () => {
+      // Đóng kết nối WebSocket khi component unmount
       if (sessionWsRef.current) {
         sessionWsRef.current.disconnect();
       }
     };
-  }, []);
+  }, [collectionId]);
 
   useEffect(() => {
     if (!sessionCode || !sessionId) return;
+
+    // Nếu đã có WebSocket kết nối, không tạo kết nối mới
+    if (sessionWsRef.current) return;
 
     const sessionWs = new SessionWebSocket(sessionCode, sessionId);
     sessionWsRef.current = sessionWs;
@@ -79,14 +83,11 @@ export default function HostSessionPage() {
 
     sessionWs.onSessionStartHandler((session) => {
       console.log('Session started:', session);
+      setIsSessionStarted(true);
     });
 
-    sessionWs.onSessionEndHandler((session) => {
-      console.log('Session ended:', session);
-    });
-
-    sessionWs.onSessionSummaryHandler((summaries) => {
-      console.log('Session summaries:', summaries);
+    sessionWs.onConnectionStatusChangeHandler((status) => {
+      setIsConnected(status === 'Connected');
     });
 
     sessionWs
@@ -98,12 +99,6 @@ export default function HostSessionPage() {
         setError('Failed to connect to WebSocket');
         console.error('WebSocket connection error:', err);
       });
-
-    return () => {
-      if (sessionWsRef.current) {
-        sessionWsRef.current.disconnect();
-      }
-    };
   }, [sessionCode, sessionId]);
 
   const handleStartSession = async () => {
@@ -114,11 +109,16 @@ export default function HostSessionPage() {
 
     try {
       await sessionWsRef.current.startSession();
-        router.push(`/sessions/show/${sessionId}/host`);
+      // Đặt trạng thái session đã bắt đầu
+      setIsSessionStarted(true);
     } catch (err) {
       setError('Failed to start session');
       console.error('Error starting session:', err);
     }
+  };
+
+  const handleSessionEnd = () => {
+    setIsSessionStarted(false);
   };
 
   if (isLoading) {
@@ -126,12 +126,25 @@ export default function HostSessionPage() {
       <div className='container mx-auto px-4 py-8'>
         <div className='max-w-2xl mx-auto text-center'>
           <Loader2 className='h-8 w-8 animate-spin mx-auto mb-4' />
-          <p className='text-lg'>Creating your session...</p>
+          <p className='text-lg'>Đang tạo phiên của bạn...</p>
         </div>
       </div>
     );
   }
 
+  // Hiển thị giao diện sau khi đã bắt đầu session, sử dụng component HostActivities
+  if (isSessionStarted && sessionId && sessionCode && sessionWsRef.current) {
+    return (
+      <HostActivities
+        sessionId={sessionId}
+        sessionCode={sessionCode}
+        sessionWs={sessionWsRef.current}
+        onSessionEnd={handleSessionEnd}
+      />
+    );
+  }
+
+  // Hiển thị giao diện trước khi bắt đầu session
   return (
     <div className='container mx-auto px-4 py-8'>
       <h1 className='text-3xl font-bold text-center mb-8'>Host Session</h1>
@@ -142,10 +155,10 @@ export default function HostSessionPage() {
             <div className='space-y-4'>
               <div className='text-center'>
                 <h2 className='text-xl font-semibold mb-2'>
-                  Session Created Successfully!
+                  Phiên đã được tạo thành công!
                 </h2>
                 <p className='text-gray-600 mb-4'>
-                  Share this code with your participants:
+                  Chia sẻ mã này với người tham gia:
                 </p>
                 <div className='bg-gray-100 p-4 rounded-lg'>
                   <span className='text-2xl font-mono font-bold'>
@@ -163,10 +176,10 @@ export default function HostSessionPage() {
                   {!isConnected ? (
                     <span className='flex items-center gap-2'>
                       <Loader2 className='h-4 w-4 animate-spin' />
-                      Connecting...
+                      Đang kết nối...
                     </span>
                   ) : (
-                    'Start Session'
+                    'Bắt đầu phiên'
                   )}
                 </Button>
                 <Button
@@ -174,7 +187,7 @@ export default function HostSessionPage() {
                   variant='outline'
                   className='flex-1'
                 >
-                  Back to Collections
+                  Quay lại bộ sưu tập
                 </Button>
               </div>
             </div>
@@ -190,7 +203,7 @@ export default function HostSessionPage() {
         {participants.length > 0 && (
           <Card className='p-6'>
             <h2 className='text-xl font-semibold mb-4'>
-              Participants ({participants.length}/100)
+              Thành viên ({participants.length}/100)
             </h2>
             <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'>
               {participants.map((participant, index) => (
