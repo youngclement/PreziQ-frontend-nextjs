@@ -96,7 +96,7 @@ export default function HostSessionPage() {
       }));
       setParticipants(participantsData);
       // Kiểm tra xem host đã join chưa
-      if (updatedParticipants.some(p => p.displayName === hostName)) {
+      if (updatedParticipants.some((p) => p.displayName === hostName)) {
         setHasJoined(true);
       }
     });
