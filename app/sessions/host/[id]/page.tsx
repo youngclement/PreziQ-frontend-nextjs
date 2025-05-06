@@ -108,9 +108,22 @@ export default function HostSessionPage() {
 
     sessionWs.onConnectionStatusChangeHandler((status) => {
       setIsConnected(status === 'Connected');
-      // Tự động join khi kết nối thành công
+      // Tự động join host khi kết nối thành công
       if (status === 'Connected' && !hasJoined) {
-        handleJoinSession();
+        setTimeout(() => {
+          sessionWs
+            .joinSession(hostName)
+            .then(() => {
+              console.log('Host joined automatically');
+              setHasJoined(true);
+            })
+            .catch((err) => {
+              console.error('Error auto-joining host:', err);
+              setError(
+                'Không thể tự động tham gia. Vui lòng tham gia thủ công.'
+              );
+            });
+        }, 500); // Thêm timeout nhỏ để đảm bảo WS đã sẵn sàng
       }
     });
 
@@ -231,7 +244,7 @@ export default function HostSessionPage() {
                 </div>
               </div>
 
-              {!hasJoined && (
+              {!hasJoined ? (
                 <div className='mt-6'>
                   <div className='flex gap-4 items-center'>
                     <Input
@@ -241,10 +254,19 @@ export default function HostSessionPage() {
                       placeholder='Nhập tên của bạn'
                       className='flex-1'
                     />
-                    <Button onClick={handleJoinSession}>
-                      Tham gia với tư cách Host
+                    <Button
+                      onClick={handleJoinSession}
+                      disabled={isConnected && hasJoined}
+                    >
+                      {isConnected && !hasJoined
+                        ? 'Đang tham gia...'
+                        : 'Tham gia với tư cách Host'}
                     </Button>
                   </div>
+                </div>
+              ) : (
+                <div className='mt-6 text-center text-green-600'>
+                  Bạn đã tham gia phiên này với tên "{hostName}"
                 </div>
               )}
 
@@ -260,10 +282,7 @@ export default function HostSessionPage() {
                       Đang kết nối...
                     </span>
                   ) : !hasJoined ? (
-                    <span className='flex items-center gap-2'>
-                      <Loader2 className='h-4 w-4 animate-spin' />
-                      Đang tham gia...
-                    </span>
+                    'Vui lòng tham gia trước'
                   ) : (
                     'Bắt đầu phiên'
                   )}
