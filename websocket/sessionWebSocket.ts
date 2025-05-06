@@ -1,5 +1,6 @@
 import { Client } from '@stomp/stompjs';
 import { sessionsApi } from '@/api-client';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface SessionParticipant {
   id: string;
@@ -47,6 +48,7 @@ export class SessionWebSocket {
   private client: Client;
   private sessionCode: string;
   private sessionId: string;
+  private stompClientId: string;
   private onParticipantsUpdate?: (participants: SessionParticipant[]) => void;
   private onSessionStart?: (session: SessionSummary) => void;
   private onNextActivity?: (activity: any) => void;
@@ -57,15 +59,23 @@ export class SessionWebSocket {
   private isConnected: boolean = false;
   private onConnectionStatusChange?: (status: string) => void;
   private onError?: (error: string) => void;
+  private connectionProcessing: boolean = false;
+  private connecting: boolean = false;
 
   constructor(sessionCode: string, sessionId: string = '') {
     this.sessionCode = sessionCode;
     this.sessionId = sessionId;
+    this.stompClientId = uuidv4();
+
     this.client = new Client({
-      brokerURL: 'ws://localhost:8080/ws',
+      // brokerURL: 'ws://localhost:8080/ws',
+      brokerURL: 'wss://preziq.duckdns.org/ws',
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
+      connectHeaders: {
+        stompClientId: this.stompClientId,
+      },
       debug: (str) => {
         if (str.startsWith('>>> MESSAGE')) {
           console.log('Received WebSocket Message:', str);
@@ -73,47 +83,41 @@ export class SessionWebSocket {
           console.log('Sending WebSocket Message:', str);
         } else if (str.startsWith('>>> SUBSCRIBE')) {
           console.log('Subscribing to WebSocket Topic:', str);
+        } else if (str.includes('Web Socket Opened')) {
+          console.log('WebSocket connection opened');
+        } else if (str.includes('Web Socket Closed')) {
+          console.log('WebSocket connection closed');
+          this.isConnected = false;
+          if (this.onConnectionStatusChange) {
+            this.onConnectionStatusChange('Disconnected');
+          }
         } else {
           console.log('WebSocket Debug:', str);
         }
       },
       onConnect: (frame) => {
         console.log('Connected to WebSocket with frame:', frame);
+        console.log('Connected with stompClientId:', this.stompClientId);
         this.isConnected = true;
+        this.connectionProcessing = false;
+        this.connecting = false;
         if (this.onConnectionStatusChange) {
           this.onConnectionStatusChange('Connected');
         }
 
-        const websocketSessionId = frame.headers['user-name'] || 'default';
-        this.errorSubscription = this.client.subscribe(
-          `/client/${websocketSessionId}/private/errors`,
-          (message) => {
-            try {
-              console.log('Received error message:', message);
-              const errorData = JSON.parse(message.body);
-              const errorMessage =
-                errorData.errors?.[0]?.message || 'An error occurred';
-              if (this.onError) {
-                this.onError(errorMessage);
-              }
-              console.error('WebSocket error:', errorMessage);
-            } catch (e) {
-              if (this.onError) {
-                this.onError('Failed to process error message');
-              }
-              console.error('Error parsing error message:', e);
-            }
-          },
-          { id: 'error-subscription' }
-        );
+        this.subscribeToErrorsChannel();
 
         if (this.sessionCode) {
-          this.subscribeToAllTopics();
+          setTimeout(() => {
+            this.subscribeToAllTopics();
+          }, 500);
         }
       },
       onDisconnect: () => {
         console.log('Disconnected from WebSocket');
         this.isConnected = false;
+        this.connectionProcessing = false;
+        this.connecting = false;
         if (this.onConnectionStatusChange) {
           this.onConnectionStatusChange('Disconnected');
         }
@@ -123,6 +127,9 @@ export class SessionWebSocket {
         const errorMessage = `WebSocket connection error: ${
           frame.body || 'Unknown error'
         }. Please try again.`;
+        this.isConnected = false;
+        this.connectionProcessing = false;
+        this.connecting = false;
         if (this.onError) {
           this.onError(errorMessage);
         }
@@ -132,19 +139,67 @@ export class SessionWebSocket {
         console.error('STOMP error:', frame);
       },
       onWebSocketError: (evt) => {
-        if (!this.isConnected) {
-          const errorMessage =
-            'Failed to connect to WebSocket. Please check your network and try again.';
-          if (this.onError) {
-            this.onError(errorMessage);
-          }
-          if (this.onConnectionStatusChange) {
-            this.onConnectionStatusChange('Failed to connect');
-          }
-          console.error('WebSocket error:', evt);
+        const errorMessage =
+          'Failed to connect to WebSocket. Please check your network and try again.';
+        this.isConnected = false;
+        this.connectionProcessing = false;
+        this.connecting = false;
+        if (this.onError) {
+          this.onError(errorMessage);
         }
+        if (this.onConnectionStatusChange) {
+          this.onConnectionStatusChange('Failed to connect');
+        }
+        console.error('WebSocket error:', evt);
       },
     });
+  }
+
+  private subscribeToErrorsChannel() {
+    if (!this.client.connected) {
+      console.warn('Cannot subscribe to errors: client not connected');
+      return;
+    }
+
+    this.errorSubscription = this.client.subscribe(
+      `/client/private/errors`,
+      (message) => {
+        try {
+          console.log('Received error message:', message);
+          console.log('Raw message body:', message.body);
+          const apiResponse = JSON.parse(message.body);
+          console.log('Parsed API response:', apiResponse);
+
+          if (
+            !apiResponse.success &&
+            apiResponse.errors &&
+            apiResponse.errors.length > 0
+          ) {
+            const errorDetail = apiResponse.errors[0];
+            const errorMessage = `Error: ${errorDetail.message} (Code: ${errorDetail.code})`;
+            if (this.onError) {
+              this.onError(errorMessage);
+            }
+            console.error('WebSocket error:', errorMessage);
+          } else {
+            const errorMessage = 'An error occurred';
+            if (this.onError) {
+              this.onError(errorMessage);
+            }
+            console.error(
+              'WebSocket error with unexpected format:',
+              apiResponse
+            );
+          }
+        } catch (e) {
+          if (this.onError) {
+            this.onError('Failed to process error message');
+          }
+          console.error('Error parsing error message:', e);
+        }
+      },
+      { id: 'error-subscription' }
+    );
   }
 
   private cleanupSubscriptions() {
@@ -302,7 +357,10 @@ export class SessionWebSocket {
     this.onSessionSummary = callback;
   }
 
-  public async joinSession(participantName: string) {
+  public async joinSession(
+    participantName: string,
+    userId: string | null = null
+  ) {
     if (!this.sessionCode) {
       if (this.onError) {
         this.onError('Session code is required');
@@ -319,17 +377,30 @@ export class SessionWebSocket {
       return;
     }
 
+    const randomSeed = Math.random().toString(36).substring(2, 10);
+    const displayAvatar = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${randomSeed}`;
+
     const message = {
       sessionCode: this.sessionCode,
       displayName: participantName,
-      displayAvatar: `https://api.dicebear.com/9.x/pixel-art/svg?seed=${Math.random()
-        .toString(36)
-        .substring(7)}`,
+      displayAvatar: displayAvatar,
+      userId: userId,
     };
+
     console.log('Sending join session message:', message);
+
     this.client.publish({
       destination: '/server/session/join',
       body: JSON.stringify(message),
+    });
+
+    if (this.onConnectionStatusChange) {
+      this.onConnectionStatusChange(`Joining session as: ${participantName}`);
+    }
+
+    return new Promise<void>((resolve) => {
+      // Chờ một chút để đảm bảo message đã được gửi
+      setTimeout(() => resolve(), 500);
     });
   }
 
@@ -378,12 +449,22 @@ export class SessionWebSocket {
           'WebSocket not connected. Please wait or refresh the page.'
         );
       }
-      return;
+      throw new Error('WebSocket not connected');
     }
 
+    console.log('Sending activity submission:', submission);
+
     this.client.publish({
-      destination: '/server/session/submit',
-      body: JSON.stringify(submission),
+      destination: '/server/session/activity/submit',
+      body: JSON.stringify({
+        sessionId: submission.sessionId,
+        activityId: submission.activityId,
+        answerContent: submission.answerContent,
+      }),
+    });
+
+    return new Promise<void>((resolve) => {
+      setTimeout(() => resolve(), 500);
     });
   }
 
@@ -460,15 +541,63 @@ export class SessionWebSocket {
   }
 
   public async connect() {
-    if (!this.client.connected) {
+    if (this.client.connected) {
+      console.log('WebSocket already connected');
+      this.isConnected = true;
+      if (this.onConnectionStatusChange) {
+        this.onConnectionStatusChange('Connected');
+      }
+      return;
+    }
+
+    if (this.connectionProcessing || this.connecting) {
+      console.log('Connection already in progress');
+      return;
+    }
+
+    this.connectionProcessing = true;
+    this.connecting = true;
+
+    if (this.onConnectionStatusChange) {
+      this.onConnectionStatusChange('Connecting...');
+    }
+
+    try {
       await this.client.activate();
+    } catch (err: any) {
+      this.connectionProcessing = false;
+      this.connecting = false;
+      this.isConnected = false;
+      console.error('Connection failed:', err);
+      if (this.onError) {
+        this.onError('Connection failed: ' + (err.message || 'Unknown error'));
+      }
+      if (this.onConnectionStatusChange) {
+        this.onConnectionStatusChange('Failed to connect');
+      }
+      throw err;
     }
   }
 
   public disconnect() {
     this.cleanupSubscriptions();
+    this.isConnected = false;
     if (this.client.connected) {
       this.client.deactivate();
     }
+  }
+
+  public isClientConnected(): boolean {
+    const clientConnected = this.client && this.client.connected;
+    console.log('isClientConnected check:', {
+      internalState: this.isConnected,
+      clientState: clientConnected,
+      result: this.isConnected && clientConnected,
+    });
+    return this.isConnected && clientConnected;
+  }
+
+  public getSessionCode(): string {
+    return this.sessionCode;
   }
 }

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { sessionsApi } from '@/api-client';
+import { authApi } from '@/api-client/auth-api';
 import { SessionWebSocket } from '@/websocket/sessionWebSocket';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import HostActivities from '../../components/HostActivities';
@@ -16,6 +17,13 @@ interface Participant {
   guestName: string;
   guestAvatar: string;
   userId: string | null;
+}
+
+interface UserAccount {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
 }
 
 export default function HostSessionPage() {
@@ -32,16 +40,64 @@ export default function HostSessionPage() {
   const [isSessionStarted, setIsSessionStarted] = useState(false);
   const [hostName, setHostName] = useState<string>('Host');
   const [hasJoined, setHasJoined] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const actualConnectedRef = useRef(false);
+  const hasCreatedSessionRef = useRef(false);
+  const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
+  const [isLoadingAccount, setIsLoadingAccount] = useState(false);
 
+  // Lấy thông tin tài khoản người dùng khi component mount
+  useEffect(() => {
+    const fetchUserAccount = async () => {
+      try {
+        setIsLoadingAccount(true);
+        const response = await authApi.getAccount();
+        const userData = response.data.data;
+
+        console.log('User account fetched:', userData);
+
+        setUserAccount({
+          userId: userData.userId,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+        });
+
+        // Sử dụng tên đầy đủ làm tên mặc định
+        if (userData.firstName && userData.lastName) {
+          setHostName(`${userData.firstName} ${userData.lastName}`);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user account:', err);
+        // Không đặt lỗi vì đây không phải lỗi nghiêm trọng
+      } finally {
+        setIsLoadingAccount(false);
+      }
+    };
+
+    fetchUserAccount();
+  }, []);
+
+  // Tạo session chỉ một lần khi component mount
   useEffect(() => {
     const createSession = async () => {
+      // Nếu đã tạo session rồi, không tạo lại
+      if (hasCreatedSessionRef.current) {
+        console.log('Session already created, skipping API call');
+        return;
+      }
+
       if (!collectionId) {
         setError('Collection ID is required');
         setIsLoading(false);
+        setIsInitializing(false);
         return;
       }
 
       try {
+        console.log('Creating new session for collection:', collectionId);
+        hasCreatedSessionRef.current = true; // Đánh dấu là đã gọi API
+
         const response = await sessionsApi.createSession({
           collectionId: collectionId,
         });
@@ -59,9 +115,12 @@ export default function HostSessionPage() {
         setSessionCode(responseSessionCode);
         setSessionId(responseSessionId);
       } catch (err: any) {
+        console.error('Error creating session:', err);
         setError(err.response?.data?.message || 'Failed to create session');
+        hasCreatedSessionRef.current = false; // Reset để có thể thử lại
       } finally {
         setIsLoading(false);
+        setIsInitializing(false);
       }
     };
 
@@ -71,18 +130,62 @@ export default function HostSessionPage() {
       // Đóng kết nối WebSocket khi component unmount
       if (sessionWsRef.current) {
         sessionWsRef.current.disconnect();
+        sessionWsRef.current = null;
       }
+      actualConnectedRef.current = false;
     };
   }, [collectionId]);
 
+  // Thiết lập WebSocket khi có sessionCode và sessionId
   useEffect(() => {
-    if (!sessionCode || !sessionId) return;
+    if (!sessionCode || !sessionId || isInitializing) return;
+
+    console.log('Setting up WebSocket connection, isConnected:', isConnected);
+
+    // Nếu đã có WebSocket kết nối với cùng sessionCode, không tạo kết nối mới
+    if (
+      sessionWsRef.current &&
+      sessionWsRef.current.getSessionCode() === sessionCode
+    ) {
+      console.log(
+        'WebSocket with this sessionCode already exists, checking connection'
+      );
+      const isConnectedNow = sessionWsRef.current.isClientConnected();
+      console.log('Current connection status:', isConnectedNow);
+
+      setIsConnected(isConnectedNow);
+      actualConnectedRef.current = isConnectedNow;
+
+      // Nếu đã disconnect, thử kết nối lại
+      if (!isConnectedNow) {
+        console.log('WebSocket disconnected, attempting to reconnect');
+        sessionWsRef.current
+          .connect()
+          .then(() => {
+            console.log('WebSocket reconnected successfully');
+            setIsConnected(true);
+            actualConnectedRef.current = true;
+          })
+          .catch((err) => {
+            console.error('Failed to reconnect WebSocket:', err);
+          });
+      }
+      return;
+    }
+
+    // Nếu có kết nối cũ, đóng trước khi tạo kết nối mới
+    if (sessionWsRef.current) {
+      console.log(
+        'Cleaning up old WebSocket connection before creating new one'
+      );
+      sessionWsRef.current.disconnect();
+      sessionWsRef.current = null;
+      actualConnectedRef.current = false;
+      setIsConnected(false);
+    }
 
     // Log sessionId để debug
-    console.log('Connecting to WebSocket with sessionId:', sessionId);
-
-    // Nếu đã có WebSocket kết nối, không tạo kết nối mới
-    if (sessionWsRef.current) return;
+    console.log('Creating new WebSocket with sessionId:', sessionId);
 
     const sessionWs = new SessionWebSocket(sessionCode, sessionId);
     sessionWsRef.current = sessionWs;
@@ -97,6 +200,7 @@ export default function HostSessionPage() {
       setParticipants(participantsData);
       // Kiểm tra xem host đã join chưa
       if (updatedParticipants.some((p) => p.displayName === hostName)) {
+        console.log('Host participation detected in participants list');
         setHasJoined(true);
       }
     });
@@ -107,15 +211,37 @@ export default function HostSessionPage() {
     });
 
     sessionWs.onConnectionStatusChangeHandler((status) => {
-      setIsConnected(status === 'Connected');
+      console.log('WebSocket connection status changed:', status);
+
+      // Chỉ cập nhật trạng thái kết nối nếu status là Connected hoặc Disconnected
+      if (
+        status === 'Connected' ||
+        status === 'Disconnected' ||
+        status === 'Connecting...' ||
+        status === 'Failed to connect' ||
+        status === 'Connection error'
+      ) {
+        const isConnectedNow = status === 'Connected';
+        console.log('Setting isConnected to:', isConnectedNow);
+        setIsConnected(isConnectedNow);
+        actualConnectedRef.current = isConnectedNow;
+      }
+
       // Tự động join host khi kết nối thành công
       if (status === 'Connected' && !hasJoined) {
         setTimeout(() => {
-          sessionWs
-            .joinSession(hostName)
+          if (!sessionWsRef.current) return;
+
+          console.log('Auto-joining session as host with name:', hostName);
+          const userId = userAccount?.userId || null;
+          console.log('Host userId:', userId);
+
+          sessionWsRef.current
+            .joinSession(hostName, userId)
             .then(() => {
               console.log('Host joined automatically');
               setHasJoined(true);
+              setError(null); // Xóa lỗi nếu có khi tham gia thành công
             })
             .catch((err) => {
               console.error('Error auto-joining host:', err);
@@ -127,16 +253,37 @@ export default function HostSessionPage() {
       }
     });
 
+    // Thêm xử lý lỗi
+    sessionWs.onErrorHandler((errorMsg) => {
+      console.error('WebSocket error received:', errorMsg);
+      setError(errorMsg);
+    });
+
+    console.log('Initializing WebSocket connection...');
     sessionWs
       .connect()
       .then(() => {
+        console.log('WebSocket connection established');
+        // Cập nhật trạng thái kết nối sau khi kết nối thành công
         setIsConnected(true);
+        actualConnectedRef.current = true;
+        setError(null); // Xóa lỗi hiện tại nếu kết nối thành công
       })
       .catch((err) => {
-        setError('Failed to connect to WebSocket');
         console.error('WebSocket connection error:', err);
+        setError('Failed to connect to WebSocket');
+        setIsConnected(false);
+        actualConnectedRef.current = false;
       });
-  }, [sessionCode, sessionId]);
+  }, [sessionCode, sessionId, isInitializing]);
+
+  // Sử dụng useEffect riêng cho việc tham gia tự động
+  useEffect(() => {
+    if (isConnected && !hasJoined && sessionWsRef.current) {
+      console.log('Attempting auto-join since connection is established');
+      // Auto-join logic would be here if not already handled in connection status change
+    }
+  }, [isConnected, hasJoined]);
 
   const handleStartSession = async () => {
     if (!sessionWsRef.current) {
@@ -184,7 +331,10 @@ export default function HostSessionPage() {
     }
 
     try {
-      await sessionWsRef.current.joinSession(hostName);
+      const userId = userAccount?.userId || null;
+      console.log('Joining session with userId:', userId);
+
+      await sessionWsRef.current.joinSession(hostName, userId);
       setHasJoined(true);
       setError(null);
     } catch (err) {
@@ -226,6 +376,12 @@ export default function HostSessionPage() {
     <div className='container mx-auto px-4 py-8'>
       <h1 className='text-3xl font-bold text-center mb-8'>Host Session</h1>
 
+      {/* Debug info */}
+      <div className='text-xs text-gray-500 mb-2 text-center'>
+        Connection: {isConnected ? 'Connected' : 'Disconnected'} | Joined:{' '}
+        {hasJoined ? 'Yes' : 'No'} | Session: {sessionCode || 'None'}
+      </div>
+
       <div className='max-w-4xl mx-auto'>
         <Card className='p-6 mb-6'>
           {sessionCode ? (
@@ -256,10 +412,12 @@ export default function HostSessionPage() {
                     />
                     <Button
                       onClick={handleJoinSession}
-                      disabled={isConnected && hasJoined}
+                      disabled={!isConnected || hasJoined}
                     >
-                      {isConnected && !hasJoined
-                        ? 'Đang tham gia...'
+                      {!isConnected
+                        ? 'Đang kết nối...'
+                        : hasJoined
+                        ? 'Đã tham gia'
                         : 'Tham gia với tư cách Host'}
                     </Button>
                   </div>
