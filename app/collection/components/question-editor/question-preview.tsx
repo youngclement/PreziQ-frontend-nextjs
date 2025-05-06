@@ -1,5 +1,12 @@
 'use client';
 
+// Extend Window interface to include our custom property
+declare global {
+  interface Window {
+    lastQuestionClick?: number;
+  }
+}
+
 // Update the imports at the top of question-preview.tsx
 import dynamic from 'next/dynamic';
 import {
@@ -342,7 +349,7 @@ export function QuestionPreview({
                             : 375
                       }
                       backgroundColor="transparent"
-                      onImageDrop={(url) => {
+                      onImageDrop={(url: string) => {
                         if (onSlideImageChange) {
                           onSlideImageChange(url, questionIndex);
                         }
