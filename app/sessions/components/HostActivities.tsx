@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { SessionWebSocket } from '@/websocket/sessionWebSocket';
 import InfoSlideViewer from '../show/components/info-slide-viewer';
-import QuizViewer from '../show/components/quiz-button-viewer';
+import QuizButtonViewer from './QuizButtonViewer';
 
 interface Participant {
   guestName: string;
@@ -145,9 +145,10 @@ export default function HostActivities({
         return <InfoSlideViewer activity={currentActivity} />;
       case 'QUIZ_BUTTONS':
         return (
-          <QuizViewer
+          <QuizButtonViewer
             activity={currentActivity}
-            sessionWebSocket={sessionWs || undefined}
+            sessionId={sessionId}
+            sessionWebSocket={sessionWs}
           />
         );
       default:

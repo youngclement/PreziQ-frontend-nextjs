@@ -42,9 +42,19 @@ export default function HostSessionPage() {
         const response = await sessionsApi.createSession({
           collectionId: collectionId,
         });
-        localStorage.setItem('sessionCode', response.data.sessionCode);
-        setSessionCode(response.data.sessionCode);
-        setSessionId(response.data.sessionId);
+
+        // Lưu sessionCode và sessionId từ response
+        const responseSessionId = response.data.sessionId;
+        const responseSessionCode = response.data.sessionCode;
+
+        console.log('Session created with ID:', responseSessionId);
+        console.log('Session created with Code:', responseSessionCode);
+
+        localStorage.setItem('sessionCode', responseSessionCode);
+        localStorage.setItem('sessionId', responseSessionId);
+
+        setSessionCode(responseSessionCode);
+        setSessionId(responseSessionId);
       } catch (err: any) {
         setError(err.response?.data?.message || 'Failed to create session');
       } finally {
@@ -64,6 +74,9 @@ export default function HostSessionPage() {
 
   useEffect(() => {
     if (!sessionCode || !sessionId) return;
+
+    // Log sessionId để debug
+    console.log('Connecting to WebSocket with sessionId:', sessionId);
 
     // Nếu đã có WebSocket kết nối, không tạo kết nối mới
     if (sessionWsRef.current) return;
@@ -108,7 +121,15 @@ export default function HostSessionPage() {
     }
 
     try {
-      await sessionWsRef.current.startSession();
+      // Đảm bảo đã cập nhật sessionId trong sessionWs
+      if (sessionId && sessionWsRef.current) {
+        console.log('Starting session with ID:', sessionId);
+        sessionWsRef.current.updateSessionId(sessionId);
+        await sessionWsRef.current.startSession();
+      } else {
+        throw new Error('Session ID is not available');
+      }
+
       // Đặt trạng thái session đã bắt đầu
       setIsSessionStarted(true);
     } catch (err) {
@@ -134,6 +155,7 @@ export default function HostSessionPage() {
 
   // Hiển thị giao diện sau khi đã bắt đầu session, sử dụng component HostActivities
   if (isSessionStarted && sessionId && sessionCode && sessionWsRef.current) {
+    console.log('Rendering host activities with session ID:', sessionId);
     return (
       <HostActivities
         sessionId={sessionId}
