@@ -329,19 +329,7 @@ export default function ParticipantActivities({
             key={currentActivity.activityId}
             activity={currentActivity}
             sessionCode={sessionCode}
-            sessionWebSocket={sessionWs}
-            onAnswerSubmit={async (selectedAnswers) => {
-              try {
-                await sessionWs.submitActivity({
-                  sessionCode: sessionCode,
-                  activityId: currentActivity.activityId,
-                  answerContent: selectedAnswers.join(','),
-                });
-              } catch (err) {
-                console.error('Error submitting participant answer:', err);
-                setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
-              }
-            }}
+            sessionWebSocket={sessionWs}            
           />
         );
       default:

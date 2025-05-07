@@ -23,6 +23,7 @@ interface HostActivitiesProps {
   sessionCode: string;
   sessionWs: SessionWebSocket;
   onSessionEnd?: () => void;
+  onNextActivityLog?: (activity: any) => void;
 }
 
 interface ParticipantSummary {
@@ -42,6 +43,7 @@ export default function HostActivities({
   sessionCode,
   sessionWs,
   onSessionEnd,
+  onNextActivityLog,
 }: HostActivitiesProps) {
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(true);
@@ -93,6 +95,7 @@ export default function HostActivities({
     sessionWs.onNextActivityHandler((activity) => {
       if (!isMounted.current) return;
       console.log('Next activity received:', activity);
+      if (onNextActivityLog) onNextActivityLog(activity);
 
       if (!activity) {
         console.log('No more activities in session, preparing to end session');
@@ -143,7 +146,6 @@ export default function HostActivities({
       setIsConnected(status === 'Connected');
     });
 
-    // Chỉ gọi nextActivity một lần duy nhất khi mount
     if (!hasStartedFirstActivity.current && sessionWs && sessionId) {
       hasStartedFirstActivity.current = true;
       setTimeout(() => {
@@ -157,7 +159,7 @@ export default function HostActivities({
     return () => {
       isMounted.current = false;
     };
-  }, [sessionWs, sessionId, onSessionEnd]);
+  }, [sessionWs, sessionId, onSessionEnd, onNextActivityLog]);
 
   const handleNextActivity = async () => {
     if (!isConnected || !sessionWs || !sessionId) {
@@ -245,18 +247,6 @@ export default function HostActivities({
             activity={currentActivity}
             sessionId={sessionId}
             sessionWebSocket={sessionWs}
-            onAnswerSubmit={async (selectedAnswers) => {
-              try {
-                await sessionWs.submitActivity({
-                  sessionCode: sessionId,
-                  activityId: currentActivity.activityId,
-                  answerContent: selectedAnswers.join(','),
-                });
-              } catch (err) {
-                console.error('Error submitting host answer:', err);
-                setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
-              }
-            }}
           />
         );
       default:
