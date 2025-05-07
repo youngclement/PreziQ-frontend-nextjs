@@ -10,6 +10,7 @@ import InfoSlideViewer from '../show/components/info-slide-viewer';
 import QuizButtonViewer from './QuizButtonViewer';
 import HostSessionSummary from './HostSessionSummary';
 import { Loader2 } from 'lucide-react';
+import QuizCheckboxViewer from './QuizCheckboxViewer';
 
 interface Participant {
   guestName: string;
@@ -52,6 +53,7 @@ export default function HostActivities({
     ParticipantSummary[]
   >([]);
   const isMounted = useRef(true);
+  const hasStartedFirstActivity = useRef(false);
 
   useEffect(() => {
     isMounted.current = true;
@@ -120,7 +122,6 @@ export default function HostActivities({
         console.log('Detected no more activities message in error handler');
         setNoMoreActivities(true);
 
-
         setTimeout(() => {
           if (isMounted.current && sessionId) {
             console.log(
@@ -142,18 +143,21 @@ export default function HostActivities({
       setIsConnected(status === 'Connected');
     });
 
-    setTimeout(() => {
-      sessionWs.nextActivity(sessionId).catch((err) => {
-        console.error('Error starting first activity:', err);
-        setError('Failed to start first activity');
-      });
-    }, 1000);
+    // Chỉ gọi nextActivity một lần duy nhất khi mount
+    if (!hasStartedFirstActivity.current && sessionWs && sessionId) {
+      hasStartedFirstActivity.current = true;
+      setTimeout(() => {
+        sessionWs.nextActivity(sessionId).catch((err) => {
+          console.error('Error starting first activity:', err);
+          setError('Failed to start first activity');
+        });
+      }, 1000);
+    }
 
     return () => {
       isMounted.current = false;
-
     };
-  }, [sessionWs, sessionId, onSessionEnd, sessionCode]);
+  }, [sessionWs, sessionId, onSessionEnd]);
 
   const handleNextActivity = async () => {
     if (!isConnected || !sessionWs || !sessionId) {
@@ -232,6 +236,27 @@ export default function HostActivities({
             sessionId={sessionId}
             sessionCode={sessionCode}
             sessionWebSocket={sessionWs}
+          />
+        );
+      case 'QUIZ_CHECKBOXES':
+        return (
+          <QuizCheckboxViewer
+            key={currentActivity.activityId}
+            activity={currentActivity}
+            sessionId={sessionId}
+            sessionWebSocket={sessionWs}
+            onAnswerSubmit={async (selectedAnswers) => {
+              try {
+                await sessionWs.submitActivity({
+                  sessionCode: sessionId,
+                  activityId: currentActivity.activityId,
+                  answerContent: selectedAnswers.join(','),
+                });
+              } catch (err) {
+                console.error('Error submitting host answer:', err);
+                setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
+              }
+            }}
           />
         );
       default:

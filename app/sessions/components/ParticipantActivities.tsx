@@ -14,6 +14,7 @@ import InfoSlideViewer from '../show/components/info-slide-viewer';
 import QuizButtonViewer from './QuizButtonViewer';
 import { Loader2 } from 'lucide-react';
 import SessionResultSummary from './SessionResultSummary';
+import QuizCheckboxViewer from './QuizCheckboxViewer';
 
 interface ParticipantActivitiesProps {
   sessionCode: string;
@@ -320,6 +321,27 @@ export default function ParticipantActivities({
             sessionCode={sessionCode}
             sessionWebSocket={sessionWs}
             onAnswerSubmit={handleSubmitActivity}
+          />
+        );
+      case 'QUIZ_CHECKBOXES':
+        return (
+          <QuizCheckboxViewer
+            key={currentActivity.activityId}
+            activity={currentActivity}
+            sessionCode={sessionCode}
+            sessionWebSocket={sessionWs}
+            onAnswerSubmit={async (selectedAnswers) => {
+              try {
+                await sessionWs.submitActivity({
+                  sessionCode: sessionCode,
+                  activityId: currentActivity.activityId,
+                  answerContent: selectedAnswers.join(','),
+                });
+              } catch (err) {
+                console.error('Error submitting participant answer:', err);
+                setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
+              }
+            }}
           />
         );
       default:
