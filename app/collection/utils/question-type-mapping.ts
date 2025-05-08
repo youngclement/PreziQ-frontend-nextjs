@@ -17,8 +17,12 @@ export const mapQuestionTypeToActivityType = (questionType: string): string => {
       return "QUIZ_TYPE_ANSWER";
     case "reorder":
       return "QUIZ_REORDER";
+    case "location":
+      return "QUIZ_LOCATION";
     case "slide":
       return "INFO_SLIDE";
+    case "info_slide":
+      return "INFO_SLIDE_INTERACTIVE";
     default:
       return "QUIZ_BUTTONS";
   }
@@ -39,8 +43,12 @@ export const mapActivityTypeToQuestionType = (activityType: string): string => {
       return "text_answer";
     case "QUIZ_REORDER":
       return "reorder";
+    case "QUIZ_LOCATION":
+      return "location";
     case "INFO_SLIDE":
       return "slide";
+    case "INFO_SLIDE_INTERACTIVE":
+      return "info_slide";
     default:
       return "multiple_choice";
   }
@@ -50,12 +58,14 @@ export const mapActivityTypeToQuestionType = (activityType: string): string => {
  * Maps question types to their display labels
  */
 export const questionTypeLabels = {
-  multiple_choice: "Multiple Choice",
-  multiple_response: "Multiple Response",
+  multiple_choice: "Single Choice",
+  multiple_response: "Multiple Choice",
   true_false: "True/False",
   text_answer: "Text Answer",
   reorder: "Reorder",
   slide: "Information Slide",
+  info_slide: "Interactive Info Slide",
+  location: "Geography Location", // Add this line
 };
 
 /**
@@ -67,5 +77,7 @@ export const questionTypeIcons = {
   true_false: "TrueFalseIcon",
   text_answer: "TypeAnswerIcon",
   reorder: "ReorderIcon",
+  location: "LocationIcon",
   slide: "SlideIcon",
+  info_slide: "SlideIcon",
 };
