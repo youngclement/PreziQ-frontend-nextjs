@@ -1,43 +1,84 @@
 'use client';
 
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import PexelsSidebar from './pexels-sidebar';
-import { ImageIcon, X } from 'lucide-react';
+import { ImageIcon, X, Upload } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { storageApi } from '@/api-client/storage-api'; // Import storageApi
 
 function PexelsPanel() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
+
+  // Gửi sự kiện để thêm ảnh vào canvas
+  const handleAddToCanvas = (url: string) => {
+    const event = new CustomEvent('fabric:add-image', {
+      detail: { url },
+    });
+    window.dispatchEvent(event);
+  };
+
+  // Xử lý khi người dùng chọn file từ máy tính
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return; // Nếu không có file, thoát
+
+    try {
+      const response = await storageApi.uploadSingleFile(file, 'slides');
+  
+      const res = response.data as any;
+       const fileUrl = res.data.fileUrl;
+
+       handleAddToCanvas(fileUrl); // Gửi URL từ AWS S3 vào canvas
+    } catch (error) {
+      console.error('Error uploading file:', error);
+    }
+  };
 
   return (
-    <>
-      {/* Trigger icon */}
-      <button
-        className="flex items-center gap-2 text-sm px-3 py-2 rounded-md hover:bg-muted border bg-background"
-        onClick={() => setOpen(true)}
-      >
-        <ImageIcon className="h-4 w-4" />
-        Ảnh từ Pexels
-      </button>
+    <div className="w-full">
+      <Tabs defaultValue="pexels">
+        <TabsList className="w-full mb-4">
+          <TabsTrigger value="pexels" className="flex-1 border">
+            Pexels
+          </TabsTrigger>
+          <TabsTrigger value="upload" className="flex-1 border border-zinc-200">
+            Upload
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Slide-over panel */}
-      {open && (
-        <div className="fixed top-0 right-0 w-80 h-full bg-white dark:bg-gray-900 shadow-lg z-50 border-l">
-          <div className="flex items-center justify-between px-4 py-3 border-b">
-            <h2 className="text-sm font-medium">Chọn ảnh từ Pexels</h2>
-            <button
-              onClick={() => setOpen(false)}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          {/* h-[calc(100%-12px)] */}
-          <div className="h-[20rem] overflow-y-auto">
+        <TabsContent value="pexels" className="mt-0">
+          <div className="h-[calc(100%-3.5rem)]">
             <PexelsSidebar />
           </div>
-        </div>
-      )}
-    </>
+        </TabsContent>
+
+        <TabsContent value="upload" className="mt-0">
+          <div className="border border-dashed rounded-lg p-4 text-center">
+            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground mb-2">
+              Drag and drop or click to upload
+            </p>
+            <input
+              type="file"
+              id="image-upload"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              onClick={() => document.getElementById('image-upload')?.click()}
+              className="w-full border bg-black text-white"
+            >
+              Select from computer
+            </Button>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
 
-export default PexelsPanel
+export default PexelsPanel;

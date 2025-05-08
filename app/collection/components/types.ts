@@ -20,6 +20,7 @@ export interface QuizOption {
 }
 
 export interface QuizQuestion {
+  id: string;
   activity_id: string;
   question_text: string;
   question_type:
@@ -28,14 +29,22 @@ export interface QuizQuestion {
     | "true_false"
     | "text_answer"
     | "slide"
+    | "info_slide"
+    | "location"
     | "reorder";
-  correct_answer_text: string;
+  correct_answer_text?: string;
   options: QuizOption[];
   explanation?: string;
   time_limit_seconds?: number;
   points?: number;
   slide_content?: string; // For slide-type questions
   slide_image?: string; // For slide images
+  location_data?: {
+    lat: number;
+    lng: number;
+    radius: number;
+    hint?: string;
+  };
 }
 
 // Define API responses

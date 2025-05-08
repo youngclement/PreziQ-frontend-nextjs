@@ -1,6 +1,7 @@
 import axios, { AxiosError } from "axios";
 import { toast } from "@/hooks/use-toast";
 import { authApi } from "./auth-api";
+import Cookies from "js-cookie";
 
 let axiosClient = axios.create({
   baseURL:'https://preziq.duckdns.org/api/v1',
@@ -11,17 +12,30 @@ let axiosClient = axios.create({
   withCredentials: true,
 });
 
-
 axiosClient.defaults.timeout = 1000 * 60 * 10;
 
 axiosClient.defaults.withCredentials = true;
 
+// Add a function to check if we're in a browser environment
+const isBrowser = () => typeof window !== "undefined";
+
 // Interceptor cho request
 axiosClient.interceptors.request.use((config) => {
   if (!config?.url?.includes("/auth/refresh")) {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+    // Only try to access localStorage in browser environment
+    if (isBrowser()) {
+      // Ưu tiên token từ localStorage trước
+      let token = localStorage.getItem("accessToken");
+
+      // Nếu không có trong localStorage, thử lấy từ cookies
+      if (!token) {
+        const cookieToken = Cookies.get("accessToken");
+        token = cookieToken || null;
+      }
+
+      if (token) {
+        config.headers["Authorization"] = `Bearer ${token}`;
+      }
     }
   }
   return config;
@@ -35,7 +49,7 @@ axiosClient.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     const originalRequest = error.config as any;
 
     // Xử lý lỗi 401
@@ -59,34 +73,72 @@ axiosClient.interceptors.response.use(
 
       if (shouldRefresh) {
         if (!refreshTokenPromise) {
-          refreshTokenPromise = authApi
-            .refreshToken()
-            .then((response) => {
-              const newAccessToken =
-                response?.data?.data?.accessToken ||
-                response?.data?.accessToken;
-              if (newAccessToken) {
-                localStorage.setItem("accessToken", newAccessToken);
-                return newAccessToken;
-              }
-              return Promise.reject(
-                "Không nhận được access token từ API refresh"
-              );
-            })
-            .catch((refreshError) => {
-              localStorage.removeItem("accessToken");
-              window.location.href = "/login"; // Chuyển hướng về trang đăng nhập
-              return Promise.reject(refreshError);
-            })
-            .finally(() => {
-              refreshTokenPromise = null;
-            });
+          refreshTokenPromise = new Promise<string>((resolve, reject) => {
+            authApi
+              .refreshToken()
+              .then((response) => {
+                const newAccessToken =
+                  response?.data?.data?.accessToken ||
+                  response?.data?.accessToken;
+                if (newAccessToken) {
+                  if (isBrowser()) {
+                    localStorage.setItem("accessToken", newAccessToken);
+                    localStorage.setItem(
+                      "tokenCreatedAt",
+                      Date.now().toString()
+                    );
+
+                    // Lưu token mới vào cookie
+                    Cookies.set("accessToken", newAccessToken, {
+                      expires: 7, // 7 ngày
+                      path: "/",
+                      secure: process.env.NODE_ENV === "production",
+                      sameSite: "lax",
+                    });
+                  }
+                  resolve(newAccessToken);
+                } else {
+                  reject("Không nhận được access token từ API refresh");
+                }
+              })
+              .catch((refreshError) => {
+                if (isBrowser()) {
+                  localStorage.removeItem("accessToken");
+                  localStorage.removeItem("tokenCreatedAt");
+                  localStorage.removeItem("userInfo");
+
+                  // Xóa cookie token
+                  Cookies.remove("accessToken", { path: "/" });
+
+                  window.location.href = "/login"; // Chuyển hướng về trang đăng nhập
+                }
+                reject(refreshError);
+              })
+              .finally(() => {
+                refreshTokenPromise = null;
+              });
+          });
         }
 
-        return refreshTokenPromise.then((accessToken) => {
-          originalRequest.headers["Authorization"] = `Bearer ${accessToken}`;
+        try {
+          const newToken = await refreshTokenPromise;
+          originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
           return axiosClient(originalRequest);
-        });
+        } catch (error) {
+          throw error;
+        }
+      } else {
+        // If token can't be refreshed and it's 401 error, redirect to login
+        if (isBrowser()) {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("tokenCreatedAt");
+          localStorage.removeItem("userInfo");
+
+          // Xóa cookie token
+          Cookies.remove("accessToken", { path: "/" });
+
+          window.location.href = "/login";
+        }
       }
     }
 

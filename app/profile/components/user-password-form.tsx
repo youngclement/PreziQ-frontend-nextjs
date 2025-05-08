@@ -87,29 +87,28 @@ export function UserPasswordForm() {
 		try {
 			setIsSubmitting(true);
 
-			// Gọi API cập nhật mật khẩu
+			// Call API to update password
 			const response = (await userApi.updatePassword({
 				currentPassword: data.currentPassword,
 				newPassword: data.newPassword,
 				confirmPassword: data.confirmPassword,
 			})) as unknown as ApiResponseWrapper;
 
-			// Xử lý kết quả
+			// Handle response
 			if (response?.data?.success) {
 				toast({
 					title: 'Thành công',
 					description: 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại.',
 				});
 
-				// Đăng xuất và chuyển hướng về trang login
-				// await logout();
-				localStorage.removeItem('accessToken');
+				// Log out and redirect to login page
+				await logout();
 				router.push('/auth/login');
 			}
 		} catch (error) {
 			console.error('Lỗi khi cập nhật mật khẩu:', error);
 
-			// Hiển thị thông báo lỗi
+			// Display error
 			toast({
 				title: 'Lỗi',
 				description:

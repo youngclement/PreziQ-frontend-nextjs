@@ -1,11 +1,12 @@
 "use client";
 
 import React from "react";
-import { Plus, Trash, CheckCircle, GripVertical } from "lucide-react";
+import { Plus, Trash, CheckCircle, GripVertical, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { QuizOption } from "../types";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 interface OptionListProps {
     options: QuizOption[];
@@ -16,6 +17,7 @@ interface OptionListProps {
     onDeleteOption: (index: number) => void;
 }
 
+// Update the OptionList.tsx file to include the answer text input
 export function OptionList({
     options,
     activeQuestionIndex,
@@ -43,7 +45,7 @@ export function OptionList({
                     <div
                         key={index}
                         className={cn(
-                            "group flex items-center p-2.5 rounded-md transition-all",
+                            "group flex flex-col p-2.5 rounded-md transition-all",
                             option.is_correct
                                 ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900"
                                 : "bg-card hover:bg-muted/50 border border-border"
@@ -59,34 +61,42 @@ export function OptionList({
                                     ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
                                     : "bg-muted text-muted-foreground"
                             )}>
-                                {['A', 'B', 'C', 'D', 'E', 'F'][index]}
+                                {index + 1}
                             </div>
-                            <div className="flex-1 truncate">
-                                <div className="text-sm">{option.option_text || `Option ${index + 1}`}</div>
+                            <div className="flex-1">
+                                <Input
+                                    value={option.option_text}
+                                    onChange={(e) => onOptionChange(activeQuestionIndex, index, "option_text", e.target.value)}
+                                    placeholder="Enter option text"
+                                    className="w-full"
+                                />
                             </div>
                         </div>
-                        <div className="flex space-x-1 ml-2">
-                            <input
-                                type={questionType === 'multiple_choice' ? 'radio' : 'checkbox'}
-                                checked={option.is_correct}
-                                onChange={(e) => {
-                                    // For checkbox (multiple_response), directly use the checked state
-                                    // For radio (multiple_choice), always true when selected
-                                    const newValue = questionType === 'multiple_choice' ? true : e.target.checked;
-                                    onOptionChange(activeQuestionIndex, index, "is_correct", newValue);
-                                }}
-                                className="h-4 w-4"
-                            />
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 w-7 p-0"
-                                onClick={() => onDeleteOption(index)}
-                                disabled={options.length <= 2}
-                            >
-                                <Trash className="h-3.5 w-3.5" />
-                            </Button>
 
+                        <div className="flex justify-between items-center mt-2">
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type={questionType === 'multiple_choice' ? 'radio' : 'checkbox'}
+                                    checked={option.is_correct}
+                                    onChange={(e) => {
+                                        // For checkbox (multiple_response), directly use the checked state
+                                        // For radio (multiple_choice), always true when selected
+                                        const newValue = questionType === 'multiple_choice' ? true : e.target.checked;
+                                        onOptionChange(activeQuestionIndex, index, "is_correct", newValue);
+                                    }}
+                                    className="h-4 w-4"
+                                />
+                                <Label>Correct Answer</Label>
+                            </div>
+
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onDeleteOption(index)}
+                                className="text-red-500 hover:text-red-700"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                         </div>
                     </div>
                 ))}

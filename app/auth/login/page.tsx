@@ -37,9 +37,9 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      email: '',
+      email: 'priziq.admin@gmail.com',
       phoneNumber: '',
-      password: '',
+      password: 'PriziQ123@',
     },
   });
 
@@ -107,7 +107,7 @@ export default function LoginPage() {
       setIsLoading(false);
       if (error.response && error.response.data) {
         const backendErrors = error.response.data.errors;
-        
+
         backendErrors?.forEach((err: any) => {
           if (err.code === 1105) {
             setError('password', { type: 'server', message: err.message });

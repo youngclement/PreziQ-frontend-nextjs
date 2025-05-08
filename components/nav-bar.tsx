@@ -39,6 +39,8 @@ export function NavBar() {
     if (!mounted) return null;
 
     const navLinks = [
+        { href: "/collections", label: "Collections" },
+        { href: "/my-collections", label: "My Collections" },
         { href: "/games", label: "Games" },
         { href: "/categories", label: "Categories" },
         { href: "/leaderboard", label: "Leaderboard" }

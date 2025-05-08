@@ -1,3 +1,4 @@
+
 import axiosClient from './axios-client';
 
 export interface CreateSessionRequest {
@@ -87,5 +88,6 @@ export const sessionsApi = {
       `/sessions/${sessionId}/history`
     );
     return response.data;
+
   },
 };

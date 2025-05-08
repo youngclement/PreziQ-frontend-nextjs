@@ -1,205 +1,192 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Mail, HelpCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
+import { motion } from "framer-motion";
+import { Bot, MessageSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/language-context";
+import TranslatedText from "@/components/ui/translated-text";
 
-interface FAQItemProps {
-    question: string;
-    answer: string;
-    index: number;
-}
+type FaqItem = {
+    questionKey: string;
+    answerKey: string;
+};
 
-function FAQItem({ question, answer, index }: FAQItemProps) {
-    const [isOpen, setIsOpen] = useState(false);
+const faqs: FaqItem[] = [
+    {
+        questionKey: "faq1Question",
+        answerKey: "faq1Answer",
+    },
+    {
+        questionKey: "faq2Question",
+        answerKey: "faq2Answer",
+    },
+    {
+        questionKey: "faq3Question",
+        answerKey: "faq3Answer",
+    },
+    {
+        questionKey: "faq4Question",
+        answerKey: "faq4Answer",
+    },
+    {
+        questionKey: "faq5Question",
+        answerKey: "faq5Answer",
+    },
+];
+
+export default function Faq02() {
+    const [activeTab, setActiveTab] = useState<string>("general");
+    const { theme, resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    const { t } = useLanguage();
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        setIsClient(true);
+    }, []);
+
+    const isDark = mounted && (resolvedTheme === "dark" || theme === "dark");
+
+    if (!mounted) {
+        return <section className="py-16" />;
+    }
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-                duration: 0.3,
-                delay: index * 0.15,
-                ease: "easeOut",
-            }}
+        <section
             className={cn(
-                "group rounded-xl border border-gray-200/80 dark:border-white/10",
-                "transition-all duration-200 ease-in-out",
-                isOpen
-                    ? "bg-white dark:bg-black shadow-md dark:shadow-[0_4px_20px_rgba(255,255,255,0.05)]"
-                    : "hover:bg-white/80 dark:hover:bg-white/[0.03]"
+                "py-24 relative overflow-hidden",
+                isDark ? "bg-black" : "bg-white"
             )}
+            id="faq"
         >
-            <button
-                type="button"
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full px-6 py-5 flex items-center justify-between gap-4"
-            >
-                <h3
+            {/* Background pattern elements */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div
                     className={cn(
-                        "text-base font-medium transition-colors duration-200 text-left",
-                        "text-gray-700 dark:text-gray-300",
-                        isOpen && "text-highlight dark:text-highlight font-semibold"
+                        "absolute -top-1/3 right-0 w-2/3 h-full opacity-10 transform rotate-12",
+                        "bg-gradient-radial from-transparent to-accent/20"
                     )}
-                >
-                    {question}
-                </h3>
-                <motion.div
-                    animate={{
-                        rotate: isOpen ? 180 : 0,
-                        scale: isOpen ? 1.1 : 1,
-                    }}
-                    transition={{
-                        duration: 0.3,
-                        ease: "easeInOut",
-                    }}
+                />
+                <div
                     className={cn(
-                        "p-1 rounded-full shrink-0",
-                        "transition-colors duration-200",
-                        isOpen
-                            ? "bg-highlight/20 text-highlight"
-                            : "text-gray-400 dark:text-gray-500"
+                        "absolute left-0 bottom-0 w-full h-40 opacity-20",
+                        "bg-gradient-to-t from-accent/20 to-transparent"
                     )}
-                >
-                    <ChevronDown className="h-4 w-4" />
-                </motion.div>
-            </button>
-            <AnimatePresence initial={false}>
-                {isOpen && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{
-                            height: "auto",
-                            opacity: 1,
-                            transition: {
-                                height: {
-                                    duration: 0.4,
-                                    ease: [0.04, 0.62, 0.23, 0.98],
-                                },
-                                opacity: {
-                                    duration: 0.25,
-                                    delay: 0.1,
-                                },
-                            },
-                        }}
-                        exit={{
-                            height: 0,
-                            opacity: 0,
-                            transition: {
-                                height: {
-                                    duration: 0.3,
-                                    ease: "easeInOut",
-                                },
-                                opacity: {
-                                    duration: 0.25,
-                                },
-                            },
-                        }}
+                />
+            </div>
+
+            <div className="container px-4 md:px-6 relative z-10">
+                <div className="flex flex-col items-center text-center mb-10 max-w-3xl mx-auto">
+                    <motion.h2
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        className="text-4xl font-bold tracking-tight mb-3"
                     >
-                        <div className="px-6 pb-5 pt-0">
-                            <div className="h-px w-full bg-gradient-to-r from-transparent via-gray-200 dark:via-white/10 to-transparent mb-4"></div>
-                            <motion.p
-                                initial={{ y: -8, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                exit={{ y: -8, opacity: 0 }}
-                                transition={{
-                                    duration: 0.3,
-                                    ease: "easeOut",
-                                }}
-                                className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
-                            >
-                                {answer}
-                            </motion.p>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </motion.div>
-    );
-}
-
-function Faq02() {
-    const faqs: Omit<FAQItemProps, "index">[] = [
-        {
-            question: "What is PreziQ and how can it help me?",
-            answer: "PreziQ is a modern presentation platform that combines AI-powered tools with intuitive design features. Our platform helps you create professional presentations, deliver them with confidence, and analyze audience engagement to optimize your content.",
-        },
-        {
-            question: "How does PreziQ differ from other presentation tools?",
-            answer: "Unlike traditional presentation software, PreziQ focuses on creating dynamic, engaging content with modern design elements like our Bento Grid layout. We also integrate AI capabilities to help you generate content, optimize your slides, and provide real-time analytics on audience engagement.",
-        },
-        {
-            question: "Is PreziQ suitable for both beginners and experienced presenters?",
-            answer: "Absolutely! PreziQ is designed with an intuitive interface that's accessible to beginners while offering advanced features for experienced presenters. Whether you're creating your first presentation or you're a seasoned professional, our platform scales to meet your needs.",
-        },
-        {
-            question: "Can I collaborate with my team on PreziQ presentations?",
-            answer: "Yes, collaboration is a core feature of PreziQ. Multiple team members can work on the same presentation simultaneously, leave comments, suggest edits, and track changes. This makes it perfect for team projects and organizational presentations.",
-        },
-        {
-            question: "Are there templates available to get started quickly?",
-            answer: "We offer an extensive library of modern, professionally designed templates for various presentation types including business pitches, educational content, marketing proposals, and more. All templates are fully customizable to match your brand and specific needs.",
-        },
-    ];
-
-    return (
-        <section className="py-16 w-full bg-gradient-to-b from-white to-gray-50 dark:from-black dark:to-black dark:bg-black">
-
-            <div className="container px-4 mx-auto">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="max-w-2xl mx-auto text-center mb-12"
-                >
-                    <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
-                        Frequently Asked <span className="text-highlight">Questions</span>
-                    </h2>
-                    <p className="text-base text-gray-600 dark:text-gray-400">
-                        Everything you need to know about <span className="text-highlight font-medium">PreziQ</span>
-                    </p>
-                </motion.div>
-
-                <div className="max-w-2xl mx-auto space-y-3">
-                    {faqs.map((faq, index) => (
-                        <FAQItem key={index} {...faq} index={index} />
-                    ))}
+                        <TranslatedText text="Frequently Asked Questions" translationKey="faqTitle" />
+                    </motion.h2>
+                    <motion.p
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                        className="text-muted-foreground text-lg"
+                    >
+                        <TranslatedText
+                            text="Find answers to common questions about our platform"
+                            translationKey="faqDesc"
+                        />
+                    </motion.p>
                 </div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                    className={cn(
-                        "max-w-md mx-auto mt-12 p-8 rounded-xl border border-highlight/30 dark:border-highlight/20",
-                        "bg-white dark:bg-black text-center shadow-md dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
-                    )}
-                >
-                    <div className="inline-flex items-center justify-center p-2.5 rounded-full bg-gray-100 dark:bg-white/10 mb-4">
-                        <HelpCircle className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                <div className="flex flex-col md:flex-row gap-8 max-w-5xl mx-auto">
+                    <div className="w-full md:w-2/3">
+                        <Accordion type="single" collapsible className="w-full">
+                            {faqs.map((faq, index) => (
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.4, delay: 0.1 * index }}
+                                >
+                                    <AccordionItem
+                                        value={`item-${index}`}
+                                        className={cn(
+                                            "border-b border-b-border/40 transition-colors hover:border-b-primary/20",
+                                            isDark ? "bg-black" : "bg-white"
+                                        )}
+                                    >
+                                        <AccordionTrigger className="py-5 text-left hover:no-underline focus:no-underline font-medium">
+                                            <span suppressHydrationWarning>
+                                                {isClient ? t(faq.questionKey) : ''}
+                                            </span>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="text-muted-foreground pb-5 leading-relaxed">
+                                            <span suppressHydrationWarning>
+                                                {isClient ? t(faq.answerKey) : ''}
+                                            </span>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                </motion.div>
+                            ))}
+                        </Accordion>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: 0.6 }}
+                        >
+                            <div className="mt-8 text-center">
+                                <Button variant="outline" size="lg" className="rounded-full">
+                                    <TranslatedText text="View all FAQs" translationKey="viewAllFaqs" />
+                                </Button>
+                            </div>
+                        </motion.div>
                     </div>
-                    <p className="text-base font-semibold text-gray-900 dark:text-white mb-2">
-                        Need more <span className="text-highlight">information</span>?
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                        Our team is ready to answer any questions about PreziQ
-                    </p>
-                    <button
-                        type="button"
-                        className={cn(
-                            "px-5 py-2.5 text-sm rounded-lg",
-                            "bg-highlight hover:bg-highlight/90 text-white",
-                            "transition-all duration-200",
-                            "font-medium shadow-sm"
-                        )}
-                    >
-                        Contact Our Team
-                    </button>
-                </motion.div>
+
+                    <div className="w-full md:w-1/3">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.5, delay: 0.3 }}
+                            className={cn(
+                                "rounded-lg p-6 h-full",
+                                isDark
+                                    ? "bg-accent/10 border border-border/40"
+                                    : "bg-accent/5 border border-border/40"
+                            )}
+                        >
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <MessageSquare className="w-5 h-5 text-primary" />
+                                </div>
+                                <h3 className="font-medium text-lg">
+                                    <TranslatedText text="Still have questions?" translationKey="stillHaveQuestions" />
+                                </h3>
+                            </div>
+                            <p className="text-muted-foreground mb-6">
+                                <TranslatedText
+                                    text="Can't find the answer you're looking for? Please chat with our friendly team."
+                                    translationKey="cantFindAnswer"
+                                />
+                            </p>
+                            <Button className="w-full gap-2 rounded-full">
+                                <Bot className="w-4 h-4" />
+                                <TranslatedText text="Chat with Support" translationKey="chatWithSupport" />
+                            </Button>
+                        </motion.div>
+                    </div>
+                </div>
             </div>
         </section>
     );
 }
-
-export default Faq02;

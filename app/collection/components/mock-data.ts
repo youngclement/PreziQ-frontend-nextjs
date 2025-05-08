@@ -1,5 +1,89 @@
 import { Activity, QuizQuestion } from "./types";
 
+export const GEOGRAPHY_QUIZ_QUESTIONS = [
+  {
+    id: "geo1",
+    activity_id: "act_geo1",
+    question_text: "Tìm và đánh dấu vị trí của Hà Nội trên bản đồ",
+    question_type: "location",
+    options: [],
+    correct_answer: "",
+    location_data: {
+      lat: 21.028511,
+      lng: 105.804817,
+      radius: 20,
+      hint: "Thủ đô của Việt Nam",
+    },
+  },
+  {
+    id: "geo2",
+    activity_id: "act_geo1",
+    question_text: "Tìm và đánh dấu vị trí của TP. Hồ Chí Minh trên bản đồ",
+    question_type: "location",
+    options: [],
+    correct_answer: "",
+    location_data: {
+      lat: 10.762622,
+      lng: 106.660172,
+      radius: 20,
+      hint: "Thành phố lớn nhất Việt Nam",
+    },
+  },
+  {
+    id: "geo3",
+    activity_id: "act_geo1",
+    question_text: "Tìm và đánh dấu vị trí của Paris trên bản đồ",
+    question_type: "location",
+    options: [],
+    correct_answer: "",
+    location_data: {
+      lat: 48.856614,
+      lng: 2.352222,
+      radius: 20,
+      hint: "Thủ đô của Pháp",
+    },
+  },
+  {
+    id: "geo4",
+    activity_id: "act_geo1",
+    question_text: "Tìm và đánh dấu vị trí của Tokyo trên bản đồ",
+    question_type: "location",
+    options: [],
+    correct_answer: "",
+    location_data: {
+      lat: 35.689487,
+      lng: 139.691711,
+      radius: 20,
+      hint: "Thủ đô của Nhật Bản",
+    },
+  },
+  {
+    id: "geo5",
+    activity_id: "act_geo1",
+    question_text: "Tìm và đánh dấu vị trí của New York trên bản đồ",
+    question_type: "location",
+    options: [],
+    correct_answer: "",
+    location_data: {
+      lat: 40.712776,
+      lng: -74.005974,
+      radius: 20,
+      hint: "Thành phố lớn nhất của Hoa Kỳ",
+    },
+  },
+];
+
+// Add to your MOCK_ACTIVITIES
+export const GEOGRAPHY_ACTIVITIES = [
+  {
+    id: "act_geo1",
+    collection_id: "c2fd3da5-ab44-432c-81c6-1b623c31ab39", // Your collection ID
+    title: "Địa lý thế giới",
+    description: "Quiz về các vị trí địa lý quan trọng trên thế giới",
+    is_published: true,
+    activity_type_id: "QUIZ_LOCATION",
+  },
+];
 export const MOCK_COLLECTIONS = [
   {
     id: "1",
