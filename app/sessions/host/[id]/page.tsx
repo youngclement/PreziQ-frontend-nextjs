@@ -159,31 +159,10 @@ export default function HostSessionPage() {
     // Nếu đã có WebSocket kết nối với cùng sessionCode, không tạo kết nối mới
     if (
       sessionWsRef.current &&
-      sessionWsRef.current.getSessionCode() === sessionCode
+      sessionWsRef.current.getSessionCode() === sessionCode &&
+      sessionWsRef.current.isClientConnected()
     ) {
-      console.log(
-        'WebSocket with this sessionCode already exists, checking connection'
-      );
-      const isConnectedNow = sessionWsRef.current.isClientConnected();
-      console.log('Current connection status:', isConnectedNow);
-
-      setIsConnected(isConnectedNow);
-      actualConnectedRef.current = isConnectedNow;
-
-      // Nếu đã disconnect, thử kết nối lại
-      if (!isConnectedNow) {
-        console.log('WebSocket disconnected, attempting to reconnect');
-        sessionWsRef.current
-          .connect()
-          .then(() => {
-            console.log('WebSocket reconnected successfully');
-            setIsConnected(true);
-            actualConnectedRef.current = true;
-          })
-          .catch((err) => {
-            console.error('Failed to reconnect WebSocket:', err);
-          });
-      }
+      console.log('WebSocket already connected, skipping new connection');
       return;
     }
 
@@ -248,48 +227,44 @@ export default function HostSessionPage() {
 
           console.log('Auto-joining session as host with name:', hostName);
           const userId = userAccount?.userId || null;
-          console.log('Host userId:', userId);
-
           sessionWsRef.current
             .joinSession(hostName, userId)
             .then(() => {
-              console.log('Host joined automatically');
+              console.log('Host joined session successfully');
               setHasJoined(true);
-              setError(null); // Xóa lỗi nếu có khi tham gia thành công
             })
             .catch((err) => {
-              console.error('Error auto-joining host:', err);
-              setError(
-                'Không thể tự động tham gia. Vui lòng tham gia thủ công.'
-              );
+              console.error('Failed to join session as host:', err);
             });
-        }, 500); // Thêm timeout nhỏ để đảm bảo WS đã sẵn sàng
+        }, 1000);
       }
     });
 
-    // Thêm xử lý lỗi
-    sessionWs.onErrorHandler((errorMsg) => {
-      console.error('WebSocket error received:', errorMsg);
-      setError(errorMsg);
-    });
-
-    console.log('Initializing WebSocket connection...');
+    // Kết nối WebSocket
     sessionWs
       .connect()
       .then(() => {
-        console.log('WebSocket connection established');
-        // Cập nhật trạng thái kết nối sau khi kết nối thành công
+        console.log('WebSocket connected successfully');
         setIsConnected(true);
         actualConnectedRef.current = true;
-        setError(null); // Xóa lỗi hiện tại nếu kết nối thành công
       })
       .catch((err) => {
-        console.error('WebSocket connection error:', err);
-        setError('Failed to connect to WebSocket');
-        setIsConnected(false);
-        actualConnectedRef.current = false;
+        console.error('Failed to connect WebSocket:', err);
+        setError('Failed to connect to session');
       });
-  }, [sessionCode, sessionId, isInitializing, hostName, userAccount]);
+
+    return () => {
+      // Không đóng kết nối khi component unmount
+      console.log('Component unmounted, keeping WebSocket connection alive');
+    };
+  }, [
+    sessionCode,
+    sessionId,
+    isInitializing,
+    hostName,
+    hasJoined,
+    userAccount?.userId,
+  ]);
 
   // Sử dụng useEffect riêng cho việc tham gia tự động
   useEffect(() => {

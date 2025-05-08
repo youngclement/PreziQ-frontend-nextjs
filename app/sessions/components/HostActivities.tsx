@@ -185,6 +185,8 @@ export default function HostActivities({
 
     return () => {
       isMounted.current = false;
+      // Không hủy đăng ký handlers khi unmount để duy trì kết nối
+      console.log('Component unmounted, giữ nguyên kết nối WebSocket');
     };
   }, [sessionWs, sessionId, onSessionEnd, onNextActivityLog]);
 
