@@ -128,4 +128,9 @@ export const rolesApi = {
 			permissions,
 		});
 	},
+	removePermissions: async (roleId: string, permissionIds: string[]) => {
+		return axiosClient.delete<RoleResponse>(`/roles/${roleId}/permissions`, {
+		  data: { permissionIds },
+		});
+	  },
 };

@@ -3,8 +3,8 @@ import { toast } from "@/hooks/use-toast";
 import { authApi } from "./auth-api";
 
 let axiosClient = axios.create({
-  baseURL:
-    "http://ec2-54-169-33-117.ap-southeast-1.compute.amazonaws.com/api/v1",
+  baseURL:'https://preziq.duckdns.org/api/v1',
+
   headers: {
     "Content-Type": "application/json",
   },
