@@ -49,7 +49,7 @@ export default function ParticipantActivities({
   const isMounted = useRef(true);
   const wsInitialized = useRef(false);
   const [showCountdown, setShowCountdown] = useState(false);
-  const [pendingActivity, setPendingActivity] = useState<any>(null);
+
   const [noMoreActivities, setNoMoreActivities] = useState(false);
 
   useEffect(() => {

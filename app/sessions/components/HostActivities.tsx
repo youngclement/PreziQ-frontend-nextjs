@@ -64,7 +64,6 @@ export default function HostActivities({
   const isMounted = useRef(true);
   const hasStartedFirstActivity = useRef(false);
   const [showCountdown, setShowCountdown] = useState(false);
-  const [pendingActivity, setPendingActivity] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
