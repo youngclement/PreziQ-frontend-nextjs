@@ -37,13 +37,13 @@ body {
     --primary-foreground: 0 0% 100%; /* trắng */
     --secondary: 0 0% 100%; /* trắng */
     --secondary-foreground: 0 0% 0%; /* đen */
-    --muted: 0 0% 100%; /* trắng */
-    --muted-foreground: 0 0% 0%; /* đen */
-    --accent: 0 0% 100%; /* trắng */
+    --muted: 0 0% 95%; /* light gray instead of white */
+    --muted-foreground: 0 0% 30%; /* dark gray */
+    --accent: 0 0% 95%; /* light gray instead of white */
     --accent-foreground: 0 0% 0%; /* đen */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%; /* trắng */
-    --border: 0 0% 100%; /* trắng */
+    --border: 0 0% 85%; /* light gray instead of black */
     --input: 0 0% 100%; /* trắng */
     --ring: 0 0% 0%; /* đen */
     --chart-1: 12 76% 61%;
@@ -53,13 +53,13 @@ body {
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-background: 0 0% 0%; /* black sidebar */
+    --sidebar-foreground: 0 0% 100%; /* white text */
+    --sidebar-primary: 0 0% 0%; /* black */
+    --sidebar-primary-foreground: 0 0% 100%; /* white */
+    --sidebar-accent: 0 0% 10%; /* very dark gray */
+    --sidebar-accent-foreground: 0 0% 100%; /* white */
+    --sidebar-border: 0 0% 20%; /* dark gray border */
     --sidebar-ring: 217.2 91.2% 59.8%;
 
 
@@ -83,13 +83,13 @@ body {
     --primary-foreground: 0 0% 0%; /* đen */
     --secondary: 0 0% 0%; /* đen */
     --secondary-foreground: 0 0% 100%; /* trắng */
-    --muted: 0 0% 0%; /* đen */
-    --muted-foreground: 0 0% 100%; /* trắng */
-    --accent: 0 0% 0%; /* đen */
+    --muted: 0 0% 0%; /* black instead of dark gray */
+    --muted-foreground: 0 0% 80%; /* light gray */
+    --accent: 0 0% 0%; /* black instead of dark gray */
     --accent-foreground: 0 0% 100%; /* trắng */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%; /* trắng */
-    --border: 0 0% 0%; /* đen */
+    --border: 0 0% 10%; /* darker gray, close to black */
     --input: 0 0% 0%; /* đen */
     --ring: 0 0% 100%; /* trắng */
     --chart-1: 220 70% 50%;
@@ -98,13 +98,13 @@ body {
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-background: 0 0% 0%; /* pure black */
+    --sidebar-foreground: 0 0% 100%; /* white */
     --sidebar-primary: 224.3 76.3% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-accent: 0 0% 0%; /* black instead of very dark gray */
+    --sidebar-accent-foreground: 0 0% 100%; /* white */
+    --sidebar-border: 0 0% 10%; /* almost black border */
     --sidebar-ring: 217.2 91.2% 59.8%;
 
 
