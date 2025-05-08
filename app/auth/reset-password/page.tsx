@@ -10,6 +10,11 @@ import { toast } from '@/hooks/use-toast';
 import { authApi } from '@/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+interface ResetPasswordFormData {
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -21,7 +26,7 @@ export default function ResetPasswordPage() {
     handleSubmit,
     setError,
     formState: { errors },
-  } = useForm();
+  } = useForm<ResetPasswordFormData>();
 
   useEffect(() => {
     if (!token) {
@@ -29,10 +34,7 @@ export default function ResetPasswordPage() {
     }
   }, [token]);
 
-  const onSubmit = async (data: {
-    newPassword: string;
-    confirmPassword: string;
-  }) => {
+  const onSubmit = async (data: ResetPasswordFormData) => {
     if (!token) {
       toast({ variant: 'destructive', title: 'Token không hợp lệ' });
       return;
@@ -81,7 +83,7 @@ export default function ResetPasswordPage() {
     } finally {
       setIsLoading(false);
     }
-    
+
   };
 
   return (

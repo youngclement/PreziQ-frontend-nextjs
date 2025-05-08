@@ -28,7 +28,7 @@ export function CollectionListItem({
 }: CollectionListItemProps) {
   return (
     <motion.div
-      key={collection.collectionId}
+      key={collection.id}
       variants={collectionVariants}
       initial='hidden'
       animate='visible'
@@ -65,7 +65,7 @@ export function CollectionListItem({
               {collection.description}
             </p>
             <CollectionActionButtons
-              collectionId={collection.collectionId}
+              collectionId={collection.id}
               onDelete={onDelete}
               onPreview={() => onPreview(collection)}
               onView={onView}

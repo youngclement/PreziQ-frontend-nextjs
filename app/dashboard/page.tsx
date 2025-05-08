@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -10,10 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Main } from '@/components/dashboard/layout/MainDB';
 import { Overview } from '@/components/dashboard/dashboard/components/overview';
 import { RecentSales } from '@/components/dashboard/dashboard/components/recent-sales';
+import { RoleGuard } from '@/components/auth/role-guard';
 
 export default function Dashboard() {
 	return (
-		<>
+		<RoleGuard allowedRoles={['ADMIN']}>
 			{/* ===== Main ===== */}
 			<Main>
 				<div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -173,6 +176,6 @@ export default function Dashboard() {
 					</TabsContent>
 				</Tabs>
 			</Main>
-		</>
+		</RoleGuard>
 	);
 }

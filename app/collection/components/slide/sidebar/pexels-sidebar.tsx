@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Search } from 'lucide-react';
@@ -26,7 +27,8 @@ export default function PexelsSidebar() {
         `https://api.pexels.com/v1/search?query=${search}&per_page=20`,
         {
           headers: {
-            Authorization: process.env.NEXT_PUBLIC_PEXELS_API_KEY || '',
+            Authorization:
+              '6fm7eg5wT8R36ipHKuGvpdeRIAwk0EmKsDWDQ2UG1UUig4is7w0y0yKF',
           },
         }
       );
@@ -57,9 +59,7 @@ export default function PexelsSidebar() {
   };
 
   return (
-    <div
-      className="w-[16rem] h-full  bg-white dark:bg-gray-900 border-r border-border shadow-md flex flex-col"
-    >
+    <div className="w-full h-full bg-white dark:bg-gray-900 flex flex-col">
       <div className="flex items-center gap-2 p-4 border-b">
         <div className="relative w-full">
           <Search className="absolute left-3 top-2.5 text-muted-foreground h-4 w-4" />
@@ -78,7 +78,7 @@ export default function PexelsSidebar() {
         </div>
       ) : (
         <ScrollArea className="flex-1 p-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {images.map((img) => (
               <img
                 key={img.id}

@@ -1,17 +1,16 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Pacifico } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { TypingAnimation } from '@/components/magicui/typing-animation';
 
-const pacifico = Pacifico({
+const inter = Inter({
   subsets: ['latin'],
-  weight: ['400'],
-  variable: '--font-pacifico',
+  variable: '--font-inter',
 });
 
 function ElegantShape({
@@ -269,7 +268,7 @@ export default function HeroGeometric({
                   isDark
                     ? 'bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300' // More vibrant colors for dark mode
                     : 'bg-gradient-to-r from-blue-500 via-purple-600 to-pink-500', // More vibrant colors for light mode
-                  pacifico.className,
+                  inter.className,
                   'text-4xl sm:text-6xl md:text-7xl leading-tight'
                 )}
                 delay={1500} // Start after the first text finishes

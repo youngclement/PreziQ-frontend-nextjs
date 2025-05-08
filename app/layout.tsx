@@ -4,9 +4,9 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import './globals.css';
 import { ThemeProvider } from "@/components/theme-provider";
-import Header from "@/components/header";
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/contexts/auth-context';
+import { LanguageProvider } from '@/contexts/language-context';
 
 export default function RootLayout({
 	children,
@@ -17,19 +17,20 @@ export default function RootLayout({
 		<html lang="en" suppressHydrationWarning>
 			<body>
 				<AuthProvider>
-					<ThemeProvider
-						attribute="class"
-						defaultTheme="system"
-						enableSystem
-						disableTransitionOnChange
-					>
-						<Providers>
-							<Header />
-							{children}
-							<ToastContainer position="top-right" />
-							<Toaster />
-						</Providers>
-					</ThemeProvider>
+					<LanguageProvider>
+						<ThemeProvider
+							attribute="class"
+							defaultTheme="system"
+							enableSystem
+							disableTransitionOnChange
+						>
+							<Providers>
+								{children}
+								<ToastContainer position="top-right" />
+								<Toaster />
+							</Providers>
+						</ThemeProvider>
+					</LanguageProvider>
 				</AuthProvider>
 			</body>
 		</html>

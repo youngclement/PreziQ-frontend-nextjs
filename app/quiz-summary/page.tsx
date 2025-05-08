@@ -136,7 +136,7 @@ export default function QuizSummaryPage() {
                   đúng
                 </span>
               </div>
-              <Progress value={percentCorrect} className='h-2.5' />
+              <Progress value={Math.min(Math.max(percentCorrect, 0), 100)} className='h-2.5' />
             </div>
 
             <div className='grid grid-cols-2 gap-4 mb-6'>
@@ -222,7 +222,7 @@ export default function QuizSummaryPage() {
                 <motion.div
                   className='h-full bg-primary'
                   initial={{ width: 0 }}
-                  animate={{ width: `${quizResult.levelProgress.progress}%` }}
+                  animate={{ width: `${Math.min(Math.max(quizResult.levelProgress.progress, 0), 100)}%` }}
                   transition={{ duration: 1, delay: 0.5 }}
                 />
               </div>
@@ -232,7 +232,7 @@ export default function QuizSummaryPage() {
                   {quizResult.levelProgress.xpForNextLevel -
                     (quizResult.levelProgress.xpEarned *
                       quizResult.levelProgress.progress) /
-                      100}{' '}
+                    100}{' '}
                   XP còn thiếu
                 </span>
               </div>
@@ -269,11 +269,10 @@ export default function QuizSummaryPage() {
               {quizResult.achievements.map((achievement, index) => (
                 <motion.div
                   key={achievement.id}
-                  className={`p-4 border rounded-lg relative ${
-                    achievement.isNewlyUnlocked
-                      ? 'border-primary bg-primary/5'
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
+                  className={`p-4 border rounded-lg relative ${achievement.isNewlyUnlocked
+                    ? 'border-primary bg-primary/5'
+                    : 'border-gray-200 dark:border-gray-700'
+                    }`}
                   initial={{ x: 50, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.3 + index * 0.1 }}

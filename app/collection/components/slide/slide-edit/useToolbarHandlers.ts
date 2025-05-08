@@ -1,6 +1,103 @@
-import * as fabric from 'fabric';
-import { createGradientFill } from './fabricHelpers';
-import WebFont from 'webfontloader';
+"use client";
+
+import * as fabric from "fabric";
+import { FabricImage } from "fabric";
+import { slidesApi } from "@/api-client/slides-api";
+import type { SlideElementPayload } from "@/types/slideInterface";
+import { debounce } from "lodash";
+
+const HARD_SLIDE_ID = "b6cb121c-1f5c-461b-b183-098468be7050";
+const ORIGINAL_CANVAS_WIDTH = 812;
+
+type StyleObj = Partial<{
+  fontWeight: string;
+  fontStyle: string;
+  underline: boolean;
+}>;
+
+const updateTextboxElement = debounce((textbox: fabric.Textbox) => {
+  const slideElementId = textbox.get("slideElementId");
+  if (!slideElementId) return;
+
+  const canvas = textbox.canvas;
+  if (!canvas) return;
+
+  const zoom = canvas.getZoom();
+  const cw = canvas.getWidth()! / zoom;
+  const ch = canvas.getHeight()! / zoom;
+
+  const rawLeft = textbox.left! / zoom;
+  const rawTop = textbox.top! / zoom;
+  const w = textbox.width!;
+  const h = textbox.height!;
+
+  const fontSizePercent = (textbox.fontSize! / ORIGINAL_CANVAS_WIDTH) * 100;
+  const textboxJson = {
+    ...textbox.toJSON(),
+    fontSize: fontSizePercent,
+  };
+
+  if (textboxJson.styles && Object.keys(textboxJson.styles).length > 0) {
+    for (const lineIndex in textboxJson.styles) {
+      const line = textboxJson.styles[lineIndex];
+      for (const charIndex in line) {
+        if (line[charIndex].fontSize) {
+          line[charIndex].fontSize =
+            (line[charIndex].fontSize / ORIGINAL_CANVAS_WIDTH) * 100;
+        }
+      }
+    }
+  }
+
+  const payload: SlideElementPayload = {
+    positionX: (rawLeft / cw) * 100,
+    positionY: (rawTop / ch) * 100,
+    width: (w / cw) * 100,
+    height: (h / ch) * 100,
+    rotation: textbox.angle || 0,
+    layerOrder: canvas.getObjects().indexOf(textbox),
+    slideElementType: "TEXT",
+    content: JSON.stringify(textboxJson),
+  };
+  console.log("Payload sent to API:", JSON.parse(payload.content));
+  slidesApi
+    .updateSlidesElement(HARD_SLIDE_ID, slideElementId, payload)
+    .then((res) => console.log("Updated textbox", res.data))
+    .catch((err) => console.error("Update textbox failed", err));
+}, 500);
+
+const updateImageElement = debounce((image: fabric.Image) => {
+  const slideElementId = image.get("slideElementId");
+  if (!slideElementId) return;
+
+  const canvas = image.canvas;
+  if (!canvas) return;
+
+  const zoom = canvas.getZoom();
+  const cw = canvas.getWidth()! / zoom;
+  const ch = canvas.getHeight()! / zoom;
+
+  const rawLeft = image.left! / zoom;
+  const rawTop = image.top! / zoom;
+  const w = image.getScaledWidth() / zoom;
+  const h = image.getScaledHeight() / zoom;
+
+  const payload: SlideElementPayload = {
+    positionX: (rawLeft / cw) * 100,
+    positionY: (rawTop / ch) * 100,
+    width: (w / cw) * 100,
+    height: (h / ch) * 100,
+    rotation: image.angle || 0,
+    layerOrder: canvas.getObjects().indexOf(image),
+    slideElementType: "IMAGE",
+    sourceUrl: image.get("sourceUrl") || image.getSrc(),
+  };
+
+  slidesApi
+    .updateSlidesElement(HARD_SLIDE_ID, slideElementId, payload)
+    .then((res) => console.log("Updated image", res.data))
+    .catch((err) => console.error("Update image failed", err));
+}, 500);
 
 export const ToolbarHandlers = (
   canvas: fabric.Canvas,
@@ -8,52 +105,155 @@ export const ToolbarHandlers = (
   content: fabric.Textbox
 ) => {
   const addTextbox = () => {
-    const textbox = new fabric.Textbox('New Text', {
-      left: 150,
+    console.log("Bắt đầu addTextbox");
+    if (canvas.get("isCreating")) {
+      console.log("Bỏ qua addTextbox vì đang tạo");
+      return;
+    }
+    canvas.set("isCreating", true);
+    const defaultFontSizePercent = (20 / ORIGINAL_CANVAS_WIDTH) * 100;
+    const textbox = new fabric.Textbox("New Text", {
+      left: 50,
       top: 250,
       fontSize: 20,
       width: 300,
+      fill: "#000000",
+      fontFamily: "Arial",
     });
+    textbox.set("isNew", true);
+
+    console.log("Thêm textbox vào canvas");
     canvas.add(textbox);
     canvas.setActiveObject(textbox);
     canvas.renderAll();
+
+    const cw = canvas.getWidth();
+    const ch = canvas.getHeight();
+    const w = textbox.getScaledWidth();
+    const h = textbox.getScaledHeight();
+
+    const payload: SlideElementPayload = {
+      positionX: (textbox.left! / cw) * 100,
+      positionY: (textbox.top! / ch) * 100,
+      width: (w / cw) * 100,
+      height: (h / ch) * 100,
+      rotation: textbox.angle || 0,
+      layerOrder: (textbox.get("layerOrder") as number) || 0,
+      slideElementType: "TEXT",
+      content: JSON.stringify({
+        ...textbox.toJSON(),
+        fontSize: defaultFontSizePercent,
+      }),
+    };
+
+    console.log("Gửi API addSlidesElement");
+    slidesApi
+      .addSlidesElement(HARD_SLIDE_ID, payload)
+      .then((res) => {
+        console.log("API addSlidesElement thành công:", res.data);
+        textbox.set("isNew", false);
+        textbox.set("slideElementId", res.data.data.slideElementId);
+      })
+      .catch((err) => {
+        console.error("Lỗi khi tạo text element:", err);
+        canvas.remove(textbox);
+        canvas.renderAll();
+      })
+      .finally(() => {
+        canvas.set("isCreating", false);
+      });
   };
 
-  const addShape = (shape: 'rect' | 'circle' | 'triangle' | 'arrow') => {
+  function onAddImage(e: Event) {
+    const ev = e as CustomEvent<{ url: string }>;
+    const { url } = ev.detail;
+
+    if (canvas.get("isCreating")) {
+      console.log("Bỏ qua addImage vì đang tạo");
+      return;
+    }
+    canvas.set("isCreating", true);
+
+    FabricImage.fromURL(url)
+      .then((img) => {
+        img.set({ left: 100, top: 100, scaleX: 0.5, scaleY: 0.5, isNew: true });
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.requestRenderAll();
+
+        const cw = canvas.getWidth()!;
+        const ch = canvas.getHeight()!;
+        const w = img.getScaledWidth();
+        const h = img.getScaledHeight();
+
+        const payload: SlideElementPayload = {
+          positionX: (img.left! / cw) * 100,
+          positionY: (img.top! / ch) * 100,
+          width: (w / cw) * 100,
+          height: (h / ch) * 100,
+          rotation: img.angle || 0,
+          layerOrder: canvas.getObjects().indexOf(img),
+          slideElementType: "IMAGE",
+          sourceUrl: url,
+        };
+
+        slidesApi
+          .addSlidesElement(HARD_SLIDE_ID, payload)
+          .then((res) => {
+            console.log("Tạo image element thành công:", res.data);
+            img.set("slideElementId", res.data.data.slideElementId);
+            img.set("isNew", false);
+          })
+          .catch((err) => {
+            console.error("Lỗi khi tạo image element:", err);
+            canvas.remove(img);
+            canvas.renderAll();
+          })
+          .finally(() => {
+            canvas.set("isCreating", false);
+          });
+      })
+      .catch((err) => {
+        console.error("Failed to load image:", err);
+        canvas.set("isCreating", false);
+      });
+  }
+
+  const addShape = (shape: "rect" | "circle" | "triangle" | "arrow") => {
     let obj: fabric.Object;
 
     switch (shape) {
-      case 'rect':
+      case "rect":
         obj = new fabric.Rect({
           left: 100,
           top: 100,
           width: 100,
           height: 60,
-          fill: '#3498db',
+          fill: "#3498db",
         });
         break;
-      case 'circle':
+      case "circle":
         obj = new fabric.Circle({
           left: 100,
           top: 100,
           radius: 40,
-          fill: '#e74c3c',
+          fill: "#e74c3c",
         });
         break;
-      case 'triangle':
+      case "triangle":
         obj = new fabric.Triangle({
           left: 100,
           top: 100,
           width: 60,
           height: 60,
-          fill: '#9b59b6',
+          fill: "#9b59b6",
         });
         break;
-      case 'arrow':
-        obj = new fabric.Path('M 0 0 L 100 0 L 90 -10 M 100 0 L 90 10', {
-          stroke: '#2c3e50',
+      case "arrow":
+        obj = new fabric.Path("M 0 0 L 100 0 L 90 -10 M 100 0 L 90 10", {
+          stroke: "#2c3e50",
           strokeWidth: 4,
-          fill: '',
+          fill: "",
         });
         break;
     }
@@ -68,70 +268,116 @@ export const ToolbarHandlers = (
     styleName: string,
     styleValue: any
   ) {
-    if (!textbox.isEditing) return; // Chỉ xử lý khi đang chỉnh sửa
+    if (!textbox.isEditing) return;
 
     const start = textbox.selectionStart || 0;
     const end = textbox.selectionEnd || 0;
 
-    if (start === end) return; // Không có văn bản được chọn
+    console.log("Selected range:", {
+      start: textbox.selectionStart,
+      end: textbox.selectionEnd,
+      text: textbox.text!.slice(textbox.selectionStart!, textbox.selectionEnd!),
+    });
 
-    // Chia văn bản thành các dòng
-    // const lines = textbox.text.split('\n');
-    // let currentCharIndex = 0;
+    if (start === end) return;
 
-    // // Duyệt qua từng dòng và ký tự
-    // for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-    //   const line = lines[lineIndex];
-    //   const lineLength = line.length;
-
-    //   for (let charIndex = 0; charIndex < lineLength; charIndex++) {
-    //     if (currentCharIndex >= start && currentCharIndex < end) {
-    //       // Khởi tạo styles nếu chưa có
-    //       if (!textbox.styles[lineIndex]) {
-    //         textbox.styles[lineIndex] = {};
-    //       }
-    //       if (!textbox.styles[lineIndex][charIndex]) {
-    //         textbox.styles[lineIndex][charIndex] = {};
-    //       }
-    //       // Áp dụng kiểu dáng
-    //       textbox.styles[lineIndex][charIndex][styleName] = styleValue;
-    //     }
-    //     currentCharIndex++;
-    //   }
-    //   currentCharIndex++; // Cộng thêm 1 cho ký tự xuống dòng
-    // }
-
+    if (start === 0 && end === textbox.text!.length) {
+      textbox.set(styleName as any, styleValue);
+      removeStyleProperty(textbox, styleName as keyof StyleObj);
+    } else {
       textbox.setSelectionStyles({ [styleName]: styleValue }, start, end);
+    }
 
-    textbox.dirty = true; // Đánh dấu cần render lại
+    textbox.dirty = true;
     canvas.requestRenderAll();
+    updateTextboxElement(textbox);
+  }
+
+  function removeStyleProperty(
+    textbox: fabric.Textbox,
+    prop: keyof StyleObj | "fill" | "fontSize" | "fontFamily"
+  ) {
+    if (!textbox.styles) return;
+
+    const styles = textbox.styles as unknown as Record<
+      string,
+      Record<string, any>
+    >;
+
+    for (const lineIndex in styles) {
+      const line = styles[lineIndex];
+      for (const charIndex in line) {
+        const charStyles = line[charIndex];
+        delete charStyles[prop];
+        if (Object.keys(charStyles).length === 0) {
+          delete line[charIndex];
+        }
+      }
+      if (Object.keys(line).length === 0) {
+        delete styles[lineIndex];
+      }
+    }
+
+    textbox.styles = styles as any;
+    textbox.dirty = true;
   }
 
   const changeColor = (e: CustomEvent<{ color?: string; gradient?: any }>) => {
     const active = canvas.getActiveObject();
-    if (!active || active.type !== 'textbox') return;
-
-    const obj = canvas.getActiveObject();
-    console.log(JSON.stringify(obj?.toJSON(), null, 2));
+    if (!active || active.type !== "textbox") {
+      console.log("No active textbox, skipping color change");
+      return;
+    }
 
     const textbox = active as fabric.Textbox;
-    if (textbox.isEditing && e.detail.color) {
-      applyStyleToSelection(textbox, 'fill', e.detail.color);
-    } else {
-      // Áp dụng cho toàn bộ nếu không ở chế độ chỉnh sửa
-      active.set('fill', e.detail.color);
-      active.dirty = true;
-      canvas.requestRenderAll();
+    if (!e.detail.color) {
+      return;
     }
+
+    const start = textbox.isEditing ? textbox.selectionStart || 0 : 0;
+    const end = textbox.isEditing
+      ? textbox.selectionEnd || textbox.text!.length
+      : textbox.text!.length;
+
+    console.log("Applying color:", {
+      color: e.detail.color,
+      isEditing: textbox.isEditing,
+      start,
+      end,
+    });
+
+    if (textbox.isEditing && start !== end) {
+      // Áp dụng màu cho vùng chọn
+      applyStyleToSelection(textbox, "fill", e.detail.color);
+    } else {
+      // Áp dụng màu cho toàn bộ textbox
+      textbox.set("fill", e.detail.color);
+      removeStyleProperty(textbox, "fill");
+    }
+
+    textbox.dirty = true;
+    canvas.requestRenderAll();
+    updateTextboxElement(textbox);
+    emitFormatState(start, end);
   };
 
   const changeAlign = (
-    e: CustomEvent<{ align: fabric.Textbox['textAlign'] }>
+    e: CustomEvent<{ align: fabric.Textbox["textAlign"] }>
   ) => {
     const active = canvas.getActiveObject();
-    if (active && active.type === 'textbox') {
-      (active as fabric.Textbox).set({ textAlign: e.detail.align });
+    if (active && active.type === "textbox") {
+      const textbox = active as fabric.Textbox;
+
+      textbox.set({ textAlign: e.detail.align });
+
+      // Đánh dấu textbox là dirty để đảm bảo render đúng
+      textbox.dirty = true;
+
       canvas.renderAll();
+
+      updateTextboxElement(textbox);
+
+      emitFormatState();
     }
   };
 
@@ -142,71 +388,395 @@ export const ToolbarHandlers = (
     canvas.renderAll();
   };
 
+  function emitFormatState(startIdx?: number, endIdx?: number) {
+    const obj = canvas.getActiveObject();
+    let textTransform = "none";
+
+    console.log("emitFormatState called", {
+      startIdx,
+      endIdx,
+      isEditing: obj?.type === "textbox" && (obj as fabric.Textbox).isEditing,
+    });
+
+    if (obj && obj.type === "textbox") {
+      const tb = obj as fabric.Textbox;
+      const alignment = tb.textAlign || "left";
+      let fontFamily = tb.fontFamily || "Roboto";
+      let fontSize = tb.fontSize || 16;
+      let fill = (tb.fill as string) || "#000000";
+      let boldActive = false;
+      let italicActive = false;
+      let underlineActive = false;
+
+      if (
+        tb.isEditing &&
+        startIdx !== undefined &&
+        endIdx !== undefined &&
+        startIdx < endIdx
+      ) {
+        const selectedText = tb.text!.slice(startIdx, endIdx);
+        console.log("Selected text:", selectedText);
+
+        if (
+          selectedText === selectedText.toUpperCase() &&
+          selectedText !== selectedText.toLowerCase()
+        ) {
+          textTransform = "uppercase";
+        } else if (selectedText === selectedText.toLowerCase()) {
+          textTransform = "lowercase";
+        } else if (
+          selectedText.length > 0 &&
+          selectedText[0] === selectedText[0].toUpperCase() &&
+          selectedText.slice(1) === selectedText.slice(1).toLowerCase()
+        ) {
+          textTransform = "capitalize";
+        }
+
+        const selStyles = tb.getSelectionStyles(
+          startIdx,
+          endIdx,
+          true
+        ) as Array<{
+          fontWeight?: string;
+          fontStyle?: string;
+          underline?: boolean;
+          fontFamily?: string;
+          fontSize?: number;
+          fill?: string;
+        }>;
+
+        console.log("Selection styles:", selStyles);
+
+        boldActive = selStyles.every((s) => s.fontWeight === "bold");
+        italicActive = selStyles.every((s) => s.fontStyle === "italic");
+        underlineActive = selStyles.every((s) => s.underline === true);
+
+        // Lấy giá trị của ký tự đầu tiên trong vùng chọn
+        if (selStyles.length > 0) {
+          fontFamily = selStyles[0].fontFamily || tb.fontFamily || "Roboto";
+          fontSize = selStyles[0].fontSize || tb.fontSize || 16;
+          fill = selStyles[0].fill || (tb.fill as string) || "#000000";
+        }
+      } else {
+        boldActive = tb.fontWeight === "bold";
+        italicActive = tb.fontStyle === "italic";
+        underlineActive = tb.underline === true;
+
+        const allText = tb.text || "";
+        if (
+          allText === allText.toUpperCase() &&
+          allText !== allText.toLowerCase()
+        ) {
+          textTransform = "uppercase";
+        } else if (allText === allText.toLowerCase()) {
+          textTransform = "lowercase";
+        } else if (
+          allText.length > 0 &&
+          allText[0] === allText[0].toUpperCase() &&
+          allText.slice(1) === allText.slice(1).toLowerCase()
+        ) {
+          textTransform = "capitalize";
+        }
+
+        if (tb.styles) {
+          const allStyles = tb.getSelectionStyles(0, tb.text!.length, true);
+          boldActive =
+            boldActive && allStyles.every((s) => s.fontWeight === "bold");
+          italicActive =
+            italicActive && allStyles.every((s) => s.fontStyle === "italic");
+          underlineActive =
+            underlineActive && allStyles.every((s) => s.underline === true);
+        }
+      }
+
+      console.log("Emitting format state:", {
+        bold: boldActive,
+        italic: italicActive,
+        underline: underlineActive,
+        alignment,
+        textTransform,
+        fontFamily,
+        fontSize,
+        fill,
+      });
+
+      window.dispatchEvent(
+        new CustomEvent("toolbar:format-change", {
+          detail: {
+            bold: boldActive,
+            italic: italicActive,
+            underline: underlineActive,
+            alignment,
+            textTransform,
+            fontFamily,
+            fontSize,
+            fill,
+          },
+        })
+      );
+    } else {
+      console.log("No active textbox, emitting default state");
+      window.dispatchEvent(
+        new CustomEvent("toolbar:format-change", {
+          detail: {
+            bold: false,
+            italic: false,
+            underline: false,
+            alignment: "left",
+            textTransform: "none",
+            fontFamily: "Roboto",
+            fontSize: 16,
+            fill: "#000000",
+          },
+        })
+      );
+    }
+  }
+
   const handleToggleStyle = (
-    e: CustomEvent<{ style: 'bold' | 'italic' | 'underline' }>
+    e: CustomEvent<{ style: "bold" | "italic" | "underline" }>
   ) => {
     const obj = canvas.getActiveObject();
-    if (!obj || obj.type !== 'textbox') return;
+    if (!obj || obj.type !== "textbox") return;
 
     const textbox = obj as fabric.Textbox;
 
-    if (!textbox.isEditing) {
-      // Áp dụng cho toàn bộ nếu không ở chế độ chỉnh sửa
-      if (e.detail.style === 'bold') {
-        const current = textbox.fontWeight;
-        textbox.set('fontWeight', current === 'bold' ? 'normal' : 'bold');
+    if (textbox.isEditing) {
+      const start = textbox.selectionStart || 0;
+      const end = textbox.selectionEnd || 0;
+      if (start === end) return;
+
+      const selStyles = textbox.getSelectionStyles(start, end, true);
+
+      if (e.detail.style === "bold") {
+        const allBold = selStyles.every((s) => s.fontWeight === "bold");
+        const newVal = allBold ? "normal" : "bold";
+        if (start === 0 && end === textbox.text!.length) {
+          textbox.set("fontWeight", newVal);
+          removeStyleProperty(textbox, "fontWeight");
+        } else {
+          applyStyleToSelection(textbox, "fontWeight", newVal);
+        }
       }
-      if (e.detail.style === 'italic') {
-        const current = textbox.fontStyle;
-        textbox.set('fontStyle', current === 'italic' ? 'normal' : 'italic');
+      if (e.detail.style === "italic") {
+        const allItalic = selStyles.every((s) => s.fontStyle === "italic");
+        const newVal = allItalic ? "normal" : "italic";
+        if (start === 0 && end === textbox.text!.length) {
+          textbox.set("fontStyle", newVal);
+          removeStyleProperty(textbox, "fontStyle");
+        } else {
+          applyStyleToSelection(textbox, "fontStyle", newVal);
+        }
       }
-      if (e.detail.style === 'underline') {
-        textbox.set('underline', !textbox.underline);
+      if (e.detail.style === "underline") {
+        const allUnderlined = selStyles.every((s) => s.underline === true);
+        const newVal = !allUnderlined;
+        if (start === 0 && end === textbox.text!.length) {
+          textbox.set("underline", newVal);
+          removeStyleProperty(textbox, "underline");
+        } else {
+          applyStyleToSelection(textbox, "underline", newVal);
+        }
       }
-      canvas.requestRenderAll();
-      return;
+    } else {
+      if (e.detail.style === "bold") {
+        const current = textbox.fontWeight || "normal";
+        const newVal = current === "bold" ? "normal" : "bold";
+        textbox.set("fontWeight", newVal);
+        removeStyleProperty(textbox, "fontWeight");
+      }
+      if (e.detail.style === "italic") {
+        const current = textbox.fontStyle || "normal";
+        const newVal = current === "italic" ? "normal" : "italic";
+        textbox.set("fontStyle", newVal);
+        removeStyleProperty(textbox, "fontStyle");
+      }
+      if (e.detail.style === "underline") {
+        const current = textbox.underline || false;
+        textbox.set("underline", !current);
+        removeStyleProperty(textbox, "underline");
+      }
     }
 
-    // Áp dụng cho phần được chọn
-    if (e.detail.style === 'bold') {
-      applyStyleToSelection(textbox, 'fontWeight', 'bold');
-    }
-    if (e.detail.style === 'italic') {
-      applyStyleToSelection(textbox, 'fontStyle', 'italic');
-    }
-    if (e.detail.style === 'underline') {
-      applyStyleToSelection(textbox, 'underline', true);
-    }
+    textbox.dirty = true;
+    canvas.requestRenderAll();
+    emitFormatState(textbox.selectionStart, textbox.selectionEnd);
+    updateTextboxElement(textbox);
   };
 
   const handleFontSizeChange = (e: CustomEvent<{ size: number }>) => {
+    console.log("handleFontSizeChange triggered:", e.detail);
     const obj = canvas.getActiveObject();
-    if (!obj || obj.type !== 'textbox') return;
+    if (!obj || obj.type !== "textbox") {
+      console.log("No active textbox, skipping font size change");
+      return;
+    }
 
     const textbox = obj as fabric.Textbox;
-    if (textbox.isEditing) {
-      applyStyleToSelection(textbox, 'fontSize', e.detail.size);
+    const start = textbox.isEditing ? textbox.selectionStart || 0 : 0;
+    const end = textbox.isEditing
+      ? textbox.selectionEnd || textbox.text!.length
+      : textbox.text!.length;
+
+    if (textbox.isEditing && start !== end) {
+      // Áp dụng cho vùng chọn
+      applyStyleToSelection(textbox, "fontSize", e.detail.size);
     } else {
-      textbox.set('fontSize', e.detail.size);
-      canvas.requestRenderAll();
+      // Áp dụng cho toàn bộ textbox
+      textbox.set("fontSize", e.detail.size);
+      removeStyleProperty(textbox, "fontSize");
     }
+
+    textbox.dirty = true;
+    canvas.requestRenderAll();
+    updateTextboxElement(textbox);
+    emitFormatState(start, end);
   };
 
   const handleFontFamilyChange = (e: CustomEvent<{ font: string }>) => {
     const font = e.detail.font;
     const active = canvas.getActiveObject();
 
-    if (!active) return;
+    if (!active || active.type !== "textbox") return;
 
-    if (active.type === 'textbox') {
-      const textbox = active as fabric.Textbox;
-      if (textbox.isEditing) {
-        applyStyleToSelection(textbox, 'fontFamily', font);
+    const textbox = active as fabric.Textbox;
+    if (textbox.isEditing) {
+      const start = textbox.selectionStart || 0;
+      const end = textbox.selectionEnd || 0;
+      if (start === end) return;
+
+      if (textbox.isEditing && start !== end) {
+        applyStyleToSelection(textbox, "fontFamily", font);
       } else {
-        textbox.set('fontFamily', font);
-        canvas.requestRenderAll();
+        textbox.set("fontFamily", font);
+        removeStyleProperty(textbox, "fontFamily");
       }
+    } else {
+      textbox.set("fontFamily", font);
+      removeStyleProperty(textbox, "fontFamily");
     }
+    textbox.dirty = true;
+    canvas.requestRenderAll();
+    updateTextboxElement(textbox);
+    emitFormatState();
+  };
+
+  const handleAlignElement = (
+    e: CustomEvent<{ alignType: "center-h" | "center-v" | "center-both" }>
+  ) => {
+    const active = canvas.getActiveObject();
+    if (!active || !["textbox", "image"].includes(active.type)) return;
+
+    const obj = active as fabric.Textbox | fabric.Image;
+    const zoom = canvas.getZoom();
+    const canvasWidth = canvas.getWidth()! / zoom;
+    const canvasHeight = canvas.getHeight()! / zoom;
+
+    let newLeft = obj.left! / zoom; // Normalize current position
+    let newTop = obj.top! / zoom;
+
+    // Use consistent size calculations
+    let objWidth: number;
+    let objHeight: number;
+
+    if (obj.type === "textbox") {
+      objWidth = (obj as fabric.Textbox).getScaledWidth() / zoom;
+      objHeight = (obj as fabric.Textbox).getScaledHeight() / zoom;
+    } else {
+      objWidth = obj.getScaledWidth() / zoom;
+      objHeight = obj.getScaledHeight() / zoom;
+    }
+
+    if (
+      e.detail.alignType === "center-h" ||
+      e.detail.alignType === "center-both"
+    ) {
+      newLeft = (canvasWidth - objWidth) / 2;
+    }
+    if (
+      e.detail.alignType === "center-v" ||
+      e.detail.alignType === "center-both"
+    ) {
+      newTop = (canvasHeight - objHeight) / 2;
+    }
+
+    // Apply position in canvas coordinates (account for zoom)
+    obj.set({ left: newLeft * zoom, top: newTop * zoom });
+    canvas.renderAll();
+
+    // Update API with consistent payload
+    if (obj.type === "textbox") {
+      updateTextboxElement(obj as fabric.Textbox);
+    } else {
+      updateImageElement(obj as fabric.Image);
+    }
+  };
+
+  const handleTextTransform = (
+    e: CustomEvent<{
+      transform: "uppercase" | "lowercase" | "capitalize" | "none";
+    }>
+  ) => {
+    const obj = canvas.getActiveObject();
+    if (!obj || obj.type !== "textbox") return;
+
+    const textbox = obj as fabric.Textbox;
+    let newText = textbox.text || "";
+
+    if (textbox.isEditing) {
+      const start = textbox.selectionStart || 0;
+      const end = textbox.selectionEnd || 0;
+      if (start === end) return;
+
+      const selectedText = newText.slice(start, end);
+      let transformedText = selectedText;
+      switch (e.detail.transform) {
+        case "uppercase":
+          transformedText = selectedText.toUpperCase();
+          break;
+        case "lowercase":
+          transformedText = selectedText.toLowerCase();
+          break;
+        case "capitalize":
+          transformedText =
+            selectedText.charAt(0).toUpperCase() +
+            selectedText.slice(1).toLowerCase();
+          break;
+        case "none":
+          transformedText = selectedText;
+          break;
+      }
+
+      newText = newText.slice(0, start) + transformedText + newText.slice(end);
+      textbox.set({ text: newText });
+      textbox.setSelectionStart(start);
+      textbox.setSelectionEnd(start + transformedText.length);
+    } else {
+      switch (e.detail.transform) {
+        case "uppercase":
+          newText = newText.toUpperCase();
+          break;
+        case "lowercase":
+          newText = newText.toLowerCase();
+          break;
+        case "capitalize":
+          newText = newText
+            .split(" ")
+            .map(
+              (word) =>
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            )
+            .join(" ");
+          break;
+        case "none":
+          break;
+      }
+      textbox.set({ text: newText });
+    }
+
+    canvas.requestRenderAll();
+    emitFormatState(textbox.selectionStart, textbox.selectionEnd);
+    updateTextboxElement(textbox);
   };
 
   const deleteObject = () => {
@@ -217,6 +787,7 @@ export const ToolbarHandlers = (
       canvas.requestRenderAll();
     }
   };
+
   const groupObjects = () => {
     const activeObjects = canvas.getActiveObjects();
     if (!activeObjects.length || activeObjects.length < 2) return;
@@ -232,20 +803,16 @@ export const ToolbarHandlers = (
   const ungroupObjects = () => {
     const activeObject = canvas.getActiveObject();
 
-    if (!activeObject || activeObject.type !== 'group') return;
+    if (!activeObject || activeObject.type !== "group") return;
 
     const group = activeObject as fabric.Group;
 
-    // Tách các object ra khỏi group
     const objects = group.removeAll();
 
-    // Remove group khỏi canvas
     canvas.remove(group);
 
-    // Add lại từng object vào canvas
     objects.forEach((obj) => canvas.add(obj));
 
-    // Tạo selection từ các object mới add
     const selection = new fabric.ActiveSelection(objects, { canvas });
     canvas.setActiveObject(selection);
 
@@ -253,54 +820,252 @@ export const ToolbarHandlers = (
   };
 
   const arrangeObject = (
-    action: 'bringToFront' | 'bringForward' | 'sendBackwards' | 'sendToBack'
+    action: "bringToFront" | "bringForward" | "sendBackwards" | "sendToBack"
   ) => {
     const obj = canvas.getActiveObject();
     if (!obj) return;
 
+    // Thực hiện hành động sắp xếp
     switch (action) {
-      case 'bringToFront':
+      case "bringToFront":
         canvas.bringObjectToFront(obj);
         break;
-      case 'bringForward':
+      case "bringForward":
         canvas.bringObjectForward(obj);
         break;
-      case 'sendBackwards':
+      case "sendBackwards":
         canvas.sendObjectBackwards(obj);
         break;
-      case 'sendToBack':
+      case "sendToBack":
         canvas.sendObjectToBack(obj);
         break;
     }
 
-    canvas.requestRenderAll();
+    canvas.renderAll();
+
+    // Cập nhật layerOrder cho tất cả đối tượng
+    const objects = canvas.getObjects();
+    const updates = objects
+      .filter((o) => ["textbox", "image"].includes(o.type!))
+      .map((o, index) => {
+        const slideElementId = o.get("slideElementId");
+        if (!slideElementId) return null;
+
+        const zoom = canvas.getZoom();
+        const canvasWidth = canvas.getWidth()! / zoom;
+        const canvasHeight = canvas.getHeight()! / zoom;
+        const rawLeft = o.left! / zoom;
+        const rawTop = o.top! / zoom;
+
+        let payload: SlideElementPayload;
+
+        if (o.type === "textbox") {
+          const textbox = o as fabric.Textbox;
+          const w = textbox.getScaledWidth() / zoom;
+          const h = textbox.getScaledHeight() / zoom;
+          const fontSizePercent =
+            (textbox.fontSize! / ORIGINAL_CANVAS_WIDTH) * 100;
+          const textboxJson = {
+            ...textbox.toJSON(),
+            fontSize: fontSizePercent,
+          };
+
+          if (
+            textboxJson.styles &&
+            Object.keys(textboxJson.styles).length > 0
+          ) {
+            for (const lineIndex in textboxJson.styles) {
+              const line = textboxJson.styles[lineIndex];
+              for (const charIndex in line) {
+                if (line[charIndex].fontSize) {
+                  line[charIndex].fontSize =
+                    (line[charIndex].fontSize / ORIGINAL_CANVAS_WIDTH) * 100;
+                }
+              }
+            }
+          }
+
+          payload = {
+            positionX: (rawLeft / canvasWidth) * 100,
+            positionY: (rawTop / canvasHeight) * 100,
+            width: (w / canvasWidth) * 100,
+            height: (h / canvasHeight) * 100,
+            rotation: o.angle || 0,
+            layerOrder: index,
+            slideElementType: "TEXT",
+            content: JSON.stringify(textboxJson),
+          };
+        } else {
+          const image = o as fabric.Image;
+          const w = image.getScaledWidth() / zoom;
+          const h = image.getScaledHeight() / zoom;
+
+          payload = {
+            positionX: (rawLeft / canvasWidth) * 100,
+            positionY: (rawTop / canvasHeight) * 100,
+            width: (w / canvasWidth) * 100,
+            height: (h / canvasHeight) * 100,
+            rotation: o.angle || 0,
+            layerOrder: index,
+            slideElementType: "IMAGE",
+            sourceUrl: image.get("sourceUrl") || image.getSrc(),
+          };
+        }
+
+        return { slideElementId, payload };
+      })
+      .filter(
+        (
+          update
+        ): update is { slideElementId: string; payload: SlideElementPayload } =>
+          update !== null
+      );
+
+    // Cập nhật hàng loạt tất cả phần tử
+    Promise.all(
+      updates.map(({ slideElementId, payload }) =>
+        slidesApi.updateSlidesElement(HARD_SLIDE_ID, slideElementId, payload)
+      )
+    )
+      .then((results) => {
+        console.log(
+          "Đã cập nhật hàng loạt layerOrder cho tất cả phần tử:",
+          results
+        );
+      })
+      .catch((err) => {
+        console.error("Lỗi khi cập nhật hàng loạt layerOrder:", err);
+      });
   };
 
-  window.addEventListener('fabric:add-text', addTextbox);
+  // Hàm để tải lại Textbox từ JSON và đảm bảo underline được áp dụng
+  const loadTextboxFromJSON = (json: any) => {
+    const textbox = new fabric.Textbox(json.text, json);
+    if (json.underline) {
+      textbox.set("underline", true);
+      textbox.dirty = true; // Đánh dấu là dirty để buộc render lại
+    }
+    canvas.add(textbox);
+    canvas.renderAll();
+    return textbox;
+  };
+
+  canvas.on("text:selection:changed", (e) => {
+    const tb = e.target as fabric.Textbox;
+    emitFormatState(tb.selectionStart, tb.selectionEnd);
+  });
+
+  canvas.on("text:editing:entered", () => emitFormatState());
+  canvas.on("text:editing:exited", () => emitFormatState());
+  canvas.on("object:modified", () => emitFormatState());
+  canvas.on("selection:created", () => emitFormatState());
+  canvas.on("selection:updated", () => emitFormatState());
+
+  let isAddingTextbox = false;
+  let textboxAddTimeout: NodeJS.Timeout | null = null;
+
+  const debouncedAddTextbox = () => {
+    if (isAddingTextbox) {
+      console.log("Bỏ qua fabric:add-textbox vì đang xử lý");
+      return;
+    }
+
+    isAddingTextbox = true;
+
+    if (textboxAddTimeout) {
+      clearTimeout(textboxAddTimeout);
+    }
+
+    console.log("Sự kiện fabric:add-textbox được kích hoạt");
+    addTextbox();
+
+    textboxAddTimeout = setTimeout(() => {
+      isAddingTextbox = false;
+      textboxAddTimeout = null;
+    }, 500);
+  };
+
+  window.addEventListener("fabric:add-textbox", debouncedAddTextbox);
   window.addEventListener(
-    'fabric:toggle-style',
+    "fabric:toggle-style",
     handleToggleStyle as EventListener
   );
   window.addEventListener(
-    'fabric:font-size',
+    "fabric:font-size",
     handleFontSizeChange as EventListener
   );
   window.addEventListener(
-    'fabric:font-family',
+    "fabric:font-family",
     handleFontFamilyChange as EventListener
   );
-  window.addEventListener('fabric:arrange', (e: Event) => {
+  window.addEventListener("fabric:change-color", changeColor as EventListener);
+  window.addEventListener("fabric:change-align", changeAlign as EventListener);
+  window.addEventListener("fabric:add-image", onAddImage);
+  window.addEventListener("fabric:arrange", (e: Event) => {
     const { action } = (e as CustomEvent<{ action: string }>).detail;
     arrangeObject(action as any);
   });
-  window.addEventListener('fabric:add-rect', () => addShape('rect'));
-  window.addEventListener('fabric:add-circle', () => addShape('circle'));
-  window.addEventListener('fabric:add-triangle', () => addShape('triangle'));
-  window.addEventListener('fabric:add-arrow', () => addShape('arrow'));
-  window.addEventListener('fabric:change-color', changeColor as EventListener);
-  window.addEventListener('fabric:change-align', changeAlign as EventListener);
-  window.addEventListener('fabric:group', groupObjects);
-  window.addEventListener('fabric:ungroup', ungroupObjects);
-  window.addEventListener('fabric:clear', clearCanvas);
-  window.addEventListener('fabric:delete', deleteObject);
+  window.addEventListener("fabric:add-rect", () => addShape("rect"));
+  window.addEventListener("fabric:add-circle", () => addShape("circle"));
+  window.addEventListener("fabric:add-triangle", () => addShape("triangle"));
+  window.addEventListener("fabric:add-arrow", () => addShape("arrow"));
+  window.addEventListener("fabric:group", groupObjects);
+  window.addEventListener("fabric:ungroup", ungroupObjects);
+  window.addEventListener("fabric:clear", clearCanvas);
+  window.addEventListener("fabric:delete", deleteObject);
+  window.addEventListener(
+    "fabric:align-element",
+    handleAlignElement as EventListener
+  );
+  window.addEventListener(
+    "fabric:text-transform",
+    handleTextTransform as EventListener
+  );
+
+  return () => {
+    window.removeEventListener("fabric:add-textbox", debouncedAddTextbox);
+    window.removeEventListener(
+      "fabric:toggle-style",
+      handleToggleStyle as EventListener
+    );
+    window.removeEventListener(
+      "fabric:font-size",
+      handleFontSizeChange as EventListener
+    );
+    window.removeEventListener(
+      "fabric:font-family",
+      handleFontFamilyChange as EventListener
+    );
+    window.removeEventListener(
+      "fabric:change-color",
+      changeColor as EventListener
+    );
+    window.removeEventListener(
+      "fabric:change-align",
+      changeAlign as EventListener
+    );
+    window.removeEventListener("fabric:add-image", onAddImage);
+    window.removeEventListener("fabric:arrange", (e: Event) => {
+      const { action } = (e as CustomEvent<{ action: string }>).detail;
+      arrangeObject(action as any);
+    });
+    window.removeEventListener("fabric:add-rect", () => addShape("rect"));
+    window.removeEventListener("fabric:add-circle", () => addShape("circle"));
+    window.removeEventListener("fabric:add-triangle", () =>
+      addShape("triangle")
+    );
+    window.removeEventListener("fabric:add-arrow", () => addShape("arrow"));
+    window.removeEventListener("fabric:group", groupObjects);
+    window.removeEventListener("fabric:ungroup", ungroupObjects);
+    window.removeEventListener("fabric:clear", clearCanvas);
+    window.removeEventListener("fabric:delete", deleteObject);
+    window.removeEventListener(
+      "fabric:align-element",
+      handleAlignElement as EventListener
+    );
+    window.removeEventListener(
+      "fabric:text-transform",
+      handleTextTransform as EventListener
+    );
+  };
 };

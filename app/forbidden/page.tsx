@@ -1,45 +1,32 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { useEffect } from "react";
-import { Shield } from "lucide-react";
-import Logo from "@/components/common/logo";
+import React from 'react';
+import { Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
+import DefaultLayout from '../default-layout';
 
-export default function Forbidden() {
-  useEffect(() => {
-    // You can add analytics tracking or other effects here
-  }, []);
+export default function ForbiddenPage() {
+  const router = useRouter();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
-      <div className="mb-8">
-        <Logo />
+    <DefaultLayout showBackButton={false} title="Access Denied">
+      <div className="container max-w-md mx-auto px-4 py-16 flex flex-col items-center justify-center text-center">
+        <Shield className="text-red-500 w-16 h-16 mb-6" />
+        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+        <p className="text-muted-foreground mb-8">
+          You don't have permission to access this area. This section requires administrator privileges.
+        </p>
+        <div className="flex gap-4">
+          <Button
+            onClick={() => router.push('/')}
+            variant="outline"
+            className="mx-auto"
+          >
+            Go to Home
+          </Button>
+        </div>
       </div>
-
-      <div className="mb-6 flex justify-center">
-        <Shield size={64} className="text-destructive" />
-      </div>
-
-      <h1 className="mb-4 text-5xl font-bold tracking-tight text-primary">Access Denied</h1>
-      <h2 className="mb-6 text-2xl font-medium text-muted-foreground">You don't have permission to access this page</h2>
-
-      <p className="mb-8 max-w-md text-muted-foreground">
-        This area is restricted. Please contact an administrator if you believe this is an error.
-      </p>
-
-      <div className="space-x-4">
-        <Button asChild size="lg">
-          <Link href="/">
-            Return Home
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="lg">
-          <Link href="/auth/login">
-            Sign In with Different Account
-          </Link>
-        </Button>
-      </div>
-    </div>
+    </DefaultLayout>
   );
 }

@@ -25,7 +25,39 @@ export interface LoginResponse {
 }
 
 export interface BodyLogin {
-    email?: string,
-    password: string,
-    phoneNumber?: string
+  email?: string;
+  password: string;
+  phoneNumber?: string;
+}
+
+export interface Role {
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  roleId: string;
+  name: string;
+  description: string;
+  active: boolean;
+}
+
+export interface User {
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  rolesSecured: Role[];
+}
+
+export interface AccountResponse {
+  success: boolean;
+  message: string;
+  data: User;
+  meta: {
+    timestamp: string;
+    instance: string;
+  };
 }

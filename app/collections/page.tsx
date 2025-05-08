@@ -19,7 +19,7 @@ import { CollectionGridItem } from './components/collection-grid-item';
 import { CollectionListItem } from './components/collection-list-item';
 import { CollectionPreviewDialog } from './components/collection-preview-dialog';
 
-export default function CollectionsPage() {
+export default function PublishedCollectionsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -39,35 +39,32 @@ export default function CollectionsPage() {
     hasPrevious: false,
   });
 
-  // Fetch collections khi component mount
+  // Fetch published collections when component mounts
   useEffect(() => {
-    fetchCollections();
+    fetchPublishedCollections();
   }, []);
 
-  // Fetch collections từ API
-  const fetchCollections = async (page = 1, size = 100) => {
+  // Fetch published collections from API
+  const fetchPublishedCollections = async (page = 1, size = 100) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Truy cập response gốc để debug
-      const response = await collectionsApi.getCollections({
+      // Use the query parameter approach for filtering published collections
+      const response = await collectionsApi.getPublishedCollections({
         page,
         size,
+        query: searchQuery
       });
 
-      // Log ra response gốc để kiểm tra
       console.log('Raw API Response:', response);
 
-      // Kiểm tra cấu trúc trước khi xử lý
       if (!response || !response.data) {
         throw new Error('Không nhận được dữ liệu từ API');
       }
 
-      // Cố gắng parse response nếu nó là chuỗi
       let processedData;
       if (typeof response.data === 'string') {
         try {
-          // Loại bỏ các ký tự không hợp lệ nếu cần
           const cleanedData = response.data.trim();
           processedData = JSON.parse(cleanedData);
           console.log('Parsed data:', processedData);
@@ -77,19 +74,26 @@ export default function CollectionsPage() {
           throw new Error('Dữ liệu JSON không hợp lệ từ API');
         }
       } else {
-        // Nếu không phải chuỗi, sử dụng trực tiếp
         processedData = response.data;
       }
 
-      // Kiểm tra xem response có đúng cấu trúc không
       if (processedData?.success && processedData?.data?.content) {
         const apiResponse = processedData as ApiCollectionResponse;
 
-        // Lấy danh sách collections từ processedData.data.content
+        // Get collections list from the API response
         const collectionsData = apiResponse.data.content;
-        setCollections(collectionsData);
 
-        // Cập nhật thông tin phân trang
+        // Handle invalid dates in the collections data
+        const sanitizedCollections = collectionsData.map(collection => ({
+          ...collection,
+          // Ensure createdAt and updatedAt are valid dates or null
+          createdAt: validateDateTime(collection.createdAt),
+          updatedAt: validateDateTime(collection.updatedAt)
+        }));
+
+        setCollections(sanitizedCollections);
+
+        // Update pagination info
         setPagination({
           currentPage: apiResponse.data.meta.currentPage,
           pageSize: apiResponse.data.meta.pageSize,
@@ -102,14 +106,12 @@ export default function CollectionsPage() {
         console.log('Processed API Response:', apiResponse);
       } else {
         console.error('Cấu trúc dữ liệu không đúng:', processedData);
-        // Nếu không đúng cấu trúc, thiết lập collections là mảng rỗng
         setCollections([]);
         setError('Định dạng dữ liệu không đúng từ API. Vui lòng thử lại sau.');
       }
     } catch (err) {
       console.error('Lỗi khi lấy danh sách collections:', err);
       setError('Không thể tải danh sách collections. Vui lòng thử lại sau.');
-      // Đảm bảo collections là mảng rỗng khi có lỗi
       setCollections([]);
       toast({
         title: 'Lỗi',
@@ -124,113 +126,63 @@ export default function CollectionsPage() {
     }
   };
 
-  // Effect để tìm kiếm khi searchQuery thay đổi (với debounce)
+  // Helper function to validate datetime strings
+  const validateDateTime = (dateTimeString?: string): string | undefined => {
+    if (!dateTimeString) return undefined;
+
+    // Try to create a valid Date object
+    const date = new Date(dateTimeString);
+
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date detected:', dateTimeString);
+      return undefined;
+    }
+
+    return dateTimeString;
+  };
+
+  // Effect to search when searchQuery changes (with debounce)
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchCollections();
+      fetchPublishedCollections(pagination.currentPage, pagination.pageSize);
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Filter collections based on search query (local filter nếu API không hỗ trợ)
-  // Đảm bảo collections luôn là mảng trước khi gọi filter
+  // We can still have local filtering as a fallback, but the primary search should be done by the API
   const filteredCollections = Array.isArray(collections)
-    ? collections.filter(
-        (collection) =>
-          collection.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          collection.description
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())
-      )
+    ? collections
     : [];
 
   // Get activities for a specific collection
   const getCollectionActivities = (collectionId: string): Activity[] => {
-    // TODO: Thay thế bằng API lấy activities khi có
+    // TODO: Replace with actual API call when available
     return MOCK_ACTIVITIES.filter(
       (activity) => activity.collection_id === collectionId
     );
   };
 
   const handleCreateCollection = () => {
-    router.push('/collections/create');
+    router.push('/collection/create');
   };
 
-  const handleEditCollection = (collectionId: string) => {
-    router.push(`/collections/${collectionId}/edit`);
+  const handleEditCollection = (id: string) => {
+    router.push(`/collection/edit/${id}`);
   };
 
-  const handleViewActivities = (collectionId: string) => {
-    router.push(`/collections/${collectionId}`);
-  };
-
-  const handleDeleteCollection = async (collectionId: string) => {
-    try {
-      const response = await collectionsApi.deleteCollection(collectionId);
-
-      // Log phản hồi gốc để debug
-      console.log('Delete response:', response);
-
-      let responseData;
-      // Xử lý response nếu cần thiết (tương tự như trong fetchCollections)
-      if (typeof response.data === 'string') {
-        try {
-          responseData = JSON.parse(response.data.trim());
-        } catch (parseError) {
-          console.error('JSON Parse Error on delete:', parseError);
-          throw new Error('Dữ liệu JSON không hợp lệ từ API khi xóa');
-        }
-      } else {
-        responseData = response.data;
-      }
-
-      // Kiểm tra response để đảm bảo xóa thành công
-      if (responseData?.success) {
-        // Cập nhật state sau khi xóa thành công
-        setCollections(
-          collections.filter(
-            (collection) => collection.collectionId !== collectionId
-          )
-        );
-        toast({
-          title: 'Đã xóa',
-          description: 'Collection đã được xóa thành công.',
-          variant: 'default',
-        });
-      } else {
-        throw new Error('API trả về thành công nhưng không có dữ liệu success');
-      }
-    } catch (err) {
-      console.error('Lỗi khi xóa collection:', err);
-      toast({
-        title: 'Lỗi',
-        description:
-          typeof err === 'object' && err !== null && 'message' in err
-            ? String((err as Error).message)
-            : 'Không thể xóa collection. Vui lòng thử lại sau.',
-        variant: 'destructive',
-      });
-    }
+  const handleViewActivities = (id: string) => {
+    router.push(`/collection?collectionId=${id}`);
   };
 
   const handlePreviewCollection = async (collection: Collection) => {
     setSelectedCollection(collection);
     setPreviewOpen(true);
-
-    // Tùy chọn: Lấy chi tiết collection từ API để có dữ liệu mới nhất
-    // try {
-    //   const response = await collectionsApi.getCollectionById(collection.id);
-    //   if (response?.data?.success && response?.data?.data) {
-    //     setSelectedCollection(response.data.data);
-    //   }
-    // } catch (err) {
-    //   console.error('Lỗi khi lấy chi tiết collection:', err);
-    // }
   };
 
   const handlePreviewActivity = (activityId: string) => {
-    router.push(`/collection/${activityId}`);
+    router.push(`/activity/${activityId}`);
   };
 
   const collectionVariants = {
@@ -245,20 +197,22 @@ export default function CollectionsPage() {
     }),
   };
 
-  // Lấy activities cho collection được chọn preview
+  // Get activities for the selected collection preview
   const selectedCollectionActivities = selectedCollection
-    ? getCollectionActivities(selectedCollection.collectionId)
+    ? getCollectionActivities(selectedCollection.id)
     : [];
 
-  // Console.log để debug
-  console.log('Collections data:', collections);
+  console.log('Published Collections data:', collections);
   console.log('Pagination:', pagination);
 
   return (
-    <div className='flex justify-center'>
-      <div className='container max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20'>
+    <div className="flex justify-center">
+      <div className="container max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
         {/* Header Section */}
-        <CollectionHeader onCreateCollection={handleCreateCollection} />
+        <CollectionHeader
+          onCreateCollection={handleCreateCollection}
+          title="Published Collections"
+        />
 
         {/* Filters Section */}
         <CollectionFilters
@@ -270,33 +224,33 @@ export default function CollectionsPage() {
 
         {/* Loading state */}
         {isLoading && (
-          <div className='flex items-center justify-center py-32'>
-            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500'></div>
+          <div className="flex items-center justify-center py-32">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
           </div>
         )}
 
         {/* Error state */}
         {!isLoading && error && (
-          <div className='flex flex-col items-center justify-center py-16 px-6 text-center'>
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
             <svg
-              xmlns='http://www.w3.org/2000/svg'
-              className='h-16 w-16 text-red-500 mb-4'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-16 w-16 text-red-500 mb-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
               <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 strokeWidth={2}
-                d='M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <h3 className='text-xl font-semibold mb-2'>Đã xảy ra lỗi</h3>
-            <p className='text-zinc-500 dark:text-zinc-400 mb-4'>{error}</p>
+            <h3 className="text-xl font-semibold mb-2">Đã xảy ra lỗi</h3>
+            <p className="text-zinc-500 dark:text-zinc-400 mb-4">{error}</p>
             <button
-              onClick={() => fetchCollections()}
-              className='px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none'
+              onClick={() => fetchPublishedCollections()}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none"
             >
               Thử lại
             </button>
@@ -314,17 +268,15 @@ export default function CollectionsPage() {
           !error && (
             <>
               {viewMode === 'grid' ? (
-                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredCollections.map((collection, i) => (
                     <CollectionGridItem
-                      key={collection.collectionId}
+                      key={collection.id}
                       collection={collection}
                       index={i}
-                      activities={getCollectionActivities(
-                        collection.collectionId
-                      )}
+                      activities={getCollectionActivities(collection.id)}
                       onEdit={handleEditCollection}
-                      onDelete={handleDeleteCollection}
+                      onDelete={() => { }} // Published collections shouldn't be deleted directly
                       onView={handleViewActivities}
                       onPreview={handlePreviewCollection}
                       collectionVariants={collectionVariants}
@@ -332,17 +284,15 @@ export default function CollectionsPage() {
                   ))}
                 </div>
               ) : (
-                <div className='space-y-4'>
+                <div className="space-y-4">
                   {filteredCollections.map((collection, i) => (
                     <CollectionListItem
-                      key={collection.collectionId}
+                      key={collection.id}
                       collection={collection}
                       index={i}
-                      activities={getCollectionActivities(
-                        collection.collectionId
-                      )}
+                      activities={getCollectionActivities(collection.id)}
                       onEdit={handleEditCollection}
-                      onDelete={handleDeleteCollection}
+                      onDelete={() => { }} // Published collections shouldn't be deleted directly
                       onView={handleViewActivities}
                       onPreview={handlePreviewCollection}
                       collectionVariants={collectionVariants}
@@ -351,42 +301,40 @@ export default function CollectionsPage() {
                 </div>
               )}
 
-              {/* Pagination UI có thể thêm ở đây nếu cần */}
+              {/* Pagination UI */}
               {pagination.totalPages > 1 && (
-                <div className='flex justify-center mt-8'>
-                  <div className='flex space-x-2'>
+                <div className="flex justify-center mt-8">
+                  <div className="flex space-x-2">
                     <button
                       onClick={() =>
-                        fetchCollections(
+                        fetchPublishedCollections(
                           pagination.currentPage - 1,
                           pagination.pageSize
                         )
                       }
                       disabled={!pagination.hasPrevious}
-                      className={`px-4 py-2 rounded-md ${
-                        !pagination.hasPrevious
-                          ? 'bg-gray-300 cursor-not-allowed'
-                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                      }`}
+                      className={`px-4 py-2 rounded-md ${!pagination.hasPrevious
+                        ? 'bg-gray-300 cursor-not-allowed'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        }`}
                     >
                       Trang trước
                     </button>
-                    <div className='px-4 py-2 bg-gray-100 rounded-md'>
+                    <div className="px-4 py-2 bg-gray-100 rounded-md">
                       Trang {pagination.currentPage} / {pagination.totalPages}
                     </div>
                     <button
                       onClick={() =>
-                        fetchCollections(
+                        fetchPublishedCollections(
                           pagination.currentPage + 1,
                           pagination.pageSize
                         )
                       }
                       disabled={!pagination.hasNext}
-                      className={`px-4 py-2 rounded-md ${
-                        !pagination.hasNext
-                          ? 'bg-gray-300 cursor-not-allowed'
-                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                      }`}
+                      className={`px-4 py-2 rounded-md ${!pagination.hasNext
+                        ? 'bg-gray-300 cursor-not-allowed'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        }`}
                     >
                       Trang sau
                     </button>

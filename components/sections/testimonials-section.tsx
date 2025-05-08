@@ -15,39 +15,33 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Quote, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/contexts/language-context";
+import TranslatedText from "@/components/ui/translated-text";
 
 const testimonials = [
     {
-        name: "Alex Johnson",
-        role: "Marketing Director",
+        nameKey: "testimonialAuthor1",
+        roleKey: "testimonialRole1",
         image: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        content: "PreziQ transformed our pitch decks. The AI-powered insights helped us create more engaging presentations with less effort.",
+        contentKey: "testimonialText1",
         rating: 5,
         company: "TechVision Inc."
     },
     {
-        name: "Sarah Chen",
-        role: "Product Manager",
+        nameKey: "testimonialAuthor2",
+        roleKey: "testimonialRole2",
         image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        content: "The real-time feedback feature is a game-changer. I now feel confident presenting to executives and clients.",
+        contentKey: "testimonialText2",
         rating: 5,
         company: "Innovate Labs"
     },
     {
-        name: "Michael Rodriguez",
-        role: "Sales Lead",
+        nameKey: "testimonialAuthor3",
+        roleKey: "testimonialRole3",
         image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        content: "Our team's presentation quality improved dramatically since using PreziQ. The design suggestions are particularly helpful.",
+        contentKey: "testimonialText3",
         rating: 4,
         company: "Global Solutions"
-    },
-    {
-        name: "Emily Wong",
-        role: "University Professor",
-        image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        content: "PreziQ helps me create engaging lecture materials in half the time. My students are more engaged than ever.",
-        rating: 5,
-        company: "State University"
     }
 ];
 
@@ -88,9 +82,12 @@ const backgroundWaveVariants = {
 export function TestimonialsSection() {
     const { theme, resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const { t } = useLanguage();
+    const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
         setMounted(true);
+        setIsClient(true);
     }, []);
 
     const isDark = mounted && (resolvedTheme === "dark" || theme === "dark");
@@ -103,7 +100,7 @@ export function TestimonialsSection() {
         <section className={cn(
             "py-24 relative overflow-hidden",
             isDark ? "bg-black" : "bg-white/50"
-        )}>
+        )} id="testimonials">
             {/* Background pattern elements */}
             <div className="absolute inset-0 pointer-events-none">
                 <motion.div
@@ -150,7 +147,10 @@ export function TestimonialsSection() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.7, delay: 0.2 }}
                     >
-                        Trusted by <span className="text-highlight">presentation professionals</span>
+                        <TranslatedText
+                            text="Trusted by presentation professionals"
+                            translationKey="testimonialsTitle"
+                        />
                     </motion.h2>
 
                     <motion.p
@@ -159,7 +159,10 @@ export function TestimonialsSection() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.7, delay: 0.3 }}
                     >
-                        See how PreziQ is revolutionizing the way people create and deliver impactful presentations
+                        <TranslatedText
+                            text="See how PreziQ is revolutionizing the way people create and deliver impactful presentations"
+                            translationKey="testimonialDesc"
+                        />
                     </motion.p>
                 </div>
 
@@ -231,19 +234,23 @@ export function TestimonialsSection() {
                                             </div>
 
                                             <blockquote className="text-foreground flex-1 mb-6 text-base italic leading-relaxed">
-                                                "{testimonial.content}"
+                                                "{isClient ? t(testimonial.contentKey) : ''}"
                                             </blockquote>
 
                                             <div className="flex items-center">
                                                 <Avatar className="h-12 w-12 mr-4 border-2 border-highlight">
-                                                    <AvatarImage src={testimonial.image} alt={testimonial.name} />
+                                                    <AvatarImage src={testimonial.image} alt={isClient ? t(testimonial.nameKey) : ''} />
                                                     <AvatarFallback className="bg-highlight-hover text-white">
-                                                        {testimonial.name.charAt(0)}
+                                                        {isClient ? t(testimonial.nameKey).charAt(0) : ''}
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <div>
-                                                    <p className="font-bold text-base">{testimonial.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                                                    <p className="font-bold text-base" suppressHydrationWarning>
+                                                        {isClient ? t(testimonial.nameKey) : ''}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground" suppressHydrationWarning>
+                                                        {isClient ? t(testimonial.roleKey) : ''}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </CardContent>
@@ -272,7 +279,9 @@ export function TestimonialsSection() {
                     transition={{ duration: 0.7 }}
                     viewport={{ once: true }}
                 >
-                    <p className="text-sm text-muted-foreground mb-6">TRUSTED BY TEAMS AT</p>
+                    <p className="text-sm text-muted-foreground mb-6" suppressHydrationWarning>
+                        {isClient ? t("trustedBy").toUpperCase() : 'TRUSTED BY TEAMS AT'}
+                    </p>
                     <div className="flex flex-wrap justify-center items-center gap-x-10 gap-y-8">
                         {["Google", "Microsoft", "Amazon", "IBM", "Adobe"].map((company, idx) => (
                             <div
