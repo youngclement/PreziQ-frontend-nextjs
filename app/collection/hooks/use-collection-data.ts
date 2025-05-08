@@ -68,8 +68,12 @@ export function useCollectionData(collectionId: string, activityId?: string) {
           console.log(
             "Activities after sorting by orderIndex:",
             mappedActivities.map(
-              (a: { title: string; orderIndex: number }) =>
-                `${a.title} (index: ${a.orderIndex})`
+              (a: {
+                title: string;
+                orderIndex: number;
+                activity_type_id: string;
+              }) =>
+                `${a.title} (index: ${a.orderIndex}, type: ${a.activity_type_id})`
             )
           );
 
@@ -89,22 +93,53 @@ export function useCollectionData(collectionId: string, activityId?: string) {
 
             // Map ALL activities to questions
             const allQuestions = mappedActivities.map(
-              (act: { quiz: any; activity_type_id: string; id: string }) => {
-                // If the activity has quiz data, use it
+              (act: {
+                quiz: any;
+                activity_type_id: string;
+                id: string;
+                title?: string;
+              }) => {
+                // Map activity type to question type
+                const questionType = mapActivityTypeToQuestionType(
+                  act.activity_type_id
+                );
+                console.log(
+                  `[DEBUG] Mapping activity_type_id=${
+                    act.activity_type_id
+                  } to question_type=${questionType} for activity id=${
+                    act.id
+                  }, title=${act.title || "Untitled"}`
+                );
+
+                // Create base question
+                const question: QuizQuestion = {
+                  id: act.id, // Use activity ID as question ID
+                  activity_id: act.id,
+                  question_text: "",
+                  question_type: questionType as any,
+                  correct_answer_text: "",
+                  options: [],
+                };
+
+                // Handle slides and info slides
+                if (questionType === "slide" || questionType === "info_slide") {
+                  // For slide types, use specific slide data or defaults
+                  if (act.quiz) {
+                    question.question_text = act.quiz.title || "Slide";
+                    question.slide_content = act.quiz.content || "";
+                    question.slide_image = act.quiz.image || "";
+                  } else {
+                    question.question_text = act.title || "Slide";
+                    question.slide_content = "Add content here...";
+                  }
+                  return question;
+                }
+
+                // If the activity has quiz data, use it for other question types
                 if (act.quiz) {
                   const quizData = act.quiz;
-                  const questionType = mapActivityTypeToQuestionType(
-                    act.activity_type_id
-                  );
-
-                  // Create question from quiz data
-                  const question: QuizQuestion = {
-                    activity_id: act.id,
-                    question_text: quizData.questionText || "Default question",
-                    question_type: questionType as any,
-                    correct_answer_text: "",
-                    options: [],
-                  };
+                  question.question_text =
+                    quizData.questionText || "Default question";
 
                   // Map answers based on activity type
                   if (
@@ -133,21 +168,76 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                   return question;
                 } else {
                   // Create default question if no quiz data
-                  return createEmptyQuestion(act.id);
+                  return createEmptyQuestion(act.id, questionType);
                 }
               }
             );
 
-            // Set sorted questions
-            setQuestions(allQuestions);
+            // Thêm một quiz location cứng vào đầu danh sách
+            const mockLocationQuiz: QuizQuestion = {
+              id: "location-quiz-mock-001",
+              activity_id: "location-activity-mock-001",
+              question_text: "Định vị Paris trên bản đồ",
+              question_type: "location",
+              correct_answer_text: "",
+              options: [],
+              location_data: {
+                lat: 48.856614,
+                lng: 2.352222,
+                radius: 20,
+                hint: "Thành phố này được biết đến với tên gọi 'Thành phố Ánh sáng' và là nơi có Tháp Eiffel",
+              },
+            };
 
-            // Set the active question index based on the selected activity
-            if (targetActivity) {
-              const targetIndex = allQuestions.findIndex(
-                (q: { activity_id: string }) =>
-                  q.activity_id === targetActivity.id
+            // Thêm vào đầu mảng questions
+            const questionsWithMockLocation = [
+              mockLocationQuiz,
+              ...allQuestions,
+            ];
+
+            // Set sorted questions with mock location quiz at the start
+            setQuestions(questionsWithMockLocation);
+
+            // Đặt active question là location quiz mặc định
+            setActiveQuestionIndex(0);
+
+            // Tạo một activity giả cho location quiz
+            const mockLocationActivity: Activity = {
+              id: "location-activity-mock-001",
+              title: "Quiz Định vị Địa lý",
+              collection_id: collectionId,
+              description: "Kiểm tra kiến thức về vị trí địa lý",
+              is_published: true,
+              activity_type_id: "QUIZ_TYPE_LOCATION",
+              orderIndex: -1, // Đảm bảo nó luôn ở đầu danh sách
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              createdBy: "system",
+            };
+
+            // Thêm activity giả vào đầu mảng activities
+            const activitiesWithMockLocation = [
+              mockLocationActivity,
+              ...mappedActivities,
+            ];
+            setActivities(activitiesWithMockLocation);
+
+            // Set activity ban đầu là location quiz
+            setActivity(mockLocationActivity);
+
+            // If we have an activity ID in params, select that activity
+            if (activityId) {
+              const targetActivity = activitiesWithMockLocation.find(
+                (a: { id: string }) => a.id === activityId
               );
-              setActiveQuestionIndex(targetIndex >= 0 ? targetIndex : 0);
+              if (targetActivity) {
+                setActivity(targetActivity);
+                const targetIndex = questionsWithMockLocation.findIndex(
+                  (q: { activity_id: string }) =>
+                    q.activity_id === targetActivity.id
+                );
+                setActiveQuestionIndex(targetIndex >= 0 ? targetIndex : 0);
+              }
             }
           } else {
             toast({

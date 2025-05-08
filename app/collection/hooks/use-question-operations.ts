@@ -8,14 +8,16 @@ import { Activity, QuizQuestion } from "../components/types";
 import { createEmptyQuestion } from "../utils/question-helpers";
 import { mapQuestionTypeToActivityType } from "../utils/question-type-mapping";
 
-// Define ActivityType enum directly here since @/types module is missing
-export enum ActivityType {
-  QUIZ_BUTTONS = "QUIZ_BUTTONS",
-  QUIZ_CHECKBOXES = "QUIZ_CHECKBOXES",
-  QUIZ_TRUE_OR_FALSE = "QUIZ_TRUE_OR_FALSE",
-  QUIZ_TYPE_ANSWER = "QUIZ_TYPE_ANSWER",
-  QUIZ_REORDER = "QUIZ_REORDER",
-}
+// Define activity type constants instead of using enum
+export const ACTIVITY_TYPES = {
+  QUIZ_BUTTONS: "QUIZ_BUTTONS",
+  QUIZ_CHECKBOXES: "QUIZ_CHECKBOXES",
+  QUIZ_TRUE_OR_FALSE: "QUIZ_TRUE_OR_FALSE",
+  QUIZ_TYPE_ANSWER: "QUIZ_TYPE_ANSWER",
+  QUIZ_REORDER: "QUIZ_REORDER",
+  INFO_SLIDE: "INFO_SLIDE",
+  INFO_SLIDE_INTERACTIVE: "INFO_SLIDE_INTERACTIVE",
+} as const;
 
 export function useQuestionOperations(
   collectionId: string,
@@ -51,7 +53,7 @@ export function useQuestionOperations(
       // Create a new activity in the collection with next orderIndex
       const payload = {
         collectionId: collectionId,
-        activityType: ActivityType.QUIZ_BUTTONS,
+        activityType: ACTIVITY_TYPES.QUIZ_BUTTONS,
         title: "New Question",
         description: "This is a new question",
         isPublished: true,
@@ -128,8 +130,8 @@ export function useQuestionOperations(
           description: "New question added successfully",
         });
 
-        // Refresh collection data
-        refreshCollectionData();
+        // Remove the call to refreshCollectionData to prevent page reload
+        // This is not needed since we've already updated our local state
       }
     } catch (error) {
       console.error("Error adding question:", error);
@@ -174,8 +176,8 @@ export function useQuestionOperations(
         description: "Question deleted successfully",
       });
 
-      // Refresh collection data
-      refreshCollectionData();
+      // Remove the refreshCollectionData call to prevent page reload
+      // Local state is already updated correctly
     } catch (error) {
       console.error("Error deleting question:", error);
       toast({
@@ -185,7 +187,38 @@ export function useQuestionOperations(
       });
     }
   };
+  // Add to the hook's return value
+  const handleQuestionLocationChange = (
+    questionIndex: number,
+    locationData: any
+  ) => {
+    if (questionIndex < 0 || questionIndex >= questions.length) return;
 
+    const updatedQuestions = [...questions];
+    updatedQuestions[questionIndex] = {
+      ...updatedQuestions[questionIndex],
+      location_data: locationData,
+    };
+
+    setQuestions(updatedQuestions);
+
+    // Debounce update to API
+    if (window.updateQuestionTimer) {
+      clearTimeout(window.updateQuestionTimer);
+    }
+
+    window.updateQuestionTimer = setTimeout(async () => {
+      try {
+        // Send to API when implemented
+        console.log("Updating question location data:", locationData);
+        // In a real implementation, you would call your API here
+      } catch (error) {
+        console.error("Error updating question location:", error);
+      }
+    }, 1000);
+  };
+
+  // Add handleQuestionLocationChange to the return object
   /**
    * Delete an activity by ID
    */
@@ -224,6 +257,7 @@ export function useQuestionOperations(
       | "multiple_response"
       | "reorder"
       | "slide"
+      | "info_slide"
   ) => {
     // Get the activity ID directly from the active question
     const activeQuestionActivityId =
@@ -255,7 +289,7 @@ export function useQuestionOperations(
         `Updating activity type for ${targetActivity.id} to ${activityType}`
       );
       await activitiesApi.updateActivity(targetActivity.id, {
-        activityType: activityType as ActivityType,
+        activityType: activityType as any,
       });
 
       // Update our local state
@@ -416,6 +450,30 @@ export function useQuestionOperations(
           pointType: "STANDARD",
           correctOrder: options.map((opt) => opt.option_text),
         });
+      } else if (value === "slide" || value === "info_slide") {
+        // Both slide types use empty options
+        options = [];
+
+        // Maintain any existing slide content when switching between slide types
+        let slideContent = updatedQuestions[activeQuestionIndex].slide_content;
+        let slideImage = updatedQuestions[activeQuestionIndex].slide_image;
+
+        if (!slideContent) {
+          if (currentType === "info_slide" || currentType === "slide") {
+            // Keep existing content if switching between slide types
+            slideContent = updatedQuestions[activeQuestionIndex].slide_content;
+          } else {
+            // Default content for new slides
+            slideContent = "Add your slide content here...";
+          }
+        }
+
+        // Update the API
+        // Note: This would need to be implemented in the API backend
+        if (!activity) return;
+
+        // Add slide-specific update API call here when available
+        // For now, just update the local state
       }
 
       // Update the question with new type and options
@@ -560,6 +618,7 @@ export function useQuestionOperations(
     handleDeleteQuestion,
     handleDeleteActivity,
     handleQuestionTypeChange,
+    handleQuestionLocationChange,
     handleQuestionTextChange,
   };
 }
