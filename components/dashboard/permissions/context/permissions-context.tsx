@@ -6,115 +6,115 @@ import { permissionsApi } from '@/api-client';
 type DialogType = 'add' | 'edit' | 'delete' | null;
 
 interface PermissionsContextType {
-	open: DialogType;
-	setOpen: (type: DialogType) => void;
-	currentRow: Permission | null;
-	setCurrentRow: React.Dispatch<React.SetStateAction<Permission | null>>;
-	permissions: Permission[];
-	modules: string[];
-	isLoading: boolean;
-	error: string | null;
-	refetch: () => Promise<void>;
+  open: DialogType;
+  setOpen: (type: DialogType) => void;
+  currentRow: Permission | null;
+  setCurrentRow: React.Dispatch<React.SetStateAction<Permission | null>>;
+  permissions: Permission[];
+  modules: string[];
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
 }
 
 export interface PermissionContextState {
-	permissions: {
-		id: string;
-		name: string;
-		apiPath: string;
-		httpMethod: string;
-		module: string;
-		createdAt: Date;
-		updatedAt: Date;
-	}[];
-	// ... rest of the interface
+  permissions: {
+    permissionId: string;
+    name: string;
+    apiPath: string;
+    httpMethod: string;
+    module: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }[];
+  // ... rest of the interface
 }
 
 const PermissionsContext = createContext<PermissionsContextType | undefined>(
-	undefined
+  undefined
 );
 
 export function PermissionsProvider({
-	children,
+  children,
 }: {
-	children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-	const [open, setOpen] = useState<DialogType>(null);
-	const [currentRow, setCurrentRow] = useState<Permission | null>(null);
-	const [permissions, setPermissions] = useState<Permission[]>([]);
-	const [modules, setModules] = useState<string[]>([]);
-	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState<DialogType>(null);
+  const [currentRow, setCurrentRow] = useState<Permission | null>(null);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [modules, setModules] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-	const fetchData = async () => {
-		try {
-			setIsLoading(true);
-			setError(null);
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-			// Fetch modules
-			const modulesResponse = await permissionsApi.getModules();
-			if (modulesResponse.data.success) {
-				setModules(modulesResponse.data.data);
-			}
+      // Fetch modules
+      const modulesResponse = await permissionsApi.getModules();
+      if (modulesResponse.data.success) {
+        setModules(modulesResponse.data.data);
+      }
 
-			// Fetch permissions
-			const permissionsResponse = await permissionsApi.getPermissions({
-				page: 1,
-				size: 100,
-			});
-			if (permissionsResponse.data.success) {
-				const permissions = permissionsResponse.data.data.content.map(
-					(permission: Permission) => ({
-						...permission,
-						module: permission.module || '',
-						httpMethod: permission.httpMethod,
-					})
-				);
-				setPermissions(permissions);
-			}
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: 'Có lỗi xảy ra khi tải dữ liệu';
-			setError(message);
-			toast({
-				variant: 'destructive',
-				title: 'Có lỗi xảy ra',
-				description: message,
-			});
-		} finally {
-			setIsLoading(false);
-		}
-	};
+      // Fetch permissions
+      const permissionsResponse = await permissionsApi.getPermissions({
+        page: 1,
+        size: 100,
+      });
+      if (permissionsResponse.data.success) {
+        const permissions = permissionsResponse.data.data.content.map(
+          (permission: Permission) => ({
+            ...permission,
+            module: permission.module || '',
+            httpMethod: permission.httpMethod,
+          })
+        );
+        setPermissions(permissions);
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Có lỗi xảy ra khi tải dữ liệu';
+      setError(message);
+      toast({
+        variant: 'destructive',
+        title: 'Có lỗi xảy ra',
+        description: message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-	useEffect(() => {
-		fetchData();
-	}, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-	return (
-		<PermissionsContext.Provider
-			value={{
-				open,
-				setOpen,
-				currentRow,
-				setCurrentRow,
-				permissions,
-				modules,
-				isLoading,
-				error,
-				refetch: fetchData,
-			}}
-		>
-			{children}
-		</PermissionsContext.Provider>
-	);
+  return (
+    <PermissionsContext.Provider
+      value={{
+        open,
+        setOpen,
+        currentRow,
+        setCurrentRow,
+        permissions,
+        modules,
+        isLoading,
+        error,
+        refetch: fetchData,
+      }}
+    >
+      {children}
+    </PermissionsContext.Provider>
+  );
 }
 
 export function usePermissions() {
-	const context = useContext(PermissionsContext);
-	if (!context) {
-		throw new Error('usePermissions must be used within PermissionsProvider');
-	}
-	return context;
+  const context = useContext(PermissionsContext);
+  if (!context) {
+    throw new Error('usePermissions must be used within PermissionsProvider');
+  }
+  return context;
 }

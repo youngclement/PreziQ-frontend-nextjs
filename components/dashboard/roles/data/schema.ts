@@ -32,7 +32,7 @@ export type ModulePermission = z.infer<typeof modulePermissionSchema>;
 const moduleSchema = z.record(modulePermissionSchema);
 
 export const permissionSchema = z.object({
-  id: z.string(),
+  permissionId: z.string(),
   name: z.string(),
   apiPath: z.string(),
   httpMethod: z.string(),
@@ -80,4 +80,4 @@ export const roleResponseSchema = z.object({
   path: z.string(),
 });
 
-export type RoleResponse = z.infer<typeof roleResponseSchema>; 
+export type RoleResponse = z.infer<typeof roleResponseSchema>;
