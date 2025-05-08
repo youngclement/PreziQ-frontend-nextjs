@@ -134,7 +134,6 @@ export default function ParticipantActivities({
           console.log('No more activities in session');
           setNoMoreActivities(true);
         } else {
-          setIsLoading(true);
           setShowCountdown(true);
           setCurrentActivity(activity);
           setNoMoreActivities(false);
@@ -273,15 +272,6 @@ export default function ParticipantActivities({
   };
 
   const renderActivityContent = () => {
-    if (isLoading) {
-      return (
-        <div className='flex flex-col items-center justify-center py-12'>
-          <Loader2 className='h-8 w-8 animate-spin mb-2' />
-          <p>Đang tải hoạt động...</p>
-        </div>
-      );
-    }
-
     if (!currentActivity) {
       return (
         <div className='text-center py-12 text-gray-500'>
