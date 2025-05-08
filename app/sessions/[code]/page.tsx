@@ -359,7 +359,7 @@ const SessionJoinPage = () => {
                       type='button'
                       onClick={() => setAvatar(generateAvatar())}
                       variant='outline'
-                      className='text-white border-white/30 hover:bg-white/10 rounded-xl'
+                      className='text-white bg-[#0E1C26] border-white/30 hover:bg-white/10 rounded-xl'
                     >
                       <RefreshCw className='h-4 w-4 mr-2' />
                       Đổi avatar
@@ -528,7 +528,7 @@ const SessionJoinPage = () => {
                 <Button
                   onClick={handleLeaveSession}
                   variant='outline'
-                  className='text-white border-white/30 hover:bg-white/10 px-6 py-5 rounded-xl'
+                  className='text-white bg-[#0E1C26] border-white/30 hover:bg-white/10 px-6 py-5 rounded-xl'
                 >
                   Rời phiên
                 </Button>
