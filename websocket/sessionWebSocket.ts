@@ -30,9 +30,7 @@ export interface SessionSummary {
 }
 
 export interface EndSessionSummary {
-  participantId?: string;
-  participantName?: string;
-  totalScore?: number;
+  sessionParticipantId: string;
   displayName: string;
   displayAvatar: string;
   finalScore: number;
@@ -359,8 +357,21 @@ export class SessionWebSocket {
         try {
           console.log('Received session summary message:', message);
           const response = JSON.parse(message.body);
-          if (this.onSessionSummary) {
-            this.onSessionSummary(response.data);
+          console.log('Parsed summary response:', response);
+
+          if (response.success && response.data) {
+            // Đảm bảo data là một mảng
+            const summaries = Array.isArray(response.data)
+              ? response.data
+              : [response.data];
+            if (this.onSessionSummary) {
+              this.onSessionSummary(summaries);
+            }
+          } else {
+            console.error('Invalid summary format:', response);
+            if (this.onError) {
+              this.onError('Failed to process session summary data');
+            }
           }
         } catch (e) {
           if (this.onError) {

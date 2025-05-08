@@ -76,12 +76,6 @@ const SessionJoinPage = () => {
           firstName: userData.firstName,
           lastName: userData.lastName,
         });
-
-        // Sử dụng tên đầy đủ làm tên mặc định nếu có
-        if (userData.firstName && userData.lastName) {
-          setDisplayName(`${userData.firstName} ${userData.lastName}`);
-          setIsFormValid(true);
-        }
       } catch (err) {
         console.error('Không thể lấy thông tin tài khoản:', err);
         // Không đặt lỗi vì đây không phải lỗi nghiêm trọng

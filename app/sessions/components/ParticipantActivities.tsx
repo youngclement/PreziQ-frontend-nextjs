@@ -18,6 +18,7 @@ import QuizCheckboxViewer from './QuizCheckboxViewer';
 import QuizTypeAnswerViewer from './QuizTypeAnswerViewer';
 import QuizReorderViewer from './QuizReorderViewer';
 import QuizTrueOrFalseViewer from './QuizTrueOrFalseViewer';
+import CountdownOverlay from './CountdownOverlay';
 
 interface ParticipantActivitiesProps {
   sessionCode: string;
@@ -47,6 +48,9 @@ export default function ParticipantActivities({
   const currentActivityIdRef = useRef<string | null>(null);
   const isMounted = useRef(true);
   const wsInitialized = useRef(false);
+  const [showCountdown, setShowCountdown] = useState(false);
+  const [pendingActivity, setPendingActivity] = useState<any>(null);
+  const [noMoreActivities, setNoMoreActivities] = useState(false);
 
   useEffect(() => {
     isMounted.current = true;
@@ -110,11 +114,14 @@ export default function ParticipantActivities({
         if (!isMounted.current) return;
         console.log('Session summaries received:', summaries);
 
-        if (myId) {
-          const mySummary = summaries.find((s) => s.participantId === myId);
+        if (displayName) {
+          const mySummary = summaries.find(
+            (s) => s.displayName === displayName
+          );
           if (mySummary) {
             console.log('Kết quả cuối cùng của bạn:', mySummary);
             setSessionSummary(mySummary);
+            setIsSessionEnded(true);
           }
         }
       });
@@ -122,17 +129,15 @@ export default function ParticipantActivities({
       sessionWs.onNextActivityHandler((activity) => {
         if (!isMounted.current) return;
         console.log('Next activity received:', activity);
-        setIsLoading(false);
 
-        if (activity) {
-          const processedActivity = {
-            ...activity,
-            sessionId: activity.sessionId || sessionCode,
-            activityType: activity.activityType || 'UNKNOWN',
-          };
-
-          currentActivityIdRef.current = activity.id || null;
-          setCurrentActivity(processedActivity);
+        if (!activity) {
+          console.log('No more activities in session');
+          setNoMoreActivities(true);
+        } else {
+          setIsLoading(true);
+          setShowCountdown(true);
+          setCurrentActivity(activity);
+          setNoMoreActivities(false);
         }
       });
 
@@ -173,7 +178,7 @@ export default function ParticipantActivities({
       // Không hủy đăng ký handlers khi unmount để duy trì kết nối
       console.log('Component unmounted, giữ nguyên kết nối WebSocket');
     };
-  }, [sessionWs, displayName, sessionCode, myId]);
+  }, [sessionWs]);
 
   const handleLeaveSession = async () => {
     if (!sessionWs) {
@@ -221,6 +226,11 @@ export default function ParticipantActivities({
     }
   };
 
+  const handleCountdownComplete = () => {
+    setShowCountdown(false);
+    setIsLoading(false);
+  };
+
   // Hiển thị màn hình kết quả khi kết thúc phiên
   if (isSessionEnded && sessionSummary) {
     return (
@@ -231,12 +241,7 @@ export default function ParticipantActivities({
           participants.find((p) => p.displayName === displayName)
             ?.displayAvatar || ''
         }
-        userResult={{
-          userId: sessionSummary.participantId || '',
-          totalPoints: sessionSummary.finalScore,
-          newAchievements: [], // Không cần xử lý achievements nữa
-        }}
-        rank={sessionSummary.finalRanking}
+        userResult={sessionSummary}
         totalParticipants={participants.length}
         onNavigateToHome={onLeaveSession}
       />
@@ -253,7 +258,7 @@ export default function ParticipantActivities({
         <div className='space-y-2'>
           <p>
             <span className='font-medium'>Tổng điểm:</span>{' '}
-            {sessionSummary.totalScore}
+            {sessionSummary.finalScore}
           </p>
           <p>
             <span className='font-medium'>Xếp hạng cuối cùng:</span>{' '}
@@ -280,14 +285,23 @@ export default function ParticipantActivities({
     if (!currentActivity) {
       return (
         <div className='text-center py-12 text-gray-500'>
-          <p className='mb-2 text-lg'>Đang đợi hoạt động tiếp theo...</p>
-          <p className='text-sm'>
-            Giáo viên sẽ bắt đầu hoạt động trong chốc lát
-          </p>
+          <p className='mb-2 text-lg'>Chưa có hoạt động nào</p>
+          <p className='text-sm'>Đợi host bắt đầu phiên học</p>
         </div>
       );
     }
 
+    return (
+      <>
+        {showCountdown && (
+          <CountdownOverlay onComplete={handleCountdownComplete} />
+        )}
+        {!showCountdown && renderActivityByType()}
+      </>
+    );
+  };
+
+  const renderActivityByType = () => {
     switch (currentActivity.activityType) {
       case 'INFO_SLIDE':
         return <InfoSlideViewer activity={currentActivity} />;

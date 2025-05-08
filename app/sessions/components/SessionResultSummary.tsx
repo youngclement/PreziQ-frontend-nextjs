@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Award,
   Medal,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -27,9 +28,13 @@ interface Achievement {
 }
 
 interface UserSessionResult {
-  userId: string;
-  totalPoints: number;
-  newAchievements: Achievement[];
+  sessionParticipantId: string;
+  displayName: string;
+  displayAvatar: string;
+  finalScore: number;
+  finalRanking: number;
+  finalCorrectCount: number;
+  finalIncorrectCount: number;
 }
 
 interface SessionResultSummaryProps {
@@ -119,15 +124,15 @@ export default function SessionResultSummary({
           </Avatar>
           <div className='flex-1'>
             <h2 className='text-xl font-bold'>{displayName}</h2>
-            {rank > 0 && (
+            {userResult?.finalRanking && userResult.finalRanking > 0 && (
               <p className='text-sm text-muted-foreground'>
-                Xếp hạng: {rank}/{totalParticipants}
+                Xếp hạng: {userResult.finalRanking}/{totalParticipants}
               </p>
             )}
           </div>
           <div className='text-center'>
             <div className='text-3xl font-bold text-primary'>
-              {userResult?.totalPoints || 0}
+              {userResult?.finalScore || 0}
             </div>
             <div className='text-xs text-muted-foreground'>Tổng điểm</div>
           </div>
@@ -151,21 +156,23 @@ export default function SessionResultSummary({
                 </div>
                 <div>
                   <div className='text-2xl font-bold'>
-                    {userResult?.totalPoints || 0}
+                    {userResult?.finalScore || 0}
                   </div>
                   <div className='text-xs text-muted-foreground'>Điểm số</div>
                 </div>
               </div>
             </div>
 
-            {rank > 0 && (
+            {userResult?.finalRanking && userResult.finalRanking > 0 && (
               <div className='bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg'>
                 <div className='flex items-center gap-3'>
                   <div className='p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full'>
                     <Medal className='h-5 w-5' />
                   </div>
                   <div>
-                    <div className='text-2xl font-bold'>{rank}</div>
+                    <div className='text-2xl font-bold'>
+                      {userResult.finalRanking}
+                    </div>
                     <div className='text-xs text-muted-foreground'>
                       Xếp hạng
                     </div>
@@ -173,6 +180,38 @@ export default function SessionResultSummary({
                 </div>
               </div>
             )}
+
+            <div className='bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg'>
+              <div className='flex items-center gap-3'>
+                <div className='p-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full'>
+                  <CheckCircle className='h-5 w-5' />
+                </div>
+                <div>
+                  <div className='text-2xl font-bold'>
+                    {userResult?.finalCorrectCount || 0}
+                  </div>
+                  <div className='text-xs text-muted-foreground'>
+                    Câu trả lời đúng
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className='bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg'>
+              <div className='flex items-center gap-3'>
+                <div className='p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full'>
+                  <X className='h-5 w-5' />
+                </div>
+                <div>
+                  <div className='text-2xl font-bold'>
+                    {userResult?.finalIncorrectCount || 0}
+                  </div>
+                  <div className='text-xs text-muted-foreground'>
+                    Câu trả lời sai
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className='mt-8'>
@@ -185,51 +224,34 @@ export default function SessionResultSummary({
           </div>
         </motion.div>
 
-        {/* Cột phải - Thành tựu */}
+        {/* Cột phải - Thống kê */}
         <motion.div
           className='md:col-span-7 bg-white dark:bg-gray-800 rounded-xl shadow-md p-6'
           variants={itemVariants}
         >
-          <h2 className='text-xl font-semibold mb-6'>Thành tựu mới</h2>
-
-          {!userResult ||
-          !userResult.newAchievements ||
-          userResult.newAchievements.length === 0 ? (
-            <div className='text-center py-8 text-muted-foreground'>
-              <Award className='h-12 w-12 mx-auto mb-4 opacity-20' />
-              <p>Bạn chưa đạt được thành tựu nào trong phiên này</p>
-              <p className='text-sm mt-2'>
-                Tiếp tục tham gia các phiên học để mở khóa thành tựu!
-              </p>
+          <h2 className='text-xl font-semibold mb-6'>Thống kê</h2>
+          <div className='space-y-4'>
+            <div className='bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800'>
+              <div className='flex items-center gap-4'>
+                <div className='p-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full'>
+                  <Target className='h-6 w-6' />
+                </div>
+                <div className='flex-1'>
+                  <h3 className='font-bold text-lg'>Tỷ lệ chính xác</h3>
+                  <p className='text-sm text-muted-foreground'>
+                    {userResult
+                      ? `${Math.round(
+                          (userResult.finalCorrectCount /
+                            (userResult.finalCorrectCount +
+                              userResult.finalIncorrectCount)) *
+                            100
+                        )}%`
+                      : '0%'}
+                  </p>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className='space-y-4'>
-              {userResult.newAchievements.map((achievement) => (
-                <motion.div
-                  key={achievement.achievementId}
-                  className='bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800 flex items-start gap-4'
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className='p-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full'>
-                    {renderAchievementIcon(achievement.iconUrl)}
-                  </div>
-                  <div className='flex-1'>
-                    <h3 className='font-bold text-lg'>{achievement.name}</h3>
-                    <p className='text-sm text-muted-foreground'>
-                      {achievement.description}
-                    </p>
-                    {achievement.requiredPoints > 0 && (
-                      <Badge className='mt-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'>
-                        +{achievement.requiredPoints} điểm yêu cầu
-                      </Badge>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
+          </div>
         </motion.div>
       </div>
 

@@ -14,6 +14,8 @@ import QuizCheckboxViewer from './QuizCheckboxViewer';
 import QuizTypeAnswerViewer from './QuizTypeAnswerViewer';
 import QuizReorderViewer from './QuizReorderViewer';
 import QuizTrueOrFalseViewer from './QuizTrueOrFalseViewer';
+import CountdownOverlay from './CountdownOverlay';
+import { Loader2 } from 'lucide-react';
 
 interface Participant {
   guestName: string;
@@ -61,6 +63,9 @@ export default function HostActivities({
   >([]);
   const isMounted = useRef(true);
   const hasStartedFirstActivity = useRef(false);
+  const [showCountdown, setShowCountdown] = useState(false);
+  const [pendingActivity, setPendingActivity] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     isMounted.current = true;
@@ -70,24 +75,29 @@ export default function HostActivities({
     // Đăng ký các event handlers cho socket đã được kết nối
     sessionWs.onParticipantsUpdateHandler((updatedParticipants) => {
       if (!isMounted.current) return;
-      
+
       // Sắp xếp người tham gia theo điểm số giảm dần
-      const sortedParticipants = [...updatedParticipants].sort((a, b) => b.realtimeScore - a.realtimeScore);
-      
+      const sortedParticipants = [...updatedParticipants].sort(
+        (a, b) => b.realtimeScore - a.realtimeScore
+      );
+
       // Cập nhật thứ hạng cho mỗi người tham gia
-      const participantsWithRanking = sortedParticipants.map((participant, index) => ({
-        ...participant,
-        realtimeRanking: index + 1
-      }));
+      const participantsWithRanking = sortedParticipants.map(
+        (participant, index) => ({
+          ...participant,
+          realtimeRanking: index + 1,
+        })
+      );
 
       const participantsData = participantsWithRanking.map((p: any) => ({
         guestName: p.displayName || 'Unknown',
-        guestAvatar: p.displayAvatar || 'https://api.dicebear.com/9.x/pixel-art/svg',
+        guestAvatar:
+          p.displayAvatar || 'https://api.dicebear.com/9.x/pixel-art/svg',
         userId: p.user?.userId || null,
         realtimeScore: p.realtimeScore,
-        realtimeRanking: p.realtimeRanking
+        realtimeRanking: p.realtimeRanking,
       }));
-      
+
       setParticipants(participantsData);
     });
 
@@ -166,11 +176,12 @@ export default function HostActivities({
     if (!hasStartedFirstActivity.current && sessionWs && sessionId) {
       hasStartedFirstActivity.current = true;
       setTimeout(() => {
+        setShowCountdown(true);
         sessionWs.nextActivity(sessionId).catch((err) => {
           console.error('Error starting first activity:', err);
           setError('Failed to start first activity');
         });
-      }, 1000);
+      }, 100);
     }
 
     return () => {
@@ -179,20 +190,26 @@ export default function HostActivities({
   }, [sessionWs, sessionId, onSessionEnd, onNextActivityLog]);
 
   const handleNextActivity = async () => {
-    if (!isConnected || !sessionWs || !sessionId) {
-      setError(
-        'WebSocket không được kết nối. Vui lòng đợi hoặc làm mới trang.'
-      );
+    if (!sessionWs || !sessionWs.isClientConnected()) {
+      setError('Không thể chuyển hoạt động lúc này');
       return;
     }
 
     try {
+      setShowCountdown(true);
+
       const currentActivityId = currentActivity?.activityId;
       await sessionWs.nextActivity(sessionId, currentActivityId);
     } catch (err) {
-      setError('Không thể chuyển đến hoạt động tiếp theo');
+      setError('Không thể chuyển hoạt động');
       console.error('Error moving to next activity:', err);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleCountdownComplete = () => {
+    setShowCountdown(false);
   };
 
   const handleEndSession = async () => {
@@ -224,27 +241,37 @@ export default function HostActivities({
   }
 
   const renderActivityContent = () => {
-    if (noMoreActivities) {
+    if (isLoading) {
       return (
-        <div className='text-center py-6'>
-          <p className='text-lg font-medium text-amber-600 mb-2'>
-            Không còn hoạt động nào nữa
-          </p>
-          <p className='text-gray-500'>
-            Phiên học sẽ tự động kết thúc trong giây lát...
-          </p>
+        <div className='flex flex-col items-center justify-center py-12'>
+          <Loader2 className='h-8 w-8 animate-spin mb-2' />
+          <p>Đang tải hoạt động...</p>
         </div>
       );
     }
 
     if (!currentActivity) {
       return (
-        <div className='text-center text-gray-500'>
-          Chưa có hoạt động nào đang diễn ra
+        <div className='text-center py-12 text-gray-500'>
+          <p className='mb-2 text-lg'>Chưa có hoạt động nào</p>
+          <p className='text-sm'>
+            Bắt đầu phiên học để hiển thị hoạt động đầu tiên
+          </p>
         </div>
       );
     }
 
+    return (
+      <>
+        {showCountdown && (
+          <CountdownOverlay onComplete={handleCountdownComplete} />
+        )}
+        {!showCountdown && renderActivityByType()}
+      </>
+    );
+  };
+
+  const renderActivityByType = () => {
     switch (currentActivity.activityType) {
       case 'INFO_SLIDE':
         return <InfoSlideViewer activity={currentActivity} />;
@@ -252,7 +279,6 @@ export default function HostActivities({
         return (
           <QuizButtonViewer
             activity={currentActivity}
-            sessionId={sessionId}
             sessionCode={sessionCode}
             sessionWebSocket={sessionWs}
           />
