@@ -149,6 +149,8 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
           updatedData.active = data.active;
         }
 
+        const hasChanges = Object.keys(updatedData).length > 0;
+
         // Xử lý permissions bị thay đổi
         const currentPermissionIds = currentRow.permissions.map(
           (p) => p.permissionId
