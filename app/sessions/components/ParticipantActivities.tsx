@@ -15,6 +15,9 @@ import QuizButtonViewer from './QuizButtonViewer';
 import { Loader2 } from 'lucide-react';
 import SessionResultSummary from './SessionResultSummary';
 import QuizCheckboxViewer from './QuizCheckboxViewer';
+import QuizTypeAnswerViewer from './QuizTypeAnswerViewer';
+import QuizReorderViewer from './QuizReorderViewer';
+import QuizTrueOrFalseViewer from './QuizTrueOrFalseViewer';
 
 interface ParticipantActivitiesProps {
   sessionCode: string;
@@ -30,7 +33,7 @@ export default function ParticipantActivities({
   onLeaveSession,
 }: ParticipantActivitiesProps) {
   const [error, setError] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(true); // Mặc định là đã kết nối
+  const [isConnected, setIsConnected] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState('Đã kết nối');
   const [currentActivity, setCurrentActivity] = useState<any>(null);
   const [participants, setParticipants] = useState<SessionParticipant[]>([]);
@@ -41,9 +44,9 @@ export default function ParticipantActivities({
   const [sessionSummary, setSessionSummary] =
     useState<EndSessionSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [achievementResults, setAchievementResults] = useState<any>(null);
   const currentActivityIdRef = useRef<string | null>(null);
   const isMounted = useRef(true);
+  const wsInitialized = useRef(false);
 
   useEffect(() => {
     isMounted.current = true;
@@ -55,99 +58,107 @@ export default function ParticipantActivities({
       return;
     }
 
-    console.log(
-      'Đăng ký các handlers cho WebSocket trong ParticipantActivities'
-    );
+    // Chỉ khởi tạo handlers một lần
+    if (!wsInitialized.current) {
+      console.log('Khởi tạo WebSocket handlers trong ParticipantActivities');
+      wsInitialized.current = true;
 
-    // Đăng ký các event handlers cho socket đã được kết nối
-    sessionWs.onParticipantsUpdateHandler((updatedParticipants) => {
-      if (!isMounted.current) return;
-      console.log(
-        'Nhận cập nhật danh sách người tham gia:',
-        updatedParticipants.length
-      );
-      setParticipants(updatedParticipants);
-
-      // Cập nhật điểm của người dùng hiện tại
-      if (displayName) {
-        const me = updatedParticipants.find(
-          (p) => p.displayName === displayName
+      // Đăng ký các event handlers cho socket đã được kết nối
+      sessionWs.onParticipantsUpdateHandler((updatedParticipants) => {
+        console.log(
+          'Nhận cập nhật danh sách người tham gia:',
+          updatedParticipants
         );
-        if (me) {
-          console.log('Cập nhật thông tin người dùng:', me);
-          setMyScore(me.realtimeScore);
-          setMyId(me.id);
+
+        // Sắp xếp người tham gia theo điểm số giảm dần
+        const sortedParticipants = [...updatedParticipants].sort(
+          (a, b) => b.realtimeScore - a.realtimeScore
+        );
+
+        // Cập nhật thứ hạng cho mỗi người tham gia
+        const participantsWithRanking = sortedParticipants.map(
+          (participant, index) => ({
+            ...participant,
+            realtimeRanking: index + 1,
+          })
+        );
+
+        // Cập nhật state với danh sách mới
+        setParticipants(participantsWithRanking);
+
+        // Cập nhật điểm của người dùng hiện tại
+        if (displayName) {
+          const me = participantsWithRanking.find(
+            (p) => p.displayName === displayName
+          );
+          if (me) {
+            console.log('Cập nhật thông tin người dùng:', me);
+            setMyScore(me.realtimeScore);
+            setMyId(me.id);
+          }
         }
-      }
-    });
+      });
 
-    sessionWs.onSessionEndHandler((session) => {
-      if (!isMounted.current) return;
-      console.log('Session ended:', session);
-      setIsSessionEnded(true);
-      setError('Phiên đã kết thúc. Cảm ơn bạn đã tham gia!');
-    });
+      sessionWs.onSessionEndHandler((session) => {
+        if (!isMounted.current) return;
+        console.log('Session ended:', session);
+        setIsSessionEnded(true);
+        setError('Phiên đã kết thúc. Cảm ơn bạn đã tham gia!');
+      });
 
-    sessionWs.onSessionSummaryHandler((summaries: EndSessionSummary[]) => {
-      if (!isMounted.current) return;
-      console.log('Session summaries received:', summaries);
+      sessionWs.onSessionSummaryHandler((summaries: EndSessionSummary[]) => {
+        if (!isMounted.current) return;
+        console.log('Session summaries received:', summaries);
 
-      // Tìm thông tin điểm và xếp hạng của mình trong bảng tổng kết
-      if (myId) {
-        const mySummary = summaries.find((s) => s.participantId === myId);
-        if (mySummary) {
-          console.log('Kết quả cuối cùng của bạn:', mySummary);
-          setSessionSummary(mySummary);
+        if (myId) {
+          const mySummary = summaries.find((s) => s.participantId === myId);
+          if (mySummary) {
+            console.log('Kết quả cuối cùng của bạn:', mySummary);
+            setSessionSummary(mySummary);
+          }
         }
-      }
-    });
+      });
 
-    sessionWs.onAchievementHandler((achievements) => {
-      if (!isMounted.current) return;
-      console.log('Achievement results received:', achievements);
-      setAchievementResults(achievements);
-    });
-
-    sessionWs.onNextActivityHandler((activity) => {
-      if (!isMounted.current) return;
-      console.log('Next activity received:', activity);
-      setIsLoading(false);
-
-      // Xử lý dữ liệu hoạt động
-      if (activity) {
-        const processedActivity = {
-          ...activity,
-          sessionId: activity.sessionId || sessionCode,
-          activityType: activity.activityType || 'UNKNOWN',
-        };
-
-        // Lưu ID của hoạt động hiện tại để dùng khi submit
-        currentActivityIdRef.current = activity.id || null;
-        setCurrentActivity(processedActivity);
-      }
-    });
-
-    sessionWs.onErrorHandler((error) => {
-      if (!isMounted.current) return;
-      console.log('WebSocket error:', error);
-      setError(error);
-      setIsLoading(false);
-    });
-
-    sessionWs.onConnectionStatusChangeHandler((status) => {
-      if (!isMounted.current) return;
-      console.log('WebSocket connection status changed:', status);
-      let translatedStatus = status;
-      if (status === 'Connected') translatedStatus = 'Đã kết nối';
-      else if (status === 'Connecting...') translatedStatus = 'Đang kết nối...';
-      else if (status === 'Disconnected') translatedStatus = 'Mất kết nối';
-      setConnectionStatus(translatedStatus);
-      setIsConnected(status === 'Connected');
-
-      if (status === 'Connected') {
+      sessionWs.onNextActivityHandler((activity) => {
+        if (!isMounted.current) return;
+        console.log('Next activity received:', activity);
         setIsLoading(false);
-      }
-    });
+
+        if (activity) {
+          const processedActivity = {
+            ...activity,
+            sessionId: activity.sessionId || sessionCode,
+            activityType: activity.activityType || 'UNKNOWN',
+          };
+
+          currentActivityIdRef.current = activity.id || null;
+          setCurrentActivity(processedActivity);
+        }
+      });
+
+      sessionWs.onErrorHandler((error) => {
+        if (!isMounted.current) return;
+        console.log('WebSocket error:', error);
+        setError(error);
+        setIsLoading(false);
+      });
+
+      sessionWs.onConnectionStatusChangeHandler((status) => {
+        if (!isMounted.current) return;
+        console.log('WebSocket connection status changed:', status);
+        let translatedStatus = status;
+        if (status === 'Connected') translatedStatus = 'Đã kết nối';
+        else if (status === 'Connecting...')
+          translatedStatus = 'Đang kết nối...';
+        else if (status === 'Disconnected') translatedStatus = 'Mất kết nối';
+        setConnectionStatus(translatedStatus);
+        setIsConnected(status === 'Connected');
+
+        if (status === 'Connected') {
+          setIsLoading(false);
+        }
+      });
+    }
 
     // Sau 5 giây nếu không nhận được hoạt động nào, tắt loading
     const timer = setTimeout(() => {
@@ -159,7 +170,8 @@ export default function ParticipantActivities({
     return () => {
       isMounted.current = false;
       clearTimeout(timer);
-      console.log('Hủy đăng ký các handlers trong ParticipantActivities');
+      // Không hủy đăng ký handlers khi unmount để duy trì kết nối
+      console.log('Component unmounted, giữ nguyên kết nối WebSocket');
     };
   }, [sessionWs, displayName, sessionCode, myId]);
 
@@ -210,46 +222,7 @@ export default function ParticipantActivities({
   };
 
   // Hiển thị màn hình kết quả khi kết thúc phiên
-  if (isSessionEnded && (sessionSummary || achievementResults)) {
-    // Chuẩn bị dữ liệu để hiển thị kết quả
-    let userResult = null;
-
-    // Nếu có kết quả thành tựu, sử dụng dữ liệu đó
-    if (achievementResults && Array.isArray(achievementResults)) {
-      // Tìm kết quả của người dùng hiện tại trong mảng
-      const myAchievement = achievementResults.find(
-        (result: any) =>
-          result.userId === myId ||
-          (myId === null && result.totalPoints === myScore)
-      );
-
-      if (myAchievement) {
-        userResult = {
-          userId: myAchievement.userId,
-          totalPoints: myAchievement.totalPoints,
-          newAchievements: myAchievement.newAchievements || [],
-        };
-      }
-    }
-
-    // Nếu không có kết quả thành tựu nhưng có kết quả tổng kết
-    if (!userResult && sessionSummary) {
-      userResult = {
-        userId: sessionSummary.participantId,
-        totalPoints: sessionSummary.totalScore,
-        newAchievements: [],
-      };
-    }
-
-    // Nếu không có kết quả nào, tạo kết quả mặc định
-    if (!userResult) {
-      userResult = {
-        userId: myId || '',
-        totalPoints: myScore,
-        newAchievements: [],
-      };
-    }
-
+  if (isSessionEnded && sessionSummary) {
     return (
       <SessionResultSummary
         sessionCode={sessionCode}
@@ -258,8 +231,12 @@ export default function ParticipantActivities({
           participants.find((p) => p.displayName === displayName)
             ?.displayAvatar || ''
         }
-        userResult={userResult}
-        rank={sessionSummary?.finalRanking || 0}
+        userResult={{
+          userId: sessionSummary.participantId || '',
+          totalPoints: sessionSummary.finalScore,
+          newAchievements: [], // Không cần xử lý achievements nữa
+        }}
+        rank={sessionSummary.finalRanking}
         totalParticipants={participants.length}
         onNavigateToHome={onLeaveSession}
       />
@@ -329,7 +306,34 @@ export default function ParticipantActivities({
             key={currentActivity.activityId}
             activity={currentActivity}
             sessionCode={sessionCode}
-            sessionWebSocket={sessionWs}            
+            sessionWebSocket={sessionWs}
+          />
+        );
+      case 'QUIZ_TYPE_ANSWER':
+        return (
+          <QuizTypeAnswerViewer
+            key={currentActivity.activityId}
+            activity={currentActivity}
+            sessionId={sessionCode}
+            sessionWebSocket={sessionWs}
+          />
+        );
+      case 'QUIZ_REORDER':
+        return (
+          <QuizReorderViewer
+            key={currentActivity.activityId}
+            activity={currentActivity}
+            sessionId={sessionCode}
+            sessionWebSocket={sessionWs}
+          />
+        );
+      case 'QUIZ_TRUE_OR_FALSE':
+        return (
+          <QuizTrueOrFalseViewer
+            key={currentActivity.activityId}
+            activity={currentActivity}
+            sessionId={sessionCode}
+            sessionWebSocket={sessionWs}
           />
         );
       default:
@@ -354,104 +358,150 @@ export default function ParticipantActivities({
   };
 
   return (
-    <div className='space-y-6'>
-      {/* Thông tin người dùng */}
-      <div className='flex items-center justify-between p-4 bg-blue-50 rounded-lg'>
-        <div className='flex items-center gap-4'>
-          <Avatar>
-            <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <p className='font-medium'>{displayName}</p>
-            <p className='text-sm text-gray-500'>Điểm: {myScore}</p>
+    <div className='min-h-screen bg-gray-50'>
+      {/* Header */}
+      <div className='bg-gradient-to-r from-indigo-600 to-violet-600 p-4 shadow-md sticky top-0 z-50'>
+        <div className='container mx-auto flex items-center justify-between'>
+          <div className='flex items-center space-x-4'>
+            <Avatar className='h-10 w-10 border-2 border-white'>
+              <AvatarFallback className='bg-white/20 text-white'>
+                {displayName.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className='font-semibold text-white'>{displayName}</p>
+              <div className='flex items-center'>
+                <span className='text-xs text-white/80'>Điểm: </span>
+                <span className='text-xs font-bold ml-1 bg-white/20 text-white px-2 py-0.5 rounded-full'>
+                  {myScore}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className='text-xs text-white/80 hidden md:block'>
+            {connectionStatus}
+          </div>
+
+          <Button
+            variant='secondary'
+            onClick={handleLeaveSession}
+            disabled={!isConnected || isSubmitting}
+            className='bg-white/20 text-white hover:bg-white/30'
+          >
+            {isSubmitting ? (
+              <span className='flex items-center gap-2'>
+                <Loader2 className='h-4 w-4 animate-spin' />
+                Đang xử lý...
+              </span>
+            ) : (
+              'Rời phiên'
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <div className='container mx-auto px-4 py-6'>
+        {error && (
+          <Alert
+            variant={isSessionEnded ? 'default' : 'destructive'}
+            className='mb-6 animate-fadeIn'
+          >
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className='text-xs text-center text-gray-500 mb-4 md:hidden'>
+          {connectionStatus}
+        </div>
+
+        {/* Hiển thị kết quả khi phiên kết thúc */}
+        {renderSessionSummary()}
+
+        {/* Grid layout với 2 cột hoặc 1 cột trên mobile */}
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+          {/* Cột chính - Hoạt động hiện tại */}
+          <div className='lg:col-span-2'>
+            <div className='bg-white rounded-xl shadow-lg overflow-hidden mb-6'>
+              <div className='bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4'>
+                <h2 className='text-xl font-bold text-white flex items-center'>
+                  <span className='mr-2'>Hoạt động hiện tại</span>
+                  {isLoading && <Loader2 className='h-4 w-4 animate-spin' />}
+                </h2>
+              </div>
+              <div className='p-6'>{renderActivityContent()}</div>
+            </div>
+          </div>
+
+          {/* Cột phụ - Danh sách người tham gia */}
+          <div className='lg:col-span-1'>
+            <div className='bg-white rounded-xl shadow-lg overflow-hidden'>
+              <div className='bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4'>
+                <h2 className='text-xl font-bold text-white'>
+                  Người tham gia ({participants.length})
+                </h2>
+              </div>
+              <div className='p-4'>
+                {participants.length === 0 ? (
+                  <div className='text-center py-8 text-gray-500'>
+                    <p>Chưa có người tham gia nào</p>
+                  </div>
+                ) : (
+                  <div className='space-y-3 max-h-[400px] overflow-y-auto pr-2'>
+                    {participants.map((participant) => (
+                      <div
+                        key={participant.id}
+                        className={`flex items-center space-x-3 p-3 rounded-lg transition-all ${
+                          participant.displayName === displayName
+                            ? 'bg-indigo-50 border border-indigo-200'
+                            : 'bg-gray-50 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Avatar
+                          className={`h-10 w-10 ${
+                            participant.displayName === displayName
+                              ? 'border-2 border-indigo-300'
+                              : ''
+                          }`}
+                        >
+                          <AvatarImage
+                            src={participant.displayAvatar}
+                            alt={participant.displayName}
+                          />
+                          <AvatarFallback>
+                            {participant.displayName.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className='flex-1'>
+                          <div className='flex items-center'>
+                            <p className='font-medium'>
+                              {participant.displayName}
+                              {participant.displayName === displayName && (
+                                <span className='ml-1 text-xs bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded'>
+                                  Bạn
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <div className='flex items-center space-x-2 text-sm text-gray-500'>
+                            <span>Điểm: {participant.realtimeScore}</span>
+                            {participant.realtimeRanking > 0 && (
+                              <>
+                                <span className='text-gray-300'>•</span>
+                                <span>Hạng: {participant.realtimeRanking}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-        <Button
-          variant='destructive'
-          onClick={handleLeaveSession}
-          disabled={!isConnected || isSubmitting}
-        >
-          {isSubmitting ? (
-            <span className='flex items-center gap-2'>
-              <Loader2 className='h-4 w-4 animate-spin' />
-              Đang xử lý...
-            </span>
-          ) : (
-            'Rời phiên'
-          )}
-        </Button>
       </div>
-
-      {error && (
-        <Alert variant={isSessionEnded ? 'default' : 'destructive'}>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className='text-sm text-center text-gray-500 mb-4'>
-        {connectionStatus}
-      </div>
-
-      {/* Hiển thị kết quả khi phiên kết thúc */}
-      {renderSessionSummary()}
-
-      {/* Hiển thị hoạt động hiện tại */}
-      <Card>
-        <div className='border-b p-4'>
-          <h2 className='text-xl font-semibold'>Hoạt động hiện tại</h2>
-        </div>
-        <div className='p-4'>{renderActivityContent()}</div>
-      </Card>
-
-      {/* Danh sách người tham gia */}
-      <Card>
-        <div className='border-b p-4'>
-          <h2 className='text-xl font-semibold'>
-            Người tham gia ({participants.length})
-          </h2>
-        </div>
-        <div className='p-4'>
-          {participants.length === 0 ? (
-            <div className='text-center py-6 text-gray-500'>
-              <p>Chưa có người tham gia nào</p>
-            </div>
-          ) : (
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-              {participants.map((participant) => (
-                <div
-                  key={participant.id}
-                  className={`flex items-center space-x-3 p-3 rounded-lg ${
-                    participant.displayName === displayName
-                      ? 'bg-blue-50 border border-blue-200'
-                      : 'bg-gray-50'
-                  }`}
-                >
-                  <Avatar>
-                    <AvatarImage
-                      src={participant.displayAvatar}
-                      alt={participant.displayName}
-                    />
-                    <AvatarFallback>
-                      {participant.displayName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className='font-medium'>
-                      {participant.displayName}
-                      {participant.displayName === displayName && ' (Bạn)'}
-                    </p>
-                    <p className='text-sm text-gray-500'>
-                      Điểm: {participant.realtimeScore}
-                      {participant.realtimeRanking > 0 &&
-                        ` | Hạng: ${participant.realtimeRanking}`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </Card>
     </div>
   );
 }

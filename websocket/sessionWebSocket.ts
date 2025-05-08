@@ -277,6 +277,7 @@ export class SessionWebSocket {
           console.log('Received participants message:', message);
           const response = JSON.parse(message.body);
           const participantsData = response.data || [];
+          console.log('Participants data:', participantsData);
           if (this.onParticipantsUpdate) {
             this.onParticipantsUpdate(participantsData);
           }
@@ -353,7 +354,7 @@ export class SessionWebSocket {
     );
 
     this.client.subscribe(
-      `/public/session/${this.sessionCode}/summary`,
+      `/client/private/summary`,
       (message) => {
         try {
           console.log('Received session summary message:', message);
@@ -410,7 +411,8 @@ export class SessionWebSocket {
 
   public async joinSession(
     participantName: string,
-    userId: string | null = null
+    userId: string | null = null,
+    displayAvatar?: string
   ) {
     if (!this.sessionCode) {
       if (this.onError) {
@@ -428,13 +430,16 @@ export class SessionWebSocket {
       return;
     }
 
-    const randomSeed = Math.random().toString(36).substring(2, 10);
-    const displayAvatar = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${randomSeed}`;
+    let avatarToUse = displayAvatar;
+    if (!avatarToUse) {
+      const randomSeed = Math.random().toString(36).substring(2, 10);
+      avatarToUse = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${randomSeed}`;
+    }
 
     const message = {
       sessionCode: this.sessionCode,
       displayName: participantName,
-      displayAvatar: displayAvatar,
+      displayAvatar: avatarToUse,
       userId: userId,
     };
 
@@ -450,7 +455,6 @@ export class SessionWebSocket {
     }
 
     return new Promise<void>((resolve) => {
-      // Chờ một chút để đảm bảo message đã được gửi
       setTimeout(() => resolve(), 500);
     });
   }

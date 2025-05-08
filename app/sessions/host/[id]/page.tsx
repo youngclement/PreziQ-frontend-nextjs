@@ -2,16 +2,25 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
+import {
+  Loader2,
+  Copy,
+  QrCode,
+  Users,
+  Settings,
+  LinkIcon,
+  EyeOff,
+  CheckCircle2,
+} from 'lucide-react';
 import { sessionsApi } from '@/api-client';
 import { authApi } from '@/api-client/auth-api';
 import { SessionWebSocket } from '@/websocket/sessionWebSocket';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import HostActivities from '../../components/HostActivities';
 import { Input } from '@/components/ui/input';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Participant {
   guestName: string;
@@ -45,6 +54,9 @@ export default function HostSessionPage() {
   const hasCreatedSessionRef = useRef(false);
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
   const [isLoadingAccount, setIsLoadingAccount] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [hidePin, setHidePin] = useState(false);
 
   // Lấy thông tin tài khoản người dùng khi component mount
   useEffect(() => {
@@ -69,7 +81,6 @@ export default function HostSessionPage() {
         }
       } catch (err) {
         console.error('Failed to fetch user account:', err);
-        // Không đặt lỗi vì đây không phải lỗi nghiêm trọng
       } finally {
         setIsLoadingAccount(false);
       }
@@ -105,15 +116,18 @@ export default function HostSessionPage() {
         // Lưu sessionCode và sessionId từ response
         const responseSessionId = response.data.sessionId;
         const responseSessionCode = response.data.sessionCode;
+        const responseQrCodeUrl = response.data.joinSessionQrUrl;
 
         console.log('Session created with ID:', responseSessionId);
         console.log('Session created with Code:', responseSessionCode);
+        console.log('Session QR code URL:', responseQrCodeUrl);
 
         localStorage.setItem('sessionCode', responseSessionCode);
         localStorage.setItem('sessionId', responseSessionId);
 
         setSessionCode(responseSessionCode);
         setSessionId(responseSessionId);
+        setQrCodeUrl(responseQrCodeUrl);
       } catch (err: any) {
         console.error('Error creating session:', err);
         setError(err.response?.data?.message || 'Failed to create session');
@@ -275,7 +289,7 @@ export default function HostSessionPage() {
         setIsConnected(false);
         actualConnectedRef.current = false;
       });
-  }, [sessionCode, sessionId, isInitializing]);
+  }, [sessionCode, sessionId, isInitializing, hostName, userAccount]);
 
   // Sử dụng useEffect riêng cho việc tham gia tự động
   useEffect(() => {
@@ -347,13 +361,45 @@ export default function HostSessionPage() {
     console.log('Session end event received, waiting for summary data...');
   };
 
+  const handleCopy = () => {
+    if (sessionCode) {
+      navigator.clipboard.writeText(sessionCode);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
+  };
+
+  const toggleHidePin = () => {
+    setHidePin(!hidePin);
+  };
+
+  // Format session code for display (add space in the middle)
+  const formatSessionCode = (code: string) => {
+    if (!code || code.length < 6) return code;
+    // Không chia code thành 2 phần nữa
+    return code;
+  };
+
   if (isLoading) {
     return (
-      <div className='container mx-auto px-4 py-8'>
-        <div className='max-w-2xl mx-auto text-center'>
-          <Loader2 className='h-8 w-8 animate-spin mx-auto mb-4' />
-          <p className='text-lg'>Đang tạo phiên của bạn...</p>
-        </div>
+      <div className='min-h-screen bg-gradient-to-b from-[#0a1b25] to-[#0f2231] flex flex-col items-center justify-center p-4'>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className='text-center text-white px-4 sm:px-6'
+        >
+          <div className='relative'>
+            <Loader2 className='h-12 w-12 sm:h-16 sm:w-16 animate-spin mx-auto mb-4 sm:mb-6 text-blue-400' />
+            <div className='absolute inset-0 bg-gradient-to-r from-[#aef359]/30 to-[#e4f88d]/30 blur-xl rounded-full' />
+          </div>
+          <h2 className='text-xl sm:text-2xl font-bold mb-2'>
+            Đang thiết lập phiên
+          </h2>
+          <p className='text-white/70 text-sm sm:text-base'>
+            PreziQ đang chuẩn bị phòng chờ của bạn...
+          </p>
+        </motion.div>
       </div>
     );
   }
@@ -362,134 +408,345 @@ export default function HostSessionPage() {
   if (isSessionStarted && sessionId && sessionCode && sessionWsRef.current) {
     console.log('Rendering host activities with session ID:', sessionId);
     return (
-      <HostActivities
-        sessionId={sessionId}
-        sessionCode={sessionCode}
-        sessionWs={sessionWsRef.current}
-        onSessionEnd={handleSessionEnd}
-      />
+      <div className='min-h-screen w-full max-w-full overflow-hidden'>
+        <HostActivities
+          sessionId={sessionId}
+          sessionCode={sessionCode}
+          sessionWs={sessionWsRef.current}
+          onSessionEnd={handleSessionEnd}
+        />
+      </div>
     );
   }
 
-  // Hiển thị giao diện trước khi bắt đầu session
+  // Hiển thị giao diện phòng chờ theo mẫu quiz.com
   return (
-    <div className='container mx-auto px-4 py-8'>
-      <h1 className='text-3xl font-bold text-center mb-8'>Host Session</h1>
+    <div className='min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#0a1b25] to-[#0f2231] p-4 sm:p-6'>
+      {/* Container chính */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className='w-full max-w-xs sm:max-w-xl md:max-w-3xl lg:max-w-4xl bg-[#0e1c26] rounded-2xl sm:rounded-3xl p-4 sm:p-8 md:p-12 flex flex-col items-center shadow-2xl shadow-black/30 border border-white/5 backdrop-blur-sm'
+      >
+        {/* Top Section - Join at, PIN code, QR Code */}
+        <div className='w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-10 md:mb-14'>
+          {/* Left - Join at */}
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+            className='flex flex-col items-center sm:items-start'
+          >
+            <h2 className='text-white/80 mb-2 text-xl font-medium'>Join at:</h2>
+            <div className='mb-2'>
+              <span className='text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-pink-300 via-yellow-300 to-green-200 text-transparent bg-clip-text drop-shadow-md'>
+                preziq.com
+              </span>
+            </div>
+          </motion.div>
 
-      {/* Debug info */}
-      <div className='text-xs text-gray-500 mb-2 text-center'>
-        Connection: {isConnected ? 'Connected' : 'Disconnected'} | Joined:{' '}
-        {hasJoined ? 'Yes' : 'No'} | Session: {sessionCode || 'None'}
-      </div>
+          {/* Middle - PIN code */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className='flex flex-col items-center col-span-1 md:col-span-1 order-first sm:order-none'
+          >
+            <h2 className='text-white/80 mb-2 text-xl font-medium'>
+              PIN code:
+            </h2>
+            <motion.div
+              className='relative'
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={{
+                delay: 0.5,
+                duration: 0.4,
+                type: 'spring',
+                stiffness: 120,
+              }}
+            >
+              <AnimatePresence mode='wait'>
+                {!hidePin ? (
+                  <motion.h1
+                    key='visible-pin'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className='text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
+                    style={{ letterSpacing: '0.05em' }}
+                  >
+                    {sessionCode ? formatSessionCode(sessionCode) : 'XXXXXX'}
+                  </motion.h1>
+                ) : (
+                  <motion.h1
+                    key='hidden-pin'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className='text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
+                    style={{ letterSpacing: '0.05em' }}
+                  >
+                    ⬤⬤⬤⬤⬤⬤
+                  </motion.h1>
+                )}
+              </AnimatePresence>
+            </motion.div>
+            <div className='flex gap-6 mt-3'>
+              <motion.button
+                onClick={handleCopy}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className='text-white/80 hover:text-white flex items-center gap-1.5 text-sm transition-colors duration-200'
+              >
+                <LinkIcon className='w-4 h-4' />
+                Copy
+              </motion.button>
+              <motion.button
+                onClick={toggleHidePin}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className='text-white/80 hover:text-white flex items-center gap-1.5 text-sm transition-colors duration-200'
+              >
+                <EyeOff className='w-4 h-4' />
+                Hide
+              </motion.button>
+              <AnimatePresence>
+                {copySuccess && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className='text-white/90 text-sm flex items-center gap-1'
+                  >
+                    <CheckCircle2 className='w-3.5 h-3.5 text-green-400' />
+                    Copied!
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
 
-      <div className='max-w-4xl mx-auto'>
-        <Card className='p-6 mb-6'>
-          {sessionCode ? (
-            <div className='space-y-4'>
-              <div className='text-center'>
-                <h2 className='text-xl font-semibold mb-2'>
-                  Phiên đã được tạo thành công!
-                </h2>
-                <p className='text-gray-600 mb-4'>
-                  Chia sẻ mã này với người tham gia:
-                </p>
-                <div className='bg-gray-100 p-4 rounded-lg'>
-                  <span className='text-2xl font-mono font-bold'>
-                    {sessionCode}
-                  </span>
-                </div>
-              </div>
-
-              {!hasJoined ? (
-                <div className='mt-6'>
-                  <div className='flex gap-4 items-center'>
-                    <Input
-                      type='text'
-                      value={hostName}
-                      onChange={(e) => setHostName(e.target.value)}
-                      placeholder='Nhập tên của bạn'
-                      className='flex-1'
-                    />
-                    <Button
-                      onClick={handleJoinSession}
-                      disabled={!isConnected || hasJoined}
-                    >
-                      {!isConnected
-                        ? 'Đang kết nối...'
-                        : hasJoined
-                        ? 'Đã tham gia'
-                        : 'Tham gia với tư cách Host'}
-                    </Button>
-                  </div>
-                </div>
+          {/* Right - QR code */}
+          <motion.div
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4, duration: 0.4 }}
+            className='flex justify-center sm:justify-end'
+          >
+            <div className='bg-[#f0f1e1] p-3 md:p-4 rounded-xl shadow-lg border border-white/10'>
+              {qrCodeUrl ? (
+                <img
+                  src={qrCodeUrl}
+                  alt='QR Code'
+                  width={120}
+                  height={120}
+                  className='w-[110px] h-[110px] sm:w-[130px] sm:h-[130px] md:w-[150px] md:h-[150px]'
+                />
               ) : (
-                <div className='mt-6 text-center text-green-600'>
-                  Bạn đã tham gia phiên này với tên "{hostName}"
+                <div className='w-[110px] h-[110px] sm:w-[130px] sm:h-[130px] md:w-[150px] md:h-[150px] bg-gray-200 flex items-center justify-center'>
+                  <QrCode className='w-8 h-8 md:w-10 md:h-10 text-gray-400' />
                 </div>
               )}
-
-              <div className='flex gap-4'>
-                <Button
-                  onClick={handleStartSession}
-                  disabled={!isConnected || !hasJoined}
-                  className='flex-1'
-                >
-                  {!isConnected ? (
-                    <span className='flex items-center gap-2'>
-                      <Loader2 className='h-4 w-4 animate-spin' />
-                      Đang kết nối...
-                    </span>
-                  ) : !hasJoined ? (
-                    'Vui lòng tham gia trước'
-                  ) : (
-                    'Bắt đầu phiên'
-                  )}
-                </Button>
-                <Button
-                  onClick={() => router.push('/collections')}
-                  variant='outline'
-                  className='flex-1'
-                >
-                  Quay lại bộ sưu tập
-                </Button>
-              </div>
             </div>
-          ) : null}
+          </motion.div>
+        </div>
 
-          {error && (
-            <Alert variant='destructive' className='mt-4'>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+        {/* Middle line */}
+        <div className='w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8 md:mb-10'></div>
+
+        {/* Players Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
+          className='w-full flex flex-col items-center mb-10 md:mb-14'
+        >
+          <h2 className='text-xl md:text-2xl font-semibold text-white mb-6 text-center'>
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className='px-4 py-1.5 md:px-5 md:py-2 rounded-full bg-gradient-to-r from-[#0e2838]/50 to-[#183244]/50 border border-white/10 shadow-inner flex items-center justify-center gap-2'
+            >
+              <motion.span
+                key={participants.length}
+                initial={{ scale: 1.2 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200 }}
+                className='text-[#aef359] font-bold'
+              >
+                {participants.length}
+              </motion.span>
+              <span>of 300 players:</span>
+            </motion.div>
+          </h2>
+
+          {participants.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0.6 }}
+              animate={{ opacity: 1 }}
+              transition={{
+                repeat: Infinity,
+                repeatType: 'reverse',
+                duration: 2,
+              }}
+              className='flex justify-center items-center p-6 md:p-8 mt-2 md:mt-4'
+            >
+              <button
+                onClick={() => {}}
+                className='flex items-center gap-2 text-white/70 hover:text-white/90 transition-colors duration-300'
+              >
+                <Users className='w-5 h-5' />
+                Join on this device
+              </button>
+            </motion.div>
+          ) : (
+            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 lg:gap-6 justify-items-center max-w-full overflow-y-auto max-h-[300px] md:max-h-[360px] pr-2 pb-2'>
+              <AnimatePresence>
+                {participants.map((participant, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{
+                      delay: 0.1 * Math.min(index, 10),
+                      duration: 0.4,
+                    }}
+                    className='relative'
+                  >
+                    <motion.div
+                      whileHover={{ y: -5 }}
+                      transition={{ type: 'spring', stiffness: 300 }}
+                      className='relative w-16 sm:w-18 md:w-20 h-20 md:h-24 flex flex-col items-center'
+                    >
+                      <motion.div
+                        className='relative'
+                        initial={{ y: -20 }}
+                        animate={{ y: 0 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 400,
+                          damping: 15,
+                          delay: 0.1 * Math.min(index, 10),
+                        }}
+                      >
+                        <div className='absolute inset-0 bg-gradient-to-br from-[#aef359]/30 to-[#e4f88d]/30 rounded-full blur-md -z-10'></div>
+                        <Avatar className='h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 border-white/20 shadow-lg'>
+                          <AvatarImage
+                            src={participant.guestAvatar}
+                            alt={participant.guestName}
+                          />
+                          <AvatarFallback className='bg-gradient-to-br from-green-500 to-green-700 text-white text-base md:text-lg'>
+                            {participant.guestName
+                              .substring(0, 2)
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        {participant.guestName === hostName && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{
+                              delay: 0.2 + 0.1 * Math.min(index, 10),
+                              type: 'spring',
+                              stiffness: 200,
+                            }}
+                            className='absolute -bottom-1 -right-1 bg-green-500 p-1 rounded-full border-2 border-[#0e1c26] shadow-lg'
+                          >
+                            <motion.div
+                              animate={{
+                                scale: [1, 1.2, 1],
+                                opacity: [1, 0.7, 1],
+                              }}
+                              transition={{
+                                repeat: Infinity,
+                                duration: 2,
+                                ease: 'easeInOut',
+                              }}
+                              className='w-1.5 h-1.5 md:w-2 md:h-2'
+                            />
+                          </motion.div>
+                        )}
+                      </motion.div>
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{
+                          delay: 0.3 + 0.1 * Math.min(index, 10),
+                          duration: 0.3,
+                        }}
+                        className='text-xs sm:text-sm text-white/90 mt-2 truncate max-w-full text-center font-medium tracking-tight'
+                      >
+                        {participant.guestName}
+                      </motion.span>
+                    </motion.div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
           )}
-        </Card>
+        </motion.div>
 
-        {participants.length > 0 && (
-          <Card className='p-6'>
-            <h2 className='text-xl font-semibold mb-4'>
-              Thành viên ({participants.length}/100)
-            </h2>
-            <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'>
-              {participants.map((participant, index) => (
-                <div
-                  key={index}
-                  className='flex flex-col items-center p-4 bg-gray-50 rounded-lg'
-                >
-                  <Avatar className='h-16 w-16 mb-2'>
-                    <AvatarImage
-                      src={participant.guestAvatar}
-                      alt={participant.guestName}
-                    />
-                    <AvatarFallback>{participant.guestName[0]}</AvatarFallback>
-                  </Avatar>
-                  <span className='text-sm font-medium truncate max-w-full'>
-                    {participant.guestName}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-      </div>
+        {/* Start Game Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.6 }}
+          className='w-full px-2 sm:px-6 md:px-10'
+        >
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+            <Button
+              onClick={handleStartSession}
+              disabled={!isConnected || !hasJoined}
+              className={`w-full py-5 sm:py-6 md:py-7 text-lg md:text-xl font-bold rounded-full shadow-xl transition-all duration-300 ${
+                isConnected && hasJoined
+                  ? 'bg-gradient-to-r from-[#c5ee4f] to-[#8fe360] text-[#0f2231] hover:shadow-[#aef359]/20 hover:shadow-2xl'
+                  : 'bg-gradient-to-r from-[#c5ee4f]/60 to-[#8fe360]/60 text-[#0f2231]/70'
+              }`}
+            >
+              {!isConnected ? (
+                <span className='flex items-center justify-center gap-2'>
+                  <Loader2 className='h-5 w-5 animate-spin' />
+                  Đang kết nối...
+                </span>
+              ) : !hasJoined ? (
+                'Vui lòng tham gia trước'
+              ) : (
+                'Start game'
+              )}
+            </Button>
+          </motion.div>
+        </motion.div>
+
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className='mt-4 sm:mt-6 w-full px-2 sm:px-0'
+            >
+              <Alert
+                variant='destructive'
+                className='bg-red-500/20 border border-red-500 text-white text-sm'
+              >
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Phiên bản */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2, duration: 0.8 }}
+          className='mt-4 sm:mt-6 text-white/40 text-xs'
+        >
+          PreziQ v1.0
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

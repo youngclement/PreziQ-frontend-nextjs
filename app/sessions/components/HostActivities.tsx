@@ -9,13 +9,18 @@ import { SessionWebSocket } from '@/websocket/sessionWebSocket';
 import InfoSlideViewer from '../show/components/info-slide-viewer';
 import QuizButtonViewer from './QuizButtonViewer';
 import HostSessionSummary from './HostSessionSummary';
-import { Loader2 } from 'lucide-react';
+
 import QuizCheckboxViewer from './QuizCheckboxViewer';
+import QuizTypeAnswerViewer from './QuizTypeAnswerViewer';
+import QuizReorderViewer from './QuizReorderViewer';
+import QuizTrueOrFalseViewer from './QuizTrueOrFalseViewer';
 
 interface Participant {
   guestName: string;
   guestAvatar: string;
   userId: string | null;
+  realtimeScore: number;
+  realtimeRanking: number;
 }
 
 interface HostActivitiesProps {
@@ -65,12 +70,24 @@ export default function HostActivities({
     // Đăng ký các event handlers cho socket đã được kết nối
     sessionWs.onParticipantsUpdateHandler((updatedParticipants) => {
       if (!isMounted.current) return;
-      const participantsData = updatedParticipants.map((p: any) => ({
-        guestName: p.displayName || 'Unknown',
-        guestAvatar:
-          p.displayAvatar || 'https://api.dicebear.com/9.x/pixel-art/svg',
-        userId: p.user?.userId || null,
+      
+      // Sắp xếp người tham gia theo điểm số giảm dần
+      const sortedParticipants = [...updatedParticipants].sort((a, b) => b.realtimeScore - a.realtimeScore);
+      
+      // Cập nhật thứ hạng cho mỗi người tham gia
+      const participantsWithRanking = sortedParticipants.map((participant, index) => ({
+        ...participant,
+        realtimeRanking: index + 1
       }));
+
+      const participantsData = participantsWithRanking.map((p: any) => ({
+        guestName: p.displayName || 'Unknown',
+        guestAvatar: p.displayAvatar || 'https://api.dicebear.com/9.x/pixel-art/svg',
+        userId: p.user?.userId || null,
+        realtimeScore: p.realtimeScore,
+        realtimeRanking: p.realtimeRanking
+      }));
+      
       setParticipants(participantsData);
     });
 
@@ -249,6 +266,33 @@ export default function HostActivities({
             sessionWebSocket={sessionWs}
           />
         );
+      case 'QUIZ_TYPE_ANSWER':
+        return (
+          <QuizTypeAnswerViewer
+            key={currentActivity.activityId}
+            activity={currentActivity}
+            sessionId={sessionId}
+            sessionWebSocket={sessionWs}
+          />
+        );
+      case 'QUIZ_REORDER':
+        return (
+          <QuizReorderViewer
+            key={currentActivity.activityId}
+            activity={currentActivity}
+            sessionId={sessionId}
+            sessionWebSocket={sessionWs}
+          />
+        );
+      case 'QUIZ_TRUE_OR_FALSE':
+        return (
+          <QuizTrueOrFalseViewer
+            key={currentActivity.activityId}
+            activity={currentActivity}
+            sessionId={sessionId}
+            sessionWebSocket={sessionWs}
+          />
+        );
       default:
         return (
           <div className='p-4 bg-gray-50 rounded-lg'>
@@ -261,65 +305,124 @@ export default function HostActivities({
   };
 
   return (
-    <div className='container mx-auto px-4 py-8'>
-      <h1 className='text-3xl font-bold text-center mb-8'>Host Session</h1>
-      <div className='text-sm text-center text-gray-500 mb-4'>
-        {connectionStatus}
-      </div>
-
-      {error && !noMoreActivities && (
-        <Alert variant='destructive' className='mb-4'>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className='max-w-4xl mx-auto'>
-        <Card className='p-6 mb-6'>
-          <div className='flex justify-between items-center mb-4'>
-            <h2 className='text-xl font-semibold'>Hoạt động hiện tại</h2>
-            <div className='space-x-2'>
-              <Button
-                onClick={handleNextActivity}
-                disabled={!isConnected || noMoreActivities}
-              >
-                Hoạt động tiếp theo
-              </Button>
-              <Button
-                variant='destructive'
-                onClick={handleEndSession}
-                disabled={!isConnected}
-              >
-                Kết thúc phiên
-              </Button>
+    <div className='min-h-screen bg-gray-50'>
+      {/* Header */}
+      <div className='bg-gradient-to-r from-indigo-600 to-violet-600 p-4 shadow-md sticky top-0 z-50'>
+        <div className='container mx-auto flex items-center justify-between'>
+          <div className='flex items-center space-x-4'>
+            <h1 className='text-2xl font-bold text-white'>PreziQ Host</h1>
+            <div className='bg-white/20 px-3 py-1 rounded-full text-sm text-white'>
+              Mã: {sessionCode}
             </div>
           </div>
-          {renderActivityContent()}
-        </Card>
 
-        <Card className='p-6'>
-          <h2 className='text-xl font-semibold mb-4'>
-            Thành viên ({participants.length}/100)
-          </h2>
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-            {participants.map((participant, index) => (
-              <div
-                key={index}
-                className='flex items-center space-x-3 p-3 bg-gray-50 rounded-lg'
-              >
-                <Avatar>
-                  <AvatarImage
-                    src={participant.guestAvatar}
-                    alt={participant.guestName}
-                  />
-                  <AvatarFallback>{participant.guestName[0]}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className='font-medium'>{participant.guestName}</p>
-                </div>
-              </div>
-            ))}
+          <div className='text-sm text-white/80 hidden md:block'>
+            {connectionStatus}
           </div>
-        </Card>
+
+          <div className='flex space-x-2'>
+            <Button
+              onClick={handleNextActivity}
+              disabled={!isConnected || noMoreActivities}
+              className='bg-white text-indigo-600 hover:bg-white/90'
+            >
+              Hoạt động tiếp theo
+            </Button>
+            <Button
+              variant='destructive'
+              onClick={handleEndSession}
+              disabled={!isConnected}
+              className='bg-red-500 hover:bg-red-600'
+            >
+              Kết thúc phiên
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className='container mx-auto px-4 py-6'>
+        <div className='text-sm text-center text-gray-500 mb-4 md:hidden'>
+          {connectionStatus}
+        </div>
+
+        {error && !noMoreActivities && (
+          <Alert variant='destructive' className='mb-6 animate-fadeIn'>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Grid layout với 2 cột hoặc 1 cột trên mobile */}
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+          {/* Cột chính - Hoạt động hiện tại */}
+          <div className='lg:col-span-2'>
+            <div className='bg-white rounded-xl shadow-lg overflow-hidden'>
+              <div className='bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4'>
+                <h2 className='text-xl font-bold text-white'>
+                  Hoạt động hiện tại
+                </h2>
+              </div>
+              <div className='p-6'>
+                {noMoreActivities ? (
+                  <div className='text-center py-8 bg-amber-50 rounded-lg'>
+                    <p className='text-lg font-medium text-amber-600 mb-2'>
+                      Không còn hoạt động nào nữa
+                    </p>
+                    <p className='text-gray-500'>
+                      Phiên học sẽ tự động kết thúc trong giây lát...
+                    </p>
+                  </div>
+                ) : (
+                  renderActivityContent()
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Cột phụ - Danh sách người tham gia */}
+          <div className='lg:col-span-1'>
+            <div className='bg-white rounded-xl shadow-lg overflow-hidden'>
+              <div className='bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4'>
+                <h2 className='text-xl font-bold text-white'>
+                  Thành viên ({participants.length}/100)
+                </h2>
+              </div>
+              <div className='p-4'>
+                {participants.length === 0 ? (
+                  <div className='text-center py-8 text-gray-500'>
+                    <p>Chưa có người tham gia nào</p>
+                    <p className='text-sm mt-2'>
+                      Chia sẻ mã phiên để mọi người tham gia
+                    </p>
+                  </div>
+                ) : (
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2'>
+                    {participants.map((participant, index) => (
+                      <div
+                        key={index}
+                        className='flex items-center space-x-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all'
+                      >
+                        <Avatar className='h-10 w-10 border border-gray-200'>
+                          <AvatarImage
+                            src={participant.guestAvatar}
+                            alt={participant.guestName}
+                          />
+                          <AvatarFallback className='bg-indigo-100 text-indigo-600'>
+                            {participant.guestName[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className='flex-1 truncate'>
+                          <p className='font-medium truncate'>
+                            {participant.guestName}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

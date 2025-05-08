@@ -35,6 +35,7 @@ export interface SessionResponse {
     sessionCode: string;
     startTime: string;
     sessionStatus: string;
+    joinSessionQrUrl: string;
   };
   meta: {
     timestamp: string;

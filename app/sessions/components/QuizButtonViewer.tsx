@@ -33,8 +33,8 @@ interface QuizActivityProps {
     customBackgroundMusic?: string;
     quiz: Quiz;
   };
-  sessionId?: string; 
-  sessionCode?: string; 
+  sessionId?: string;
+  sessionCode?: string;
   onAnswerSubmit?: (answerId: string) => void;
   sessionWebSocket?: SessionWebSocket;
 }
@@ -75,11 +75,9 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
     setIsSubmitted(true);
     setSubmitError(null);
 
-
     if (onAnswerSubmit) {
       onAnswerSubmit(selectedAnswerId);
     }
-
 
     if (sessionWebSocket) {
       try {
@@ -114,7 +112,6 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
       .toString()
       .padStart(2, '0')}`;
   };
-
 
   const progressPercentage = Math.max(
     0,
