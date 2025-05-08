@@ -66,37 +66,52 @@ function SortableItem({ id, option, index, onOptionChange, onDeleteOption }: Sor
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center space-x-2 p-4 bg-white dark:bg-gray-800 border rounded-md mb-2.5 group transition-all",
-        isDragging ? "shadow-lg border-primary/30 bg-primary/5 z-50" : "shadow-sm hover:border-gray-300 dark:hover:border-gray-600",
+        "flex items-center gap-2 p-1.5 relative mb-2 transition-all",
+        isDragging ? "z-50" : "",
       )}
     >
-      <div
-        className="cursor-grab active:cursor-grabbing p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-500"
-        {...attributes}
-        {...listeners}
-      >
-        <MoveVertical size={18} className="transition-colors group-hover:text-primary" />
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-black dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-800 text-base font-semibold text-white shadow-sm relative z-10">
+        {index + 1}
       </div>
-      <Input
-        value={option.option_text}
-        onChange={(e) => onOptionChange(index, 'option_text', e.target.value)}
-        className="flex-1 border-gray-200 focus:ring-2 focus:ring-primary/20"
-        placeholder={`Step ${index + 1}`}
-        // Add onBlur to trigger immediate update when focus is lost
-        onBlur={() => {
-          // You can use this to trigger an immediate API update if needed
-          console.log("Value updated and saved:", option.option_text);
-        }}
-      />
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => onDeleteOption(index)}
-        className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md h-10 w-10"
+
+      <div
+        className={cn(
+          "flex-1 bg-white dark:bg-black rounded-lg p-2 shadow-sm border flex items-center gap-2 transition-all",
+          isDragging
+            ? "border-primary ring-1 ring-primary/30 bg-primary/5"
+            : "border-gray-300 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-700"
+        )}
       >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+        <Input
+          value={option.option_text}
+          onChange={(e) => onOptionChange(index, 'option_text', e.target.value)}
+          className="flex-1 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent p-0 text-sm"
+          placeholder={`Step ${index + 1}`}
+          onBlur={() => {
+            console.log("Value updated and saved:", option.option_text);
+          }}
+        />
+
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => onDeleteOption(index)}
+            className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md h-6 w-6"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+
+          <div
+            className="w-6 h-6 flex-shrink-0 rounded-md bg-gray-100 dark:bg-gray-900 flex items-center justify-center cursor-grab text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-3 w-3" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -108,10 +123,6 @@ export function ReorderOptions({
   onAddOption,
   onReorder,
 }: ReorderOptionsProps) {
-  // Handle drag end event
-  // In app/collection/components/question-editor/reorder-options.tsx
-  // Update the handleDragEnd function to ensure it calls the API after reordering:
-
   const handleDragEnd = (result: DragEndEvent) => {
     const { active, over } = result;
 
@@ -139,25 +150,32 @@ export function ReorderOptions({
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-1">
-        <Label className="flex items-center text-base font-medium">
-          <Move className="mr-2 h-4 w-4 text-muted-foreground" />
-          Reorder Steps
+    <div className="space-y-3">
+      <div className="flex justify-between items-center mb-2">
+        <Label className="flex items-center text-sm font-medium">
+          <MoveVertical className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
+          Arrange Steps
         </Label>
         <Button
           size="sm"
           variant="outline"
           onClick={onAddOption}
-          className="text-sm font-medium text-primary hover:text-primary/90 hover:bg-primary/5"
+          className="h-7 px-2 text-xs font-medium text-primary hover:text-primary/90 hover:bg-primary/5"
         >
-          <Plus className="h-3.5 w-3.5 mr-1" /> Add Step
+          <Plus className="h-3 w-3 mr-1" /> Add Step
         </Button>
       </div>
 
-      <p className="text-sm text-muted-foreground mb-3">
-        Drag and drop to reorder steps. The order here will be the correct sequence for the question.
-      </p>
+      <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 mb-2">
+        <div className="flex items-start gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>Define steps in the correct order. Students will need to arrange these steps in the same sequence.</span>
+        </div>
+      </div>
 
       <DndContext
         sensors={sensors}
@@ -168,7 +186,11 @@ export function ReorderOptions({
           items={options.map(option => `option-${option.display_order}`)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="space-y-0.5">
+          <div className="relative">
+            {options.length > 1 && (
+              <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-black/30 dark:bg-white/20 z-0"></div>
+            )}
+
             {options.map((option, index) => (
               <SortableItem
                 key={`option-${option.display_order}`}
@@ -184,10 +206,10 @@ export function ReorderOptions({
       </DndContext>
 
       {options.length === 0 && (
-        <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-md bg-gray-50 dark:bg-gray-800/50">
-          <p className="text-muted-foreground mb-4">No steps added yet</p>
-          <Button onClick={onAddOption} variant="outline" size="sm">
-            <Plus className="h-4 w-4 mr-1" /> Add First Step
+        <div className="flex flex-col items-center justify-center py-4 px-3 border border-dashed rounded-md bg-white dark:bg-black border-gray-300 dark:border-gray-800">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">No steps added yet</p>
+          <Button onClick={onAddOption} variant="outline" size="sm" className="h-7 px-2 text-xs">
+            <Plus className="h-3 w-3 mr-1" /> Add First Step
           </Button>
         </div>
       )}
