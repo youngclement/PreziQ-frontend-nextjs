@@ -17,7 +17,11 @@ export function PermissionsDialogs() {
   return (
     <>
       <PermissionsFormDialog
-        key={currentRow ? `permission-${currentRow.id}` : 'permission-add'}
+        key={
+          currentRow
+            ? `permission-${currentRow.permissionId}`
+            : 'permission-add'
+        }
         open={open === 'add' || open === 'edit'}
         onOpenChange={(isOpen) => {
           if (!isOpen) {
@@ -32,7 +36,7 @@ export function PermissionsDialogs() {
 
       {currentRow && (
         <PermissionsDeleteDialog
-          key={`permission-delete-${currentRow.id}`}
+          key={`permission-delete-${currentRow.permissionId}`}
           open={open === 'delete'}
           onOpenChange={(isOpen) => {
             if (!isOpen) {
@@ -42,9 +46,9 @@ export function PermissionsDialogs() {
               }, 500);
             }
           }}
-          type="permission"
+          type='permission'
           data={{
-            id: currentRow.id,
+            permissionId: currentRow.permissionId,
             name: currentRow.name,
             module: currentRow.module,
           }}
