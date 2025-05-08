@@ -168,7 +168,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                   return question;
                 } else {
                   // Create default question if no quiz data
-                  return createEmptyQuestion(act.id, questionType);
+                  return createEmptyQuestion(act.id, questionType as any);
                 }
               }
             );

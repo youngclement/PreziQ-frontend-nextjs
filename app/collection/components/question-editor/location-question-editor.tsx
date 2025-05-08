@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import type { Feature, Polygon } from 'geojson';
 
 // Set your Mapbox access token - trong môi trường thực tế nên sử dụng biến môi trường
 mapboxgl.accessToken = "pk.eyJ1IjoiY2NkY2MxMSIsImEiOiJjbWFjbDZzZm8wNGpxMmpxMDViM3R6ZHEwIn0.1LP9P6Cdjfk34GNI5_fGoA";
@@ -94,7 +95,7 @@ export function LocationQuestionEditor({
       }
     `;
     document.head.appendChild(style);
-    
+
     return () => {
       document.head.removeChild(style);
     };
@@ -160,9 +161,9 @@ export function LocationQuestionEditor({
       });
 
       // Thêm địa hình 3D
-      map.setTerrain({ 
-        'source': 'mapbox-dem', 
-        'exaggeration': 1.5 
+      map.setTerrain({
+        'source': 'mapbox-dem',
+        'exaggeration': 1.5
       });
 
       // Thêm animation xoay quả cầu nhẹ nhàng nếu ở chế độ globe
@@ -226,7 +227,7 @@ export function LocationQuestionEditor({
       // Tạo custom marker element
       const el = document.createElement('div');
       el.className = 'custom-marker';
-      
+
       // Thêm hiệu ứng pulse
       const pulse = document.createElement('div');
       pulse.className = 'marker-pulse';
@@ -272,12 +273,12 @@ export function LocationQuestionEditor({
   }, [isGlobeMode]);
 
   // Hàm tạo GeoJSON circle
-  function createGeoJSONCircle(center: [number, number], radiusInKm: number, points: number = 64) {
+  function createGeoJSONCircle(center: [number, number], radiusInKm: number, points: number = 64): Feature<Polygon> {
     const coords = {
       latitude: center[1],
       longitude: center[0]
     };
-    
+
     const km = radiusInKm;
     const ret = [];
     const distanceX = km / (111.320 * Math.cos(coords.latitude * Math.PI / 180));
@@ -293,9 +294,9 @@ export function LocationQuestionEditor({
     ret.push(ret[0]); // Đóng vòng tròn
 
     return {
-      type: "Feature",
+      type: "Feature" as const,
       geometry: {
-        type: "Polygon",
+        type: "Polygon" as const,
         coordinates: [ret]
       },
       properties: {}
@@ -402,7 +403,7 @@ export function LocationQuestionEditor({
   // Xử lý chuyển đổi chế độ xem
   const handleViewMode = (mode: string) => {
     if (!mapRef.current) return;
-    
+
     if (mode === '2d') {
       setIsGlobeMode(false);
       mapRef.current.setProjection('mercator');
@@ -456,7 +457,7 @@ export function LocationQuestionEditor({
           <div
             ref={mapContainerRef}
             className="w-full h-[400px] bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden"
-            style={{ 
+            style={{
               boxShadow: isGlobeMode ? '0 0 25px rgba(0, 30, 255, 0.2)' : 'none',
               borderRadius: '12px'
             }}
@@ -465,23 +466,23 @@ export function LocationQuestionEditor({
           {/* Map controls */}
           {!readonly && (
             <div className="absolute top-4 right-16 flex gap-2">
-              <Button 
-                size="sm" 
-                variant={!isGlobeMode && mapRef.current?.getPitch() === 0 ? "default" : "secondary"} 
+              <Button
+                size="sm"
+                variant={!isGlobeMode && mapRef.current?.getPitch() === 0 ? "default" : "secondary"}
                 onClick={() => handleViewMode('2d')}
               >
                 2D
               </Button>
-              <Button 
-                size="sm" 
-                variant={!isGlobeMode && mapRef.current?.getPitch() > 0 ? "default" : "secondary"} 
+              <Button
+                size="sm"
+                variant={!isGlobeMode && ((mapRef.current?.getPitch() ?? 0) > 0) ? "default" : "secondary"}
                 onClick={() => handleViewMode('3d')}
               >
                 3D
               </Button>
-              <Button 
-                size="sm" 
-                variant={isGlobeMode ? "default" : "secondary"} 
+              <Button
+                size="sm"
+                variant={isGlobeMode ? "default" : "secondary"}
                 onClick={() => handleViewMode('globe')}
               >
                 <Globe className="h-4 w-4 mr-1" /> Globe

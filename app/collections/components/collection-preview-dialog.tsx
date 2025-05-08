@@ -144,7 +144,7 @@ export function CollectionPreviewDialog({
 									className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-none"
 									onClick={() => {
 										onOpenChange(false);
-										onViewActivities(selectedCollection.collectionId);
+										onViewActivities(selectedCollection.id);
 									}}
 								>
 									<BookOpen className="mr-2 h-4 w-4" />
@@ -155,7 +155,7 @@ export function CollectionPreviewDialog({
 									className="flex-1 rounded-none"
 									onClick={() => {
 										onOpenChange(false);
-										onEditCollection(selectedCollection.collectionId);
+										onEditCollection(selectedCollection.id);
 									}}
 								>
 									<Edit className="mr-2 h-4 w-4" />

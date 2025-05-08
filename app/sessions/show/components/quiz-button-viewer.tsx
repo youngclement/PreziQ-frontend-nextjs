@@ -116,7 +116,7 @@ const QuizViewer: React.FC<QuizActivityProps> = ({
   // Progress percentage
   const progressPercentage = Math.max(
     0,
-    (timeRemaining / activity.quiz.timeLimitSeconds) * 100
+    Math.min(100, (timeRemaining / activity.quiz.timeLimitSeconds) * 100)
   );
 
   return (
@@ -160,15 +160,14 @@ const QuizViewer: React.FC<QuizActivityProps> = ({
                     ? 'default'
                     : 'outline'
                 }
-                className={`p-6 h-auto text-lg justify-start ${
-                  isSubmitted && answer.isCorrect
-                    ? 'bg-green-100 border-green-500'
-                    : isSubmitted &&
-                      selectedAnswerId === answer.quizAnswerId &&
-                      !answer.isCorrect
+                className={`p-6 h-auto text-lg justify-start ${isSubmitted && answer.isCorrect
+                  ? 'bg-green-100 border-green-500'
+                  : isSubmitted &&
+                    selectedAnswerId === answer.quizAnswerId &&
+                    !answer.isCorrect
                     ? 'bg-red-100 border-red-500'
                     : ''
-                }`}
+                  }`}
                 onClick={() => handleSelectAnswer(answer.quizAnswerId)}
                 disabled={isSubmitted}
               >

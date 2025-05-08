@@ -914,12 +914,17 @@ export const ToolbarHandlers = (
 
         return { slideElementId, payload };
       })
-      .filter((update) => update !== null);
+      .filter(
+        (
+          update
+        ): update is { slideElementId: string; payload: SlideElementPayload } =>
+          update !== null
+      );
 
     // Cập nhật hàng loạt tất cả phần tử
     Promise.all(
       updates.map(({ slideElementId, payload }) =>
-        slidesApi.updateSlidesElement(HARD_SLIDE_ID, slideElementId!, payload)
+        slidesApi.updateSlidesElement(HARD_SLIDE_ID, slideElementId, payload)
       )
     )
       .then((results) => {

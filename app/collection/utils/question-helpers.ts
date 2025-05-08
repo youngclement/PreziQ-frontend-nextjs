@@ -8,7 +8,7 @@ import { QuizQuestion } from "../components/types";
  */
 export const createEmptyQuestion = (
   actId: string,
-  questionType?: string
+  questionType?: QuizQuestion["question_type"]
 ): QuizQuestion => {
   // Create base question with common properties
   const baseQuestion: QuizQuestion = {

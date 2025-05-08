@@ -12,7 +12,7 @@ export const CollectionService = {
     const response = await collectionsApi.getCollections({
       page,
       size,
-      filter: "isPublished=true",
+      isPublished: true,
     });
 
     // Transform response to match our expected format

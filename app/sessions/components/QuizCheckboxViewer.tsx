@@ -203,11 +203,11 @@ export default function QuizCheckboxViewer({
           {/* Progress bars */}
           <div className='space-y-2'>
             <Progress
-              value={(timeLeft / activity.quiz.timeLimitSeconds) * 100}
+              value={Math.min(100, Math.max(0, (timeLeft / activity.quiz.timeLimitSeconds) * 100))}
               className='h-2'
             />
             <Progress
-              value={(answeredCount / totalParticipants) * 100}
+              value={Math.min(100, Math.max(0, (answeredCount / Math.max(1, totalParticipants)) * 100))}
               className='h-2 bg-gray-100'
             />
           </div>
@@ -232,15 +232,14 @@ export default function QuizCheckboxViewer({
               .map((answer) => (
                 <div
                   key={answer.quizAnswerId}
-                  className={`flex items-start space-x-3 p-4 rounded-lg border ${
-                    showResults
+                  className={`flex items-start space-x-3 p-4 rounded-lg border ${showResults
                       ? answer.isCorrect
                         ? 'border-green-500 bg-green-50'
                         : selectedAnswers.includes(answer.quizAnswerId)
-                        ? 'border-red-500 bg-red-50'
-                        : 'border-gray-200'
+                          ? 'border-red-500 bg-red-50'
+                          : 'border-gray-200'
                       : 'border-gray-200'
-                  }`}
+                    }`}
                 >
                   <Checkbox
                     id={answer.quizAnswerId}

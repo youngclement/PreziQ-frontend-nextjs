@@ -11,7 +11,7 @@ import Logo from '@/components/common/logo';
 import { authApi } from '@/api-client/auth-api';
 import { useRouter } from 'next/navigation';
 import { BodyLogin } from '@/models/auth';
-import ForgotPasswordDialog from '@/app/auth/forgot-password/page';
+import ForgotPasswordDialog from '@/app/auth/forgot-password/component';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -95,10 +95,10 @@ export default function LoginPage() {
       const res = await authApi.login(payload);
       setIsLoading(false);
       toast({
-        title: res.data.message,
+        title: res?.data.message,
       });
 
-      login(res.data.data.accessToken);
+      login(res?.data.data.accessToken);
 
       router.refresh();
       router.push('/');
@@ -123,11 +123,12 @@ export default function LoginPage() {
             });
           }
         });
-
         if (error.response.data.code === 1116) {
-          setResendEmail(data.email);
-          setIsResendDialogOpen(true);
-        } else if (error.response.data.code === 1201 || 1002) {
+          if (data.email) {
+            setResendEmail(data.email);
+            setIsResendDialogOpen(true);
+          }
+        } else if (error.response.data.code === 1201 || error.response.data.code === 1002) {
           // toast({
           //   variant: 'destructive',
           //   description: error.response.data.message,

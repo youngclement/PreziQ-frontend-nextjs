@@ -29,7 +29,7 @@ export function CollectionGridItem({
 }: CollectionGridItemProps) {
   return (
     <motion.div
-      key={collection.collectionId}
+      key={collection.id}
       variants={collectionVariants}
       initial='hidden'
       animate='visible'
@@ -78,7 +78,7 @@ export function CollectionGridItem({
           </div>
 
           <CollectionActionButtons
-            collectionId={collection.collectionId}
+            collectionId={collection.id}
             onDelete={onDelete}
             onPreview={() => onPreview(collection)}
             onView={onView}

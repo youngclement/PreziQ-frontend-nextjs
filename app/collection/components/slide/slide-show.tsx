@@ -93,11 +93,11 @@ const SlideShow: React.FC<SlideShowProps> = ({ activities, editMode = false }) =
     };
 
     // Xử lý khi đối tượng được chỉnh sửa
-    const handleObjectModified = (e: fabric.TEvent) => {
-        if (!editMode || !e.target) return;
+    const handleObjectModified = (options: any) => {
+        if (!editMode || !options.target) return;
         hasChanges.current = true;
 
-        const obj = e.target;
+        const obj = options.target;
         const slideElementId = obj.get('slideElementId');
         if (!slideElementId) return;
 
@@ -105,11 +105,11 @@ const SlideShow: React.FC<SlideShowProps> = ({ activities, editMode = false }) =
     };
 
     // Xử lý khi text thay đổi
-    const handleTextChanged = (e: fabric.TEvent) => {
-        if (!editMode || !e.target) return;
+    const handleTextChanged = (options: any) => {
+        if (!editMode || !options.target) return;
         hasChanges.current = true;
 
-        const obj = e.target;
+        const obj = options.target;
         const slideElementId = obj.get('slideElementId');
         if (!slideElementId) return;
 

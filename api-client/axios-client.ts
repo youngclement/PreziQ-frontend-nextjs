@@ -4,7 +4,7 @@ import { authApi } from "./auth-api";
 import Cookies from "js-cookie";
 
 let axiosClient = axios.create({
-  baseURL:'https://preziq.duckdns.org/api/v1',
+  baseURL: "https://preziq.duckdns.org/api/v1",
 
   headers: {
     "Content-Type": "application/json",

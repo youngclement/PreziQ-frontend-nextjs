@@ -8,7 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '@/api-client';
 
-type UsersDialogType = 'invite' | 'add' | 'edit' | 'delete';
+type UsersDialogType = 'invite' | 'add' | 'edit' | 'delete' | 'view';
 
 interface UsersContextType {
   users: User[];

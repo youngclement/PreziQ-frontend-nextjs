@@ -13,10 +13,6 @@ import { motion } from "framer-motion";
 import { CheckCircle2, LucideChevronRight, Mail, Lock, User } from "lucide-react";
 
 // Dynamic import for the 3D model component
-const ThreeDModel = dynamic(() => import('@/components/3d/auth-model'), {
-    ssr: false,
-    loading: () => <div className="w-full h-full flex items-center justify-center">Loading 3D Model...</div>
-});
 
 export function AuthPage() {
     const router = useRouter();
@@ -85,9 +81,7 @@ export function AuthPage() {
                     <div className="w-full md:w-1/2 h-1/2 md:h-full bg-gradient-to-br from-background/80 to-background/30 backdrop-blur-sm 
                         rounded-t-3xl md:rounded-l-3xl md:rounded-tr-none border border-border/30 shadow-lg flex items-center justify-center p-4 md:p-6">
                         <div className="h-full max-h-[350px] md:max-h-[500px] w-full relative">
-                            <Suspense fallback={<div className="w-full h-full flex items-center justify-center">Loading 3D Model...</div>}>
-                                <ThreeDModel />
-                            </Suspense>
+
                             <div className="absolute bottom-8 left-0 right-0 text-center">
                                 <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">PreziQ</h1>
                                 <p className="text-lg text-muted-foreground mt-2">Your presentation assistant</p>

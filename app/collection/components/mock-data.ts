@@ -150,6 +150,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
       "Test your knowledge of addition, subtraction, multiplication, and division",
     is_published: true,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
   {
     id: "act2",
@@ -158,6 +161,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
     description: "Introduction to algebraic expressions and equations",
     is_published: false,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
   {
     id: "act3",
@@ -166,6 +172,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
     description: "Understand shapes, angles, and spatial relationships",
     is_published: true,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
 
   // Physics activities
@@ -176,6 +185,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
     description: "Learn about forces, motion, and energy",
     is_published: true,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
   {
     id: "act5",
@@ -184,6 +196,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
     description: "Explore the fascinating world of quantum mechanics",
     is_published: true,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
 
   // English activities
@@ -194,6 +209,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
     description: "Learn to identify nouns, verbs, adjectives, and more",
     is_published: true,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
   {
     id: "act7",
@@ -202,6 +220,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
     description: "Master the correct use of commas, periods, and other marks",
     is_published: false,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
 
   // History activities
@@ -212,6 +233,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
     description: "Explore the earliest human societies and their achievements",
     is_published: true,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
   {
     id: "act9",
@@ -221,6 +245,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
       "Test your knowledge of the major conflicts of the 20th century",
     is_published: true,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
 
   // Computer Science activities
@@ -231,6 +258,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
     description: "Introduction to coding concepts and principles",
     is_published: true,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
   {
     id: "act11",
@@ -239,6 +269,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
     description: "Learn about arrays, linked lists, trees, and more",
     is_published: false,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
 
   // Biology activities
@@ -249,6 +282,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
     description: "Explore the structure and function of cells",
     is_published: true,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
   {
     id: "act13",
@@ -257,6 +293,9 @@ export const MOCK_ACTIVITIES: Activity[] = [
     description: "Learn about DNA, inheritance, and genetic disorders",
     is_published: true,
     activity_type_id: "quiz",
+    createdAt: "2023-10-15T08:00:00Z",
+    updatedAt: "2023-10-15T08:00:00Z",
+    createdBy: "admin",
   },
 ];
 

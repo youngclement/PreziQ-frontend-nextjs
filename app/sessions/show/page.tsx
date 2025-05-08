@@ -25,11 +25,11 @@ interface Activity {
   quiz?: {
     questionId: string;
     questionType:
-      | 'multiple_choice'
-      | 'multiple_response'
-      | 'true_false'
-      | 'text_answer'
-      | 'reorder';
+    | 'multiple_choice'
+    | 'multiple_response'
+    | 'true_false'
+    | 'text_answer'
+    | 'reorder';
     questionText: string;
     options: any[];
     timeLimit: number;
@@ -122,20 +122,20 @@ export default function SessionShowPage() {
               {currentActivity.activityType === 'slide' &&
                 currentActivity.slide && (
                   <SlideShow
-                    collection={{
-                      collectionId: 'current-session',
-                      title: 'Current Session',
-                      description: '',
-                      coverImage: '',
-                      activities: [
-                        {
-                          activityId: currentActivity.activityId,
-                          backgroundColor: currentActivity.backgroundColor,
-                          backgroundImage: currentActivity.backgroundImage,
-                          slide: currentActivity.slide,
-                        },
-                      ],
-                    }}
+                    activities={[
+                      {
+                        activityId: currentActivity.activityId,
+                        activityType: 'slide',
+                        title: 'Current Session',
+                        description: '',
+                        isPublished: true,
+                        orderIndex: 0,
+                        backgroundColor: currentActivity.backgroundColor,
+                        backgroundImage: currentActivity.backgroundImage,
+                        customBackgroundMusic: null,
+                        slide: currentActivity.slide,
+                      },
+                    ]}
                   />
                 )}
 
@@ -144,6 +144,7 @@ export default function SessionShowPage() {
                   <QuestionPreview
                     questions={[
                       {
+                        id: currentActivity.activityId,
                         activity_id: currentActivity.activityId,
                         question_text: currentActivity.quiz.questionText,
                         question_type: currentActivity.quiz.questionType,
@@ -156,9 +157,9 @@ export default function SessionShowPage() {
                     timeLimit={currentActivity.quiz.timeLimit}
                     backgroundImage={currentActivity.backgroundImage || ''}
                     previewMode={true}
-                    onQuestionTextChange={() => {}}
-                    onOptionChange={() => {}}
-                    onChangeQuestion={() => {}}
+                    onQuestionTextChange={() => { }}
+                    onOptionChange={() => { }}
+                    onChangeQuestion={() => { }}
                   />
                 )}
             </Card>

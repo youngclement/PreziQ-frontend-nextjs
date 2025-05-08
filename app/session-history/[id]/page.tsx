@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { sessionsApi, SessionHistoryResponse } from "@/api-client/sessions-api";
+import { sessionsApi } from "@/api-client/sessions-api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,657 +16,718 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
-// Mock data in case API returns null or fails
-// ...existing code...
+// Add a more specific type for participantHistoryResponses
+export interface ParticipantHistoryResponse {
+    sessionParticipantId: string;
+    displayName: string;
+    displayAvatar: string;
+    finalScore: number;
+    finalRanking: number;
+    finalCorrectCount: number;
+    finalIncorrectCount: number;
+    activitySubmissions: Array<{
+        activitySubmissionId: string;
+        answerContent: string;
+        isCorrect: boolean;
+        responseScore: number;
+    }>;
+}
 
-// Mock data in case API returns null or fails
+// Update the SessionHistoryResponse interface to match the API
+export interface SessionHistoryResponseItem {
+    sessionId: string;
+    sessionCode: string;
+    startTime: string;
+    endTime: string;
+    sessionStatus: string;
+    collection: {
+        collectionId: string;
+        title: string;
+        description: string;
+        coverImage: string;
+    };
+    hostUser: {
+        userId: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        displayName?: string; // For UI compatibility
+        profilePictureUrl?: string; // For UI compatibility
+    };
+    participantHistoryResponses: ParticipantHistoryResponse[];
+}
+
+export interface SessionHistoryResponse {
+    success: boolean;
+    message: string;
+    data: SessionHistoryResponseItem[];
+    meta: {
+        timestamp: string;
+        instance: string;
+    };
+}
+
+export interface SessionHistoryDetailResponse {
+    success: boolean;
+    message: string;
+    data: SessionHistoryResponseItem;
+    meta: {
+        timestamp: string;
+        instance: string;
+    };
+}
+
+// Mock data with the correct structure
 const mockSessionHistory: SessionHistoryResponse = {
-    session: {
+    success: true,
+    message: "Session history retrieved successfully",
+    data: [{
         sessionId: "63503157-b94d-401f-b1ee-bc8e1a4ff9db",
-        collection: {
-            collectionId: "9a5c4b83-7d6e-4c0e-a64b-3f2e558f5c3d",
-            title: "JavaScript Fundamentals",
-            description: "A comprehensive collection covering JavaScript core concepts and best practices",
-            thumbnailUrl: "https://storage.googleapis.com/priziq-thumbnails/js-basics.jpg",
-            isPublished: true
-        },
-        hostUser: {
-            userId: "85d7816a-c385-4f30-8760-31c0f3d9511b",
-            displayName: "John Educator",
-            email: "john.educator@example.com",
-            profilePictureUrl: "https://storage.googleapis.com/priziq-avatars/john_educator.jpg"
-        },
         sessionCode: "7XP9ZT",
         startTime: "2023-11-15 14:30:25 PM",
         endTime: "2023-11-15 15:45:18 PM",
         sessionStatus: "ENDED",
-        createdAt: "2023-11-15 14:20:12 PM",
-        updatedAt: "2023-11-15 15:45:18 PM"
+        collection: {
+            collectionId: "9a5c4b83-7d6e-4c0e-a64b-3f2e558f5c3d",
+            title: "JavaScript Fundamentals",
+            description: "A comprehensive collection covering JavaScript core concepts and best practices",
+            coverImage: "https://storage.googleapis.com/priziq-thumbnails/js-basics.jpg",
+        },
+        hostUser: {
+            userId: "85d7816a-c385-4f30-8760-31c0f3d9511b",
+            email: "john.educator@example.com",
+            firstName: "John",
+            lastName: "Educator",
+            displayName: "John Educator",
+            profilePictureUrl: "https://storage.googleapis.com/priziq-avatars/john_educator.jpg"
+        },
+        participantHistoryResponses: [
+            {
+                sessionParticipantId: "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+                displayName: "Alice Johnson",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/alice_avatar.jpg",
+                finalScore: 950,
+                finalRanking: 1,
+                finalCorrectCount: 10,
+                finalIncorrectCount: 0,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "s1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "s2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "s3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"C"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "s4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"let x = 10;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "s5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["A","C"]}',
+                        isCorrect: true,
+                        responseScore: 100
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7",
+                displayName: "Bob Smith",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/bob_avatar.png",
+                finalScore: 850,
+                finalRanking: 2,
+                finalCorrectCount: 9,
+                finalIncorrectCount: 1,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "t1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "t2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "t3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"D"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "t4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"var x = 10;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "t5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["A","C"]}',
+                        isCorrect: true,
+                        responseScore: 100
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8",
+                displayName: "Charlie Davis",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/charlie_avatar.jpg",
+                finalScore: 800,
+                finalRanking: 3,
+                finalCorrectCount: 8,
+                finalIncorrectCount: 2,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "u1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "u2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "u3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "u4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"const x = 10;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "u5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["B","D"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9",
+                displayName: "Diana Edwards",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/diana_avatar.jpg",
+                finalScore: 750,
+                finalRanking: 4,
+                finalCorrectCount: 8,
+                finalIncorrectCount: 2,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "v1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "v2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "v3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"C"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "v4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"let myValue = 20;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "v5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["A","B"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "5e6f7g8h-9i0j-1k2l-3m4n-5o6p7q8r9s0",
+                displayName: "Ethan Foster",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/ethan_avatar.png",
+                finalScore: 700,
+                finalRanking: 5,
+                finalCorrectCount: 7,
+                finalIncorrectCount: 3,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "w1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"C"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "w2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "w3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "w4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"const result = 30;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "w5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["C","D"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "6f7g8h9i-0j1k-2l3m-4n5o-6p7q8r9s0t1",
+                displayName: "Fiona Garcia",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/fiona_avatar.jpg",
+                finalScore: 650,
+                finalRanking: 6,
+                finalCorrectCount: 7,
+                finalIncorrectCount: 3,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "x1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "x2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"D"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "x3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "x4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"let counter = 5;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "x5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["B","C"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "7g8h9i0j-1k2l-3m4n-5o6p-7q8r9s0t1u2",
+                displayName: "George Harris",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/george_avatar.png",
+                finalScore: 600,
+                finalRanking: 7,
+                finalCorrectCount: 6,
+                finalIncorrectCount: 4,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "y1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "y2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "y3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"D"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "y4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"var status = true;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "y5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["A","C"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "8h9i0j1k-2l3m-4n5o-6p7q-8r9s0t1u2v3",
+                displayName: "Hannah Irwin",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/hannah_avatar.jpg",
+                finalScore: 550,
+                finalRanking: 8,
+                finalCorrectCount: 6,
+                finalIncorrectCount: 4,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "z1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "z2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"C"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "z3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "z4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"let isActive = false;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "z5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["B","D"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "9i0j1k2l-3m4n-5o6p-7q8r-9s0t1u2v3w4",
+                displayName: "Ian Jones",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/ian_avatar.png",
+                finalScore: 500,
+                finalRanking: 9,
+                finalCorrectCount: 5,
+                finalIncorrectCount: 5,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "a1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"C"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "a2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "a3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"D"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "a4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"var isEnabled = true;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "a5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["A","D"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "0j1k2l3m-4n5o-6p7q-8r9s-0t1u2v3w4x5",
+                displayName: "Julia Kim",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/julia_avatar.jpg",
+                finalScore: 450,
+                finalRanking: 10,
+                finalCorrectCount: 5,
+                finalIncorrectCount: 5,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "b1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "b2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"D"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "b3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "b4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"const flag = false;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "b5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["C","D"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "1k2l3m4n-5o6p-7q8r-9s0t-1u2v3w4x5y6",
+                displayName: "Kevin Lee",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/kevin_avatar.png",
+                finalScore: 400,
+                finalRanking: 11,
+                finalCorrectCount: 4,
+                finalIncorrectCount: 6,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "c1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"D"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "c2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "c3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"C"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "c4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"var temp = 100;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "c5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["D","E"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "2l3m4n5o-6p7q-8r9s-0t1u-2v3w4x5y6z7",
+                displayName: "Laura Martin",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/laura_avatar.jpg",
+                finalScore: 350,
+                finalRanking: 12,
+                finalCorrectCount: 4,
+                finalIncorrectCount: 6,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "d1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "d2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"E"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "d3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"F"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "d4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"let count = 1;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "d5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["E","F"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "3m4n5o6p-7q8r-9s0t-1u2v-3w4x5y6z7a8",
+                displayName: "Michael Nelson",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/michael_avatar.png",
+                finalScore: 300,
+                finalRanking: 13,
+                finalCorrectCount: 3,
+                finalIncorrectCount: 7,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "e1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"C"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "e2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"D"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "e3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "e4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"let valid = false;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "e5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["F","G"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "4n5o6p7q-8r9s-0t1u-2v3w-4x5y6z7a8b9",
+                displayName: "Natalie Ortiz",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/natalie_avatar.jpg",
+                finalScore: 250,
+                finalRanking: 14,
+                finalCorrectCount: 3,
+                finalIncorrectCount: 7,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "f1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "f2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"F"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "f3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"G"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "f4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"var data = null;"}',
+                        isCorrect: true,
+                        responseScore: 150
+                    },
+                    {
+                        activitySubmissionId: "f5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["G","H"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            },
+            {
+                sessionParticipantId: "5o6p7q8r-9s0t-1u2v-3w4x-5y6z7a8b9c0",
+                displayName: "Oliver Parker",
+                displayAvatar: "https://storage.googleapis.com/priziq-avatars/oliver_avatar.png",
+                finalScore: 200,
+                finalRanking: 15,
+                finalCorrectCount: 2,
+                finalIncorrectCount: 8,
+                activitySubmissions: [
+                    {
+                        activitySubmissionId: "g1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+                        answerContent: '{"selectedOption":"A"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "g2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
+                        answerContent: '{"selectedOption":"H"}',
+                        isCorrect: false,
+                        responseScore: 0
+                    },
+                    {
+                        activitySubmissionId: "g3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
+                        answerContent: '{"selectedOption":"B"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "g4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
+                        answerContent: '{"textAnswer":"const ready = true;"}',
+                        isCorrect: true,
+                        responseScore: 100
+                    },
+                    {
+                        activitySubmissionId: "g5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
+                        answerContent: '{"selectedOptions":["H","I"]}',
+                        isCorrect: false,
+                        responseScore: 0
+                    }
+                ]
+            }
+        ]
+    }],
+    meta: {
+        timestamp: new Date().toISOString(),
+        instance: "mock-instance",
     },
-    participantHistoryResponses: [
-        {
-            sessionParticipantId: "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
-            displayName: "Alice Johnson",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/alice_avatar.jpg",
-            finalScore: 950,
-            finalRanking: 1,
-            finalCorrectCount: 10,
-            finalIncorrectCount: 0,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "s1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "s2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "s3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"C"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "s4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"let x = 10;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "s5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["A","C"]}',
-                    isCorrect: true,
-                    responseScore: 100
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7",
-            displayName: "Bob Smith",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/bob_avatar.png",
-            finalScore: 850,
-            finalRanking: 2,
-            finalCorrectCount: 9,
-            finalIncorrectCount: 1,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "t1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "t2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "t3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"D"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "t4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"var x = 10;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "t5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["A","C"]}',
-                    isCorrect: true,
-                    responseScore: 100
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8",
-            displayName: "Charlie Davis",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/charlie_avatar.jpg",
-            finalScore: 800,
-            finalRanking: 3,
-            finalCorrectCount: 8,
-            finalIncorrectCount: 2,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "u1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "u2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "u3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "u4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"const x = 10;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "u5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["B","D"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9",
-            displayName: "Diana Edwards",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/diana_avatar.jpg",
-            finalScore: 750,
-            finalRanking: 4,
-            finalCorrectCount: 8,
-            finalIncorrectCount: 2,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "v1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "v2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "v3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"C"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "v4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"let myValue = 20;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "v5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["A","B"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "5e6f7g8h-9i0j-1k2l-3m4n-5o6p7q8r9s0",
-            displayName: "Ethan Foster",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/ethan_avatar.png",
-            finalScore: 700,
-            finalRanking: 5,
-            finalCorrectCount: 7,
-            finalIncorrectCount: 3,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "w1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"C"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "w2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "w3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "w4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"const result = 30;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "w5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["C","D"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "6f7g8h9i-0j1k-2l3m-4n5o-6p7q8r9s0t1",
-            displayName: "Fiona Garcia",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/fiona_avatar.jpg",
-            finalScore: 650,
-            finalRanking: 6,
-            finalCorrectCount: 7,
-            finalIncorrectCount: 3,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "x1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "x2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"D"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "x3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "x4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"let counter = 5;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "x5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["B","C"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "7g8h9i0j-1k2l-3m4n-5o6p-7q8r9s0t1u2",
-            displayName: "George Harris",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/george_avatar.png",
-            finalScore: 600,
-            finalRanking: 7,
-            finalCorrectCount: 6,
-            finalIncorrectCount: 4,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "y1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "y2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "y3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"D"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "y4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"var status = true;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "y5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["A","C"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "8h9i0j1k-2l3m-4n5o-6p7q-8r9s0t1u2v3",
-            displayName: "Hannah Irwin",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/hannah_avatar.jpg",
-            finalScore: 550,
-            finalRanking: 8,
-            finalCorrectCount: 6,
-            finalIncorrectCount: 4,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "z1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "z2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"C"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "z3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "z4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"let isActive = false;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "z5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["B","D"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "9i0j1k2l-3m4n-5o6p-7q8r-9s0t1u2v3w4",
-            displayName: "Ian Jones",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/ian_avatar.png",
-            finalScore: 500,
-            finalRanking: 9,
-            finalCorrectCount: 5,
-            finalIncorrectCount: 5,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "a1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"C"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "a2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "a3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"D"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "a4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"var isEnabled = true;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "a5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["A","D"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "0j1k2l3m-4n5o-6p7q-8r9s-0t1u2v3w4x5",
-            displayName: "Julia Kim",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/julia_avatar.jpg",
-            finalScore: 450,
-            finalRanking: 10,
-            finalCorrectCount: 5,
-            finalIncorrectCount: 5,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "b1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "b2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"D"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "b3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "b4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"const flag = false;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "b5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["C","D"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "1k2l3m4n-5o6p-7q8r-9s0t-1u2v3w4x5y6",
-            displayName: "Kevin Lee",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/kevin_avatar.png",
-            finalScore: 400,
-            finalRanking: 11,
-            finalCorrectCount: 4,
-            finalIncorrectCount: 6,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "c1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"D"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "c2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "c3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"C"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "c4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"var temp = 100;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "c5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["D","E"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "2l3m4n5o-6p7q-8r9s-0t1u-2v3w4x5y6z7",
-            displayName: "Laura Martin",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/laura_avatar.jpg",
-            finalScore: 350,
-            finalRanking: 12,
-            finalCorrectCount: 4,
-            finalIncorrectCount: 6,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "d1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "d2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"E"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "d3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"F"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "d4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"let count = 1;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "d5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["E","F"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "3m4n5o6p-7q8r-9s0t-1u2v-3w4x5y6z7a8",
-            displayName: "Michael Nelson",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/michael_avatar.png",
-            finalScore: 300,
-            finalRanking: 13,
-            finalCorrectCount: 3,
-            finalIncorrectCount: 7,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "e1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"C"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "e2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"D"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "e3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "e4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"let valid = false;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "e5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["F","G"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "4n5o6p7q-8r9s-0t1u-2v3w-4x5y6z7a8b9",
-            displayName: "Natalie Ortiz",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/natalie_avatar.jpg",
-            finalScore: 250,
-            finalRanking: 14,
-            finalCorrectCount: 3,
-            finalIncorrectCount: 7,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "f1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "f2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"F"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "f3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"G"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "f4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"var data = null;"}',
-                    isCorrect: true,
-                    responseScore: 150
-                },
-                {
-                    activitySubmissionId: "f5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["G","H"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        },
-        {
-            sessionParticipantId: "5o6p7q8r-9s0t-1u2v-3w4x-5y6z7a8b9c0",
-            displayName: "Oliver Parker",
-            displayAvatar: "https://storage.googleapis.com/priziq-avatars/oliver_avatar.png",
-            finalScore: 200,
-            finalRanking: 15,
-            finalCorrectCount: 2,
-            finalIncorrectCount: 8,
-            activitySubmissions: [
-                {
-                    activitySubmissionId: "g1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
-                    answerContent: '{"selectedOption":"A"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "g2b3c4d5-e6f7-g8h9-i0j1-k2l3m4n5o6p7",
-                    answerContent: '{"selectedOption":"H"}',
-                    isCorrect: false,
-                    responseScore: 0
-                },
-                {
-                    activitySubmissionId: "g3c4d5e6-f7g8-h9i0-j1k2-l3m4n5o6p7q8",
-                    answerContent: '{"selectedOption":"B"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "g4d5e6f7-g8h9-i0j1-k2l3-m4n5o6p7q8r9",
-                    answerContent: '{"textAnswer":"const ready = true;"}',
-                    isCorrect: true,
-                    responseScore: 100
-                },
-                {
-                    activitySubmissionId: "g5e6f7g8-h9i0-j1k2-l3m4-n5o6p7q8r9s0",
-                    answerContent: '{"selectedOptions":["H","I"]}',
-                    isCorrect: false,
-                    responseScore: 0
-                }
-            ]
-        }
-    ]
 };
-
-// ...existing code...
 
 export default function SessionHistoryPage() {
     const { id } = useParams();
-    const [sessionHistory, setSessionHistory] = useState<SessionHistoryResponse | null>(null);
+    const [sessionHistory, setSessionHistory] = useState<SessionHistoryDetailResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
@@ -676,8 +737,16 @@ export default function SessionHistoryPage() {
             try {
                 setLoading(true);
                 const sessionId = Array.isArray(id) ? id[0] : id;
-                const response = await sessionsApi.getSessionHistory(sessionId);
-                setSessionHistory(response.data.data);
+                // Cast the response to our defined interface
+                const response = await sessionsApi.getSessionHistory(sessionId) as unknown as SessionHistoryResponse;
+
+                // Assume API response contains a single session data
+                setSessionHistory({
+                    success: response.success,
+                    message: response.message,
+                    data: response.data[0], // Get first item from array
+                    meta: response.meta
+                });
             } catch (err) {
                 console.error("Failed to fetch session history:", err);
                 setError("Failed to load session history data");
@@ -686,8 +755,13 @@ export default function SessionHistoryPage() {
                     description: "Using mock data instead. Please try again later.",
                     variant: "destructive",
                 });
-                // Use mock data as fallback
-                setSessionHistory(mockSessionHistory);
+                // Convert mock data to correct format
+                setSessionHistory({
+                    success: mockSessionHistory.success,
+                    message: mockSessionHistory.message,
+                    data: mockSessionHistory.data[0],
+                    meta: mockSessionHistory.meta
+                });
             } finally {
                 setLoading(false);
             }
@@ -759,8 +833,8 @@ export default function SessionHistoryPage() {
         );
     }
 
-    const data = sessionHistory || mockSessionHistory;
-    const { session, participantHistoryResponses } = data;
+    const session = sessionHistory!.data;
+    const { participantHistoryResponses } = session;
     const sessionDuration = calculateSessionDuration(session.startTime, session.endTime);
 
     return (
@@ -806,11 +880,11 @@ export default function SessionHistoryPage() {
                                 <Avatar className="h-8 w-8">
                                     <AvatarImage src={session.hostUser.profilePictureUrl} alt="Host" />
                                     <AvatarFallback>
-                                        {session.hostUser.displayName.charAt(0).toUpperCase()}
+                                        {session.hostUser.displayName?.charAt(0).toUpperCase() || ''}
                                     </AvatarFallback>
                                 </Avatar>
                             }
-                            title={session.hostUser.displayName}
+                            title={session.hostUser.displayName || ''}
                             subtitle="Host"
                         />
 

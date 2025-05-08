@@ -95,7 +95,7 @@ function DroppableArea({ children }: { children: React.ReactNode }) {
         'space-y-2 p-4 rounded-lg border-2 border-dashed transition-colors duration-200',
         isOver && 'border-primary bg-muted/60 scale-[1.02]',
         !children &&
-          'min-h-[100px] flex items-center justify-center text-muted-foreground'
+        'min-h-[100px] flex items-center justify-center text-muted-foreground'
       )}
     >
       <h3 className='text-lg font-medium'>Permissions khác</h3>
@@ -276,7 +276,7 @@ export function PermissionsTable() {
                   collapsed={collapsedModules[moduleName]}
                   onCollapse={() => toggleCollapse(moduleName)}
                   permission={{
-                    id: moduleName,
+                    permissionId: moduleName,
                     name: moduleName,
                     httpMethod: 'GET',
                     apiPath: '',
