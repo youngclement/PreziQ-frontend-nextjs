@@ -1,7 +1,5 @@
 'use client';
 
-import React from 'react';
-
 const solidColors = [
   '#000000',
   '#555555',
@@ -47,7 +45,7 @@ const gradientColors = [
 ];
 
 const parseGradientStops = (gradient: string): string[] => {
-  const match = gradient.match(/linear-gradient\(to (right|left), (.+)\)/);
+  const match = gradient.match(/linear-gradient$$to (right|left), (.+)$$/);
   if (!match) return [];
   return match[2].split(',').map((c) => c.trim());
 };
@@ -83,7 +81,7 @@ const ColorCircle = ({
   return (
     <div
       onClick={handleClick}
-      className="w-8 h-8 rounded-full cursor-pointer border border-gray-300"
+      className="w-8 h-8 rounded-full cursor-pointer border border-gray-300 hover:scale-110 transition-transform"
       style={{
         background: isGradient ? color : undefined,
         backgroundColor: isGradient ? undefined : color,
@@ -94,7 +92,7 @@ const ColorCircle = ({
 
 export default function ColorPalette() {
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4">
       <div>
         <h4 className="text-sm font-semibold mb-2">Màu đồng nhất</h4>
         <div className="grid grid-cols-6 gap-2">
