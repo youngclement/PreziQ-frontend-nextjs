@@ -125,7 +125,7 @@ export function CollectionGridItem({
               )}
 
               {/* Show likes if available */}
-              {'likes' in collection && collection.likes > 0 && (
+              {'likes' in collection && typeof collection.likes === 'number' && collection.likes > 0 && (
                 <div className='flex items-center'>
                   <Heart className='h-3 w-3 mr-1 text-indigo-600 dark:text-indigo-400' />
                   <span>{collection.likes}</span>
@@ -145,7 +145,7 @@ export function CollectionGridItem({
             </div>
 
             {/* Show participants if available */}
-            {'participants' in collection && collection.participants > 0 && (
+            {'participants' in collection && typeof collection.participants === 'number' && collection.participants > 0 && (
               <div className='flex items-center'>
                 <Users className='h-3 w-3 mr-1 text-indigo-600 dark:text-indigo-400' />
                 <span>{collection.participants}</span>
