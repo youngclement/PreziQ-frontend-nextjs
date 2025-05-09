@@ -110,7 +110,7 @@ axiosClient.interceptors.response.use(
                   // Xóa cookie token
                   Cookies.remove("accessToken", { path: "/" });
 
-                  window.location.href = "/login"; // Chuyển hướng về trang đăng nhập
+                  // window.location.href = "/login"; // Chuyển hướng về trang đăng nhập
                 }
                 reject(refreshError);
               })
@@ -137,7 +137,7 @@ axiosClient.interceptors.response.use(
           // Xóa cookie token
           Cookies.remove("accessToken", { path: "/" });
 
-          window.location.href = "/login";
+          // window.location.href = "/login";
         }
       }
     }

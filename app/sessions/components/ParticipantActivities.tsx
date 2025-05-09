@@ -9,6 +9,7 @@ import {
   SessionWebSocket,
   SessionParticipant,
   EndSessionSummary,
+  UserAchievements,
 } from '@/websocket/sessionWebSocket';
 import InfoSlideViewer from '../show/components/info-slide-viewer';
 import QuizButtonViewer from './QuizButtonViewer';
@@ -45,17 +46,46 @@ export default function ParticipantActivities({
   const [isSessionEnded, setIsSessionEnded] = useState(false);
   const [sessionSummary, setSessionSummary] =
     useState<EndSessionSummary | null>(null);
+  const [achievementsData, setAchievementsData] =
+    useState<UserAchievements | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const currentActivityIdRef = useRef<string | null>(null);
   const isMounted = useRef(true);
   const wsInitialized = useRef(false);
   const [showCountdown, setShowCountdown] = useState(false);
   const [noMoreActivities, setNoMoreActivities] = useState(false);
+  const lastScoreUpdateTimeRef = useRef(Date.now());
 
   // Xử lý cập nhật điểm số từ RealtimeLeaderboard
   const handleScoreUpdate = (score: number, id: string | undefined) => {
-    setMyScore(score);
+    console.log(
+      '[ParticipantActivities] Cập nhật điểm từ RealtimeLeaderboard:',
+      {
+        newScore: score,
+        userId: id,
+        prevScore: myScore,
+        timeSinceLastUpdate: Date.now() - lastScoreUpdateTimeRef.current,
+      }
+    );
+
+    if (score !== myScore) {
+      setMyScore(score);
+      if (id) setMyId(id);
+      lastScoreUpdateTimeRef.current = Date.now();
+    }
+  };
+
+  // Thêm hàm riêng để xử lý cập nhật từ WebSocket
+  const handleWebSocketScoreUpdate = (newScore: number, id?: string) => {
+    console.log('[ParticipantActivities] Cập nhật điểm từ WebSocket:', {
+      oldScore: myScore,
+      newScore: newScore,
+      timeSinceLastUpdate: Date.now() - lastScoreUpdateTimeRef.current,
+    });
+
+    setMyScore(newScore);
     if (id) setMyId(id);
+    lastScoreUpdateTimeRef.current = Date.now();
   };
 
   useEffect(() => {
@@ -74,6 +104,8 @@ export default function ParticipantActivities({
 
       // Đăng ký các event handlers cho socket đã được kết nối
       sessionWs.onParticipantsUpdateHandler((updatedParticipants) => {
+        if (!isMounted.current) return;
+
         console.log(
           '[ParticipantActivities] Nhận cập nhật danh sách người tham gia:',
           updatedParticipants
@@ -87,8 +119,18 @@ export default function ParticipantActivities({
           return;
         }
 
+        // Chuẩn hóa dữ liệu
+        const sanitizedParticipants = updatedParticipants.map((p) => ({
+          ...p,
+          realtimeScore:
+            typeof p.realtimeScore === 'number' ? p.realtimeScore : 0,
+          displayName: p.displayName || 'Unknown',
+          displayAvatar:
+            p.displayAvatar || 'https://api.dicebear.com/9.x/pixel-art/svg',
+        }));
+
         // Sắp xếp người tham gia theo điểm số giảm dần
-        const sortedParticipants = [...updatedParticipants].sort(
+        const sortedParticipants = [...sanitizedParticipants].sort(
           (a, b) => b.realtimeScore - a.realtimeScore
         );
 
@@ -99,6 +141,20 @@ export default function ParticipantActivities({
             realtimeRanking: index + 1,
           })
         );
+
+        // Cập nhật điểm của người dùng hiện tại
+        if (displayName) {
+          const currentUser = participantsWithRanking.find(
+            (p) => p.displayName === displayName
+          );
+          if (currentUser && currentUser.realtimeScore !== myScore) {
+            // Sử dụng hàm riêng để cập nhật điểm từ WebSocket
+            handleWebSocketScoreUpdate(
+              currentUser.realtimeScore,
+              currentUser.id || undefined
+            );
+          }
+        }
 
         console.log(
           '[ParticipantActivities] Participants sau khi xử lý:',
@@ -163,6 +219,12 @@ export default function ParticipantActivities({
         if (status === 'Connected') {
           setIsLoading(false);
         }
+      });
+
+      sessionWs.onAchievementHandler((achievement) => {
+        if (!isMounted.current) return;
+        console.log('Received achievement data:', achievement);
+        setAchievementsData(achievement);
       });
     }
 
@@ -241,6 +303,7 @@ export default function ParticipantActivities({
         userResult={sessionSummary}
         totalParticipants={participants.length}
         onNavigateToHome={onLeaveSession}
+        achievements={achievementsData || undefined}
       />
     );
   }

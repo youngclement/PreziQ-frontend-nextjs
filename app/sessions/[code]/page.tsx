@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Slider } from '@/components/ui/slider';
 import {
   Loader2,
   Users,
@@ -14,6 +15,10 @@ import {
   UserPlus,
   Check,
   Clock,
+  Volume2,
+  VolumeX,
+  Volume1,
+  Volume,
 } from 'lucide-react';
 import {
   SessionWebSocket,
@@ -50,6 +55,13 @@ const SessionJoinPage = () => {
   const [myScore, setMyScore] = useState(0);
   const [currentActivity, setCurrentActivity] = useState<any>(null);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(30);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [isDraggingVolume, setIsDraggingVolume] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const volumeControlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const volumeControlRef = useRef<HTMLDivElement>(null);
 
   const sessionWsRef = useRef<SessionWebSocket | null>(null);
   const isMounted = useRef(true);
@@ -239,6 +251,149 @@ const SessionJoinPage = () => {
     setIsFormValid(displayName.trim().length > 0);
   }, [displayName]);
 
+  // Xử lý âm thanh nền
+  useEffect(() => {
+    // Tạo audio element
+    if (typeof window !== 'undefined' && !audioRef.current) {
+      const audio = new Audio('/sounds/background.mp3');
+      audio.loop = true;
+      audio.volume = volume / 100; // Âm lượng từ 0-100 chuyển sang 0-1
+      audioRef.current = audio;
+
+      // Tự động phát nhạc khi trang được mount
+      const playPromise = audio.play();
+
+      // Xử lý lỗi nếu trình duyệt cần sự tương tác của người dùng trước khi phát
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log('Autoplay was prevented, waiting for user interaction');
+          // Không cần báo lỗi vì nhiều trình duyệt yêu cầu user interaction trước khi phát
+        });
+      }
+    }
+
+    // Cleanup khi unmount
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+
+      if (volumeControlTimeoutRef.current) {
+        clearTimeout(volumeControlTimeoutRef.current);
+      }
+    };
+  }, [volume]);
+
+  // Xử lý khi trạng thái tắt/mở âm thanh thay đổi
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isMuted) {
+        audioRef.current.volume = 0;
+      } else {
+        audioRef.current.volume = volume / 100;
+        // Thử phát lại nếu đã bị pause trước đó
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // Ignore errors here
+          });
+        }
+      }
+    }
+  }, [isMuted, volume]);
+
+  // Xử lý click outside để thu gọn thanh volume
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        volumeControlRef.current &&
+        !volumeControlRef.current.contains(event.target as Node) &&
+        !isDraggingVolume
+      ) {
+        setShowVolumeSlider(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDraggingVolume]);
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    const newVolume = value[0];
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
+
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume / 100;
+    }
+  };
+
+  const showVolumeControl = () => {
+    setShowVolumeSlider(true);
+
+    // Nếu không đang kéo thanh trượt, thiết lập timeout để ẩn
+    if (!isDraggingVolume) {
+      resetHideTimeout();
+    }
+  };
+
+  const resetHideTimeout = () => {
+    if (volumeControlTimeoutRef.current) {
+      clearTimeout(volumeControlTimeoutRef.current);
+    }
+
+    // Chỉ đặt timeout khi không đang kéo thanh trượt
+    if (!isDraggingVolume) {
+      volumeControlTimeoutRef.current = setTimeout(() => {
+        setShowVolumeSlider(false);
+      }, 3000);
+    }
+  };
+
+  const cancelHideTimeout = () => {
+    if (volumeControlTimeoutRef.current) {
+      clearTimeout(volumeControlTimeoutRef.current);
+    }
+  };
+
+  const handleVolumeDragStart = () => {
+    setIsDraggingVolume(true);
+    cancelHideTimeout();
+  };
+
+  const handleVolumeDragEnd = () => {
+    setIsDraggingVolume(false);
+    resetHideTimeout();
+  };
+
+  // Hàm chọn icon âm lượng phù hợp
+  const getVolumeIcon = () => {
+    if (isMuted || volume === 0) {
+      return (
+        <VolumeX className='w-5 h-5 text-white/70 group-hover:text-white' />
+      );
+    } else if (volume < 30) {
+      return (
+        <Volume className='w-5 h-5 text-[#aef359] group-hover:text-[#e4f88d]' />
+      );
+    } else if (volume < 70) {
+      return (
+        <Volume1 className='w-5 h-5 text-[#aef359] group-hover:text-[#e4f88d]' />
+      );
+    } else {
+      return (
+        <Volume2 className='w-5 h-5 text-[#aef359] group-hover:text-[#e4f88d]' />
+      );
+    }
+  };
+
   // Tham gia phiên
   const handleJoinSession = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -298,6 +453,110 @@ const SessionJoinPage = () => {
   // Hiển thị form tham gia nếu chưa tham gia, hoặc màn hình chờ nếu đã tham gia
   return (
     <div className='min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#0a1b25] to-[#0f2231] p-6'>
+      {/* CSS cho volume slider */}
+      <style jsx global>{`
+        .volume-slider .slider-thumb {
+          background: #aef359 !important;
+          height: 12px !important;
+          width: 12px !important;
+          transition: transform 0.2s !important;
+        }
+
+        .volume-slider .slider-thumb:hover {
+          transform: scale(1.2) !important;
+        }
+
+        .volume-slider .slider-track {
+          background: rgba(174, 243, 89, 0.2) !important;
+          height: 3px !important;
+          transition: all 0.2s !important;
+        }
+
+        .volume-slider .slider-range {
+          background: rgba(174, 243, 89, 0.6) !important;
+          transition: all 0.2s !important;
+        }
+
+        .volume-slider:hover .slider-range {
+          background: rgba(174, 243, 89, 0.8) !important;
+        }
+      `}</style>
+
+      {/* Audio controls - nhỏ, đặt góc dưới bên phải */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.5, duration: 0.5 }}
+        className='fixed bottom-4 right-4 z-50'
+        onMouseEnter={showVolumeControl}
+        onMouseMove={resetHideTimeout}
+        ref={volumeControlRef}
+      >
+        <div className='flex items-center gap-2 relative'>
+          <AnimatePresence>
+            {showVolumeSlider && (
+              <motion.div
+                initial={{ opacity: 0, width: 0, x: 20 }}
+                animate={{ opacity: 1, width: 100, x: 0 }}
+                exit={{ opacity: 0, width: 0, x: 20 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 200,
+                  damping: 20,
+                  mass: 0.8,
+                }}
+                className='mr-2'
+              >
+                <Slider
+                  value={[volume]}
+                  min={0}
+                  max={100}
+                  step={1}
+                  onValueChange={handleVolumeChange}
+                  className='w-24 volume-slider'
+                  onPointerDown={handleVolumeDragStart}
+                  onPointerUp={handleVolumeDragEnd}
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  transition={{ duration: 0.2 }}
+                  className='text-[10px] text-white/60 mt-1 text-center'
+                >
+                  {volume}%
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <motion.button
+            className='bg-[#0e1c26]/70 backdrop-blur-md p-2 rounded-full border border-white/10 shadow-md flex items-center justify-center group transition-colors hover:bg-[#0e1c26]/90'
+            onClick={toggleMute}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <motion.div
+              initial={{ scale: 1 }}
+              animate={
+                !isMuted
+                  ? {
+                      scale: [1, 1.2, 1],
+                    }
+                  : {}
+              }
+              transition={{
+                repeat: Infinity,
+                duration: 2,
+                repeatDelay: 1,
+              }}
+            >
+              {getVolumeIcon()}
+            </motion.div>
+          </motion.button>
+        </div>
+      </motion.div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

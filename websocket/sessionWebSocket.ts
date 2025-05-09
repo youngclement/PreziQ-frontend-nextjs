@@ -17,7 +17,13 @@ export interface ActivitySubmission {
   sessionId?: string;
   sessionCode?: string;
   activityId: string;
+  type?: string;
   answerContent?: string;
+  locationAnswers?: Array<{
+    latitude: number;
+    longitude: number;
+    radius: number;
+  }>;
 }
 
 export interface SessionSummary {
@@ -41,11 +47,16 @@ export interface EndSessionSummary {
 
 export interface Achievement {
   achievementId: string;
-  achievementName: string;
-  achievementDescription: string;
-  achievementIcon: string;
-  timestamp: string;
+  name: string;
+  description: string;
+  iconUrl: string;
+  requiredPoints: number;
+}
+
+export interface UserAchievements {
   userId: string;
+  totalPoints: number;
+  newAchievements: Achievement[];
 }
 
 export interface ApiResponse<T> {
@@ -55,6 +66,184 @@ export interface ApiResponse<T> {
     timestamp: string;
     instance: string;
   };
+}
+
+export interface RankedParticipant extends SessionParticipant {
+  realtimeRanking: number;
+}
+
+export class LeaderboardManager {
+  private static instance: LeaderboardManager;
+  private participants: RankedParticipant[] = [];
+  private subscribers: Set<(participants: RankedParticipant[]) => void> =
+    new Set();
+  private lastUpdateTime: number = Date.now();
+  private updateCount: number = 0;
+  private updateQueue: SessionParticipant[][] = [];
+  private updateTimer: NodeJS.Timeout | null = null;
+  private updateThrottleMs: number = 300; // Giới hạn tốc độ cập nhật
+
+  private constructor() {}
+
+  public static getInstance(): LeaderboardManager {
+    if (!LeaderboardManager.instance) {
+      LeaderboardManager.instance = new LeaderboardManager();
+    }
+    return LeaderboardManager.instance;
+  }
+
+  public updateParticipants(participants: SessionParticipant[]) {
+    if (!Array.isArray(participants)) {
+      console.warn('[LeaderboardManager] Dữ liệu không hợp lệ:', participants);
+      return;
+    }
+
+    // Thêm dữ liệu mới vào hàng đợi
+    this.updateQueue.push(participants);
+
+    // Sử dụng kỹ thuật throttle để giới hạn tần suất cập nhật UI
+    if (!this.updateTimer) {
+      this.processNextUpdate();
+
+      // Đặt timer để xử lý các cập nhật tiếp theo sau khoảng thời gian throttle
+      this.updateTimer = setTimeout(() => {
+        this.updateTimer = null;
+        // Nếu còn cập nhật trong hàng đợi, xử lý tiếp
+        if (this.updateQueue.length > 0) {
+          this.processNextUpdate();
+        }
+      }, this.updateThrottleMs);
+    }
+  }
+
+  private processNextUpdate() {
+    if (this.updateQueue.length === 0) return;
+
+    // Lấy cập nhật mới nhất từ hàng đợi và xóa tất cả cập nhật cũ
+    const latestUpdate = this.updateQueue.pop();
+    this.updateQueue = [];
+
+    if (!latestUpdate) return;
+
+    const sanitizedParticipants = latestUpdate.map((p) => ({
+      ...p,
+      displayName: p.displayName || 'Unknown',
+      displayAvatar:
+        p.displayAvatar || 'https://api.dicebear.com/9.x/pixel-art/svg',
+      realtimeScore: typeof p.realtimeScore === 'number' ? p.realtimeScore : 0,
+    }));
+
+    const sortedParticipants = [...sanitizedParticipants].sort(
+      (a, b) => b.realtimeScore - a.realtimeScore
+    );
+
+    const rankedParticipants = sortedParticipants.map((participant, index) => ({
+      ...participant,
+      realtimeRanking: index + 1,
+    }));
+
+    this.updateCount++;
+    const now = Date.now();
+    const timeSinceLastUpdate = now - this.lastUpdateTime;
+    this.lastUpdateTime = now;
+
+    // Chỉ ghi log khi có sự thay đổi thực sự
+    const hasChanges = this.hasScoreChanges(
+      this.participants,
+      rankedParticipants
+    );
+
+    if (hasChanges) {
+      console.log(
+        `[LeaderboardManager] Cập nhật #${this.updateCount}, sau ${timeSinceLastUpdate}ms:`,
+        rankedParticipants.map((p) => ({
+          name: p.displayName,
+          score: p.realtimeScore,
+          rank: p.realtimeRanking,
+        }))
+      );
+
+      this.participants = rankedParticipants;
+      this.notifySubscribers();
+    } else {
+      console.log('[LeaderboardManager] Bỏ qua cập nhật không có thay đổi.');
+    }
+  }
+
+  // Kiểm tra xem có sự thay đổi điểm số hoặc thứ hạng so với dữ liệu trước đó
+  private hasScoreChanges(
+    oldParticipants: RankedParticipant[],
+    newParticipants: RankedParticipant[]
+  ): boolean {
+    // Nếu số lượng người tham gia thay đổi, có sự thay đổi
+    if (oldParticipants.length !== newParticipants.length) {
+      return true;
+    }
+
+    // Tạo map điểm số cũ
+    const oldScores = new Map<string, number>();
+    const oldRanks = new Map<string, number>();
+
+    oldParticipants.forEach((p) => {
+      oldScores.set(p.displayName, p.realtimeScore);
+      oldRanks.set(p.displayName, p.realtimeRanking);
+    });
+
+    // Kiểm tra từng người tham gia mới
+    for (const newP of newParticipants) {
+      const oldScore = oldScores.get(newP.displayName);
+      const oldRank = oldRanks.get(newP.displayName);
+
+      // Nếu người tham gia mới, có sự thay đổi
+      if (oldScore === undefined) {
+        return true;
+      }
+
+      // Nếu điểm hoặc thứ hạng thay đổi, có sự thay đổi
+      if (oldScore !== newP.realtimeScore || oldRank !== newP.realtimeRanking) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  public subscribe(callback: (participants: RankedParticipant[]) => void) {
+    this.subscribers.add(callback);
+
+    if (this.participants.length > 0) {
+      callback(this.participants);
+    }
+
+    return () => {
+      this.subscribers.delete(callback);
+    };
+  }
+
+  private notifySubscribers() {
+    this.subscribers.forEach((callback) => {
+      try {
+        callback(this.participants);
+      } catch (error) {
+        console.error('[LeaderboardManager] Lỗi khi gọi callback:', error);
+      }
+    });
+  }
+
+  public getParticipants(): RankedParticipant[] {
+    return [...this.participants];
+  }
+
+  public getUpdateCount(): number {
+    return this.updateCount;
+  }
+
+  // Cho phép điều chỉnh thời gian throttle
+  public setUpdateThrottle(ms: number) {
+    if (ms > 0) {
+      this.updateThrottleMs = ms;
+    }
+  }
 }
 
 export class SessionWebSocket {
@@ -67,7 +256,7 @@ export class SessionWebSocket {
   private onNextActivity?: (activity: any) => void;
   private onSessionEnd?: (session: SessionSummary) => void;
   private onSessionSummary?: (summaries: EndSessionSummary[]) => void;
-  private onAchievement?: (achievement: Achievement) => void;
+  private onAchievement?: (achievement: UserAchievements) => void;
   private errorSubscription: any;
   private participantsSubscription: any;
   private isConnected: boolean = false;
@@ -84,7 +273,7 @@ export class SessionWebSocket {
     this.client = new Client({
       // brokerURL: 'ws://localhost:8080/ws',
       brokerURL: 'wss://preziq.duckdns.org/ws',
-      reconnectDelay: 0,
+      reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       connectHeaders: {
@@ -214,8 +403,16 @@ export class SessionWebSocket {
           console.log('Parsed achievement response:', response);
 
           if (response.success && response.data) {
+            // Xử lý định dạng thành tựu từ server
+            const achievementData = response.data;
+
+            // Đảm bảo newAchievements là một mảng
+            if (achievementData.newAchievements === undefined) {
+              achievementData.newAchievements = [];
+            }
+
             if (this.onAchievement) {
-              this.onAchievement(response.data);
+              this.onAchievement(achievementData);
             }
           } else {
             console.error('Invalid achievement format:', response);
@@ -262,7 +459,6 @@ export class SessionWebSocket {
             participantsData
           );
 
-          // Kiểm tra cấu trúc dữ liệu
           if (Array.isArray(participantsData)) {
             participantsData.forEach((participant, index) => {
               console.log(`[WebSocket] Participant ${index}:`, {
@@ -272,6 +468,8 @@ export class SessionWebSocket {
               });
             });
           }
+
+          LeaderboardManager.getInstance().updateParticipants(participantsData);
 
           if (this.onParticipantsUpdate) {
             this.onParticipantsUpdate(participantsData);
@@ -413,7 +611,9 @@ export class SessionWebSocket {
     this.onSessionSummary = callback;
   }
 
-  public onAchievementHandler(callback: (achievement: Achievement) => void) {
+  public onAchievementHandler(
+    callback: (achievement: UserAchievements) => void
+  ) {
     this.onAchievement = callback;
   }
 
