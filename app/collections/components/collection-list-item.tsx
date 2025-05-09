@@ -65,7 +65,7 @@ export function CollectionListItem({
               {collection.description}
             </p>
             <CollectionActionButtons
-              collectionId={collection.id}
+              collectionId={collection.collectionId}
               onDelete={onDelete}
               onPreview={() => onPreview(collection)}
               onView={onView}

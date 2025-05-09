@@ -160,6 +160,8 @@ export default function SessionShowPage() {
                     onQuestionTextChange={() => { }}
                     onOptionChange={() => { }}
                     onChangeQuestion={() => { }}
+                    onAddQuestion={() => { }}
+                    onUpdateActivityBackground={() => { }}
                   />
                 )}
             </Card>

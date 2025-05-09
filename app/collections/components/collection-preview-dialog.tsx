@@ -1,4 +1,4 @@
-import { BookOpen, Clock, Edit, Users2 } from 'lucide-react';
+import { BookOpen, Clock, Edit, Eye, Heart, Users, Users2 } from 'lucide-react';
 import {
 	Dialog,
 	DialogContent,
@@ -33,6 +33,15 @@ export function CollectionPreviewDialog({
 }: CollectionPreviewDialogProps) {
 	if (!selectedCollection) return null;
 
+	// Calculate average duration if available
+	let avgDuration = "--:--";
+	if (activities.length > 0 && 'duration' in activities[0]) {
+		const totalDuration = activities.reduce((acc, activity) =>
+			acc + (activity.duration || 0), 0);
+		const averageDuration = Math.round(totalDuration / activities.length);
+		avgDuration = `${averageDuration} min`;
+	}
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-5xl p-0 overflow-hidden rounded-none">
@@ -61,6 +70,15 @@ export function CollectionPreviewDialog({
 							<p className="text-white/80 text-sm line-clamp-2 hidden md:block">
 								{selectedCollection.description}
 							</p>
+
+							{/* Creator info */}
+							<div className="mt-2 text-white/80 text-xs">
+								By {selectedCollection.createdBy || 'Unknown'} · {new Date(selectedCollection.createdAt || new Date()).toLocaleDateString('en-US', {
+									month: 'short',
+									day: 'numeric',
+									year: 'numeric'
+								})}
+							</div>
 						</div>
 					</div>
 
@@ -82,30 +100,46 @@ export function CollectionPreviewDialog({
 						<div className="space-y-6">
 							{/* Stats Section */}
 							<div className="grid grid-cols-3 gap-4 py-4">
-								<div className="flex flex-col items-center justify-center p-3 bg-zinc-50 dark:bg-zinc-900">
-									<BookOpen className="h-5 w-5 text-indigo-500 mb-2" />
-									<span className="text-lg font-semibold">
+								<div className="flex flex-col items-center justify-center p-3 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+									<BookOpen className="h-5 w-5 text-indigo-500 dark:text-indigo-400 mb-2" />
+									<span className="text-lg font-semibold dark:text-white">
 										{activities.length}
 									</span>
 									<span className="text-xs text-zinc-500 dark:text-zinc-400">
 										Activities
 									</span>
 								</div>
-								<div className="flex flex-col items-center justify-center p-3 bg-zinc-50 dark:bg-zinc-900">
-									<Users2 className="h-5 w-5 text-indigo-500 mb-2" />
-									<span className="text-lg font-semibold">0</span>
+								<div className="flex flex-col items-center justify-center p-3 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+									<Users2 className="h-5 w-5 text-indigo-500 dark:text-indigo-400 mb-2" />
+									<span className="text-lg font-semibold dark:text-white">
+										{'participants' in selectedCollection ? selectedCollection.participants : 0}
+									</span>
 									<span className="text-xs text-zinc-500 dark:text-zinc-400">
 										Participants
 									</span>
 								</div>
-								<div className="flex flex-col items-center justify-center p-3 bg-zinc-50 dark:bg-zinc-900">
-									<Clock className="h-5 w-5 text-indigo-500 mb-2" />
-									<span className="text-lg font-semibold">--:--</span>
+								<div className="flex flex-col items-center justify-center p-3 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+									<Clock className="h-5 w-5 text-indigo-500 dark:text-indigo-400 mb-2" />
+									<span className="text-lg font-semibold dark:text-white">{avgDuration}</span>
 									<span className="text-xs text-zinc-500 dark:text-zinc-400">
 										Avg. Time
 									</span>
 								</div>
 							</div>
+
+							{/* Additional stats if available */}
+							{'views' in selectedCollection && 'likes' in selectedCollection && (
+								<div className="flex gap-4 text-sm text-zinc-600 dark:text-zinc-300">
+									<div className="flex items-center">
+										<Eye className="h-4 w-4 mr-1.5 text-indigo-500 dark:text-indigo-400" />
+										{selectedCollection.views} views
+									</div>
+									<div className="flex items-center">
+										<Heart className="h-4 w-4 mr-1.5 text-indigo-500 dark:text-indigo-400" />
+										{selectedCollection.likes} likes
+									</div>
+								</div>
+							)}
 
 							{/* Activities List */}
 							<div>
@@ -141,7 +175,7 @@ export function CollectionPreviewDialog({
 							{/* Action Buttons */}
 							<div className="flex flex-col sm:flex-row gap-3 pt-4">
 								<Button
-									className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-none"
+									className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md"
 									onClick={() => {
 										onOpenChange(false);
 										onViewActivities(selectedCollection.id);
@@ -152,7 +186,7 @@ export function CollectionPreviewDialog({
 								</Button>
 								<Button
 									variant="outline"
-									className="flex-1 rounded-none"
+									className="flex-1 rounded-md border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-400"
 									onClick={() => {
 										onOpenChange(false);
 										onEditCollection(selectedCollection.id);

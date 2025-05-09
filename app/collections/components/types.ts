@@ -1,5 +1,6 @@
 export interface Collection {
   id: string;
+  collectionId: string;
   title: string;
   description: string;
   coverImage: string;
@@ -8,6 +9,19 @@ export interface Collection {
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;
+  categoryId?: string;
+  category?: Category;
+  _activityCount?: number; // For mock data only
+  views?: number;
+  likes?: number;
+  participants?: number;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+  orderIndex?: number;
 }
 
 export interface Activity {
@@ -18,6 +32,18 @@ export interface Activity {
   is_published: boolean;
   created_at?: string;
   updated_at?: string;
+  duration?: number; // in minutes
+  activity_type?:
+    | "Quiz"
+    | "Poll"
+    | "Discussion"
+    | "Case Study"
+    | "Assignment"
+    | "Presentation"
+    | "Video"
+    | "Reading"
+    | "Exercise"
+    | "Game";
 }
 
 // Interface để mapping dữ liệu từ API
