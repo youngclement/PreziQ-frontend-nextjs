@@ -62,14 +62,12 @@ body {
     --sidebar-border: 0 0% 20%; /* dark gray border */
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-
     /* Game-inspired highlight colors for animation */
     --game-color-1: 210 100% 70%; /* Bright blue */
     --game-color-2: 280 100% 65%; /* Purple */
     --game-color-3: 320 100% 65%; /* Pink */
     --game-color-4: 160 100% 50%; /* Neon green */
     --game-color-5: 30 100% 60%; /* Orange */
-
   }
   .dark {
     --highlight: 210 75% 60%;
@@ -107,14 +105,12 @@ body {
     --sidebar-border: 0 0% 10%; /* almost black border */
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-
     /* Brighter colors for dark mode */
     --game-color-1: 210 100% 75%; /* Bright blue */
     --game-color-2: 280 100% 70%; /* Purple */
     --game-color-3: 320 100% 70%; /* Pink */
     --game-color-4: 160 100% 55%; /* Neon green */
     --game-color-5: 30 100% 65%; /* Orange */
-
   }
 }
 
@@ -259,5 +255,14 @@ body {
     100% {
       color: hsl(var(--game-color-1));
     }
+  }
+
+  /* Hide scrollbar for a cleaner carousel appearance */
+  .hide-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
   }
 }
