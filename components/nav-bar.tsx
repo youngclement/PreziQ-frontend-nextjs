@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Moon, Sun, Menu, X } from "lucide-react";
+import { Moon, Sun, Menu, X, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,7 @@ export function NavBar() {
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [sessionCode, setSessionCode] = useState('');
 
     useEffect(() => {
         setMounted(true);
@@ -36,6 +38,15 @@ export function NavBar() {
         return () => window.removeEventListener('resize', handleResize);
     }, [mobileMenuOpen]);
 
+    const handleSessionSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (sessionCode) {
+            // Handle joining a session with the code
+            console.log('Joining session with code:', sessionCode);
+            // You would add navigation or session joining logic here
+        }
+    };
+
     if (!mounted) return null;
 
     const navLinks = [
@@ -56,26 +67,72 @@ export function NavBar() {
             )}
         >
             <div className="container mx-auto px-4 h-full max-w-7xl">
-                <div className="flex h-full items-center">
-                    {/* Logo - Left aligned */}
-                    <div className="flex-1 flex justify-start">
-                        <Link
-                            href="/"
-                            className={cn(
-                                "font-bold tracking-tight hover:text-primary transition-all duration-300 flex items-center",
-                                scrolled ? "text-lg" : "text-xl"
-                            )}
+                <div className="flex h-full items-center justify-between">
+                    {/* Menu button on mobile */}
+                    <div className="md:hidden">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="rounded-full h-9 w-9 flex items-center justify-center"
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            aria-label="Toggle menu"
+                            aria-expanded={mobileMenuOpen}
                         >
-                            <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-                                GameLearn
-                            </span>
-                        </Link>
+                            {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                        </Button>
                     </div>
 
-                    {/* Desktop Navigation - True center */}
-                    <div className="hidden md:flex flex-1 items-center justify-center">
-                        <div className="flex items-center space-x-10">
-                            {navLinks.map((link) => (
+                    {/* Desktop Navigation Links - Left side */}
+                    <div className="hidden md:flex items-center space-x-6">
+                        {navLinks.slice(0, 3).map((link) => (
+                            <Link
+                                key={link.href}
+                                href={link.href}
+                                className="hover:text-primary transition-colors font-medium relative group py-2 px-1"
+                            >
+                                {link.label}
+                                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
+                            </Link>
+                        ))}
+                    </div>
+
+                    {/* Logo and Session Input - Center */}
+                    <div className="flex-1 flex justify-center items-center">
+                        <div className="flex flex-col items-center">
+                            {/* Logo */}
+                            <Link
+                                href="/"
+                                className={cn(
+                                    "font-bold tracking-tight hover:text-primary transition-all duration-300 flex items-center",
+                                    scrolled ? "text-lg" : "text-xl"
+                                )}
+                            >
+                                <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
+                                    GameLearn
+                                </span>
+                            </Link>
+
+                            {/* Session Code Form */}
+                            <form onSubmit={handleSessionSubmit} className="mt-1 flex items-center">
+                                <Input
+                                    type="text"
+                                    placeholder="Enter session code"
+                                    value={sessionCode}
+                                    onChange={(e) => setSessionCode(e.target.value)}
+                                    className="h-8 w-40 text-sm border-primary focus:ring-primary"
+                                />
+                                <Button type="submit" variant="ghost" size="sm" className="h-8 px-2 ml-1">
+                                    <LogIn className="h-3.5 w-3.5" />
+                                </Button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {/* Right side actions */}
+                    <div className="flex items-center gap-3">
+                        {/* More nav links on desktop */}
+                        <div className="hidden md:flex items-center space-x-6">
+                            {navLinks.slice(3).map((link) => (
                                 <Link
                                     key={link.href}
                                     href={link.href}
@@ -86,10 +143,7 @@ export function NavBar() {
                                 </Link>
                             ))}
                         </div>
-                    </div>
 
-                    {/* Right side actions - Right aligned */}
-                    <div className="flex-1 flex items-center justify-end gap-3">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -106,16 +160,6 @@ export function NavBar() {
                         <div className="hidden sm:block">
                             <Link href='/auth'><InteractiveHoverButton>Sign In</InteractiveHoverButton></Link>
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="md:hidden rounded-full h-9 w-9 flex items-center justify-center"
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            aria-label="Toggle menu"
-                            aria-expanded={mobileMenuOpen}
-                        >
-                            {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-                        </Button>
                     </div>
                 </div>
             </div>

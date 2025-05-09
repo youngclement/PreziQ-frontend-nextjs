@@ -43,8 +43,8 @@ export default function LanguageToggle({ className }: { className?: string }) {
                     className={cn('hover:bg-muted rounded-full h-9 w-9 flex items-center justify-center relative', className)}
                     aria-label="Toggle language"
                 >
-                    <Globe className="h-4 w-4" />
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                    <Globe className={cn("h-4 w-4", className)} />
+                    <span className={cn("absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground", className)}>
                         {language.toUpperCase()}
                     </span>
                     <span className="sr-only">Toggle language</span>

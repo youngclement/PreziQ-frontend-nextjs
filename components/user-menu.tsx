@@ -71,7 +71,7 @@ export default function UserMenu() {
 				<DropdownMenuSeparator className="my-1" />
 				{isAdmin && (
 					<DropdownMenuItem
-						onClick={() => router.push('/admin-dashboard')}
+						onClick={() => router.push('/dashboard')}
 						className="flex items-center px-2 py-2 text-sm cursor-pointer rounded-md hover:bg-primary/5 focus:bg-primary/5 transition-colors duration-200"
 					>
 						<ShieldCheck className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
