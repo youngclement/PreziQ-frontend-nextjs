@@ -18,6 +18,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
+
+  // Initial load - check for token and fetch user data
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('accessToken') || Cookies.get('accessToken');
+
+      if (token) {
+        setIsLoggedIn(true);
+        try {
+          await fetchUserData();
+        } catch (err) {
+          // Error handled in fetchUserData
+        }
+      }
+
+      setIsInitializing(false);
+    };
+
+    initializeAuth();
+  }, []);
 
   // Set up token refresh interval
   useEffect(() => {
@@ -35,27 +56,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isLoggedIn]);
 
-  // Get user data on initial load and when login status changes
-  useEffect(() => {
-    const token = localStorage.getItem('accessToken') || Cookies.get('accessToken');
-    if (token) {
-      setIsLoggedIn(true);
-      fetchUserData();
-    }
-  }, [isLoggedIn]);
-
   const fetchUserData = async () => {
     try {
       const response = await authApi.getAccount();
       if (response?.data?.data) {
-        setUser(response.data.data);
+        const userData = response.data.data;
+        setUser(userData);
+        return userData; // Return user data for initial load
       }
     } catch (error: unknown) {
-      console.error('Error fetching user data:', error);
       // If we can't get user data, consider the user logged out
       if ((error as AxiosError)?.response?.status === 401) {
         logout();
       }
+      throw error;
     }
   };
 
@@ -74,7 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
     } catch (error: unknown) {
-      console.error('Error refreshing token:', error);
       logout();
     }
   };
@@ -109,8 +122,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user || !user.rolesSecured || user.rolesSecured.length === 0) {
       return false;
     }
-    return user.rolesSecured.some(role => role.name === roleName.toUpperCase());
+
+    // Normalize role name to uppercase for comparison
+    const normalizedRoleName = roleName.toUpperCase();
+
+    // Check if user has the specified role
+    const hasRole = user.rolesSecured.some(role =>
+      role.name === normalizedRoleName ||
+      role.name?.toUpperCase() === normalizedRoleName
+    );
+
+    return hasRole;
   };
+
+  // Don't render until we've initialized
+  if (isInitializing) {
+    return <>Loading...</>; // Or a proper loading indicator
+  }
 
   return (
     <AuthContext.Provider value={{ isLoggedIn, user, login, logout, hasRole }}>
