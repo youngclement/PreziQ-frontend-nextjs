@@ -18,11 +18,13 @@ interface BaseSlideElementPayload {
 export type SlideElementPayload = BaseSlideElementPayload &
   (
     | {
+        slideElementId?: string;
         slideElementType: 'TEXT';
         content: string;
         sourceUrl?: never;
       }
     | {
+        slideElementId?: string;
         slideElementType: 'IMAGE';
         sourceUrl: string;
         content?: never;
