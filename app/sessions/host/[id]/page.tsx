@@ -66,8 +66,6 @@ export default function HostSessionPage() {
         const response = await authApi.getAccount();
         const userData = response.data.data;
 
-        console.log('User account fetched:', userData);
-
         setUserAccount({
           userId: userData.userId,
           email: userData.email,
@@ -94,7 +92,6 @@ export default function HostSessionPage() {
     const createSession = async () => {
       // Nếu đã tạo session rồi, không tạo lại
       if (hasCreatedSessionRef.current) {
-        console.log('Session already created, skipping API call');
         return;
       }
 
@@ -106,7 +103,6 @@ export default function HostSessionPage() {
       }
 
       try {
-        console.log('Creating new session for collection:', collectionId);
         hasCreatedSessionRef.current = true; // Đánh dấu là đã gọi API
 
         const response = await sessionsApi.createSession({
@@ -117,10 +113,6 @@ export default function HostSessionPage() {
         const responseSessionId = response.data.sessionId;
         const responseSessionCode = response.data.sessionCode;
         const responseQrCodeUrl = response.data.joinSessionQrUrl;
-
-        console.log('Session created with ID:', responseSessionId);
-        console.log('Session created with Code:', responseSessionCode);
-        console.log('Session QR code URL:', responseQrCodeUrl);
 
         localStorage.setItem('sessionCode', responseSessionCode);
         localStorage.setItem('sessionId', responseSessionId);
@@ -150,35 +142,10 @@ export default function HostSessionPage() {
     };
   }, [collectionId]);
 
-  // Thiết lập WebSocket khi có sessionCode và sessionId
+  // Tạo WebSocket chỉ 1 lần duy nhất khi có đủ sessionCode và sessionId
   useEffect(() => {
     if (!sessionCode || !sessionId || isInitializing) return;
-
-    console.log('Setting up WebSocket connection, isConnected:', isConnected);
-
-    // Nếu đã có WebSocket kết nối với cùng sessionCode, không tạo kết nối mới
-    if (
-      sessionWsRef.current &&
-      sessionWsRef.current.getSessionCode() === sessionCode &&
-      sessionWsRef.current.isClientConnected()
-    ) {
-      console.log('WebSocket already connected, skipping new connection');
-      return;
-    }
-
-    // Nếu có kết nối cũ, đóng trước khi tạo kết nối mới
-    if (sessionWsRef.current) {
-      console.log(
-        'Cleaning up old WebSocket connection before creating new one'
-      );
-      sessionWsRef.current.disconnect();
-      sessionWsRef.current = null;
-      actualConnectedRef.current = false;
-      setIsConnected(false);
-    }
-
-    // Log sessionId để debug
-    console.log('Creating new WebSocket with sessionId:', sessionId);
+    if (sessionWsRef.current) return; // Đã có ws thì không tạo lại
 
     const sessionWs = new SessionWebSocket(sessionCode, sessionId);
     sessionWsRef.current = sessionWs;
@@ -193,7 +160,6 @@ export default function HostSessionPage() {
       setParticipants(participantsData);
       // Kiểm tra xem host đã join chưa
       if (updatedParticipants.some((p) => p.displayName === hostName)) {
-        console.log('Host participation detected in participants list');
         setHasJoined(true);
       }
     });
@@ -204,8 +170,6 @@ export default function HostSessionPage() {
     });
 
     sessionWs.onConnectionStatusChangeHandler((status) => {
-      console.log('WebSocket connection status changed:', status);
-
       // Chỉ cập nhật trạng thái kết nối nếu status là Connected hoặc Disconnected
       if (
         status === 'Connected' ||
@@ -215,7 +179,6 @@ export default function HostSessionPage() {
         status === 'Connection error'
       ) {
         const isConnectedNow = status === 'Connected';
-        console.log('Setting isConnected to:', isConnectedNow);
         setIsConnected(isConnectedNow);
         actualConnectedRef.current = isConnectedNow;
       }
@@ -225,12 +188,10 @@ export default function HostSessionPage() {
         setTimeout(() => {
           if (!sessionWsRef.current) return;
 
-          console.log('Auto-joining session as host with name:', hostName);
           const userId = userAccount?.userId || null;
           sessionWsRef.current
-            .joinSession(hostName, userId)
+            .joinSession('Host', userId)
             .then(() => {
-              console.log('Host joined session successfully');
               setHasJoined(true);
             })
             .catch((err) => {
@@ -240,36 +201,25 @@ export default function HostSessionPage() {
       }
     });
 
-    // Kết nối WebSocket
     sessionWs
       .connect()
       .then(() => {
-        console.log('WebSocket connected successfully');
         setIsConnected(true);
         actualConnectedRef.current = true;
       })
       .catch((err) => {
-        console.error('Failed to connect WebSocket:', err);
         setError('Failed to connect to session');
       });
 
+    // Cleanup: KHÔNG disconnect ws khi unmount để giữ kết nối
     return () => {
-      // Không đóng kết nối khi component unmount
-      console.log('Component unmounted, keeping WebSocket connection alive');
+      // Không làm gì ở đây để giữ ws sống
     };
-  }, [
-    sessionCode,
-    sessionId,
-    isInitializing,
-    hostName,
-    hasJoined,
-    userAccount?.userId,
-  ]);
+  }, [sessionCode, sessionId, isInitializing]);
 
   // Sử dụng useEffect riêng cho việc tham gia tự động
   useEffect(() => {
     if (isConnected && !hasJoined && sessionWsRef.current) {
-      console.log('Attempting auto-join since connection is established');
       // Auto-join logic would be here if not already handled in connection status change
     }
   }, [isConnected, hasJoined]);
@@ -293,7 +243,6 @@ export default function HostSessionPage() {
     try {
       // Đảm bảo đã cập nhật sessionId trong sessionWs
       if (sessionId && sessionWsRef.current) {
-        console.log('Starting session with ID:', sessionId);
         sessionWsRef.current.updateSessionId(sessionId);
         await sessionWsRef.current.startSession();
       } else {
@@ -323,7 +272,7 @@ export default function HostSessionPage() {
       const userId = userAccount?.userId || null;
       console.log('Joining session with userId:', userId);
 
-      await sessionWsRef.current.joinSession(hostName, userId);
+      sessionWsRef.current.joinSession(hostName, userId);
       setHasJoined(true);
       setError(null);
     } catch (err) {
@@ -332,9 +281,7 @@ export default function HostSessionPage() {
     }
   };
 
-  const handleSessionEnd = () => {
-    console.log('Session end event received, waiting for summary data...');
-  };
+  const handleSessionEnd = () => {};
 
   const handleCopy = () => {
     if (sessionCode) {
@@ -402,7 +349,7 @@ export default function HostSessionPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className='w-full max-w-xs sm:max-w-xl md:max-w-3xl lg:max-w-4xl bg-[#0e1c26] rounded-2xl sm:rounded-3xl p-4 sm:p-8 md:p-12 flex flex-col items-center shadow-2xl shadow-black/30 border border-white/5 backdrop-blur-sm'
+        className='w-[90%] max-w-[90%] sm:max-w-xl md:max-w-3xl lg:max-w-4xl bg-[#0e1c26] rounded-2xl sm:rounded-3xl p-4 sm:p-8 md:p-12 flex flex-col items-center shadow-2xl shadow-black/30 border border-white/5 backdrop-blur-sm'
       >
         {/* Top Section - Join at, PIN code, QR Code */}
         <div className='w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-10 md:mb-14'>
@@ -576,7 +523,7 @@ export default function HostSessionPage() {
               </button>
             </motion.div>
           ) : (
-            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 lg:gap-6 justify-items-center max-w-full overflow-y-auto max-h-[300px] md:max-h-[360px] pr-2 pb-2'>
+            <div className='grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 md:gap-4 lg:gap-6 justify-items-center max-w-full overflow-y-auto max-h-[300px] md:max-h-[360px] pr-2 pb-2 w-full'>
               <AnimatePresence>
                 {participants.map((participant, index) => (
                   <motion.div

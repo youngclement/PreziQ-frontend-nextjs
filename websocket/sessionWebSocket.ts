@@ -84,30 +84,11 @@ export class SessionWebSocket {
     this.client = new Client({
       // brokerURL: 'ws://localhost:8080/ws',
       brokerURL: 'wss://preziq.duckdns.org/ws',
-      reconnectDelay: 5000,
+      reconnectDelay: 0,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       connectHeaders: {
         stompClientId: this.stompClientId,
-      },
-      debug: (str) => {
-        if (str.startsWith('>>> MESSAGE')) {
-          console.log('Received WebSocket Message:', str);
-        } else if (str.startsWith('>>> SEND')) {
-          console.log('Sending WebSocket Message:', str);
-        } else if (str.startsWith('>>> SUBSCRIBE')) {
-          console.log('Subscribing to WebSocket Topic:', str);
-        } else if (str.includes('Web Socket Opened')) {
-          console.log('WebSocket connection opened');
-        } else if (str.includes('Web Socket Closed')) {
-          console.log('WebSocket connection closed');
-          this.isConnected = false;
-          if (this.onConnectionStatusChange) {
-            this.onConnectionStatusChange('Disconnected');
-          }
-        } else {
-          console.log('WebSocket Debug:', str);
-        }
       },
       onConnect: (frame) => {
         console.log('Connected to WebSocket with frame:', frame);
@@ -272,18 +253,34 @@ export class SessionWebSocket {
       `/public/session/${this.sessionCode}/participants`,
       (message) => {
         try {
-          console.log('Received participants message:', message);
+          console.log('[WebSocket] Nhận message participants:', message);
           const response = JSON.parse(message.body);
+          console.log('[WebSocket] Parsed response:', response);
           const participantsData = response.data || [];
-          console.log('Participants data:', participantsData);
+          console.log(
+            '[WebSocket] Participants data trước khi gửi:',
+            participantsData
+          );
+
+          // Kiểm tra cấu trúc dữ liệu
+          if (Array.isArray(participantsData)) {
+            participantsData.forEach((participant, index) => {
+              console.log(`[WebSocket] Participant ${index}:`, {
+                id: participant.id,
+                displayName: participant.displayName,
+                realtimeScore: participant.realtimeScore,
+              });
+            });
+          }
+
           if (this.onParticipantsUpdate) {
             this.onParticipantsUpdate(participantsData);
           }
         } catch (e) {
+          console.error('[WebSocket] Error parsing participants:', e);
           if (this.onError) {
             this.onError('Failed to process participants data');
           }
-          console.error('Error parsing participants:', e);
         }
       },
       { id: 'participants-subscription' }

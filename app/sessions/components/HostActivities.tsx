@@ -102,7 +102,6 @@ export default function HostActivities({
 
     sessionWs.onSessionEndHandler((session) => {
       if (!isMounted.current) return;
-      console.log('Session ended:', session);
 
       // Chỉ gọi callback onSessionEnd
       if (onSessionEnd) onSessionEnd();
@@ -110,10 +109,8 @@ export default function HostActivities({
 
     sessionWs.onSessionSummaryHandler((summaries) => {
       if (!isMounted.current) return;
-      console.log('Session summaries received:', summaries);
 
       if (Array.isArray(summaries) && summaries.length > 0) {
-        console.log('Setting session summaries:', summaries);
         setSessionSummaries(summaries);
       }
     });
@@ -129,9 +126,6 @@ export default function HostActivities({
 
         setTimeout(() => {
           if (isMounted.current && sessionId) {
-            console.log(
-              'Automatically ending session due to no more activities'
-            );
             sessionWs.endSession(sessionId).catch((err) => {
               console.error('Error ending session automatically:', err);
             });
@@ -145,17 +139,12 @@ export default function HostActivities({
 
     sessionWs.onErrorHandler((error) => {
       if (!isMounted.current) return;
-      console.log('WebSocket error:', error);
 
       if (error && error.includes('No more activities in session')) {
-        console.log('Detected no more activities message in error handler');
         setNoMoreActivities(true);
 
         setTimeout(() => {
           if (isMounted.current && sessionId) {
-            console.log(
-              'Automatically ending session due to no more activities (from error)'
-            );
             sessionWs.endSession(sessionId).catch((err) => {
               console.error('Error ending session automatically:', err);
             });
@@ -186,7 +175,6 @@ export default function HostActivities({
     return () => {
       isMounted.current = false;
       // Không hủy đăng ký handlers khi unmount để duy trì kết nối
-      console.log('Component unmounted, giữ nguyên kết nối WebSocket');
     };
   }, [sessionWs, sessionId, onSessionEnd, onNextActivityLog]);
 
@@ -226,7 +214,6 @@ export default function HostActivities({
       if (onSessionEnd) onSessionEnd();
     } catch (err) {
       setError('Không thể kết thúc phiên');
-      console.error('Error ending session:', err);
     }
   };
 

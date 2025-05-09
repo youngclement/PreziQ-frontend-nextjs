@@ -51,7 +51,9 @@ export default function QuizCheckboxViewer({
   sessionWebSocket,
 }: QuizActivityProps) {
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
-  const [timeLeft, setTimeLeft] = useState(activity.quiz.timeLimitSeconds);
+  const [timeLeft, setTimeLeft] = useState(
+    activity?.quiz?.timeLimitSeconds || 20
+  );
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,7 +64,7 @@ export default function QuizCheckboxViewer({
   // Reset state when activity changes
   useEffect(() => {
     setSelectedAnswers([]);
-    setTimeLeft(activity.quiz.timeLimitSeconds);
+    setTimeLeft(activity?.quiz?.timeLimitSeconds || 60);
     setIsSubmitted(false);
     setShowResults(false);
     setIsSubmitting(false);
@@ -85,9 +87,15 @@ export default function QuizCheckboxViewer({
     if (!sessionWebSocket) return;
 
     const handleParticipantsUpdate = (participants: any[]) => {
+      console.log('[QuizCheckbox] Nhận cập nhật participants:', {
+        totalParticipants: participants.length,
+        participants,
+      });
+
       setTotalParticipants(participants.length);
-      // Đếm số người đã trả lời (có thể cần điều chỉnh logic này dựa trên API thực tế)
+      // Đếm số người đã trả lời
       const answered = participants.filter((p) => p.hasAnswered).length;
+      console.log('[QuizCheckbox] Số người đã trả lời:', answered);
       setAnsweredCount(answered);
     };
 
@@ -121,7 +129,7 @@ export default function QuizCheckboxViewer({
 
       if (sessionWebSocket) {
         if (!sessionCode && !sessionId) {
-          console.warn('Thiếu cả sessionCode và sessionId');
+          console.warn('[QuizCheckbox] Thiếu cả sessionCode và sessionId');
           setError('Không thể xác định phiên. Vui lòng thử lại.');
           return;
         }
@@ -132,16 +140,17 @@ export default function QuizCheckboxViewer({
           answerContent: selectedAnswers.join(','),
         };
 
+        console.log('[QuizCheckbox] Gửi câu trả lời:', payload);
         await sessionWebSocket.submitActivity(payload);
-        console.log('Đã gửi câu trả lời:', payload);
+        console.log('[QuizCheckbox] Đã gửi câu trả lời thành công');
       } else {
-        console.warn('Không có kết nối WebSocket');
+        console.warn('[QuizCheckbox] Không có kết nối WebSocket');
       }
 
       setIsSubmitted(true);
       setShowResults(true);
     } catch (err) {
-      console.error('Lỗi khi gửi câu trả lời:', err);
+      console.error('[QuizCheckbox] Lỗi khi gửi câu trả lời:', err);
       setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
@@ -203,11 +212,23 @@ export default function QuizCheckboxViewer({
           {/* Progress bars */}
           <div className='space-y-2'>
             <Progress
-              value={Math.min(100, Math.max(0, (timeLeft / activity.quiz.timeLimitSeconds) * 100))}
+              value={Math.min(
+                100,
+                Math.max(
+                  0,
+                  (timeLeft / (activity?.quiz?.timeLimitSeconds || 20)) * 100
+                )
+              )}
               className='h-2'
             />
             <Progress
-              value={Math.min(100, Math.max(0, (answeredCount / Math.max(1, totalParticipants)) * 100))}
+              value={Math.min(
+                100,
+                Math.max(
+                  0,
+                  (answeredCount / Math.max(1, totalParticipants)) * 100
+                )
+              )}
               className='h-2 bg-gray-100'
             />
           </div>
@@ -232,14 +253,15 @@ export default function QuizCheckboxViewer({
               .map((answer) => (
                 <div
                   key={answer.quizAnswerId}
-                  className={`flex items-start space-x-3 p-4 rounded-lg border ${showResults
+                  className={`flex items-start space-x-3 p-4 rounded-lg border ${
+                    showResults
                       ? answer.isCorrect
                         ? 'border-green-500 bg-green-50'
                         : selectedAnswers.includes(answer.quizAnswerId)
-                          ? 'border-red-500 bg-red-50'
-                          : 'border-gray-200'
+                        ? 'border-red-500 bg-red-50'
+                        : 'border-gray-200'
                       : 'border-gray-200'
-                    }`}
+                  }`}
                 >
                   <Checkbox
                     id={answer.quizAnswerId}

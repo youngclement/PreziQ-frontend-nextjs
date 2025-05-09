@@ -68,8 +68,6 @@ const SessionJoinPage = () => {
         const response = await authApi.getAccount();
         const userData = response.data.data;
 
-        console.log('Đã lấy thông tin tài khoản người dùng:', userData);
-
         setUserAccount({
           userId: userData.userId,
           email: userData.email,
@@ -78,7 +76,6 @@ const SessionJoinPage = () => {
         });
       } catch (err) {
         console.error('Không thể lấy thông tin tài khoản:', err);
-        // Không đặt lỗi vì đây không phải lỗi nghiêm trọng
       } finally {
         setIsLoadingAccount(false);
       }
@@ -97,7 +94,6 @@ const SessionJoinPage = () => {
 
       // Ngắt kết nối WebSocket khi unmount
       if (sessionWsRef.current) {
-        console.log('Ngắt kết nối WebSocket khi unmount');
         sessionWsRef.current.disconnect();
         sessionWsRef.current = null;
       }
@@ -120,7 +116,6 @@ const SessionJoinPage = () => {
     // Thiết lập các handlers
     sessionWs.onConnectionStatusChangeHandler((status) => {
       if (!isMounted.current) return;
-      console.log('Trạng thái kết nối thay đổi:', status);
 
       let translatedStatus = status;
       if (status === 'Connected') translatedStatus = 'Đã kết nối';
@@ -143,39 +138,23 @@ const SessionJoinPage = () => {
 
     sessionWs.onParticipantsUpdateHandler((updatedParticipants) => {
       if (!isMounted.current) return;
-      console.log(
-        'Nhận cập nhật danh sách người tham gia:',
-        updatedParticipants.length
-      );
 
-      // Cập nhật danh sách người tham gia để hiển thị
-      setParticipants(updatedParticipants);
+      console.log('Cập nhật participants từ server:', {
+        updatedParticipants,
+        currentDisplayName: displayName,
+      });
 
-      // Cập nhật điểm của người dùng hiện tại
-      if (displayName) {
-        const me = updatedParticipants.find(
-          (p) => p.displayName === displayName
-        );
-        if (me) {
-          console.log('Cập nhật thông tin người dùng:', me);
-          setMyScore(me.realtimeScore);
-        }
-      }
-
-      // Kiểm tra xem người dùng đã tham gia chưa
-      if (
-        displayName &&
-        updatedParticipants.some((p) => p.displayName === displayName)
-      ) {
-        console.log('Người tham gia đã được phát hiện trong danh sách');
-        setHasJoined(true);
+      // Đảm bảo dữ liệu participants hợp lệ
+      if (Array.isArray(updatedParticipants)) {
+        setParticipants(updatedParticipants);
+      } else {
+        console.warn('Dữ liệu participants không hợp lệ:', updatedParticipants);
       }
     });
 
     // Theo dõi khi session bắt đầu
     sessionWs.onSessionStartHandler((session: SessionSummary) => {
       if (!isMounted.current) return;
-      console.log('Session started:', session);
       setIsSessionStarted(true);
     });
 
@@ -201,7 +180,6 @@ const SessionJoinPage = () => {
     sessionWs
       .connect()
       .then(() => {
-        console.log('WebSocket connected successfully');
         if (isMounted.current) {
           setIsConnected(true);
           setIsConnecting(false);
@@ -209,7 +187,6 @@ const SessionJoinPage = () => {
         }
       })
       .catch((err) => {
-        console.error('Failed to connect WebSocket:', err);
         if (isMounted.current) {
           setError('Không thể kết nối tới phiên. Vui lòng thử lại sau.');
           setIsConnected(false);
@@ -225,6 +202,37 @@ const SessionJoinPage = () => {
       }
     };
   }, [sessionCode]);
+
+  // Theo dõi và cập nhật điểm số của người tham gia
+  useEffect(() => {
+    if (!displayName || !participants.length) return;
+
+    // Tìm và cập nhật điểm của người dùng hiện tại
+    const currentUser = participants.find((p) => p.displayName === displayName);
+
+    if (currentUser) {
+      console.log('Cập nhật thông tin điểm số:', {
+        displayName,
+        oldScore: myScore,
+        newScore: currentUser.realtimeScore,
+        allParticipants: participants,
+      });
+      setMyScore(currentUser.realtimeScore);
+    } else {
+      console.warn('Không tìm thấy người dùng trong danh sách:', {
+        displayName,
+        participants,
+      });
+    }
+
+    // Kiểm tra trạng thái tham gia
+    const hasUserJoined = participants.some(
+      (p) => p.displayName === displayName
+    );
+    if (hasUserJoined) {
+      setHasJoined(true);
+    }
+  }, [participants, displayName, myScore]);
 
   // Kiểm tra khi tên hiển thị thay đổi
   useEffect(() => {
@@ -252,9 +260,6 @@ const SessionJoinPage = () => {
 
     try {
       const userId = userAccount?.userId || null;
-      console.log(
-        `Đang tham gia phiên với displayName=${displayName}, userId=${userId}, avatar=${avatar}`
-      );
 
       // Truyền đủ 3 tham số: displayName, userId, và avatar
       await sessionWsRef.current.joinSession(displayName, userId, avatar);
