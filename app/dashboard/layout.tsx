@@ -15,38 +15,31 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { hasRole, isLoggedIn } = useAuth();
+  const { hasRole, isLoggedIn, user } = useAuth();
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in and has admin role
-    if (isLoggedIn) {
+    // Only proceed if we know the user's login state for sure
+    // For logged in users, wait until user data is available
+    if (!isLoggedIn) {
+      setIsLoading(false);
+      router.push('/auth/login');
+    }
+    else if (isLoggedIn && user !== null) {
       const isAdmin = hasRole('ADMIN');
+
       setIsAuthorized(isAdmin);
       setIsLoading(false);
 
-      // If not admin, redirect to forbidden page
+      // Only redirect if user is definitely not admin
       if (!isAdmin) {
         router.push('/forbidden');
       }
-    } else {
-      // If not logged in yet, let the auth provider handle it first
-      setIsLoading(true);
-      // Add a timeout to avoid infinite loading if auth doesn't complete
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-        if (!isLoggedIn) {
-          router.push('/auth/login');
-        } else if (!hasRole('ADMIN')) {
-          router.push('/forbidden');
-        }
-      }, 1500);
-
-      return () => clearTimeout(timer);
     }
-  }, [isLoggedIn, hasRole, router]);
+    // If logged in but user data not loaded yet, keep loading state true
+  }, [isLoggedIn, hasRole, router, user]);
 
   // Show loading state initially
   if (isLoading) {
@@ -74,5 +67,9 @@ export default function DashboardLayout({
   }
 
   // This should never render as we redirect unauthorized users
-  return null;
+  return (
+    <div className="flex h-screen w-full items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+    </div>
+  );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/auth-context';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface RoleGuardProps {
@@ -22,18 +22,31 @@ export function RoleGuard({
     fallback,
     redirectTo = '/forbidden'
 }: RoleGuardProps) {
-    const { hasRole, isLoggedIn } = useAuth();
+    const { hasRole, isLoggedIn, user } = useAuth();
     const router = useRouter();
-
-    // Check if user has any of the allowed roles
-    const hasAllowedRole = allowedRoles.some(role => hasRole(role));
+    const [isChecking, setIsChecking] = useState(true);
+    const [hasAllowedRole, setHasAllowedRole] = useState(false);
 
     useEffect(() => {
-        // Only redirect if not showing fallback content and user definitely doesn't have allowed roles
-        if (!fallback && isLoggedIn && !hasAllowedRole) {
-            router.push(redirectTo);
+        // Only proceed if we know the user's login state for sure
+        // For logged in users, wait until user data is available
+        if (!isLoggedIn || (isLoggedIn && user !== null)) {
+            const roleCheck = allowedRoles.some(role => hasRole(role));
+
+            setHasAllowedRole(roleCheck);
+            setIsChecking(false);
+
+            // Only redirect if not showing fallback content and user definitely doesn't have allowed roles
+            if (!fallback && isLoggedIn && !roleCheck) {
+                router.push(redirectTo);
+            }
         }
-    }, [fallback, hasAllowedRole, isLoggedIn, redirectTo, router]);
+    }, [allowedRoles, fallback, hasRole, isLoggedIn, redirectTo, router, user]);
+
+    // Show loading while checking permissions
+    if (isChecking) {
+        return null; // Or a loading spinner if preferred
+    }
 
     // If user has at least one of the allowed roles, show the protected content
     if (hasAllowedRole) {

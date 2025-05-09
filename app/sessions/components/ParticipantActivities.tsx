@@ -9,6 +9,7 @@ import {
   SessionWebSocket,
   SessionParticipant,
   EndSessionSummary,
+  UserAchievements,
 } from '@/websocket/sessionWebSocket';
 import InfoSlideViewer from '../show/components/info-slide-viewer';
 import QuizButtonViewer from './QuizButtonViewer';
@@ -19,6 +20,7 @@ import QuizTypeAnswerViewer from './QuizTypeAnswerViewer';
 import QuizReorderViewer from './QuizReorderViewer';
 import QuizTrueOrFalseViewer from './QuizTrueOrFalseViewer';
 import CountdownOverlay from './CountdownOverlay';
+import RealtimeLeaderboard from './RealtimeLeaderboard';
 
 interface ParticipantActivitiesProps {
   sessionCode: string;
@@ -44,13 +46,47 @@ export default function ParticipantActivities({
   const [isSessionEnded, setIsSessionEnded] = useState(false);
   const [sessionSummary, setSessionSummary] =
     useState<EndSessionSummary | null>(null);
+  const [achievementsData, setAchievementsData] =
+    useState<UserAchievements | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const currentActivityIdRef = useRef<string | null>(null);
   const isMounted = useRef(true);
   const wsInitialized = useRef(false);
   const [showCountdown, setShowCountdown] = useState(false);
-
   const [noMoreActivities, setNoMoreActivities] = useState(false);
+  const lastScoreUpdateTimeRef = useRef(Date.now());
+
+  // Xử lý cập nhật điểm số từ RealtimeLeaderboard
+  const handleScoreUpdate = (score: number, id: string | undefined) => {
+    console.log(
+      '[ParticipantActivities] Cập nhật điểm từ RealtimeLeaderboard:',
+      {
+        newScore: score,
+        userId: id,
+        prevScore: myScore,
+        timeSinceLastUpdate: Date.now() - lastScoreUpdateTimeRef.current,
+      }
+    );
+
+    if (score !== myScore) {
+      setMyScore(score);
+      if (id) setMyId(id);
+      lastScoreUpdateTimeRef.current = Date.now();
+    }
+  };
+
+  // Thêm hàm riêng để xử lý cập nhật từ WebSocket
+  const handleWebSocketScoreUpdate = (newScore: number, id?: string) => {
+    console.log('[ParticipantActivities] Cập nhật điểm từ WebSocket:', {
+      oldScore: myScore,
+      newScore: newScore,
+      timeSinceLastUpdate: Date.now() - lastScoreUpdateTimeRef.current,
+    });
+
+    setMyScore(newScore);
+    if (id) setMyId(id);
+    lastScoreUpdateTimeRef.current = Date.now();
+  };
 
   useEffect(() => {
     isMounted.current = true;
@@ -64,18 +100,37 @@ export default function ParticipantActivities({
 
     // Chỉ khởi tạo handlers một lần
     if (!wsInitialized.current) {
-      console.log('Khởi tạo WebSocket handlers trong ParticipantActivities');
       wsInitialized.current = true;
 
       // Đăng ký các event handlers cho socket đã được kết nối
       sessionWs.onParticipantsUpdateHandler((updatedParticipants) => {
+        if (!isMounted.current) return;
+
         console.log(
-          'Nhận cập nhật danh sách người tham gia:',
+          '[ParticipantActivities] Nhận cập nhật danh sách người tham gia:',
           updatedParticipants
         );
 
+        if (!Array.isArray(updatedParticipants)) {
+          console.warn(
+            '[ParticipantActivities] Dữ liệu participants không hợp lệ:',
+            updatedParticipants
+          );
+          return;
+        }
+
+        // Chuẩn hóa dữ liệu
+        const sanitizedParticipants = updatedParticipants.map((p) => ({
+          ...p,
+          realtimeScore:
+            typeof p.realtimeScore === 'number' ? p.realtimeScore : 0,
+          displayName: p.displayName || 'Unknown',
+          displayAvatar:
+            p.displayAvatar || 'https://api.dicebear.com/9.x/pixel-art/svg',
+        }));
+
         // Sắp xếp người tham gia theo điểm số giảm dần
-        const sortedParticipants = [...updatedParticipants].sort(
+        const sortedParticipants = [...sanitizedParticipants].sort(
           (a, b) => b.realtimeScore - a.realtimeScore
         );
 
@@ -87,32 +142,37 @@ export default function ParticipantActivities({
           })
         );
 
-        // Cập nhật state với danh sách mới
-        setParticipants(participantsWithRanking);
-
         // Cập nhật điểm của người dùng hiện tại
         if (displayName) {
-          const me = participantsWithRanking.find(
+          const currentUser = participantsWithRanking.find(
             (p) => p.displayName === displayName
           );
-          if (me) {
-            console.log('Cập nhật thông tin người dùng:', me);
-            setMyScore(me.realtimeScore);
-            setMyId(me.id);
+          if (currentUser && currentUser.realtimeScore !== myScore) {
+            // Sử dụng hàm riêng để cập nhật điểm từ WebSocket
+            handleWebSocketScoreUpdate(
+              currentUser.realtimeScore,
+              currentUser.id || undefined
+            );
           }
         }
+
+        console.log(
+          '[ParticipantActivities] Participants sau khi xử lý:',
+          participantsWithRanking
+        );
+
+        // Cập nhật state với danh sách mới
+        setParticipants(participantsWithRanking);
       });
 
       sessionWs.onSessionEndHandler((session) => {
         if (!isMounted.current) return;
-        console.log('Session ended:', session);
         setIsSessionEnded(true);
         setError('Phiên đã kết thúc. Cảm ơn bạn đã tham gia!');
       });
 
       sessionWs.onSessionSummaryHandler((summaries: EndSessionSummary[]) => {
         if (!isMounted.current) return;
-        console.log('Session summaries received:', summaries);
 
         if (displayName) {
           const mySummary = summaries.find(
@@ -131,7 +191,6 @@ export default function ParticipantActivities({
         console.log('Next activity received:', activity);
 
         if (!activity) {
-          console.log('No more activities in session');
           setNoMoreActivities(true);
         } else {
           setShowCountdown(true);
@@ -149,7 +208,6 @@ export default function ParticipantActivities({
 
       sessionWs.onConnectionStatusChangeHandler((status) => {
         if (!isMounted.current) return;
-        console.log('WebSocket connection status changed:', status);
         let translatedStatus = status;
         if (status === 'Connected') translatedStatus = 'Đã kết nối';
         else if (status === 'Connecting...')
@@ -161,6 +219,12 @@ export default function ParticipantActivities({
         if (status === 'Connected') {
           setIsLoading(false);
         }
+      });
+
+      sessionWs.onAchievementHandler((achievement) => {
+        if (!isMounted.current) return;
+        console.log('Received achievement data:', achievement);
+        setAchievementsData(achievement);
       });
     }
 
@@ -174,10 +238,8 @@ export default function ParticipantActivities({
     return () => {
       isMounted.current = false;
       clearTimeout(timer);
-      // Không hủy đăng ký handlers khi unmount để duy trì kết nối
-      console.log('Component unmounted, giữ nguyên kết nối WebSocket');
     };
-  }, [sessionWs]);
+  }, []);
 
   const handleLeaveSession = async () => {
     if (!sessionWs) {
@@ -191,7 +253,6 @@ export default function ParticipantActivities({
     }
 
     try {
-      console.log('Rời khỏi phiên');
       await sessionWs.leaveSession();
       if (onLeaveSession) onLeaveSession();
     } catch (err) {
@@ -216,7 +277,6 @@ export default function ParticipantActivities({
       //     activityId: activityId,
       //     answerContent: answer,
       //   });
-      console.log('Đã gửi câu trả lời thành công');
     } catch (err) {
       setError('Không thể gửi câu trả lời');
       console.error('Error submitting answer:', err);
@@ -243,6 +303,7 @@ export default function ParticipantActivities({
         userResult={sessionSummary}
         totalParticipants={participants.length}
         onNavigateToHome={onLeaveSession}
+        achievements={achievementsData || undefined}
       />
     );
   }
@@ -439,70 +500,11 @@ export default function ParticipantActivities({
 
           {/* Cột phụ - Danh sách người tham gia */}
           <div className='lg:col-span-1'>
-            <div className='bg-white rounded-xl shadow-lg overflow-hidden'>
-              <div className='bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4'>
-                <h2 className='text-xl font-bold text-white'>
-                  Người tham gia ({participants.length})
-                </h2>
-              </div>
-              <div className='p-4'>
-                {participants.length === 0 ? (
-                  <div className='text-center py-8 text-gray-500'>
-                    <p>Chưa có người tham gia nào</p>
-                  </div>
-                ) : (
-                  <div className='space-y-3 max-h-[400px] overflow-y-auto pr-2'>
-                    {participants.map((participant) => (
-                      <div
-                        key={participant.id}
-                        className={`flex items-center space-x-3 p-3 rounded-lg transition-all ${
-                          participant.displayName === displayName
-                            ? 'bg-indigo-50 border border-indigo-200'
-                            : 'bg-gray-50 hover:bg-gray-100'
-                        }`}
-                      >
-                        <Avatar
-                          className={`h-10 w-10 ${
-                            participant.displayName === displayName
-                              ? 'border-2 border-indigo-300'
-                              : ''
-                          }`}
-                        >
-                          <AvatarImage
-                            src={participant.displayAvatar}
-                            alt={participant.displayName}
-                          />
-                          <AvatarFallback>
-                            {participant.displayName.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className='flex-1'>
-                          <div className='flex items-center'>
-                            <p className='font-medium'>
-                              {participant.displayName}
-                              {participant.displayName === displayName && (
-                                <span className='ml-1 text-xs bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded'>
-                                  Bạn
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                          <div className='flex items-center space-x-2 text-sm text-gray-500'>
-                            <span>Điểm: {participant.realtimeScore}</span>
-                            {participant.realtimeRanking > 0 && (
-                              <>
-                                <span className='text-gray-300'>•</span>
-                                <span>Hạng: {participant.realtimeRanking}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <RealtimeLeaderboard
+              participants={participants}
+              currentUserName={displayName}
+              onScoreUpdate={handleScoreUpdate}
+            />
           </div>
         </div>
       </div>

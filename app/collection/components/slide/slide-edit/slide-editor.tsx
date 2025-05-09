@@ -10,7 +10,7 @@ import { slidesApi } from '@/api-client/slides-api';
 import { storageApi } from '@/api-client/storage-api';
 import type { SlideElementPayload } from '@/types/slideInterface';
 import { debounce } from 'lodash';
-
+import { FabricImage } from 'fabric';
 const HARD_SLIDE_ID = 'b6cb121c-1f5c-461b-b183-098468be7050';
 const ORIGINAL_CANVAS_WIDTH = 812;
 
@@ -24,6 +24,8 @@ export interface FabricEditorProps {
   zoom?: number;
   slideId?: string;
   onSavingStateChange?: (isSaving: boolean) => void;
+  slideElements: SlideElementPayload[];
+  backgroundImage?: string; // Sửa kiểu từ any thành SlideElementPayload[]
 }
 
 const FabricEditor: React.FC<FabricEditorProps> = ({
@@ -32,29 +34,30 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   onUpdate,
   backgroundColor,
   width,
-  height = 460,
+  height = 430,
   zoom = 1,
   slideId,
   onSavingStateChange,
+  slideElements,
+  backgroundImage,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { fabricCanvas, initCanvas } = useFabricCanvas();
-  const [history, setHistory] = useState<string[]>([]); // Lưu lịch sử canvas dưới dạng JSON
-  const [historyIndex, setHistoryIndex] = useState<number>(-1); // Chỉ số hiện tại trong lịch sử
-  const isProcessingRef = useRef(false); // Tránh vòng lặp khi xử lý Undo/Redo
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const isProcessingRef = useRef(false);
 
-  console.log('slideTitle', slideTitle);
+  console.log('slideId', slideId);
+  console.log('backgroundImage 111', backgroundImage);
 
-  // Hàm lưu trạng thái canvas vào lịch sử
   const saveState = () => {
-    if (isProcessingRef.current) return; // Bỏ qua nếu đang xử lý Undo/Redo
+    if (isProcessingRef.current) return;
     const canvas = fabricCanvas.current;
     if (!canvas) return;
 
-    const json = JSON.stringify(canvas.toJSON()); // Loại bỏ tham số
+    const json = JSON.stringify(canvas.toJSON());
     setHistory((prev) => {
-      // Xóa các trạng thái sau historyIndex nếu có (tránh nhánh lịch sử)
       const newHistory = prev.slice(0, historyIndex + 1);
       newHistory.push(json);
       return newHistory;
@@ -62,35 +65,31 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     setHistoryIndex((prev) => prev + 1);
   };
 
-  // Hàm khôi phục trạng thái canvas từ JSON
   const restoreState = (json: string) => {
     const canvas = fabricCanvas.current;
     if (!canvas) return;
 
-    isProcessingRef.current = true; // Đánh dấu đang xử lý
+    isProcessingRef.current = true;
     canvas.loadFromJSON(json, () => {
       canvas.renderAll();
-      isProcessingRef.current = false; // Kết thúc xử lý
+      isProcessingRef.current = false;
     });
   };
 
-  // Hàm Undo
   const undo = () => {
-    if (historyIndex <= 0) return; // Không có trạng thái để Undo
+    if (historyIndex <= 0) return;
     const newIndex = historyIndex - 1;
     setHistoryIndex(newIndex);
     restoreState(history[newIndex]);
   };
 
-  // Hàm Redo
   const redo = () => {
-    if (historyIndex >= history.length - 1) return; // Không có trạng thái để Redo
+    if (historyIndex >= history.length - 1) return;
     const newIndex = historyIndex + 1;
     setHistoryIndex(newIndex);
     restoreState(history[newIndex]);
   };
 
-  // Hàm chung để cập nhật slide element
   const updateSlideElement = debounce((obj: fabric.Object) => {
     if (!obj || (obj.type !== 'image' && obj.type !== 'textbox')) return;
     const slideElementId = obj.get('slideElementId');
@@ -168,6 +167,201 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       });
   }, 500);
 
+  const loadSlideElements = () => {
+    if (!fabricCanvas.current) {
+      console.warn('Canvas chưa được khởi tạo');
+      return;
+    }
+
+    const canvas = fabricCanvas.current;
+
+    // Xóa canvas hiện tại để tránh trùng lặp
+    canvas.clear();
+
+    // Nếu không có slideElements, để canvas trống
+    if (!slideElements || slideElements.length === 0) {
+      console.log('Không có slideElements, để canvas trống');
+      canvas.renderAll();
+      saveState();
+      return;
+    }
+
+    console.log(
+      'Bắt đầu render slideElements:',
+      JSON.stringify(slideElements, null, 2)
+    );
+
+    // Sắp xếp elements theo layerOrder
+    const sortedElements = [...slideElements].sort(
+      (a, b) => a.layerOrder - b.layerOrder
+    );
+
+    // Tải tất cả ảnh trước
+    const imagePromises = sortedElements
+      .filter(
+        (element) => element.slideElementType === 'IMAGE' && element.sourceUrl
+      )
+      .map(
+        (element) =>
+          new Promise<{
+            element: SlideElementPayload;
+            imgElement: HTMLImageElement;
+          }>((resolve, reject) => {
+            const imgElement = new Image();
+            imgElement.onload = () => {
+              console.log(`Ảnh tải thành công: ${element.sourceUrl}`, {
+                width: imgElement.width,
+                height: imgElement.height,
+              });
+              resolve({ element, imgElement });
+            };
+            imgElement.onerror = (err) => {
+              reject(err);
+            };
+            imgElement.src = element.sourceUrl!;
+          })
+      );
+
+    Promise.all(imagePromises)
+      .then((loadedImages) => {
+        // Render từng element
+        sortedElements.forEach((element: SlideElementPayload) => {
+          console.log(`Render element ${element.slideElementId}:`, element);
+
+          const zoom = canvas.getZoom();
+          const canvasWidth = canvas.getWidth()! / zoom;
+          const canvasHeight = canvas.getHeight()! / zoom;
+
+          if (element.slideElementType === 'TEXT') {
+            if (!element.content) {
+              console.warn(`Element ${element.slideElementId} thiếu content`);
+              return;
+            }
+
+            let textboxJson;
+            try {
+              textboxJson = JSON.parse(element.content);
+            } catch (err) {
+              console.error(
+                `Lỗi parse content cho element ${element.slideElementId}:`,
+                err
+              );
+              return;
+            }
+
+            const { type, ...safeTextboxJson } = textboxJson;
+            const fontSize =
+              (textboxJson.fontSize / 100) * ORIGINAL_CANVAS_WIDTH;
+            const textbox = new fabric.Textbox(textboxJson.text || 'New Text', {
+              ...safeTextboxJson,
+              fontSize,
+              left: (element.positionX / 100) * canvasWidth * zoom,
+              top: (element.positionY / 100) * canvasHeight * zoom,
+              width: (element.width / 100) * canvasWidth,
+              height: (element.height / 100) * canvasHeight,
+              angle: element.rotation || 0,
+              slideElementId: element.slideElementId,
+            });
+
+            if (textboxJson.styles) {
+              for (const lineIndex in textboxJson.styles) {
+                const line = textboxJson.styles[lineIndex];
+                for (const charIndex in line) {
+                  if (line[charIndex].fontSize) {
+                    line[charIndex].fontSize =
+                      (line[charIndex].fontSize / 100) * ORIGINAL_CANVAS_WIDTH;
+                  }
+                }
+              }
+              textbox.set('styles', textboxJson.styles);
+            }
+
+            console.log(`Thêm textbox ${element.slideElementId} vào canvas`);
+            canvas.add(textbox);
+          } else if (element.slideElementType === 'IMAGE') {
+            if (!element.sourceUrl) {
+              console.warn(`Element ${element.slideElementId} thiếu sourceUrl`);
+              return;
+            }
+
+            const loadedImage = loadedImages.find(
+              (img) => img.element.sourceUrl === element.sourceUrl
+            );
+            if (!loadedImage) {
+              console.error(
+                `Không tìm thấy ảnh đã tải cho ${element.sourceUrl}`
+              );
+              return;
+            }
+
+            const { imgElement } = loadedImage;
+            const img = new fabric.Image(imgElement);
+            if (!img.width || !img.height) {
+              console.error(
+                `Lỗi: Ảnh không có kích thước hợp lệ - ${element.sourceUrl}`
+              );
+              return;
+            }
+
+            // Tính toán vị trí và kích thước
+            const left = (element.positionX / 100) * canvasWidth * zoom;
+            const top = (element.positionY / 100) * canvasHeight * zoom;
+            const elementWidth = (element.width / 100) * canvasWidth;
+            const elementHeight = (element.height / 100) * canvasHeight;
+
+            // Điều chỉnh vị trí nếu nằm ngoài canvas
+            const adjustedLeft = left < 0 ? 0 : left;
+            const adjustedTop = top < 0 ? 0 : top;
+
+            const scaleX = img.width > 0 ? elementWidth / img.width : 1;
+            const scaleY = img.height > 0 ? elementHeight / img.height : 1;
+
+            img.set({
+              left: adjustedLeft,
+              top: adjustedTop,
+              scaleX: isNaN(scaleX) ? 1 : scaleX,
+              scaleY: isNaN(scaleY) ? 1 : scaleY,
+              angle: element.rotation || 0,
+              slideElementId: element.slideElementId,
+              sourceUrl: element.sourceUrl,
+              selectable: true, // Giữ tương tác trong editor
+            });
+
+            console.log(`Thêm image ${element.slideElementId} vào canvas`, {
+              left: img.left,
+              top: img.top,
+              scaleX: img.scaleX,
+              scaleY: img.scaleY,
+              width: img.width,
+              height: img.height,
+            });
+            canvas.add(img);
+          }
+        });
+
+        // // Thêm đối tượng debug
+        // canvas.add(
+        //   new fabric.Text('Debug Canvas', {
+        //     left: 50,
+        //     top: 50,
+        //     fontSize: 20,
+        //     fill: '#888',
+        //   })
+        // );
+        // console.log('Thêm text debug để kiểm tra canvas');
+        // console.log(
+        //   'Objects trong canvas (sau khi render):',
+        //   canvas.getObjects()
+        // );
+
+        canvas.renderAll();
+        saveState();
+      })
+      .catch((err) => {
+        console.error('Lỗi khi tải slide elements:', err);
+      });
+  };
+
   useEffect(() => {
     if (!canvasRef.current) return;
 
@@ -178,8 +372,26 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     );
     canvas.setDimensions({ width: width, height: height });
     canvas.setZoom(zoom);
+
+    if (backgroundImage) {
+      FabricImage.fromURL(backgroundImage).then((img) => {
+        img.set({
+          scaleX: canvas.getWidth() / img.width!,
+          scaleY: canvas.getHeight() / img.height!,
+          originX: 'left',
+          originY: 'top',
+        });
+        canvas.backgroundImage = img;
+        canvas.renderAll();
+      });
+    };
+
     const { title, content } = initFabricEvents(canvas, onUpdate);
-    const cleanupToolbar = ToolbarHandlers(canvas, title, content);
+    const cleanupToolbar = slideId
+      ? ToolbarHandlers(canvas, title, content, slideId)
+      : () => {};
+
+    loadSlideElements();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -188,20 +400,16 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         target.isContentEditable;
       if (isInput) return;
 
-      // Xử lý Ctrl + Z (Undo) và Ctrl + Y / Ctrl + Shift + Z (Redo)
       if (e.ctrlKey) {
         if (e.key === 'z' || e.key === 'Z') {
           if (e.shiftKey) {
-            // Ctrl + Shift + Z: Redo
             e.preventDefault();
             redo();
           } else {
-            // Ctrl + Z: Undo
             e.preventDefault();
             undo();
           }
         } else if (e.key === 'y' || e.key === 'Y') {
-          // Ctrl + Y: Redo
           e.preventDefault();
           redo();
         }
@@ -248,12 +456,11 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           });
           canvas.discardActiveObject();
           canvas.requestRenderAll();
-          saveState(); // Lưu trạng thái sau khi xóa
+          saveState();
         }
       }
     };
 
-    // Sự kiện để theo dõi thay đổi và lưu lịch sử
     canvas.on('object:added', (e) => {
       const obj = e.target;
       if (obj) {
@@ -324,7 +531,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       }
     });
 
-    // Lưu trạng thái ban đầu
     canvas.on('after:render', () => {
       if (history.length === 0) {
         saveState();
@@ -338,7 +544,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       canvas.dispose();
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [backgroundColor, width, height, zoom, slideId]);
+  }, [backgroundColor, width, height, zoom, slideId, slideElements]); // Thêm slideElements vào dependencies
 
   useEffect(() => {
     const handleDragStart = () => {
@@ -484,6 +690,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   return (
     <EditorContextMenu>
       <div
+        className="border-2 border-blue-400 mx-auto shadow-lg ring-4 ring-blue-300/50 ring-offset-0"
         ref={containerRef}
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}

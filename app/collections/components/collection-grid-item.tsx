@@ -1,10 +1,8 @@
 import { motion } from 'framer-motion';
-import { BookOpen, CalendarIcon, Eye } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { BookOpen, CalendarIcon, Eye, Heart, Play, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collection, Activity } from './types';
-import { CollectionActionButtons } from './collection-action-buttons';
 
 interface CollectionGridItemProps {
   collection: Collection;
@@ -27,6 +25,9 @@ export function CollectionGridItem({
   onPreview,
   collectionVariants,
 }: CollectionGridItemProps) {
+  // Default image if collection.coverImage is empty
+  const imageUrl = collection.coverImage || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=400&h=250&auto=format&fit=crop';
+
   return (
     <motion.div
       key={collection.id}
@@ -34,60 +35,125 @@ export function CollectionGridItem({
       initial='hidden'
       animate='visible'
       custom={index}
-      className='group'
+      className='group w-full h-full'
     >
-      <Card className='h-full overflow-hidden hover:shadow-lg transition-all border border-zinc-200 dark:border-zinc-800 rounded-none'>
-        <div
-          className='aspect-video w-full bg-cover bg-center relative overflow-hidden cursor-pointer'
-          style={{ backgroundImage: `url(${collection.coverImage})` }}
-          onClick={() => onPreview(collection)}
-        >
-          <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4'>
+      <div className="flex flex-col transform transition-all duration-300 group-hover:scale-105">
+        {/* Image Section */}
+        <div className="relative overflow-hidden rounded-lg mb-3 shadow-md">
+          {/* Image */}
+          <div
+            className="w-full h-48 bg-cover bg-center rounded-lg transform transition-transform duration-500 group-hover:scale-110"
+            style={{ backgroundImage: `url(${imageUrl})` }}
+            onClick={() => onPreview(collection)}
+          />
+
+          {/* Overlay on hover */}
+          <div
+            className="z-3 absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ease-in-out bg-gradient-to-t from-indigo-900/80 via-indigo-800/60 to-indigo-700/30 dark:from-indigo-800/90 dark:via-indigo-700/70 dark:to-indigo-600/40 opacity-0 group-hover:opacity-100 rounded-lg cursor-pointer"
+            onClick={() => onPreview(collection)}
+          >
             <Button
-              variant='ghost'
+              variant='outline'
               size='sm'
-              className='text-white hover:bg-white/20 rounded-none'
+              className='text-white border-white hover:bg-white/20 hover:text-white mb-3 text-xs px-3 py-1 h-8 font-medium'
             >
-              <Eye className='h-4 w-4 mr-2' />
+              <Play className='h-3.5 w-3.5 mr-1.5 fill-white' />
               Preview
             </Button>
+
+            <div className='flex space-x-3 mt-2'>
+              <Button
+                variant='outline'
+                size='sm'
+                className='text-white border-white hover:bg-white/20 hover:text-white h-7 w-7 p-0'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onView(collection.id);
+                }}
+              >
+                <Eye className='h-3.5 w-3.5' />
+              </Button>
+
+              <Button
+                variant='outline'
+                size='sm'
+                className='text-white border-white hover:bg-white/20 hover:text-white h-7 w-7 p-0'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(collection.id);
+                }}
+              >
+                <Users className='h-3.5 w-3.5' />
+              </Button>
+            </div>
           </div>
+
+          {/* Status Badge */}
           {collection.isPublished && (
-            <Badge className='absolute top-3 right-3 bg-emerald-500 text-white shadow-sm rounded-none'>
+            <Badge className='absolute top-2 right-2 bg-emerald-500 text-white shadow-md z-10 text-[11px] px-2 py-0.5 font-medium rounded-full'>
               Published
             </Badge>
           )}
         </div>
-        <div className='p-5'>
-          <h3 className='font-semibold text-xl mb-2 line-clamp-1'>
+
+        {/* Content Section */}
+        <div className="px-1">
+          {/* Title */}
+          <h3 className='font-semibold text-sm mb-1.5 line-clamp-1 dark:text-white group-hover:text-indigo-700 dark:group-hover:text-indigo-400 transition-colors'>
             {collection.title}
           </h3>
-          <p className='text-sm text-zinc-500 dark:text-zinc-400 mb-4 line-clamp-2'>
+
+          {/* Description */}
+          <p className='text-xs text-zinc-600 dark:text-zinc-300 mb-3 line-clamp-2 min-h-[2.5rem] leading-relaxed'>
             {collection.description}
           </p>
 
-          <div className='flex items-center text-xs text-zinc-500 dark:text-zinc-400 space-x-4 mb-4'>
-            <div className='flex items-center'>
-              <BookOpen className='h-3.5 w-3.5 mr-1.5' />
-              {activities.length} Activities
-            </div>
-            <div className='flex items-center'>
-              <CalendarIcon className='h-3.5 w-3.5 mr-1.5' />
-              {new Date().toLocaleDateString('en-US')}
-            </div>
-          </div>
+          {/* Info */}
+          <div className='flex justify-between items-center text-xs text-zinc-500 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-zinc-800'>
+            <div className='flex items-center space-x-3'>
+              <div className='flex items-center'>
+                <BookOpen className='h-3 w-3 mr-1 text-indigo-600 dark:text-indigo-400' />
+                <span>{activities.length} activities</span>
+              </div>
 
-          <CollectionActionButtons
-            collectionId={collection.id}
-            onDelete={onDelete}
-            onPreview={() => onPreview(collection)}
-            onView={onView}
-            onEdit={onEdit}
-            activitiesCount={activities.length}
-            isGridView={true}
-          />
+              {/* Show views if available */}
+              {'views' in collection && (
+                <div className='flex items-center'>
+                  <Eye className='h-3 w-3 mr-1 text-indigo-600 dark:text-indigo-400' />
+                  <span>{collection.views}+ views</span>
+                </div>
+              )}
+
+              {/* Show likes if available */}
+              {'likes' in collection && typeof collection.likes === 'number' && collection.likes > 0 && (
+                <div className='flex items-center'>
+                  <Heart className='h-3 w-3 mr-1 text-indigo-600 dark:text-indigo-400' />
+                  <span>{collection.likes}</span>
+                </div>
+              )}
+
+              {/* Show date as fallback */}
+              {!('views' in collection) && !('likes' in collection) && (
+                <div className='flex items-center'>
+                  <CalendarIcon className='h-3 w-3 mr-1 text-indigo-600 dark:text-indigo-400' />
+                  <span>{new Date(collection.createdAt || new Date()).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                  })}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Show participants if available */}
+            {'participants' in collection && typeof collection.participants === 'number' && collection.participants > 0 && (
+              <div className='flex items-center'>
+                <Users className='h-3 w-3 mr-1 text-indigo-600 dark:text-indigo-400' />
+                <span>{collection.participants}</span>
+              </div>
+            )}
+          </div>
         </div>
-      </Card>
+      </div>
     </motion.div>
   );
 }

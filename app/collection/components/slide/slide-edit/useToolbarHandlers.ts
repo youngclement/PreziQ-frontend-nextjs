@@ -6,7 +6,6 @@ import { slidesApi } from "@/api-client/slides-api";
 import type { SlideElementPayload } from "@/types/slideInterface";
 import { debounce } from "lodash";
 
-const HARD_SLIDE_ID = "b6cb121c-1f5c-461b-b183-098468be7050";
 const ORIGINAL_CANVAS_WIDTH = 812;
 
 type StyleObj = Partial<{
@@ -15,95 +14,96 @@ type StyleObj = Partial<{
   underline: boolean;
 }>;
 
-const updateTextboxElement = debounce((textbox: fabric.Textbox) => {
-  const slideElementId = textbox.get("slideElementId");
-  if (!slideElementId) return;
-
-  const canvas = textbox.canvas;
-  if (!canvas) return;
-
-  const zoom = canvas.getZoom();
-  const cw = canvas.getWidth()! / zoom;
-  const ch = canvas.getHeight()! / zoom;
-
-  const rawLeft = textbox.left! / zoom;
-  const rawTop = textbox.top! / zoom;
-  const w = textbox.width!;
-  const h = textbox.height!;
-
-  const fontSizePercent = (textbox.fontSize! / ORIGINAL_CANVAS_WIDTH) * 100;
-  const textboxJson = {
-    ...textbox.toJSON(),
-    fontSize: fontSizePercent,
-  };
-
-  if (textboxJson.styles && Object.keys(textboxJson.styles).length > 0) {
-    for (const lineIndex in textboxJson.styles) {
-      const line = textboxJson.styles[lineIndex];
-      for (const charIndex in line) {
-        if (line[charIndex].fontSize) {
-          line[charIndex].fontSize =
-            (line[charIndex].fontSize / ORIGINAL_CANVAS_WIDTH) * 100;
-        }
-      }
-    }
-  }
-
-  const payload: SlideElementPayload = {
-    positionX: (rawLeft / cw) * 100,
-    positionY: (rawTop / ch) * 100,
-    width: (w / cw) * 100,
-    height: (h / ch) * 100,
-    rotation: textbox.angle || 0,
-    layerOrder: canvas.getObjects().indexOf(textbox),
-    slideElementType: "TEXT",
-    content: JSON.stringify(textboxJson),
-  };
-  console.log("Payload sent to API:", JSON.parse(payload.content));
-  slidesApi
-    .updateSlidesElement(HARD_SLIDE_ID, slideElementId, payload)
-    .then((res) => console.log("Updated textbox", res.data))
-    .catch((err) => console.error("Update textbox failed", err));
-}, 500);
-
-const updateImageElement = debounce((image: fabric.Image) => {
-  const slideElementId = image.get("slideElementId");
-  if (!slideElementId) return;
-
-  const canvas = image.canvas;
-  if (!canvas) return;
-
-  const zoom = canvas.getZoom();
-  const cw = canvas.getWidth()! / zoom;
-  const ch = canvas.getHeight()! / zoom;
-
-  const rawLeft = image.left! / zoom;
-  const rawTop = image.top! / zoom;
-  const w = image.getScaledWidth() / zoom;
-  const h = image.getScaledHeight() / zoom;
-
-  const payload: SlideElementPayload = {
-    positionX: (rawLeft / cw) * 100,
-    positionY: (rawTop / ch) * 100,
-    width: (w / cw) * 100,
-    height: (h / ch) * 100,
-    rotation: image.angle || 0,
-    layerOrder: canvas.getObjects().indexOf(image),
-    slideElementType: "IMAGE",
-    sourceUrl: image.get("sourceUrl") || image.getSrc(),
-  };
-
-  slidesApi
-    .updateSlidesElement(HARD_SLIDE_ID, slideElementId, payload)
-    .then((res) => console.log("Updated image", res.data))
-    .catch((err) => console.error("Update image failed", err));
-}, 500);
-
 export const ToolbarHandlers = (
   canvas: fabric.Canvas,
   title: fabric.Textbox,
-  content: fabric.Textbox
+  content: fabric.Textbox,
+  slideId: string
 ) => {
+
+  const updateTextboxElement = debounce((textbox: fabric.Textbox) => {
+    const slideElementId = textbox.get('slideElementId');
+    if (!slideElementId) return;
+
+    const canvas = textbox.canvas;
+    if (!canvas) return;
+
+    const zoom = canvas.getZoom();
+    const cw = canvas.getWidth()! / zoom;
+    const ch = canvas.getHeight()! / zoom;
+
+    const rawLeft = textbox.left! / zoom;
+    const rawTop = textbox.top! / zoom;
+    const w = textbox.width!;
+    const h = textbox.height!;
+
+    const fontSizePercent = (textbox.fontSize! / ORIGINAL_CANVAS_WIDTH) * 100;
+    const textboxJson = {
+      ...textbox.toJSON(),
+      fontSize: fontSizePercent,
+    };
+
+    if (textboxJson.styles && Object.keys(textboxJson.styles).length > 0) {
+      for (const lineIndex in textboxJson.styles) {
+        const line = textboxJson.styles[lineIndex];
+        for (const charIndex in line) {
+          if (line[charIndex].fontSize) {
+            line[charIndex].fontSize =
+              (line[charIndex].fontSize / ORIGINAL_CANVAS_WIDTH) * 100;
+          }
+        }
+      }
+    }
+
+    const payload: SlideElementPayload = {
+      positionX: (rawLeft / cw) * 100,
+      positionY: (rawTop / ch) * 100,
+      width: (w / cw) * 100,
+      height: (h / ch) * 100,
+      rotation: textbox.angle || 0,
+      layerOrder: canvas.getObjects().indexOf(textbox),
+      slideElementType: 'TEXT',
+      content: JSON.stringify(textboxJson),
+    };
+    // console.log("Payload sent to API:", JSON.parse(payload.content));
+    slidesApi
+      .updateSlidesElement(slideId, slideElementId, payload)
+      .then((res) => console.log('Updated textbox', res.data));
+  }, 500);
+
+  const updateImageElement = debounce((image: fabric.Image) => {
+    const slideElementId = image.get('slideElementId');
+    if (!slideElementId) return;
+
+    const canvas = image.canvas;
+    if (!canvas) return;
+
+    const zoom = canvas.getZoom();
+    const cw = canvas.getWidth()! / zoom;
+    const ch = canvas.getHeight()! / zoom;
+
+    const rawLeft = image.left! / zoom;
+    const rawTop = image.top! / zoom;
+    const w = image.getScaledWidth() / zoom;
+    const h = image.getScaledHeight() / zoom;
+
+    const payload: SlideElementPayload = {
+      positionX: (rawLeft / cw) * 100,
+      positionY: (rawTop / ch) * 100,
+      width: (w / cw) * 100,
+      height: (h / ch) * 100,
+      rotation: image.angle || 0,
+      layerOrder: canvas.getObjects().indexOf(image),
+      slideElementType: 'IMAGE',
+      sourceUrl: image.get('sourceUrl') || image.getSrc(),
+    };
+
+    slidesApi
+      .updateSlidesElement(slideId, slideElementId, payload)
+      .then((res) => console.log('Updated image', res.data))
+      .catch((err) => console.error('Update image failed', err));
+  }, 500);
+
   const addTextbox = () => {
     console.log("Bắt đầu addTextbox");
     if (canvas.get("isCreating")) {
@@ -148,19 +148,19 @@ export const ToolbarHandlers = (
 
     console.log("Gửi API addSlidesElement");
     slidesApi
-      .addSlidesElement(HARD_SLIDE_ID, payload)
+      .addSlidesElement(slideId, payload)
       .then((res) => {
-        console.log("API addSlidesElement thành công:", res.data);
-        textbox.set("isNew", false);
-        textbox.set("slideElementId", res.data.data.slideElementId);
+        console.log('API addSlidesElement thành công:', res.data);
+        textbox.set('isNew', false);
+        textbox.set('slideElementId', res.data.data.slideElementId);
       })
       .catch((err) => {
-        console.error("Lỗi khi tạo text element:", err);
+        console.error('Lỗi khi tạo text element:', err);
         canvas.remove(textbox);
         canvas.renderAll();
       })
       .finally(() => {
-        canvas.set("isCreating", false);
+        canvas.set('isCreating', false);
       });
   };
 
@@ -198,7 +198,7 @@ export const ToolbarHandlers = (
         };
 
         slidesApi
-          .addSlidesElement(HARD_SLIDE_ID, payload)
+          .addSlidesElement(slideId, payload)
           .then((res) => {
             console.log("Tạo image element thành công:", res.data);
             img.set("slideElementId", res.data.data.slideElementId);
@@ -924,7 +924,7 @@ export const ToolbarHandlers = (
     // Cập nhật hàng loạt tất cả phần tử
     Promise.all(
       updates.map(({ slideElementId, payload }) =>
-        slidesApi.updateSlidesElement(HARD_SLIDE_ID, slideElementId, payload)
+        slidesApi.updateSlidesElement(slideId, slideElementId, payload)
       )
     )
       .then((results) => {

@@ -157,12 +157,21 @@ export function useQuestionOperations(
     }
 
     try {
-      await activitiesApi.deleteActivity(questions[index].activity_id);
+      const activityIdToDelete = questions[index].activity_id;
+      await activitiesApi.deleteActivity(activityIdToDelete);
 
       // Update local state
       const updatedQuestions = [...questions];
       updatedQuestions.splice(index, 1);
       setQuestions(updatedQuestions);
+
+      // Update activities state to remove the deleted activity
+      setActivities(activities.filter((a) => a.id !== activityIdToDelete));
+
+      // Clear the current activity if it was deleted
+      if (activity && activity.id === activityIdToDelete) {
+        setActivity(null);
+      }
 
       // If we deleted the active question, adjust the active index
       if (activeQuestionIndex >= updatedQuestions.length) {
@@ -176,8 +185,13 @@ export function useQuestionOperations(
         description: "Question deleted successfully",
       });
 
-      // Remove the refreshCollectionData call to prevent page reload
-      // Local state is already updated correctly
+      // Use immediate async function to ensure state updates before refresh
+      (async () => {
+        // Wait a short moment for state updates to propagate
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        // Refresh collection data to ensure UI is updated correctly
+        refreshCollectionData();
+      })();
     } catch (error) {
       console.error("Error deleting question:", error);
       toast({

@@ -59,6 +59,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                   : Number.MAX_SAFE_INTEGER,
               createdAt: act.createdAt,
               quiz: act.quiz,
+              slide: act.slide,
             }))
             .sort(
               (a: { orderIndex: number }, b: { orderIndex: number }) =>
@@ -124,6 +125,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                 // Handle slides and info slides
                 if (questionType === "slide" || questionType === "info_slide") {
                   // For slide types, use specific slide data or defaults
+                  console.log("actttttttt:   ", act)
                   if (act.quiz) {
                     question.question_text = act.quiz.title || "Slide";
                     question.slide_content = act.quiz.content || "";

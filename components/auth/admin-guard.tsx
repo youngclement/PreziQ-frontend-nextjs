@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/auth-context';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface AdminGuardProps {
@@ -14,16 +14,31 @@ interface AdminGuardProps {
  * If the user is not an admin, they will be shown the fallback content or redirected to the forbidden page.
  */
 export function AdminGuard({ children, fallback }: AdminGuardProps) {
-    const { hasRole, isLoggedIn } = useAuth();
+    const { hasRole, isLoggedIn, user } = useAuth();
     const router = useRouter();
-    const isAdmin = hasRole('ADMIN');
+    const [isChecking, setIsChecking] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
-        // Only redirect if not showing fallback content and user is definitely not an admin
-        if (!fallback && isLoggedIn && !isAdmin) {
-            router.push('/forbidden');
+        // Only proceed if we know the user's login state for sure
+        // For logged in users, wait until user data is available
+        if (!isLoggedIn || (isLoggedIn && user !== null)) {
+            const adminCheck = hasRole('ADMIN');
+
+            setIsAdmin(adminCheck);
+            setIsChecking(false);
+
+            // Only redirect if user is definitely logged in, not an admin, and we don't have fallback content
+            if (!fallback && isLoggedIn && !adminCheck) {
+                router.push('/forbidden');
+            }
         }
-    }, [fallback, isAdmin, isLoggedIn, router]);
+    }, [fallback, hasRole, isLoggedIn, router, user]);
+
+    // Show loading while checking permissions
+    if (isChecking) {
+        return null; // Or a loading spinner if preferred
+    }
 
     // If user is an admin, show the protected content
     if (isAdmin) {
