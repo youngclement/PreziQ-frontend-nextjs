@@ -359,7 +359,9 @@ export default function QuestionsPageContent() {
             <div className="w-full h-[calc(100vh-52px)] overflow-hidden flex flex-col">
                 <div className="grid grid-cols-12 gap-1 h-full overflow-hidden">
                     {/* Main content area with question preview and settings */}
+
                     <div className="col-span-12 grid grid-cols-12  pt-3 gap-4 overflow-hidden" style={{ height: 'calc(100vh - 190px)' }}>
+
                         {/* Question Preview - scrollable */}
                         <div className="col-span-12 md:col-span-8  overflow-auto h-full pb-1">
                             {questions[activeQuestionIndex] && (

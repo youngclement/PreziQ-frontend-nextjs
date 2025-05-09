@@ -123,6 +123,7 @@ export function QuestionPreview({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
 
+  console.log('activity', activity);
   // React to changes in activity props to update UI
   const [backgroundState, setBackgroundState] = React.useState({
     backgroundImage: activity?.backgroundImage || backgroundImage,
@@ -134,6 +135,7 @@ export function QuestionPreview({
     backgroundImage?: string;
     backgroundColor: string;
   }>>({});
+
 
   // Add this state to track when we need to force re-render
   const [renderKey, setRenderKey] = useState(0);
@@ -171,6 +173,7 @@ export function QuestionPreview({
       }));
     }
   };
+
 
   // Update background state when activity changes
   React.useEffect(() => {
@@ -474,7 +477,8 @@ export function QuestionPreview({
 
     if (isSlideType) {
       const slideTypeText = question.question_type === 'info_slide' ? 'Info Slide' : 'Slide';
-
+      
+      const slideElements = activity?.slide?.slideElements || [];
       return (
         <div
           className={cn(
@@ -490,23 +494,30 @@ export function QuestionPreview({
             backgroundImage: hasBackgroundImage
               ? `url(${actualBackgroundImage})`
               : 'none',
-            backgroundColor: hasBackgroundImage ? 'transparent' : actualBackgroundColor,
+            backgroundColor: hasBackgroundImage
+              ? 'transparent'
+              : actualBackgroundColor,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
         >
-          <div className="flex flex-col items-center gap-6 w-full p-8 bg-white/95 dark:bg-gray-800/95 min-h-[400px]">
-            <div className="w-full flex justify-between mb-2">
+          <div className="flex flex-col items-center gap-3 w-full px-4 pb-8 pt-4 bg-gradient-to-br from-indigo-100/90 via-purple-100/80 to-blue-100/90 dark:from-indigo-900/90 dark:via-purple-900/80 dark:to-blue-900/95 min-h-[400px]">
+            <div className="w-full flex justify-between mb-3">
               <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
                 {isSaving && <span className="text-blue-500">(Saving...)</span>}
               </div>
-              <div className="flex items-center gap-2 bg-black/10 dark:bg-white/10 px-3 py-1.5 rounded-full">
-                <FileText className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              <motion.div
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-400 px-4 py-2 rounded-full shadow-md"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <FileText className="h-4 w-4 text-white" />
+                <span className="text-sm font-medium text-white">
                   {slideTypeText} {questionIndex + 1}
                 </span>
-              </div>
+              </motion.div>
             </div>
+
 
             {editMode !== null ? (
               <div className="w-full max-w-2xl">
@@ -557,6 +568,7 @@ export function QuestionPreview({
               </motion.div>
             )}
 
+
             {question.slide_image && (
               <motion.div
                 className="mt-6 w-full flex justify-center"
@@ -574,8 +586,11 @@ export function QuestionPreview({
 
             <div className="flex-1 w-full">
               <FabricEditor
-                slideTitle={question.question_text || `${slideTypeText} ${questionIndex + 1}`}
-                slideContent={question.slide_content || ""}
+                slideTitle={
+                  question.question_text ||
+                  `${slideTypeText} ${questionIndex + 1}`
+                }
+                slideContent={question.slide_content || ''}
                 onUpdate={(data) => {
                   if (onQuestionTextChange) {
                     onQuestionTextChange(data.title, questionIndex);
@@ -584,11 +599,25 @@ export function QuestionPreview({
                     onSlideContentChange(data.content);
                   }
                 }}
-                width={!isQuestionListCollapsed ? (viewMode === 'mobile' ? 300 : viewMode === 'tablet' ? 650 : 900) : (viewMode === 'mobile' ? 300 : viewMode === 'tablet' ? 650 : 1000)}
-                height={400}
+                width={
+                  !isQuestionListCollapsed
+                    ? viewMode === 'mobile'
+                      ? 300
+                      : viewMode === 'tablet'
+                      ? 650
+                      : 812
+                    : viewMode === 'mobile'
+                    ? 300
+                    : viewMode === 'tablet'
+                    ? 650
+                    : 812
+                }
+                height={460}
                 zoom={1}
                 slideId={question.activity_id}
                 onSavingStateChange={(saving) => setIsSaving(saving)}
+                slideElements={slideElements}
+                backgroundImage={backgroundImage}
               />
             </div>
           </div>

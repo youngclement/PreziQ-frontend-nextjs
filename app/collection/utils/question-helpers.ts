@@ -25,17 +25,17 @@ export const createEmptyQuestion = (
     case "slide":
       return {
         ...baseQuestion,
-        question_text: "Information Slide",
-        slide_content: "Add slide content here...",
-        options: [],
+        // question_text: "Information Slide",
+        // slide_content: "Add slide content here...",
+        //options: [],
       };
 
     case "info_slide":
       return {
         ...baseQuestion,
-        question_text: "Interactive Info Slide",
-        slide_content: "Add interactive content here...",
-        options: [],
+        // question_text: "Interactive Info Slide",
+        // slide_content: "Add interactive content here...",
+        //options: [],
       };
 
     case "text_answer":
