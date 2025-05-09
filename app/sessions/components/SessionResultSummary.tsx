@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Trophy,
@@ -12,6 +12,9 @@ import {
   Award,
   Medal,
   X,
+  Star,
+  Crown,
+  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -25,6 +28,12 @@ interface Achievement {
   description: string;
   iconUrl: string;
   requiredPoints: number;
+}
+
+interface UserAchievements {
+  userId: string;
+  totalPoints: number;
+  newAchievements: Achievement[];
 }
 
 interface UserSessionResult {
@@ -45,6 +54,7 @@ interface SessionResultSummaryProps {
   rank?: number;
   totalParticipants?: number;
   onNavigateToHome?: () => void;
+  achievements?: UserAchievements;
 }
 
 export default function SessionResultSummary({
@@ -55,6 +65,7 @@ export default function SessionResultSummary({
   rank = 0,
   totalParticipants = 0,
   onNavigateToHome,
+  achievements,
 }: SessionResultSummaryProps) {
   // Animation variants
   const containerVariants = {
@@ -89,6 +100,12 @@ export default function SessionResultSummary({
       return <Zap className='h-6 w-6' />;
     } else if (iconUrl.includes('AWARD')) {
       return <Award className='h-6 w-6' />;
+    } else if (iconUrl.includes('STAR')) {
+      return <Star className='h-6 w-6' />;
+    } else if (iconUrl.includes('CROWN')) {
+      return <Crown className='h-6 w-6' />;
+    } else if (iconUrl.includes('SHIELD')) {
+      return <Shield className='h-6 w-6' />;
     } else {
       // Default icon
       return <Award className='h-6 w-6' />;
@@ -224,12 +241,12 @@ export default function SessionResultSummary({
           </div>
         </motion.div>
 
-        {/* Cột phải - Thống kê */}
+        {/* Cột phải - Thống kê và thành tựu */}
         <motion.div
           className='md:col-span-7 bg-white dark:bg-gray-800 rounded-xl shadow-md p-6'
           variants={itemVariants}
         >
-          <h2 className='text-xl font-semibold mb-6'>Thống kê</h2>
+          <h2 className='text-xl font-semibold mb-6'>Thống kê & Thành tựu</h2>
           <div className='space-y-4'>
             <div className='bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800'>
               <div className='flex items-center gap-4'>
@@ -239,11 +256,16 @@ export default function SessionResultSummary({
                 <div className='flex-1'>
                   <h3 className='font-bold text-lg'>Tỷ lệ chính xác</h3>
                   <p className='text-sm text-muted-foreground'>
-                    {userResult
+                    {userResult &&
+                    userResult.finalCorrectCount !== undefined &&
+                    userResult.finalIncorrectCount !== undefined
                       ? `${Math.round(
                           (userResult.finalCorrectCount /
-                            (userResult.finalCorrectCount +
-                              userResult.finalIncorrectCount)) *
+                            Math.max(
+                              1,
+                              userResult.finalCorrectCount +
+                                userResult.finalIncorrectCount
+                            )) *
                             100
                         )}%`
                       : '0%'}
@@ -251,6 +273,62 @@ export default function SessionResultSummary({
                 </div>
               </div>
             </div>
+
+            {achievements && (
+              <div className='mt-6'>
+                <div className='bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800 mb-4'>
+                  <div className='flex items-center gap-4'>
+                    <div className='p-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full'>
+                      <Star className='h-6 w-6' />
+                    </div>
+                    <div className='flex-1'>
+                      <h3 className='font-bold text-lg'>Tổng điểm thành tựu</h3>
+                      <p className='text-sm text-muted-foreground'>
+                        {achievements.totalPoints} điểm tích lũy
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {achievements.newAchievements &&
+                achievements.newAchievements.length > 0 ? (
+                  <div className='space-y-3'>
+                    <h3 className='font-semibold text-base'>
+                      Thành tựu mới đạt được:
+                    </h3>
+                    {achievements.newAchievements.map((achievement, index) => (
+                      <motion.div
+                        key={achievement.achievementId}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 * index }}
+                        className='bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 p-3 rounded-lg border border-indigo-200 dark:border-indigo-800'
+                      >
+                        <div className='flex items-start gap-3'>
+                          <div className='p-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full mt-1'>
+                            {renderAchievementIcon(achievement.iconUrl)}
+                          </div>
+                          <div>
+                            <h4 className='font-bold text-base'>
+                              {achievement.name}
+                            </h4>
+                            <p className='text-xs text-muted-foreground'>
+                              {achievement.description}
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className='p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg text-center'>
+                    <p className='text-sm text-muted-foreground'>
+                      Tiếp tục tham gia để đạt thêm thành tựu mới!
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

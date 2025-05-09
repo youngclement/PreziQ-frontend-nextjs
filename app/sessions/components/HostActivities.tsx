@@ -9,6 +9,7 @@ import { SessionWebSocket } from '@/websocket/sessionWebSocket';
 import InfoSlideViewer from '../show/components/info-slide-viewer';
 import QuizButtonViewer from './QuizButtonViewer';
 import HostSessionSummary from './HostSessionSummary';
+import RealtimeLeaderboard from './RealtimeLeaderboard';
 
 import QuizCheckboxViewer from './QuizCheckboxViewer';
 import QuizTypeAnswerViewer from './QuizTypeAnswerViewer';
@@ -66,6 +67,9 @@ export default function HostActivities({
   const [showCountdown, setShowCountdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Thêm ref để theo dõi participants
+  const prevParticipantsRef = useRef<{ [key: string]: number }>({});
+
   useEffect(() => {
     isMounted.current = true;
 
@@ -75,8 +79,34 @@ export default function HostActivities({
     sessionWs.onParticipantsUpdateHandler((updatedParticipants) => {
       if (!isMounted.current) return;
 
+      console.log(
+        '[HostActivities] Nhận cập nhật danh sách người tham gia:',
+        updatedParticipants
+      );
+
+      if (
+        !Array.isArray(updatedParticipants) ||
+        updatedParticipants.length === 0
+      ) {
+        console.warn(
+          '[HostActivities] Dữ liệu participants không hợp lệ hoặc rỗng:',
+          updatedParticipants
+        );
+        return;
+      }
+
+      // Đảm bảo các trường dữ liệu được chuẩn hóa
+      const sanitizedParticipants = updatedParticipants.map((p) => ({
+        ...p,
+        realtimeScore:
+          typeof p.realtimeScore === 'number' ? p.realtimeScore : 0,
+        displayName: p.displayName || 'Unknown',
+        displayAvatar:
+          p.displayAvatar || 'https://api.dicebear.com/9.x/pixel-art/svg',
+      }));
+
       // Sắp xếp người tham gia theo điểm số giảm dần
-      const sortedParticipants = [...updatedParticipants].sort(
+      const sortedParticipants = [...sanitizedParticipants].sort(
         (a, b) => b.realtimeScore - a.realtimeScore
       );
 
@@ -88,21 +118,24 @@ export default function HostActivities({
         })
       );
 
-      const participantsData = participantsWithRanking.map((p: any) => ({
-        guestName: p.displayName || 'Unknown',
-        guestAvatar:
-          p.displayAvatar || 'https://api.dicebear.com/9.x/pixel-art/svg',
+      // Chuyển đổi sang định dạng cần thiết cho HostActivities
+      const participantsData = participantsWithRanking.map((p) => ({
+        guestName: p.displayName,
+        guestAvatar: p.displayAvatar,
         userId: p.user?.userId || null,
         realtimeScore: p.realtimeScore,
         realtimeRanking: p.realtimeRanking,
       }));
 
+      console.log(
+        '[HostActivities] Đã xử lý dữ liệu participants:',
+        participantsData
+      );
       setParticipants(participantsData);
     });
 
     sessionWs.onSessionEndHandler((session) => {
       if (!isMounted.current) return;
-      console.log('Session ended:', session);
 
       // Chỉ gọi callback onSessionEnd
       if (onSessionEnd) onSessionEnd();
@@ -110,10 +143,8 @@ export default function HostActivities({
 
     sessionWs.onSessionSummaryHandler((summaries) => {
       if (!isMounted.current) return;
-      console.log('Session summaries received:', summaries);
 
       if (Array.isArray(summaries) && summaries.length > 0) {
-        console.log('Setting session summaries:', summaries);
         setSessionSummaries(summaries);
       }
     });
@@ -129,9 +160,6 @@ export default function HostActivities({
 
         setTimeout(() => {
           if (isMounted.current && sessionId) {
-            console.log(
-              'Automatically ending session due to no more activities'
-            );
             sessionWs.endSession(sessionId).catch((err) => {
               console.error('Error ending session automatically:', err);
             });
@@ -145,17 +173,12 @@ export default function HostActivities({
 
     sessionWs.onErrorHandler((error) => {
       if (!isMounted.current) return;
-      console.log('WebSocket error:', error);
 
       if (error && error.includes('No more activities in session')) {
-        console.log('Detected no more activities message in error handler');
         setNoMoreActivities(true);
 
         setTimeout(() => {
           if (isMounted.current && sessionId) {
-            console.log(
-              'Automatically ending session due to no more activities (from error)'
-            );
             sessionWs.endSession(sessionId).catch((err) => {
               console.error('Error ending session automatically:', err);
             });
@@ -186,7 +209,6 @@ export default function HostActivities({
     return () => {
       isMounted.current = false;
       // Không hủy đăng ký handlers khi unmount để duy trì kết nối
-      console.log('Component unmounted, giữ nguyên kết nối WebSocket');
     };
   }, [sessionWs, sessionId, onSessionEnd, onNextActivityLog]);
 
@@ -226,9 +248,39 @@ export default function HostActivities({
       if (onSessionEnd) onSessionEnd();
     } catch (err) {
       setError('Không thể kết thúc phiên');
-      console.error('Error ending session:', err);
     }
   };
+
+  const handleScoreUpdate = (score: number, id: string | undefined) => {
+    // Host không cần cập nhật score của chính mình
+    console.log(
+      '[HostActivities] Nhận cập nhật điểm trong host view:',
+      score,
+      id
+    );
+  };
+
+  useEffect(() => {
+    // Kiểm tra thay đổi điểm số giữa các cập nhật
+    const participantScoreChanged = participants.some((p) => {
+      const prevScore = prevParticipantsRef.current[p.guestName];
+      return prevScore !== undefined && prevScore !== p.realtimeScore;
+    });
+
+    if (participantScoreChanged && participants.length > 0) {
+      console.log(
+        '[HostActivities] Phát hiện thay đổi điểm số:',
+        participants.map((p) => ({ name: p.guestName, score: p.realtimeScore }))
+      );
+    }
+
+    // Cập nhật ref cho lần kiểm tra tiếp theo
+    const newScores: { [key: string]: number } = {};
+    participants.forEach((p) => {
+      newScores[p.guestName] = p.realtimeScore;
+    });
+    prevParticipantsRef.current = newScores;
+  }, [participants]);
 
   if (sessionSummaries.length > 0) {
     return (
@@ -337,7 +389,9 @@ export default function HostActivities({
       <div className='bg-gradient-to-r from-indigo-600 to-violet-600 p-4 shadow-md sticky top-0 z-50'>
         <div className='container mx-auto flex items-center justify-between'>
           <div className='flex items-center space-x-4'>
-            <h1 className='text-2xl font-bold text-white'>PreziQ Host</h1>
+            <h1 className='text-xl md:text-2xl font-bold text-white'>
+              PreziQ Host
+            </h1>
             <div className='bg-white/20 px-3 py-1 rounded-full text-sm text-white'>
               Mã: {sessionCode}
             </div>
@@ -347,7 +401,7 @@ export default function HostActivities({
             {connectionStatus}
           </div>
 
-          <div className='flex space-x-2'>
+          <div className='hidden md:flex space-x-2'>
             <Button
               onClick={handleNextActivity}
               disabled={!isConnected || noMoreActivities}
@@ -407,47 +461,18 @@ export default function HostActivities({
 
           {/* Cột phụ - Danh sách người tham gia */}
           <div className='lg:col-span-1'>
-            <div className='bg-white rounded-xl shadow-lg overflow-hidden'>
-              <div className='bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4'>
-                <h2 className='text-xl font-bold text-white'>
-                  Thành viên ({participants.length}/100)
-                </h2>
-              </div>
-              <div className='p-4'>
-                {participants.length === 0 ? (
-                  <div className='text-center py-8 text-gray-500'>
-                    <p>Chưa có người tham gia nào</p>
-                    <p className='text-sm mt-2'>
-                      Chia sẻ mã phiên để mọi người tham gia
-                    </p>
-                  </div>
-                ) : (
-                  <div className='grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2'>
-                    {participants.map((participant, index) => (
-                      <div
-                        key={index}
-                        className='flex items-center space-x-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all'
-                      >
-                        <Avatar className='h-10 w-10 border border-gray-200'>
-                          <AvatarImage
-                            src={participant.guestAvatar}
-                            alt={participant.guestName}
-                          />
-                          <AvatarFallback className='bg-indigo-100 text-indigo-600'>
-                            {participant.guestName[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className='flex-1 truncate'>
-                          <p className='font-medium truncate'>
-                            {participant.guestName}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <RealtimeLeaderboard
+              participants={participants.map((p) => ({
+                displayName: p.guestName,
+                displayAvatar: p.guestAvatar,
+                realtimeScore: p.realtimeScore,
+                realtimeRanking: p.realtimeRanking,
+                id: p.userId || undefined,
+              }))}
+              onScoreUpdate={handleScoreUpdate}
+              // Host không cần currentUserName vì đây là view của host
+              currentUserName=''
+            />
           </div>
         </div>
       </div>
