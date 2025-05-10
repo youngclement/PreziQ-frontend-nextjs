@@ -5,8 +5,16 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { SessionWebSocket } from '@/websocket/sessionWebSocket';
-import { motion } from 'framer-motion';
-import { Clock, MapPin, Users } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Clock,
+  MapPin,
+  Users,
+  Loader2,
+  AlertCircle,
+  ArrowRight,
+  CheckCircle,
+} from 'lucide-react';
 import { LocationQuestionPlayer } from '@/app/collection/components/question-player/location-question-player';
 
 interface LocationAnswer {
@@ -225,56 +233,81 @@ export default function QuizLocationViewer({
   }
 
   return (
-    <div className='min-h-screen bg-gray-50 p-4'>
-      <Card className='max-w-4xl mx-auto overflow-hidden'>
+    <div className='min-h-full bg-transparent'>
+      <Card className='bg-[#0e1c26]/80 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
         {/* Header với thời gian và tiến trình */}
         <motion.div
-          className='aspect-[16/5] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
+          className='aspect-[16/4] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
           style={{
             backgroundImage: activity.backgroundImage
               ? `url(${activity.backgroundImage})`
               : undefined,
-            backgroundColor: activity.backgroundColor || '#FFFFFF',
+            backgroundColor: activity.backgroundColor || '#0e2838',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
         >
           {/* Overlay */}
-          <div className='absolute inset-0 bg-black/30' />
+          <div className='absolute inset-0 bg-gradient-to-b from-[#0a1b25]/80 to-[#0f2231]/70' />
 
           {/* Status Bar */}
-          <div className='absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10'>
+          <div className='absolute top-0 left-0 right-0 h-12 bg-[#0e1c26]/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-5 text-white z-10'>
             <div className='flex items-center gap-3'>
-              <div className='h-7 w-7 rounded-full bg-cyan-500 flex items-center justify-center shadow-sm'>
-                <MapPin className='h-4 w-4' />
+              <div className='h-7 w-7 rounded-full bg-gradient-to-r from-[#aef359] to-[#e4f88d] flex items-center justify-center shadow-md'>
+                <MapPin className='h-4 w-4 text-[#0e1c26]' />
               </div>
-              <div className='text-xs capitalize font-medium'>
+              <div className='text-xs capitalize font-medium text-white/80'>
                 Location Quiz
               </div>
             </div>
             <div className='flex items-center gap-2'>
-              <div className='flex items-center gap-2 bg-black/60 px-2 py-1 rounded-full text-xs'>
-                <Users className='h-3.5 w-3.5' />
-                <span>
+              <div className='flex items-center gap-2 bg-[#0e2838]/60 border border-white/5 px-2 py-1 rounded-full text-xs'>
+                <Users className='h-3.5 w-3.5 text-[#aef359]' />
+                <span className='text-white/90'>
                   {answeredCount}/{totalParticipants}
                 </span>
               </div>
-              <div className='flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium'>
-                <Clock className='h-3.5 w-3.5' />
-                {formatTime(timeLeft)}
-              </div>
+              <motion.div
+                className='flex items-center gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
+                animate={{
+                  opacity: timeLeft < 10 ? [0.7, 1] : 1,
+                  scale: timeLeft < 10 ? [1, 1.05, 1] : 1,
+                }}
+                transition={{
+                  duration: 0.5,
+                  repeat: timeLeft < 10 ? Infinity : 0,
+                  repeatType: 'reverse',
+                }}
+              >
+                <Clock className='h-3.5 w-3.5 text-[#aef359]' />
+                <span
+                  className={timeLeft < 10 ? 'text-red-300' : 'text-white/90'}
+                >
+                  {formatTime(timeLeft)}
+                </span>
+              </motion.div>
             </div>
           </div>
 
           {/* Question Text */}
-          <div className='flex-1 flex flex-col items-center justify-center z-10 py-6 px-5'>
-            <h2 className='text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4'>
+          <div className='flex-1 flex flex-col items-center justify-center z-10 py-8 px-5'>
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className='text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-lg'
+            >
               {activity.quiz.questionText}
-            </h2>
+            </motion.h2>
             {activity.description && (
-              <p className='mt-2 text-sm text-white/80 text-center max-w-xl'>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.8 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className='mt-2 text-sm text-white/80 text-center max-w-xl'
+              >
                 {activity.description}
-              </p>
+              </motion.p>
             )}
           </div>
         </motion.div>
@@ -283,7 +316,7 @@ export default function QuizLocationViewer({
         <div className='w-full'>
           {/* Time Progress */}
           <motion.div
-            className='h-1 bg-primary'
+            className='h-1 bg-gradient-to-r from-[#aef359] to-[#e4f88d]'
             initial={{ width: '100%' }}
             animate={{
               width: `${Math.min(
@@ -298,7 +331,7 @@ export default function QuizLocationViewer({
           />
           {/* Participants Progress */}
           <motion.div
-            className='h-1 bg-cyan-500'
+            className='h-1 bg-cyan-500/70'
             initial={{ width: '0%' }}
             animate={{
               width: `${Math.min(
@@ -314,18 +347,29 @@ export default function QuizLocationViewer({
         </div>
 
         {/* Map */}
-        <div className='p-4 bg-white dark:bg-gray-800'>
-          {error && (
-            <motion.div
-              className='mb-4 p-3 text-sm bg-red-100 text-red-800 rounded-md'
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              {error}
-            </motion.div>
-          )}
+        <div className='p-6 bg-[#0e1c26]/70'>
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                className='mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-white/90'
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <div className='flex items-center gap-2'>
+                  <AlertCircle className='h-5 w-5 text-red-400' />
+                  <span>{error}</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <div className='rounded-lg overflow-hidden shadow-lg'>
+          <motion.div
+            className='rounded-xl overflow-hidden shadow-xl border border-white/10'
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
             <LocationQuestionPlayer
               questionText={activity.quiz.questionText}
               locationData={
@@ -358,7 +402,7 @@ export default function QuizLocationViewer({
                 }
               }}
             />
-          </div>
+          </motion.div>
 
           {/* Submit Button */}
           {!isSubmitted && (
@@ -366,48 +410,65 @@ export default function QuizLocationViewer({
               className='mt-6'
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.5 }}
             >
               <Button
-                className='w-full py-6 text-lg font-semibold'
+                className={`w-full py-5 text-lg font-semibold rounded-xl flex items-center justify-center gap-2 ${
+                  !selectedLocation || isSubmitting
+                    ? 'bg-[#0e2838]/50 text-white/50 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-[#0e1c26] hover:from-[#9ee348] hover:to-[#d3e87c] hover:shadow-lg hover:shadow-[#aef359]/20'
+                }`}
                 disabled={!selectedLocation || isSubmitting}
                 onClick={handleSubmit}
               >
-                {isSubmitting ? 'Đang gửi...' : 'Gửi câu trả lời'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className='h-5 w-5 animate-spin' />
+                    <span>Đang gửi...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Gửi câu trả lời</span>
+                    <ArrowRight className='h-5 w-5' />
+                  </>
+                )}
               </Button>
             </motion.div>
           )}
 
           {/* Results */}
-          {isSubmitted && showResults && (
-            <motion.div
-              className='mt-6 p-4 rounded-lg bg-gray-50 dark:bg-gray-900/50'
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className='flex items-center gap-2 mb-2'>
-                <div className='flex items-center gap-2 text-primary'>
-                  <MapPin className='h-5 w-5' />
-                  <span className='font-semibold'>
-                    Điểm số: {calculateScore()}%
-                  </span>
+          <AnimatePresence>
+            {isSubmitted && showResults && (
+              <motion.div
+                className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              >
+                <div className='flex items-center gap-2 mb-3'>
+                  <div className='flex items-center gap-2 text-[#aef359]'>
+                    <CheckCircle className='h-5 w-5' />
+                    <span className='font-semibold'>
+                      Điểm số: {calculateScore()}%
+                    </span>
+                  </div>
                 </div>
-              </div>
-              {selectedLocation &&
-                activity.quiz.quizAnswers[0]?.locationData && (
-                  <p className='text-gray-600 dark:text-gray-300'>
-                    Khoảng cách từ vị trí bạn chọn đến vị trí đúng là{' '}
-                    {getDistanceFromLatLonInKm(
-                      selectedLocation.lat,
-                      selectedLocation.lng,
-                      activity.quiz.quizAnswers[0].locationData.lat,
-                      activity.quiz.quizAnswers[0].locationData.lng
-                    ).toFixed(2)}{' '}
-                    km.
-                  </p>
-                )}
-            </motion.div>
-          )}
+                {selectedLocation &&
+                  activity.quiz.quizAnswers[0]?.locationData && (
+                    <p className='text-white/70'>
+                      Khoảng cách từ vị trí bạn chọn đến vị trí đúng là{' '}
+                      {getDistanceFromLatLonInKm(
+                        selectedLocation.lat,
+                        selectedLocation.lng,
+                        activity.quiz.quizAnswers[0].locationData.lat,
+                        activity.quiz.quizAnswers[0].locationData.lng
+                      ).toFixed(2)}{' '}
+                      km.
+                    </p>
+                  )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </Card>
     </div>

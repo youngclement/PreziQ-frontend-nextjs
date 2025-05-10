@@ -13,14 +13,15 @@ import {
 } from '@/websocket/sessionWebSocket';
 import InfoSlideViewer from '../show/components/info-slide-viewer';
 import QuizButtonViewer from './QuizButtonViewer';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ExternalLink, Users, LogOut, Clock } from 'lucide-react';
 import SessionResultSummary from './SessionResultSummary';
 import QuizCheckboxViewer from './QuizCheckboxViewer';
 import QuizTypeAnswerViewer from './QuizTypeAnswerViewer';
-import QuizReorderViewer from './QuizReorderViewer';
+import { QuizReorderViewer } from './QuizReorderViewer';
 import QuizTrueOrFalseViewer from './QuizTrueOrFalseViewer';
 import CountdownOverlay from './CountdownOverlay';
 import RealtimeLeaderboard from './RealtimeLeaderboard';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ParticipantActivitiesProps {
   sessionCode: string;
@@ -55,6 +56,48 @@ export default function ParticipantActivities({
   const [showCountdown, setShowCountdown] = useState(false);
   const [noMoreActivities, setNoMoreActivities] = useState(false);
   const lastScoreUpdateTimeRef = useRef(Date.now());
+  const [isFullscreenMode, setIsFullscreenMode] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const quizContainerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      if (quizContainerRef.current?.requestFullscreen) {
+        quizContainerRef.current
+          .requestFullscreen()
+          .then(() => {
+            setIsFullscreenMode(true);
+          })
+          .catch((err) => {
+            console.error('Không thể mở chế độ toàn màn hình:', err);
+          });
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document
+          .exitFullscreen()
+          .then(() => {
+            setIsFullscreenMode(false);
+          })
+          .catch((err) => {
+            console.error('Không thể thoát chế độ toàn màn hình:', err);
+          });
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreenMode(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   // Xử lý cập nhật điểm số từ RealtimeLeaderboard
   const handleScoreUpdate = (score: number, id: string | undefined) => {
@@ -335,179 +378,549 @@ export default function ParticipantActivities({
   const renderActivityContent = () => {
     if (!currentActivity) {
       return (
-        <div className='text-center py-12 text-gray-500'>
-          <p className='mb-2 text-lg'>Chưa có hoạt động nào</p>
-          <p className='text-sm'>Đợi host bắt đầu phiên học</p>
+        <div className='text-center py-12'>
+          <p className='mb-2 text-lg text-white/70'>Chưa có hoạt động nào</p>
+          <p className='text-sm text-white/50'>Đợi host bắt đầu phiên học</p>
         </div>
       );
     }
 
+    return renderActivityByType();
+  };
+
+  const renderActivityByType = () => {
     return (
       <>
         {showCountdown && (
           <CountdownOverlay onComplete={handleCountdownComplete} />
         )}
-        {!showCountdown && renderActivityByType()}
+        {!showCountdown && (
+          <>
+            {(() => {
+              switch (currentActivity.activityType) {
+                case 'INFO_SLIDE':
+                  return <InfoSlideViewer activity={currentActivity} />;
+                case 'QUIZ_BUTTONS':
+                  return (
+                    <QuizButtonViewer
+                      activity={currentActivity}
+                      sessionCode={sessionCode}
+                      sessionWebSocket={sessionWs}
+                      onAnswerSubmit={handleSubmitActivity}
+                    />
+                  );
+                case 'QUIZ_CHECKBOXES':
+                  return (
+                    <QuizCheckboxViewer
+                      key={currentActivity.activityId}
+                      activity={currentActivity}
+                      sessionCode={sessionCode}
+                      sessionWebSocket={sessionWs}
+                    />
+                  );
+                case 'QUIZ_TYPE_ANSWER':
+                  return (
+                    <QuizTypeAnswerViewer
+                      key={currentActivity.activityId}
+                      activity={currentActivity}
+                      sessionId={sessionCode}
+                      sessionWebSocket={sessionWs}
+                    />
+                  );
+                case 'QUIZ_REORDER':
+                  return (
+                    <QuizReorderViewer
+                      key={currentActivity.activityId}
+                      activity={currentActivity}
+                      sessionId={sessionCode}
+                      sessionWebSocket={sessionWs}
+                    />
+                  );
+                case 'QUIZ_TRUE_OR_FALSE':
+                  return (
+                    <QuizTrueOrFalseViewer
+                      key={currentActivity.activityId}
+                      activity={currentActivity}
+                      sessionId={sessionCode}
+                      sessionWebSocket={sessionWs}
+                    />
+                  );
+                default:
+                  return (
+                    <div className='p-6 bg-[#0e1c26]/50 rounded-lg border border-white/10'>
+                      <h3 className='font-medium text-lg mb-2 text-white/90'>
+                        {currentActivity.title || 'Hoạt động chưa được hỗ trợ'}
+                      </h3>
+                      <p className='mb-4 text-white/70'>
+                        {currentActivity.description ||
+                          'Không có mô tả cho hoạt động này'}
+                      </p>
+                      <div className='bg-[#0e2838]/50 p-4 rounded-md border border-white/10'>
+                        <p className='text-sm text-white/50 mb-2'>
+                          Chi tiết hoạt động:
+                        </p>
+                        <pre className='text-xs whitespace-pre-wrap overflow-auto max-h-60 bg-[#0e1c26]/80 p-2 rounded border border-white/10 text-white/60'>
+                          {JSON.stringify(currentActivity, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  );
+              }
+            })()}
+          </>
+        )}
       </>
     );
   };
 
-  const renderActivityByType = () => {
-    switch (currentActivity.activityType) {
-      case 'INFO_SLIDE':
-        return <InfoSlideViewer activity={currentActivity} />;
-      case 'QUIZ_BUTTONS':
-        return (
-          <QuizButtonViewer
-            activity={currentActivity}
-            sessionCode={sessionCode}
-            sessionWebSocket={sessionWs}
-            onAnswerSubmit={handleSubmitActivity}
-          />
-        );
-      case 'QUIZ_CHECKBOXES':
-        return (
-          <QuizCheckboxViewer
-            key={currentActivity.activityId}
-            activity={currentActivity}
-            sessionCode={sessionCode}
-            sessionWebSocket={sessionWs}
-          />
-        );
-      case 'QUIZ_TYPE_ANSWER':
-        return (
-          <QuizTypeAnswerViewer
-            key={currentActivity.activityId}
-            activity={currentActivity}
-            sessionId={sessionCode}
-            sessionWebSocket={sessionWs}
-          />
-        );
-      case 'QUIZ_REORDER':
-        return (
-          <QuizReorderViewer
-            key={currentActivity.activityId}
-            activity={currentActivity}
-            sessionId={sessionCode}
-            sessionWebSocket={sessionWs}
-          />
-        );
-      case 'QUIZ_TRUE_OR_FALSE':
-        return (
-          <QuizTrueOrFalseViewer
-            key={currentActivity.activityId}
-            activity={currentActivity}
-            sessionId={sessionCode}
-            sessionWebSocket={sessionWs}
-          />
-        );
-      default:
-        return (
-          <div className='p-6 bg-gray-50 rounded-lg'>
-            <h3 className='font-medium text-lg mb-2'>
-              {currentActivity.title || 'Hoạt động chưa được hỗ trợ'}
-            </h3>
-            <p className='mb-4'>
-              {currentActivity.description ||
-                'Không có mô tả cho hoạt động này'}
-            </p>
-            <div className='bg-gray-100 p-4 rounded-md'>
-              <p className='text-sm text-gray-500 mb-2'>Chi tiết hoạt động:</p>
-              <pre className='text-xs whitespace-pre-wrap overflow-auto max-h-60 bg-white p-2 rounded border'>
-                {JSON.stringify(currentActivity, null, 2)}
-              </pre>
-            </div>
-          </div>
-        );
-    }
-  };
-
   return (
-    <div className='min-h-screen bg-gray-50'>
-      {/* Header */}
-      <div className='bg-gradient-to-r from-indigo-600 to-violet-600 p-4 shadow-md sticky top-0 z-50'>
-        <div className='container mx-auto flex items-center justify-between'>
-          <div className='flex items-center space-x-4'>
-            <Avatar className='h-10 w-10 border-2 border-white'>
-              <AvatarFallback className='bg-white/20 text-white'>
-                {displayName.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p className='font-semibold text-white'>{displayName}</p>
-              <div className='flex items-center'>
-                <span className='text-xs text-white/80'>Điểm: </span>
-                <span className='text-xs font-bold ml-1 bg-white/20 text-white px-2 py-0.5 rounded-full'>
-                  {myScore}
-                </span>
-              </div>
-            </div>
-          </div>
+    <div className='min-h-screen bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white'>
+      {/* Animated background elements */}
+      <div className='absolute inset-0 overflow-hidden pointer-events-none'>
+        {/* Gradient orbs with reduced opacity */}
+        <motion.div
+          className='absolute top-10 left-10 w-32 h-32 bg-[#aef359] rounded-full filter blur-[80px]'
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.05, 0.1, 0.05],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        />
+        <motion.div
+          className='absolute bottom-10 right-10 w-32 h-32 bg-[#e4f88d] rounded-full filter blur-[80px]'
+          animate={{
+            scale: [1.2, 1, 1.2],
+            opacity: [0.05, 0.1, 0.05],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: 'easeInOut',
+            delay: 2,
+          }}
+        />
 
-          <div className='text-xs text-white/80 hidden md:block'>
-            {connectionStatus}
-          </div>
+        {/* Dotted grid */}
+        <div className='absolute inset-0 bg-[radial-gradient(rgba(174,243,89,0.03)_1px,transparent_1px)] bg-[size:20px_20px]' />
 
-          <Button
-            variant='secondary'
-            onClick={handleLeaveSession}
-            disabled={!isConnected || isSubmitting}
-            className='bg-white/20 text-white hover:bg-white/30'
-          >
-            {isSubmitting ? (
-              <span className='flex items-center gap-2'>
-                <Loader2 className='h-4 w-4 animate-spin' />
-                Đang xử lý...
-              </span>
-            ) : (
-              'Rời phiên'
-            )}
-          </Button>
-        </div>
+        {/* Moving light beam with reduced opacity */}
+        <motion.div
+          className='absolute top-0 left-0 w-[200vw] h-[200vh] bg-[radial-gradient(circle,rgba(174,243,89,0.015)_0%,transparent_20%)] pointer-events-none'
+          animate={{
+            x: ['-50%', '0%'],
+            y: ['-50%', '0%'],
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+        />
       </div>
 
-      <div className='container mx-auto px-4 py-6'>
-        {error && (
-          <Alert
-            variant={isSessionEnded ? 'default' : 'destructive'}
-            className='mb-6 animate-fadeIn'
-          >
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+      {/* Header - ẩn trong chế độ toàn màn hình */}
+      {!isFullscreenMode && (
+        <div className='bg-[#0e1c26]/90 backdrop-blur-md border-b border-white/5 p-4 shadow-lg sticky top-0 z-50'>
+          <div className='container mx-auto flex items-center justify-between'>
+            <div className='flex items-center space-x-4'>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: 'spring', stiffness: 400 }}
+                className='relative'
+              >
+                <motion.div
+                  className='absolute inset-0 bg-gradient-to-br from-[#aef359]/30 to-[#e4f88d]/30 rounded-full blur-md -z-10'
+                  animate={{
+                    scale: [1, 1.2, 1],
+                    opacity: [0.3, 0.6, 0.3],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                />
+                <Avatar className='h-10 w-10 border-2 border-white/10 shadow-inner group'>
+                  <AvatarFallback className='bg-[#0e2838]/80 text-white group-hover:bg-[#0e2838]/60 transition-colors'>
+                    {displayName.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              </motion.div>
+              <div>
+                <motion.p
+                  className='font-semibold text-white bg-gradient-to-r from-[#aef359]/90 to-[#e4f88d]/90 text-transparent bg-clip-text'
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ type: 'spring', stiffness: 400 }}
+                >
+                  {displayName}
+                </motion.p>
+                <div className='flex items-center'>
+                  <span className='text-xs text-white/50'>Điểm: </span>
+                  <motion.span
+                    className='text-xs font-bold ml-1 bg-[#0e2838]/80 text-[#aef359] px-2 py-0.5 rounded-full border border-[#aef359]/20'
+                    key={myScore}
+                    initial={{ scale: 1.2 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 300 }}
+                  >
+                    {myScore}
+                  </motion.span>
+                </div>
+              </div>
+            </div>
+
+            <div className='text-xs text-white/50 hidden md:block'>
+              {connectionStatus}
+            </div>
+
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                variant='secondary'
+                onClick={handleLeaveSession}
+                disabled={!isConnected || isSubmitting}
+                className='bg-[#0e2838]/50 text-white hover:bg-[#0e2838]/70 border border-white/10 flex items-center gap-2'
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className='h-4 w-4 animate-spin text-[#aef359]' />
+                    <span>Đang xử lý...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut className='h-4 w-4 text-[#aef359]' />
+                    <span>Rời phiên</span>
+                  </>
+                )}
+              </Button>
+            </motion.div>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`${
+          isFullscreenMode ? 'p-0' : 'container mx-auto px-4 py-6'
+        }`}
+      >
+        {!isFullscreenMode && (
+          <div className='text-xs text-center text-white/50 mb-4 md:hidden'>
+            {connectionStatus}
+          </div>
         )}
 
-        <div className='text-xs text-center text-gray-500 mb-4 md:hidden'>
-          {connectionStatus}
-        </div>
+        <AnimatePresence>
+          {error && !isFullscreenMode && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className='mb-6'
+            >
+              <Alert
+                variant={isSessionEnded ? 'default' : 'destructive'}
+                className={
+                  isSessionEnded
+                    ? 'bg-green-500/20 border border-green-500/50 text-white'
+                    : 'bg-red-500/20 border border-red-500 text-white'
+                }
+              >
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Floating Controls - fixed position buttons for fullscreen & sidebar toggle */}
+        <motion.div
+          className='fixed top-4 right-4 z-50 flex flex-col gap-2'
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          {/* Fullscreen Toggle Button */}
+          <motion.button
+            onClick={toggleFullscreen}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            className={`p-2 rounded-full ${
+              isFullscreenMode
+                ? 'bg-[#aef359] text-[#0a1b25]'
+                : 'bg-[#0e2838] text-[#aef359]'
+            } shadow-lg border border-white/10`}
+            title={
+              isFullscreenMode ? 'Thoát toàn màn hình' : 'Chế độ toàn màn hình'
+            }
+          >
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              width='24'
+              height='24'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            >
+              {isFullscreenMode ? (
+                <>
+                  <path d='M8 3v4a1 1 0 0 1-1 1H3'></path>
+                  <path d='M21 8h-4a1 1 0 0 1-1-1V3'></path>
+                  <path d='M3 16h4a1 1 0 0 1 1 1v4'></path>
+                  <path d='M16 21v-4a1 1 0 0 1 1-1h4'></path>
+                </>
+              ) : (
+                <>
+                  <path d='M3 8V5a2 2 0 0 1 2-2h3'></path>
+                  <path d='M19 8V5a2 2 0 0 0-2-2h-3'></path>
+                  <path d='M3 16v3a2 2 0 0 0 2 2h3'></path>
+                  <path d='M19 16v3a2 2 0 0 1-2 2h-3'></path>
+                </>
+              )}
+            </svg>
+          </motion.button>
+        </motion.div>
+
+        {/* Floating Controls for fullscreen mode - fixed position always visible */}
+        {isFullscreenMode && (
+          <motion.div
+            className='fixed top-4 left-4 z-50 flex items-center gap-3 bg-[#0e1c26]/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-xl'
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          >
+            <div className='flex items-center gap-2'>
+              <Avatar className='h-8 w-8 border-2 border-white/10 shadow-inner'>
+                <AvatarFallback className='bg-[#0e2838]/80 text-white text-xs'>
+                  {displayName.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className='text-sm font-medium text-white'>{displayName}</p>
+                <div className='flex items-center'>
+                  <span className='text-xs text-white/50'>Điểm: </span>
+                  <span className='text-xs font-bold ml-1 bg-[#0e2838]/80 text-[#aef359] px-2 py-0.5 rounded-full'>
+                    {myScore}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className='bg-[#0e2838]/80 px-3 py-1 rounded-full text-sm text-white/80 border border-white/10 shadow-inner'>
+              Mã: {sessionCode}
+            </div>
+
+            <motion.button
+              onClick={handleLeaveSession}
+              disabled={!isConnected || isSubmitting}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className='bg-red-500/80 hover:bg-red-600/90 text-white border border-red-600/30 flex items-center gap-1 px-3 py-1.5 rounded-full shadow-md'
+            >
+              <LogOut className='h-4 w-4' />
+              <span className='text-sm font-medium'>Rời phiên</span>
+            </motion.button>
+          </motion.div>
+        )}
 
         {/* Hiển thị kết quả khi phiên kết thúc */}
         {renderSessionSummary()}
 
-        {/* Grid layout với 2 cột hoặc 1 cột trên mobile */}
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-          {/* Cột chính - Hoạt động hiện tại */}
-          <div className='lg:col-span-2'>
-            <div className='bg-white rounded-xl shadow-lg overflow-hidden mb-6'>
-              <div className='bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4'>
-                <h2 className='text-xl font-bold text-white flex items-center'>
-                  <span className='mr-2'>Hoạt động hiện tại</span>
-                  {isLoading && <Loader2 className='h-4 w-4 animate-spin' />}
-                </h2>
+        {/* Main layout with sidebar */}
+        <div className='relative flex' ref={quizContainerRef}>
+          {/* Main quiz content - adjusts width based on sidebar */}
+          <div
+            className={`flex-grow transition-all duration-300 ease-in-out ${
+              isSidebarCollapsed ? 'w-full' : 'w-2/3 md:w-3/4'
+            }`}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className={`
+                bg-[#0e1c26]/80 backdrop-blur-md rounded-xl shadow-xl overflow-hidden border border-white/5 mb-6
+                ${isFullscreenMode ? 'h-screen rounded-none border-0 mb-0' : ''}
+              `}
+            >
+              {!isFullscreenMode && (
+                <div className='bg-gradient-to-r from-[#0e2838]/80 to-[#183244]/80 px-6 py-4 border-b border-white/10'>
+                  <h2 className='text-xl font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text flex items-center'>
+                    <span className='mr-2'>Hoạt động hiện tại</span>
+                    {isLoading && (
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: 'linear',
+                        }}
+                      >
+                        <Loader2 className='h-4 w-4 text-[#aef359]' />
+                      </motion.div>
+                    )}
+                  </h2>
+                </div>
+              )}
+              <div
+                className={`${
+                  isFullscreenMode
+                    ? 'h-screen flex items-center justify-center'
+                    : 'p-6'
+                }`}
+              >
+                <div
+                  className={`
+                    ${
+                      isFullscreenMode
+                        ? 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
+                        : ''
+                    }
+                  `}
+                >
+                  {renderActivityContent()}
+                </div>
               </div>
-              <div className='p-6'>{renderActivityContent()}</div>
-            </div>
+            </motion.div>
           </div>
 
-          {/* Cột phụ - Danh sách người tham gia */}
-          <div className='lg:col-span-1'>
-            <RealtimeLeaderboard
-              participants={participants}
-              currentUserName={displayName}
-              onScoreUpdate={handleScoreUpdate}
-            />
+          {/* Sidebar toggle button positioned on the boundary */}
+          <div className='fixed right-0 top-1/2 transform -translate-y-1/2 z-50'>
+            <motion.button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`p-3 rounded-l-xl ${
+                isSidebarCollapsed
+                  ? 'bg-[#aef359] text-[#0e1c26]'
+                  : 'bg-[#0e2838] text-[#aef359]'
+              } shadow-lg border border-r-0 border-[#aef359]/30 flex items-center justify-center`}
+              title={
+                isSidebarCollapsed ? 'Hiện bảng xếp hạng' : 'Ẩn bảng xếp hạng'
+              }
+            >
+              {isSidebarCollapsed ? (
+                <Users className='h-5 w-5' />
+              ) : (
+                <svg
+                  xmlns='http://www.w3.org/2000/svg'
+                  width='20'
+                  height='20'
+                  viewBox='0 0 24 24'
+                  fill='none'
+                  stroke='currentColor'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                >
+                  <polyline points='15 18 9 12 15 6'></polyline>
+                </svg>
+              )}
+            </motion.button>
           </div>
+
+          {/* Leaderboard sidebar */}
+          <motion.div
+            className={`fixed right-0 top-0 bottom-0 bg-[#0e1c26]/95 backdrop-blur-md z-40 shadow-xl border-l border-white/10
+              overflow-hidden ${
+                isFullscreenMode ? 'top-0 h-full' : 'top-[73px]'
+              }`}
+            initial={false}
+            animate={{
+              width: isSidebarCollapsed ? '0' : 'min(85vw, 350px)',
+              opacity: isSidebarCollapsed ? 0 : 1,
+              x: isSidebarCollapsed ? '100%' : '0%',
+            }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          >
+            <div className='p-4 h-full flex flex-col'>
+              <div className='mb-4 flex items-center justify-between'>
+                <h2 className='text-lg font-semibold flex items-center gap-2 text-white/90'>
+                  <Users className='h-5 w-5 text-[#aef359]' />
+                  <span>Người tham gia</span>
+                  <motion.span
+                    key={participants.length}
+                    initial={{ scale: 1.2 }}
+                    animate={{ scale: 1 }}
+                    className='ml-2 bg-[#0e2838]/80 px-2 py-0.5 rounded-full text-sm text-[#aef359] border border-[#aef359]/20'
+                  >
+                    {participants.length}
+                  </motion.span>
+                </h2>
+
+                <motion.button
+                  className='bg-[#0e2838]/50 p-1.5 rounded-full border border-white/10 shadow-inner'
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsSidebarCollapsed(true)}
+                >
+                  <svg
+                    xmlns='http://www.w3.org/2000/svg'
+                    width='16'
+                    height='16'
+                    viewBox='0 0 24 24'
+                    fill='none'
+                    stroke='currentColor'
+                    strokeWidth='2'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    className='text-[#aef359]'
+                  >
+                    <line x1='18' y1='6' x2='6' y2='18'></line>
+                    <line x1='6' y1='6' x2='18' y2='18'></line>
+                  </svg>
+                </motion.button>
+              </div>
+
+              <div className='flex-grow overflow-auto pr-1 custom-scrollbar'>
+                <RealtimeLeaderboard
+                  participants={participants}
+                  currentUserName={displayName}
+                  onScoreUpdate={handleScoreUpdate}
+                />
+              </div>
+            </div>
+          </motion.div>
         </div>
+
+        {/* Footer */}
+        {!isFullscreenMode && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1, duration: 0.5 }}
+            className='mt-8 text-center'
+          >
+            <p className='text-xs text-white/30'>
+              PreziQ &copy; {new Date().getFullYear()}
+            </p>
+          </motion.div>
+        )}
       </div>
+
+      {/* Add custom scrollbar style */}
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(14, 28, 38, 0.3);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(174, 243, 89, 0.2);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(174, 243, 89, 0.4);
+        }
+      `}</style>
     </div>
   );
 }

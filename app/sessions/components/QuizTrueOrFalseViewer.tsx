@@ -5,14 +5,16 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SessionWebSocket } from '@/websocket/sessionWebSocket';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock,
-  CheckCircle2,
+  CheckCircle,
   XCircle,
   Users,
   ToggleLeft,
   Loader2,
+  AlertCircle,
+  ArrowRight,
 } from 'lucide-react';
 
 interface QuizTrueOrFalseViewerProps {
@@ -105,73 +107,140 @@ export default function QuizTrueOrFalseViewer({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getOptionStyle = (index: number) => {
+  const getOptionStyle = (
+    index: number,
+    isSelected: boolean,
+    isCorrect: boolean,
+    isSubmitted: boolean
+  ) => {
     const styles = [
       {
-        bg: 'bg-gradient-to-r from-green-600 via-emerald-500 to-emerald-700',
-        border: 'border-green-200 dark:border-green-900',
-        shadow: 'shadow-green-200/40 dark:shadow-green-900/20',
+        bg: 'from-green-500/70 to-emerald-600/70',
+        bgSelected: 'from-green-500/90 to-emerald-600/90',
+        bgCorrect: 'from-green-500/80 to-emerald-600/80',
+        bgIncorrect: 'from-red-500/70 to-rose-600/70',
+        text: 'Đúng',
+        glow: '#5cff8d',
       },
       {
-        bg: 'bg-gradient-to-r from-red-600 via-rose-500 to-rose-700',
-        border: 'border-red-200 dark:border-red-900',
-        shadow: 'shadow-red-200/40 dark:shadow-red-900/20',
+        bg: 'from-red-500/70 to-rose-600/70',
+        bgSelected: 'from-red-500/90 to-rose-600/90',
+        bgCorrect: 'from-green-500/80 to-emerald-600/80',
+        bgIncorrect: 'from-red-500/70 to-rose-600/70',
+        text: 'Sai',
+        glow: '#ff5c5c',
       },
     ];
-    return styles[index % styles.length];
+
+    const baseStyle = styles[index % styles.length];
+
+    if (isSubmitted) {
+      if (isCorrect) {
+        return {
+          bg: `bg-gradient-to-r ${baseStyle.bgCorrect}`,
+          text: baseStyle.text,
+          glow: '#5cff8d',
+        };
+      } else if (isSelected) {
+        return {
+          bg: `bg-gradient-to-r ${baseStyle.bgIncorrect}`,
+          text: baseStyle.text,
+          glow: '#ff5c5c',
+        };
+      }
+    }
+
+    if (isSelected) {
+      return {
+        bg: `bg-gradient-to-r ${baseStyle.bgSelected}`,
+        text: baseStyle.text,
+        glow: baseStyle.glow,
+      };
+    }
+
+    return {
+      bg: `bg-gradient-to-r ${baseStyle.bg}`,
+      text: baseStyle.text,
+      glow: baseStyle.glow,
+    };
   };
 
   return (
-    <div className='min-h-screen bg-gray-50 p-4'>
-      <Card className='max-w-4xl mx-auto overflow-hidden'>
+    <div className='min-h-full bg-transparent'>
+      <Card className='bg-[#0e1c26]/80 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
         {/* Header với thời gian và tiến trình */}
         <motion.div
-          className='aspect-[16/5] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
+          className='aspect-[16/4] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
           style={{
             backgroundImage: activity.backgroundImage
               ? `url(${activity.backgroundImage})`
               : undefined,
-            backgroundColor: activity.backgroundColor || '#FFFFFF',
+            backgroundColor: activity.backgroundColor || '#0e2838',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
         >
           {/* Overlay */}
-          <div className='absolute inset-0 bg-black/30' />
+          <div className='absolute inset-0 bg-gradient-to-b from-[#0a1b25]/80 to-[#0f2231]/70' />
 
           {/* Status Bar */}
-          <div className='absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10'>
+          <div className='absolute top-0 left-0 right-0 h-12 bg-[#0e1c26]/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-5 text-white z-10'>
             <div className='flex items-center gap-3'>
-              <div className='h-7 w-7 rounded-full bg-teal-500 flex items-center justify-center shadow-sm'>
-                <ToggleLeft className='h-4 w-4' />
+              <div className='h-7 w-7 rounded-full bg-gradient-to-r from-[#aef359] to-[#e4f88d] flex items-center justify-center shadow-md'>
+                <ToggleLeft className='h-4 w-4 text-[#0e1c26]' />
               </div>
-              <div className='text-xs capitalize font-medium'>
+              <div className='text-xs capitalize font-medium text-white/80'>
                 True or False
               </div>
             </div>
             <div className='flex items-center gap-2'>
-              <div className='flex items-center gap-2 bg-black/60 px-2 py-1 rounded-full text-xs'>
-                <Users className='h-3.5 w-3.5' />
-                <span>
+              <div className='flex items-center gap-2 bg-[#0e2838]/60 border border-white/5 px-2 py-1 rounded-full text-xs'>
+                <Users className='h-3.5 w-3.5 text-[#aef359]' />
+                <span className='text-white/90'>
                   {answeredCount}/{totalParticipants}
                 </span>
               </div>
-              <div className='flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium'>
-                <Clock className='h-3.5 w-3.5' />
-                {formatTime(timeLeft)}
-              </div>
+              <motion.div
+                className='flex items-center gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
+                animate={{
+                  opacity: timeLeft < 10 ? [0.7, 1] : 1,
+                  scale: timeLeft < 10 ? [1, 1.05, 1] : 1,
+                }}
+                transition={{
+                  duration: 0.5,
+                  repeat: timeLeft < 10 ? Infinity : 0,
+                  repeatType: 'reverse',
+                }}
+              >
+                <Clock className='h-3.5 w-3.5 text-[#aef359]' />
+                <span
+                  className={timeLeft < 10 ? 'text-red-300' : 'text-white/90'}
+                >
+                  {formatTime(timeLeft)}
+                </span>
+              </motion.div>
             </div>
           </div>
 
           {/* Question Text */}
-          <div className='flex-1 flex flex-col items-center justify-center z-10 py-6 px-5'>
-            <h2 className='text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4'>
+          <div className='flex-1 flex flex-col items-center justify-center z-10 py-8 px-5'>
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className='text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-lg'
+            >
               {activity.quiz.questionText}
-            </h2>
+            </motion.h2>
             {activity.description && (
-              <p className='mt-2 text-sm text-white/80 text-center max-w-xl'>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.8 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className='mt-2 text-sm text-white/80 text-center max-w-xl'
+              >
                 {activity.description}
-              </p>
+              </motion.p>
             )}
           </div>
         </motion.div>
@@ -180,7 +249,7 @@ export default function QuizTrueOrFalseViewer({
         <div className='w-full'>
           {/* Time Progress */}
           <motion.div
-            className='h-1 bg-primary'
+            className='h-1 bg-gradient-to-r from-[#aef359] to-[#e4f88d]'
             initial={{ width: '100%' }}
             animate={{
               width: `${Math.min(
@@ -192,7 +261,7 @@ export default function QuizTrueOrFalseViewer({
           />
           {/* Participants Progress */}
           <motion.div
-            className='h-1 bg-teal-500'
+            className='h-1 bg-teal-500/70'
             initial={{ width: '0%' }}
             animate={{
               width: `${Math.min(
@@ -208,132 +277,169 @@ export default function QuizTrueOrFalseViewer({
         </div>
 
         {/* Content */}
-        <div className='p-4 bg-white dark:bg-gray-800'>
-          {error && (
-            <Alert variant='destructive' className='mb-4'>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+        <div className='p-6 bg-[#0e1c26]/70'>
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                className='mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-white/90'
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <div className='flex items-center gap-2'>
+                  <AlertCircle className='h-5 w-5 text-red-400' />
+                  <span>{error}</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+          <motion.div
+            className='grid grid-cols-1 md:grid-cols-2 gap-6 mb-6'
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
             {activity.quiz.quizAnswers.map((answer, index) => {
-              const optionStyle = getOptionStyle(index);
               const isSelected = selectedAnswer === answer.quizAnswerId;
               const isCorrect = isAnswered && answer.isCorrect;
+              const optionStyle = getOptionStyle(
+                index,
+                isSelected,
+                answer.isCorrect,
+                isAnswered
+              );
 
               return (
                 <motion.div
                   key={answer.quizAnswerId}
-                  className='group rounded-lg transition-all duration-300 overflow-hidden'
-                  whileHover={{ scale: !isAnswered ? 1.02 : 1 }}
-                  whileTap={{ scale: !isAnswered ? 0.98 : 1 }}
+                  whileHover={{ scale: !isAnswered ? 1.03 : 1 }}
+                  whileTap={{ scale: !isAnswered ? 0.97 : 1 }}
+                  className={`relative rounded-xl ${
+                    isSelected ? 'z-10' : 'z-0'
+                  }`}
                   onClick={() =>
                     !isAnswered && setSelectedAnswer(answer.quizAnswerId)
                   }
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.1 + index * 0.2 }}
                 >
+                  {/* Glow effect */}
+                  {isSelected && (
+                    <motion.div
+                      className='absolute -inset-0.5 rounded-xl blur-sm opacity-50'
+                      style={{ background: optionStyle.glow }}
+                      animate={{ opacity: [0.5, 0.8, 0.5] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                  )}
+
                   <div
                     className={`
-                    p-4 h-full rounded-lg border-2 flex items-center gap-4 transition-all duration-300 relative
-                    backdrop-blur-lg shadow-xl cursor-pointer
-                    ${
-                      isAnswered && isCorrect
-                        ? 'bg-green-50/80 dark:bg-green-950/40 border-green-300 dark:border-green-800/80'
-                        : isAnswered && isSelected && !isCorrect
-                        ? 'bg-red-50/80 dark:bg-red-950/40 border-red-300 dark:border-red-800/80'
-                        : isSelected
-                        ? 'bg-primary/10 border-primary'
-                        : 'bg-white/90 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700'
-                    }
-                  `}
-                  >
-                    {/* Decorative light effect */}
-                    <div className='absolute inset-0 bg-[radial-gradient(circle_at_0%_100%,rgba(255,255,255,0.1),transparent_70%)] opacity-50' />
-
-                    <div
-                      className={`
-                      relative z-10 w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 
-                      text-white font-medium shadow-lg border border-white/30 ${optionStyle.bg}
+                      ${optionStyle.bg}
+                      p-5 h-full rounded-xl border border-white/20
+                      backdrop-blur-sm shadow-lg cursor-pointer
+                      flex flex-col items-center justify-center transition-all duration-300 relative overflow-hidden
+                      min-h-[130px]
                     `}
-                    >
-                      {answer.answerText}
-                    </div>
+                  >
+                    {/* Animated background effect */}
+                    <div className='absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-70' />
+                    <div className='absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent' />
 
-                    <div className='flex-1 flex items-center justify-between relative z-10'>
-                      <span className='text-base text-gray-800 dark:text-gray-100'>
-                        {answer.answerText}
+                    {/* Answer text */}
+                    <div className='relative z-10 flex flex-col items-center gap-3'>
+                      <span className='text-2xl font-bold text-white'>
+                        {optionStyle.text}
                       </span>
 
                       {isAnswered && isCorrect && (
-                        <div className='flex-shrink-0 bg-gradient-to-r from-green-500 via-emerald-400 to-emerald-600 text-white rounded-full p-1.5 shadow-lg border border-white/30'>
-                          <CheckCircle2 className='h-4 w-4' />
-                        </div>
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{
+                            type: 'spring',
+                            stiffness: 300,
+                            damping: 20,
+                          }}
+                          className='flex-shrink-0 bg-[#aef359] text-[#0e1c26] rounded-full p-1.5 shadow-lg'
+                        >
+                          <CheckCircle className='h-5 w-5' />
+                        </motion.div>
                       )}
                     </div>
                   </div>
                 </motion.div>
               );
             })}
-          </div>
+          </motion.div>
 
           {/* Submit Button */}
           {!isAnswered && (
             <motion.div
-              className='mt-6'
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.5 }}
             >
               <Button
-                className={`w-full h-14 text-lg font-semibold ${
-                  isSubmitting || !selectedAnswer
-                    ? 'bg-gray-400'
-                    : 'bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700'
+                className={`w-full py-5 text-lg font-semibold rounded-xl flex items-center justify-center gap-2 ${
+                  !selectedAnswer || isSubmitting
+                    ? 'bg-[#0e2838]/50 text-white/50 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-[#0e1c26] hover:from-[#9ee348] hover:to-[#d3e87c] hover:shadow-lg hover:shadow-[#aef359]/20'
                 }`}
                 disabled={!selectedAnswer || isSubmitting}
                 onClick={handleSubmit}
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className='mr-2 h-5 w-5 animate-spin' />
-                    Đang gửi...
+                    <Loader2 className='h-5 w-5 animate-spin' />
+                    <span>Đang gửi...</span>
                   </>
                 ) : (
-                  'Gửi câu trả lời'
+                  <>
+                    <span>Gửi câu trả lời</span>
+                    <ArrowRight className='h-5 w-5' />
+                  </>
                 )}
               </Button>
             </motion.div>
           )}
 
           {/* Results */}
-          {isAnswered && (
-            <motion.div
-              className='mt-6 p-4 rounded-lg bg-gray-50 dark:bg-gray-900/50'
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className='flex items-center gap-2 mb-2'>
-                {isCorrect ? (
-                  <>
-                    <CheckCircle2 className='h-5 w-5 text-green-500' />
-                    <span className='text-green-500 font-medium'>
-                      Câu trả lời đúng!
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className='h-5 w-5 text-red-500' />
-                    <span className='text-red-500 font-medium'>
-                      Câu trả lời chưa đúng
-                    </span>
-                  </>
-                )}
-              </div>
-              <p className='text-gray-600 dark:text-gray-300'>
-                Đáp án đúng là:{' '}
-                {activity.quiz.quizAnswers.find((a) => a.isCorrect)?.answerText}
-              </p>
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {isAnswered && (
+              <motion.div
+                className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              >
+                <div className='flex items-center gap-2 mb-3'>
+                  {isCorrect ? (
+                    <div className='flex items-center gap-2 text-[#aef359]'>
+                      <CheckCircle className='h-5 w-5' />
+                      <span className='font-semibold'>Câu trả lời đúng!</span>
+                    </div>
+                  ) : (
+                    <div className='flex items-center gap-2 text-red-400'>
+                      <XCircle className='h-5 w-5' />
+                      <span className='font-semibold'>
+                        Câu trả lời chưa đúng
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <p className='text-white/70'>
+                  Đáp án đúng là:{' '}
+                  {
+                    activity.quiz.quizAnswers.find((a) => a.isCorrect)
+                      ?.answerText
+                  }
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </Card>
     </div>

@@ -264,6 +264,9 @@ export class SessionWebSocket {
   private onError?: (error: string) => void;
   private connectionProcessing: boolean = false;
   private connecting: boolean = false;
+  private participantsEventCount: number = 0;
+  private currentActivityId: string | null = null;
+  private totalParticipantsCount: number = 0;
 
   constructor(sessionCode: string, sessionId: string = '') {
     this.sessionCode = sessionCode;
@@ -460,6 +463,9 @@ export class SessionWebSocket {
           );
 
           if (Array.isArray(participantsData)) {
+            // Cập nhật tổng số người tham gia
+            this.totalParticipantsCount = participantsData.length;
+
             participantsData.forEach((participant, index) => {
               console.log(`[WebSocket] Participant ${index}:`, {
                 id: participant.id,
@@ -468,6 +474,12 @@ export class SessionWebSocket {
               });
             });
           }
+
+          // Tăng bộ đếm sự kiện participants
+          this.participantsEventCount++;
+          console.log(
+            `[WebSocket] Số lần nhận sự kiện participants: ${this.participantsEventCount}/${this.totalParticipantsCount}`
+          );
 
           LeaderboardManager.getInstance().updateParticipants(participantsData);
 
@@ -748,6 +760,14 @@ export class SessionWebSocket {
       return;
     }
 
+    // Reset bộ đếm khi chuyển hoạt động mới
+    this.participantsEventCount = 0;
+    this.currentActivityId = activityId || null;
+    // Giữ nguyên totalParticipantsCount để duy trì tổng số người tham gia
+    console.log(
+      `[WebSocket] Reset bộ đếm sự kiện participants khi chuyển hoạt động mới, tổng số người tham gia: ${this.totalParticipantsCount}`
+    );
+
     const payload: any = {
       sessionId: sessionId,
     };
@@ -862,5 +882,42 @@ export class SessionWebSocket {
 
   public getSessionCode(): string {
     return this.sessionCode;
+  }
+
+  public getParticipantsEventCount(): number {
+    return this.participantsEventCount;
+  }
+
+  public getTotalParticipantsCount(): number {
+    return this.totalParticipantsCount;
+  }
+
+  public getParticipantsEventRatio(): {
+    count: number;
+    total: number;
+    percentage: number;
+  } {
+    const total = Math.max(1, this.totalParticipantsCount); // Tránh chia cho 0
+    const percentage = Math.min(
+      100,
+      Math.round((this.participantsEventCount / total) * 100)
+    );
+    return {
+      count: this.participantsEventCount,
+      total: this.totalParticipantsCount,
+      percentage,
+    };
+  }
+
+  public getCurrentActivityId(): string | null {
+    return this.currentActivityId;
+  }
+
+  public resetParticipantsEventCount(): void {
+    this.participantsEventCount = 0;
+    // Không reset totalParticipantsCount để giữ nguyên tổng số người tham gia
+    console.log(
+      `[WebSocket] Đã reset bộ đếm sự kiện participants về 0/${this.totalParticipantsCount}`
+    );
   }
 }

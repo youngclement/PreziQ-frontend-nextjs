@@ -1,43 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { SessionWebSocket } from '@/websocket/sessionWebSocket';
 import {
+  AlertCircle,
   Loader2,
-  CheckCircle2,
+  CheckCircle,
   XCircle,
-  GripVertical,
   Clock,
   Users,
+  ArrowRight,
   ArrowUpDown,
 } from 'lucide-react';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { motion } from 'framer-motion';
+import { SessionWebSocket } from '@/websocket/sessionWebSocket';
+import { motion, AnimatePresence } from 'framer-motion';
+import { SortableList, Item } from './SortableList';
 
 interface QuizReorderViewerProps {
   activity: {
     activityId: string;
     title: string;
-    description: string;
+    description?: string;
     backgroundColor?: string;
     backgroundImage?: string;
     quiz: {
@@ -55,195 +39,160 @@ interface QuizReorderViewerProps {
   sessionWebSocket: SessionWebSocket;
 }
 
-interface SortableItemProps {
-  id: string;
-  text: string;
-}
-
-function SortableItem({ id, text }: SortableItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <motion.div
-      ref={setNodeRef}
-      style={style}
-      className='flex items-center gap-3 p-4 bg-white/90 dark:bg-gray-900/80 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-sm mb-2 cursor-move hover:bg-gray-50 dark:hover:bg-gray-800/80 backdrop-blur-lg transition-all duration-300'
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-    >
-      <div {...attributes} {...listeners} className='cursor-grab'>
-        <GripVertical className='h-5 w-5 text-gray-400' />
-      </div>
-      <span className='flex-1 text-gray-800 dark:text-gray-100'>{text}</span>
-    </motion.div>
-  );
-}
-
-export default function QuizReorderViewer({
+export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
   activity,
   sessionId,
   sessionWebSocket,
-}: QuizReorderViewerProps) {
-  const [items, setItems] = useState<SortableItemProps[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+}) => {
+  const [items, setItems] = useState<Item[]>([]);
   const [timeLeft, setTimeLeft] = useState(activity.quiz.timeLimitSeconds);
   const [isAnswered, setIsAnswered] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [totalParticipants, setTotalParticipants] = useState(0);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  useEffect(() => {
-    // Khởi tạo danh sách items từ quizAnswers
-    const initialItems = activity.quiz.quizAnswers.map((answer) => ({
-      id: answer.quizAnswerId,
-      text: answer.answerText,
-    }));
-    setItems(initialItems);
+  // Đáp án đúng
+  const correctOrder = useMemo(() => {
+    return activity.quiz.quizAnswers
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((a) => a.quizAnswerId);
   }, [activity.quiz.quizAnswers]);
 
+  // Khởi tạo items (shuffle)
+  useEffect(() => {
+    const shuffled = [...activity.quiz.quizAnswers]
+      .sort(() => Math.random() - 0.5)
+      .map((a) => ({ id: a.quizAnswerId, text: a.answerText }));
+    setItems(shuffled);
+  }, [activity.quiz.quizAnswers]);
+
+  // Đếm ngược thời gian
   useEffect(() => {
     if (timeLeft > 0 && !isAnswered) {
-      const timer = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(timer);
+      const t = setInterval(() => setTimeLeft((t) => t - 1), 1000);
+      return () => clearInterval(t);
     }
   }, [timeLeft, isAnswered]);
 
+  // Cập nhật participants từ WebSocket
   useEffect(() => {
     if (!sessionWebSocket) return;
-
-    const handleParticipantsUpdate = (participants: any[]) => {
-      setTotalParticipants(participants.length);
-      const answered = participants.filter((p) => p.hasAnswered).length;
-      setAnsweredCount(answered);
+    const handler = (list: any[]) => {
+      setTotalParticipants(list.length);
+      setAnsweredCount(list.filter((p) => p.hasAnswered).length);
     };
-
-    sessionWebSocket.onParticipantsUpdateHandler(handleParticipantsUpdate);
+    sessionWebSocket.onParticipantsUpdateHandler(handler);
   }, [sessionWebSocket]);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      setItems((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  };
 
   const handleSubmit = async () => {
     if (isSubmitting || isAnswered) return;
-
     setIsSubmitting(true);
     setError(null);
 
     try {
-      // Tạo answerContent từ thứ tự hiện tại của items
-      const answerContent = items.map((item) => item.id).join(',');
-
+      const answerContent = items.map((i) => i.id).join(',');
       await sessionWebSocket.submitActivity({
         sessionId,
         activityId: activity.activityId,
         answerContent,
       });
 
-      // Kiểm tra câu trả lời
-      const correctOrder = activity.quiz.quizAnswers
-        .sort((a, b) => a.orderIndex - b.orderIndex)
-        .map((a) => a.quizAnswerId);
-      const userOrder = items.map((item) => item.id);
-      const isAnswerCorrect =
-        JSON.stringify(correctOrder) === JSON.stringify(userOrder);
-
-      setIsCorrect(isAnswerCorrect);
+      const userOrder = items.map((i) => i.id);
+      const correct =
+        JSON.stringify(userOrder) === JSON.stringify(correctOrder);
+      setIsCorrect(correct);
       setIsAnswered(true);
-    } catch (err) {
+    } catch (e) {
       setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
-      console.error('Error submitting answer:', err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className='min-h-screen bg-gray-50 p-4'>
-      <Card className='max-w-4xl mx-auto overflow-hidden'>
+    <div className='min-h-full bg-transparent'>
+      <Card className='bg-[#0e1c26]/80 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
         {/* Header với thời gian và tiến trình */}
         <motion.div
-          className='aspect-[16/5] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
+          className='aspect-[16/5] md:aspect-[16/4] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
           style={{
             backgroundImage: activity.backgroundImage
               ? `url(${activity.backgroundImage})`
               : undefined,
-            backgroundColor: activity.backgroundColor || '#FFFFFF',
+            backgroundColor: activity.backgroundColor || '#0e2838',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
         >
           {/* Overlay */}
-          <div className='absolute inset-0 bg-black/30' />
+          <div className='absolute inset-0 bg-gradient-to-b from-[#0a1b25]/80 to-[#0f2231]/70' />
 
           {/* Status Bar */}
-          <div className='absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10'>
-            <div className='flex items-center gap-3'>
-              <div className='h-7 w-7 rounded-full bg-amber-500 flex items-center justify-center shadow-sm'>
-                <ArrowUpDown className='h-4 w-4' />
+          <div className='absolute top-0 left-0 right-0 h-12 bg-[#0e1c26]/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-3 md:px-5 text-white z-10'>
+            <div className='flex items-center gap-2 md:gap-3'>
+              <div className='h-6 w-6 md:h-7 md:w-7 rounded-full bg-gradient-to-r from-[#aef359] to-[#e4f88d] flex items-center justify-center shadow-md'>
+                <ArrowUpDown className='h-3 w-3 md:h-4 md:w-4 text-[#0e1c26]' />
               </div>
-              <div className='text-xs capitalize font-medium'>Reorder Quiz</div>
+              <div className='text-xs capitalize font-medium text-white/80'>
+                Reorder Quiz
+              </div>
             </div>
-            <div className='flex items-center gap-2'>
-              <div className='flex items-center gap-2 bg-black/60 px-2 py-1 rounded-full text-xs'>
-                <Users className='h-3.5 w-3.5' />
-                <span>
+            <div className='flex items-center gap-1 md:gap-2'>
+              <div className='flex items-center gap-1 md:gap-2 bg-[#0e2838]/60 border border-white/5 px-2 py-1 rounded-full text-[10px] md:text-xs'>
+                <Users className='h-3 w-3 md:h-3.5 md:w-3.5 text-[#aef359]' />
+                <span className='text-white/90'>
                   {answeredCount}/{totalParticipants}
                 </span>
               </div>
-              <div className='flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium'>
-                <Clock className='h-3.5 w-3.5' />
-                {formatTime(timeLeft)}
-              </div>
+              <motion.div
+                className='flex items-center gap-1 md:gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-[10px] md:text-xs font-medium'
+                animate={{
+                  opacity: timeLeft < 10 ? [0.7, 1] : 1,
+                  scale: timeLeft < 10 ? [1, 1.05, 1] : 1,
+                }}
+                transition={{
+                  duration: 0.5,
+                  repeat: timeLeft < 10 ? Infinity : 0,
+                  repeatType: 'reverse',
+                }}
+              >
+                <Clock className='h-3 w-3 md:h-3.5 md:w-3.5 text-[#aef359]' />
+                <span
+                  className={timeLeft < 10 ? 'text-red-300' : 'text-white/90'}
+                >
+                  {formatTime(timeLeft)}
+                </span>
+              </motion.div>
             </div>
           </div>
 
           {/* Question Text */}
-          <div className='flex-1 flex flex-col items-center justify-center z-10 py-6 px-5'>
-            <h2 className='text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4'>
+          <div className='flex-1 flex flex-col items-center justify-center z-10 py-5 md:py-8 px-3 md:px-5'>
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className='text-lg md:text-xl lg:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-lg'
+            >
               {activity.quiz.questionText}
-            </h2>
+            </motion.h2>
             {activity.description && (
-              <p className='mt-2 text-sm text-white/80 text-center max-w-xl'>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.8 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className='mt-2 text-xs md:text-sm text-white/80 text-center max-w-xl'
+              >
                 {activity.description}
-              </p>
+              </motion.p>
             )}
           </div>
         </motion.div>
@@ -252,7 +201,7 @@ export default function QuizReorderViewer({
         <div className='w-full'>
           {/* Time Progress */}
           <motion.div
-            className='h-1 bg-primary'
+            className='h-1 bg-gradient-to-r from-[#aef359] to-[#e4f88d]'
             initial={{ width: '100%' }}
             animate={{
               width: `${Math.min(
@@ -264,7 +213,7 @@ export default function QuizReorderViewer({
           />
           {/* Participants Progress */}
           <motion.div
-            className='h-1 bg-amber-500'
+            className='h-1 bg-amber-500/70'
             initial={{ width: '0%' }}
             animate={{
               width: `${Math.min(
@@ -280,103 +229,132 @@ export default function QuizReorderViewer({
         </div>
 
         {/* Content */}
-        <div className='p-4 bg-white dark:bg-gray-800'>
-          {error && (
-            <Alert variant='destructive' className='mb-4'>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {isAnswered && (
-            <motion.div
-              className='mb-6 p-4 rounded-lg bg-gray-50 dark:bg-gray-900/50'
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className='flex items-center gap-2 mb-2'>
-                {isCorrect ? (
-                  <>
-                    <CheckCircle2 className='h-5 w-5 text-green-500' />
-                    <span className='text-green-500 font-medium'>
-                      Thứ tự đã đúng!
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className='h-5 w-5 text-red-500' />
-                    <span className='text-red-500 font-medium'>
-                      Thứ tự chưa đúng
-                    </span>
-                  </>
-                )}
-              </div>
-              <div className='mt-2'>
-                <p className='text-sm text-gray-600 dark:text-gray-400'>
-                  Thứ tự đúng là:
-                </p>
-                <div className='mt-2 space-y-2'>
-                  {activity.quiz.quizAnswers
-                    .sort((a, b) => a.orderIndex - b.orderIndex)
-                    .map((answer) => (
-                      <div
-                        key={answer.quizAnswerId}
-                        className='p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm'
-                      >
-                        {answer.answerText}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          <div className='space-y-4'>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={items.map((item) => item.id)}
-                strategy={verticalListSortingStrategy}
+        <div className='p-3 md:p-6 bg-[#0e1c26]/70'>
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                className='mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-white/90'
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
               >
-                {items.map((item) => (
-                  <SortableItem key={item.id} id={item.id} text={item.text} />
-                ))}
-              </SortableContext>
-            </DndContext>
+                <div className='flex items-center gap-2'>
+                  <AlertCircle className='h-5 w-5 text-red-400' />
+                  <span>{error}</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {isAnswered && isCorrect !== null && (
+              <motion.div
+                className='mb-4 md:mb-6 p-3 md:p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              >
+                <div className='flex items-center gap-2 mb-2 md:mb-3'>
+                  {isCorrect ? (
+                    <div className='flex items-center gap-2 text-[#aef359]'>
+                      <CheckCircle className='h-4 w-4 md:h-5 md:w-5' />
+                      <span className='text-sm md:text-base font-semibold'>
+                        Thứ tự đã đúng!
+                      </span>
+                    </div>
+                  ) : (
+                    <div className='flex items-center gap-2 text-red-400'>
+                      <XCircle className='h-4 w-4 md:h-5 md:w-5' />
+                      <span className='text-sm md:text-base font-semibold'>
+                        Thứ tự chưa đúng
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {!isCorrect && (
+                  <div className='mt-2 md:mt-3'>
+                    <p className='text-xs md:text-sm text-white/70 mb-2 md:mb-3'>
+                      Thứ tự đúng là:
+                    </p>
+                    <div className='mt-1 md:mt-2 space-y-1 md:space-y-2'>
+                      {correctOrder.map((id, idx) => {
+                        const answer = activity.quiz.quizAnswers.find(
+                          (a) => a.quizAnswerId === id
+                        )!;
+                        return (
+                          <motion.div
+                            key={id}
+                            className='p-2 md:p-3 bg-gradient-to-r from-[#0f2231]/80 to-[#102942]/80 backdrop-blur-sm rounded-xl border border-[#aef359]/20 shadow-md relative overflow-hidden'
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                          >
+                            <div className='absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#aef359]/30 to-transparent' />
+                            <div className='flex items-center gap-2'>
+                              <div className='h-5 w-5 md:h-6 md:w-6 rounded-full bg-[#aef359]/20 flex items-center justify-center'>
+                                <span className='text-[10px] md:text-xs text-[#aef359]'>
+                                  {idx + 1}
+                                </span>
+                              </div>
+                              <span className='text-sm md:text-base text-white/90'>
+                                {answer.answerText}
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <motion.div
+            className='space-y-3 md:space-y-4'
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            {/* DnD list */}
+            <div className='bg-[#0e2838]/30 p-1 md:p-2 rounded-xl border border-white/5'>
+              <SortableList items={items} onChange={setItems} />
+            </div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.5 }}
             >
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting || isAnswered || timeLeft === 0}
-                className={`w-full h-14 text-lg mt-4 ${
+                className={`w-full py-3 md:py-5 text-base md:text-lg font-semibold rounded-xl flex items-center justify-center gap-2 ${
                   isSubmitting || isAnswered || timeLeft === 0
-                    ? 'bg-gray-400'
-                    : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
+                    ? 'bg-[#0e2838]/50 text-white/50 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-[#0e1c26] hover:from-[#9ee348] hover:to-[#d3e87c] hover:shadow-lg hover:shadow-[#aef359]/20'
                 }`}
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className='mr-2 h-5 w-5 animate-spin' />
-                    Đang gửi...
+                    <Loader2 className='h-4 w-4 md:h-5 md:w-5 animate-spin' />
+                    <span>Đang gửi...</span>
                   </>
                 ) : isAnswered ? (
                   'Đã gửi câu trả lời'
                 ) : timeLeft === 0 ? (
                   'Hết thời gian'
                 ) : (
-                  'Gửi câu trả lời'
+                  <>
+                    <span>Gửi câu trả lời</span>
+                    <ArrowRight className='h-4 w-4 md:h-5 md:w-5' />
+                  </>
                 )}
               </Button>
             </motion.div>
-          </div>
+          </motion.div>
         </div>
       </Card>
     </div>
   );
-}
+};
