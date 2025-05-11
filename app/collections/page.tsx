@@ -419,7 +419,7 @@ export default function PublishedCollectionsPage() {
   };
 
   const handleCreateCollection = () => {
-    router.push('/collection/create');
+    router.push('/collections/create');
   };
 
   const handleEditCollection = (id: string) => {

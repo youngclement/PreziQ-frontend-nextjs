@@ -1,6 +1,14 @@
 'use client';
 
-import React, { useCallback, useState, useRef } from 'react';
+// Thêm định nghĩa window.savedBackgroundColors
+declare global {
+  interface Window {
+    lastQuestionClick?: number;
+    savedBackgroundColors?: Record<string, string>;
+  }
+}
+
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import {
   Plus,
   Trash,
@@ -65,7 +73,7 @@ const SortableActivityItem = ({
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: activity.id });
 
-    console.log('DND activity: ', activity);
+  console.log('DND activity: ', activity);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -130,6 +138,8 @@ export function QuestionList({
   const [hoveredActivity, setHoveredActivity] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const [renderKey, setRenderKey] = useState(0);
 
   console.log('QuestionList props:', {
     questions: questions.length,
@@ -139,11 +149,32 @@ export function QuestionList({
     isCollapsed,
   });
 
+  // Scroll to the end of the activities list when a new activity is added
+  React.useEffect(() => {
+    if (scrollContainerRef.current && activities.length > 0) {
+      // Scroll to the end when activities length changes
+      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+    }
+  }, [activities.length]);
+
   // Setup sensors for dnd-kit
   const sensors = useSensors(
     useSensor(PointerSensor),
     //useSensor(sortableKeyboardCoordinates)
   );
+
+  // Handle add question with scrolling to new question
+  const handleAddQuestion = () => {
+    // Call the parent component's add question function
+    onAddQuestion();
+
+    // Scroll to the end after a short delay to ensure the new question is rendered
+    setTimeout(() => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+      }
+    }, 100);
+  };
 
   // Handle drag end for activities
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -173,10 +204,8 @@ export function QuestionList({
             orderedActivityIds,
           });
           onReorderActivities(orderedActivityIds);
-          toast.success('Activities reordered successfully!');
         } catch (error) {
           console.error('Error reordering activities:', error);
-          toast.error('Failed to reorder activities.');
         }
       }
     }
@@ -229,6 +258,43 @@ export function QuestionList({
       scrollContainerRef.current.style.cursor = 'grab';
     }
   };
+
+  // Thêm hàm để lấy màu nền từ nhiều nguồn
+  const getActivityBackgroundColor = (activityId: string) => {
+    // Ưu tiên lấy màu từ global storage
+    if (typeof window !== 'undefined' && window.savedBackgroundColors && window.savedBackgroundColors[activityId]) {
+      return window.savedBackgroundColors[activityId];
+    }
+
+    // Nếu không tìm thấy, lấy từ danh sách activities
+    const activityBgColor = activities.find(a => a.id === activityId)?.backgroundColor;
+    if (activityBgColor) {
+      return activityBgColor;
+    }
+
+    // Màu mặc định
+    return '#FFFFFF';
+  };
+
+  // Thêm sự kiện listener để cập nhật UI khi có thay đổi màu nền
+  useEffect(() => {
+    const handleBackgroundUpdate = (event: any) => {
+      if (event.detail && event.detail.activityId && event.detail.properties && event.detail.properties.backgroundColor) {
+        // Khi có sự kiện cập nhật màu, force re-render component
+        setRenderKey(prev => prev + 1);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('activity:background:updated', handleBackgroundUpdate);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('activity:background:updated', handleBackgroundUpdate);
+      }
+    };
+  }, []);
 
   return (
     <Card
@@ -375,7 +441,7 @@ export function QuestionList({
                     <div className="absolute top-1 right-1 bg-white/90 dark:bg-gray-800/90 text-[8px] px-1 py-0.5 rounded-sm z-10 flex items-center shadow-sm">
                       {
                         questionTypeIcons[
-                          question.question_type as keyof typeof questionTypeIcons
+                        question.question_type as keyof typeof questionTypeIcons
                         ]
                       }
                       <span className="ml-0.5 capitalize">
@@ -388,18 +454,14 @@ export function QuestionList({
                         backgroundImage: activities.find(
                           (a) => a.id === question.activity_id
                         )?.backgroundImage
-                          ? `url(${
-                              activities.find(
-                                (a) => a.id === question.activity_id
-                              )?.backgroundImage
-                            })`
+                          ? `url(${activities.find(
+                            (a) => a.id === question.activity_id
+                          )?.backgroundImage
+                          })`
                           : undefined,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
-                        backgroundColor:
-                          activities.find(
-                            (a) => a.id === question.activity_id
-                          )?.backgroundColor || '#FFFFFF',
+                        backgroundColor: getActivityBackgroundColor(question.activity_id),
                       }}
                     >
                       <div className="p-2 h-full bg-black/20">
@@ -413,7 +475,7 @@ export function QuestionList({
               ))}
               <div
                 className="flex-shrink-0 cursor-pointer transition-all w-[120px] h-[80.px] rounded-md overflow-hidden shadow-sm border border-dashed border-gray-300 dark:border-gray-700 hover:border-primary dark:hover:border-primary flex flex-col items-center justify-center"
-                onClick={() => onAddQuestion()}
+                onClick={handleAddQuestion}
               >
                 <Plus className="h-5 w-5 text-gray-400 dark:text-gray-500 mb-1" />
                 <p className="text-xs font-medium">Add Question</p>
@@ -457,8 +519,9 @@ export function QuestionList({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onAddQuestion()}
+                    onClick={handleAddQuestion}
                     className="flex-shrink-0 h-8 rounded-md px-2 text-xs"
+                    ref={addButtonRef}
                   >
                     <Plus className="h-3 w-3 mr-1" />
                     <span>Add</span>
@@ -514,7 +577,7 @@ export function QuestionList({
                 <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center text-[6px] border border-gray-200 dark:border-gray-600">
                   {
                     questionTypeIcons[
-                      question.question_type as keyof typeof questionTypeIcons
+                    question.question_type as keyof typeof questionTypeIcons
                     ]
                   }
                 </div>
@@ -524,8 +587,9 @@ export function QuestionList({
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-lg flex-shrink-0"
-              onClick={() => onAddQuestion()}
+              onClick={handleAddQuestion}
               title="Add new question"
+              ref={addButtonRef}
             >
               <Plus className="h-4 w-4" />
             </Button>

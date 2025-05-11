@@ -1,5 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Medal, ChevronUp, ChevronDown, Minus } from 'lucide-react';
+import {
+  Medal,
+  ChevronUp,
+  ChevronDown,
+  Minus,
+  Crown,
+  Award,
+  TrendingUp,
+} from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
@@ -152,13 +160,13 @@ export default function RealtimeLeaderboard({
   const getRankColor = (rank: number) => {
     switch (rank) {
       case 1:
-        return 'text-yellow-500';
+        return 'text-yellow-400';
       case 2:
-        return 'text-gray-400';
+        return 'text-gray-300';
       case 3:
-        return 'text-amber-600';
+        return 'text-amber-500';
       default:
-        return 'text-gray-600';
+        return 'text-white/60';
     }
   };
 
@@ -166,13 +174,13 @@ export default function RealtimeLeaderboard({
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
-        return '🥇';
+        return <Crown className='h-5 w-5 text-yellow-400' />;
       case 2:
-        return '🥈';
+        return <Award className='h-5 w-5 text-gray-300' />;
       case 3:
-        return '🥉';
+        return <Medal className='h-5 w-5 text-amber-500' />;
       default:
-        return rank;
+        return <span className='text-white/60'>{rank}</span>;
     }
   };
 
@@ -185,28 +193,41 @@ export default function RealtimeLeaderboard({
   };
 
   return (
-    <Card className='bg-white/50 backdrop-blur-sm border-white/20'>
+    <Card className='bg-[#0e1c26]/80 backdrop-blur-md shadow-xl border border-white/5 text-white'>
       <div className='p-4'>
         <div className='flex items-center justify-between mb-4'>
-          <h3 className='text-lg font-semibold flex items-center gap-2'>
-            <Medal className='w-5 h-5 text-yellow-500' />
+          <h3 className='text-lg font-semibold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text flex items-center gap-2'>
+            <TrendingUp className='w-5 h-5 text-[#aef359]' />
             Bảng xếp hạng
           </h3>
-          <span className='text-sm text-gray-500'>
+          <motion.span
+            initial={{ opacity: 0.6 }}
+            animate={{ opacity: 1 }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              repeatType: 'reverse',
+            }}
+            className='text-sm text-white/50 bg-[#0e2838]/80 px-2 py-0.5 rounded-full text-xs border border-white/10'
+          >
             {participants.length} người chơi
-          </span>
+          </motion.span>
         </div>
 
         <div className='space-y-2 relative'>
           {participants.length === 0 ? (
-            <div className='text-center py-8 text-gray-500'>
-              <p>Chưa có người tham gia nào</p>
-              <p className='text-sm mt-2'>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className='text-center py-8 bg-[#0e2838]/30 rounded-lg border border-white/5'
+            >
+              <p className='text-white/70'>Chưa có người tham gia nào</p>
+              <p className='text-sm mt-2 text-white/50'>
                 Chia sẻ mã phiên để mọi người tham gia
               </p>
-            </div>
+            </motion.div>
           ) : (
-            <div>
+            <div className='max-h-[60vh] overflow-y-auto pr-2 py-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20'>
               <AnimatePresence initial={false}>
                 {participants.map((participant) => {
                   const rankChange = getRankChange(
@@ -231,91 +252,94 @@ export default function RealtimeLeaderboard({
                         damping: 30,
                         mass: 1,
                       }}
-                      className={`flex items-center p-3 rounded-lg mb-2 ${
+                      className={`flex items-center p-3 rounded-lg mb-2 backdrop-blur-sm ${
                         isCurrentUser
-                          ? 'bg-indigo-50 border border-indigo-100'
-                          : 'bg-white/80 hover:bg-white'
+                          ? 'bg-[#aef359]/10 border border-[#aef359]/30'
+                          : 'bg-[#0e2838]/50 border border-white/5 hover:bg-[#0e2838]/70'
                       }`}
                     >
                       {/* Thứ hạng */}
                       <div className='w-8 text-center font-bold'>
                         <div
-                          className={`inline-flex items-center justify-center ${
-                            participant.realtimeRanking <= 3
-                              ? 'text-lg'
-                              : 'text-gray-500'
-                          }`}
+                          className={`inline-flex items-center justify-center`}
                         >
                           {getRankIcon(participant.realtimeRanking)}
                         </div>
                       </div>
 
-                      {/* Chỉ báo thứ hạng thay đổi */}
-                      <div className='w-6 flex items-center justify-center'>
-                        {isRankUp && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className='text-green-500'
-                          >
-                            <ChevronUp size={16} />
-                          </motion.div>
-                        )}
-                        {isRankDown && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className='text-red-500'
-                          >
-                            <ChevronDown size={16} />
-                          </motion.div>
-                        )}
-                      </div>
-
-                      {/* Avatar */}
-                      <div className='flex-shrink-0 mr-3'>
-                        <Avatar className='h-8 w-8 border border-gray-200'>
-                          <AvatarImage
-                            src={participant.displayAvatar}
-                            alt={participant.displayName}
-                          />
-                          <AvatarFallback>
-                            {participant.displayName.substring(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-
-                      {/* Tên */}
-                      <div className='flex-1 truncate'>
-                        <p
-                          className={`text-sm font-medium ${
-                            isCurrentUser ? 'text-indigo-600' : ''
-                          }`}
+                      {/* Avatar và tên */}
+                      <div className='flex items-center flex-1 min-w-0'>
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                          className='relative mr-2'
                         >
-                          {participant.displayName}
-                          {isCurrentUser && (
-                            <span className='ml-1 text-xs text-indigo-500'>
-                              (bạn)
-                            </span>
+                          {participant.realtimeRanking <= 3 && (
+                            <motion.div
+                              className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border ${
+                                participant.realtimeRanking === 1
+                                  ? 'bg-yellow-500 border-yellow-300'
+                                  : participant.realtimeRanking === 2
+                                  ? 'bg-gray-400 border-gray-300'
+                                  : 'bg-amber-600 border-amber-500'
+                              }`}
+                              animate={{
+                                scale: [1, 1.2, 1],
+                                opacity: [0.7, 1, 0.7],
+                              }}
+                              transition={{
+                                duration: 2,
+                                repeat: Infinity,
+                                ease: 'easeInOut',
+                              }}
+                            />
                           )}
-                        </p>
+
+                          <Avatar className='h-8 w-8 rounded-full border border-white/20'>
+                            <AvatarImage src={participant.displayAvatar} />
+                            <AvatarFallback className='bg-[#0e2838] text-[#aef359]'>
+                              {participant.displayName.substring(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
+                        </motion.div>
+
+                        <div className='flex-1 min-w-0'>
+                          <div className='flex items-center'>
+                            <p className='font-medium text-sm truncate text-white/90'>
+                              {participant.displayName}
+                            </p>
+                            {isRankUp && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className='ml-1'
+                              >
+                                <ChevronUp className='w-3 h-3 text-green-400' />
+                              </motion.div>
+                            )}
+                            {isRankDown && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className='ml-1'
+                              >
+                                <ChevronDown className='w-3 h-3 text-red-400' />
+                              </motion.div>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       {/* Điểm số */}
-                      <div className='ml-2 flex items-center'>
-                        <motion.div
-                          key={`score-${participant.realtimeScore}-${updateCountRef.current}`}
-                          initial={{ scale: 0.8 }}
-                          animate={{ scale: 1 }}
-                          className={`px-2 py-1 rounded-full text-sm font-semibold ${
-                            isCurrentUser
-                              ? 'bg-indigo-100 text-indigo-600'
-                              : 'bg-green-100 text-green-600'
-                          }`}
-                        >
+                      <motion.div
+                        key={`score-${participant.displayName}-${participant.realtimeScore}`}
+                        initial={{ scale: 1.5 }}
+                        animate={{ scale: 1 }}
+                        className='min-w-[50px] text-right'
+                      >
+                        <div className='font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text'>
                           {participant.realtimeScore}
-                        </motion.div>
-                      </div>
+                        </div>
+                      </motion.div>
                     </motion.div>
                   );
                 })}
