@@ -72,7 +72,7 @@ export default function HostSessionPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [hidePin, setHidePin] = useState(false);
   const [showRoleDialog, setShowRoleDialog] = useState(false);
-  const [willParticipate, setWillParticipate] = useState(false);
+  const [willParticipate, setWillParticipate] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [participantName, setParticipantName] = useState('');
   const [participantAvatar, setParticipantAvatar] = useState(
@@ -80,12 +80,14 @@ export default function HostSessionPage() {
   );
   const [isChangingAvatar, setIsChangingAvatar] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(30);
+  const [volume, setVolume] = useState(70);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [isDraggingVolume, setIsDraggingVolume] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const volumeControlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const volumeControlRef = useRef<HTMLDivElement>(null);
+  const [isParticipating, setIsParticipating] = useState(true);
+  const [currentActivity, setCurrentActivity] = useState<any>(null);
 
   // Lấy thông tin tài khoản người dùng khi component mount
   useEffect(() => {
@@ -404,20 +406,42 @@ export default function HostSessionPage() {
     try {
       setIsJoining(true);
 
-      // Nếu host chọn tham gia, thực hiện join trước khi start
-      if (willParticipate) {
-        if (!participantName) {
-          setError('Vui lòng nhập tên của bạn');
-          return;
-        }
-        const userId = userAccount?.userId || null;
-        await sessionWsRef.current?.joinSession(participantName, userId);
-        setHasJoined(true);
-      }
+      // Lưu trạng thái lựa chọn của host
+      setIsParticipating(willParticipate);
 
       // Đảm bảo đã cập nhật sessionId trong sessionWs
       if (sessionId && sessionWsRef.current) {
         sessionWsRef.current.updateSessionId(sessionId);
+
+        // Nếu host chọn tham gia, join với tên người dùng đã nhập
+        if (willParticipate) {
+          if (!participantName) {
+            setError('Vui lòng nhập tên của bạn');
+            return;
+          }
+          const userId = userAccount?.userId || null;
+          await sessionWsRef.current.joinSession(
+            participantName,
+            userId,
+            participantAvatar
+          );
+          setHasJoined(true);
+        } else {
+          // Nếu host không tham gia, vẫn join với tên mặc định là "Host"
+          const userId = userAccount?.userId || null;
+          const defaultHostName = 'Host';
+          // Sử dụng avatar mặc định hoặc tạo một avatar ngẫu nhiên cho Host
+          const defaultHostAvatar = `https://api.dicebear.com/7.x/pixel-art/svg?seed=host-${Date.now()}`;
+          await sessionWsRef.current.joinSession(
+            defaultHostName,
+            userId,
+            defaultHostAvatar
+          );
+          console.log('Host joined as observer with name:', defaultHostName);
+          setHasJoined(true);
+        }
+
+        // Bắt đầu phiên sau khi đã join
         await sessionWsRef.current.startSession();
       } else {
         throw new Error('Session ID is not available');
@@ -544,6 +568,11 @@ export default function HostSessionPage() {
           sessionCode={sessionCode}
           sessionWs={sessionWsRef.current}
           onSessionEnd={handleSessionEnd}
+          onNextActivityLog={(activity) => {
+            console.log('[Host Page] Next activity logged:', activity);
+            setCurrentActivity(activity);
+          }}
+          isParticipating={isParticipating}
         />
       </div>
     );
