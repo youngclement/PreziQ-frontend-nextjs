@@ -42,6 +42,7 @@ export default function HostRankingChange({
     previous: Record<string, number> | null;
   } | null>(null);
   const [debugMode, setDebugMode] = useState(false);
+  const [disableAnimation, setDisableAnimation] = useState(false);
 
   // Ref để theo dõi các phần tử cho animation
   const participantRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -53,9 +54,30 @@ export default function HostRankingChange({
 
     // Sử dụng phương thức publishRankingData để lấy dữ liệu trực tiếp
     try {
+      // Khởi tạo dữ liệu vị trí từ sessionWebSocket
+      const positionData =
+        sessionWebSocket.getRankingPositionData(currentActivityId);
+
+      // Với logic mới, dữ liệu previous có thể là null (quiz đầu tiên) hoặc có giá trị (quiz tiếp theo)
+      // Chúng ta không cần gán thủ công current làm previous nữa
+      setPositionMap(positionData);
+
+      // Thêm log để debug vấn đề với positionMap
+      console.log('[DEBUG] Khởi tạo positionMap trong useEffect:', {
+        positionData,
+        currentActivityId,
+        hasValidCurrent:
+          positionData && Object.keys(positionData.current || {}).length > 0,
+        hasPrevious: positionData && positionData.previous !== null,
+      });
+
       const directData = sessionWebSocket.publishRankingData(currentActivityId);
       setRankingData(directData);
       console.log('[HostRankingChange] Đã nhận dữ liệu trực tiếp:', directData);
+
+      if (debugMode) {
+        console.log('[HostRankingChange] Position data:', positionData);
+      }
     } catch (error) {
       console.error(
         '[HostRankingChange] Lỗi khi lấy dữ liệu trực tiếp:',
@@ -79,22 +101,13 @@ export default function HostRankingChange({
       console.log('[HostRankingChange] Nhận cập nhật xếp hạng:', data);
     });
 
-    // Lấy dữ liệu vị trí để thực hiện animation - sử dụng activityId
-    const positionData =
-      sessionWebSocket.getRankingPositionData(currentActivityId);
-    setPositionMap(positionData);
-    console.log(
-      '[HostRankingChange] Dữ liệu vị trí cho hoạt ảnh:',
-      positionData
-    );
-
     // Trigger animation sau khi component mount
     setAnimationComplete(false);
 
     // Tự động đánh dấu animation hoàn thành sau thời gian
     animationTimeoutRef.current = setTimeout(() => {
       setAnimationComplete(true);
-    }, 2000);
+    }, 4500); // Tăng thời gian để animation chạy chậm hơn
 
     return () => {
       unsubscribe();
@@ -111,14 +124,39 @@ export default function HostRankingChange({
 
   // Hàm tạo animation cho phần tử dựa trên vị trí trước và sau
   const getAnimationProps = (participantName: string) => {
-    if (!positionMap || !positionMap.previous || animationComplete) {
+    // Nếu đã tắt animation, trả về không có animation
+    if (disableAnimation) {
       return {
-        initial: { opacity: 0, y: 20 },
-        animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.5, type: 'spring', stiffness: 100 },
+        initial: { opacity: 1 },
+        animate: { opacity: 1 },
+        transition: { duration: 0 },
       };
     }
 
+    // Nếu animation đã hoàn thành hoặc không có dữ liệu position
+    if (!positionMap || animationComplete) {
+      return {
+        initial: { opacity: 0, y: 20 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.7, type: 'spring', stiffness: 80 },
+      };
+    }
+
+    // Nếu không có dữ liệu previous (đây là quiz đầu tiên)
+    if (!positionMap.previous) {
+      return {
+        initial: { opacity: 0, scale: 0.9 },
+        animate: { opacity: 1, scale: 1 },
+        transition: {
+          duration: 0.8,
+          type: 'spring',
+          stiffness: 100,
+          delay: 0.2,
+        },
+      };
+    }
+
+    // Lấy vị trí hiện tại (current) và vị trí trước đó (previous) của người chơi
     const currentPos = positionMap.current[participantName];
     const previousPos = positionMap.previous[participantName];
 
@@ -128,6 +166,7 @@ export default function HostRankingChange({
         previousPos,
         currentPos,
         diff: previousPos !== undefined ? previousPos - currentPos : 'new',
+        positionMapDetails: positionMap,
       });
     }
 
@@ -137,41 +176,98 @@ export default function HostRankingChange({
         initial: { opacity: 0, x: 100 },
         animate: { opacity: 1, x: 0 },
         transition: {
-          duration: 0.7,
+          duration: 1,
           type: 'spring',
-          stiffness: 80,
-          damping: 10,
-          delay: 0.8,
+          stiffness: 70,
+          damping: 12,
+          delay: 1,
         },
       };
     }
 
-    // Tính toán khoảng cách di chuyển
-    const distance = (previousPos - currentPos) * 70; // Ước tính khoảng cách di chuyển dựa trên chiều cao phần tử
+    // Tính toán khoảng cách di chuyển dựa trên sự thay đổi vị trí
+    // Quan trọng: current/previous đại diện cho 0-based index trong mảng
+    // previousPos < currentPos: người chơi đã xuống hạng (vị trí index tăng)
+    // previousPos > currentPos: người chơi đã lên hạng (vị trí index giảm)
+    const positionChange = previousPos - currentPos;
 
-    // Nếu không có thay đổi vị trí
-    if (distance === 0) {
+    // Ước tính khoảng cách di chuyển dựa trên chiều cao mỗi phần tử + padding
+    const ITEM_HEIGHT = 74; // Điều chỉnh chiều cao của mỗi phần tử trong bảng
+    // Tính khoảng cách dựa trên số vị trí thay đổi nhân với chiều cao
+    const distance = positionChange * ITEM_HEIGHT;
+
+    // Nếu vị trí không thay đổi
+    if (positionChange === 0) {
       return {
         initial: { scale: 1 },
         animate: { scale: [1, 1.05, 1] },
         transition: {
-          duration: 0.5,
+          duration: 0.8,
           times: [0, 0.6, 1],
-          delay: 0.3 + currentPos * 0.05,
+          delay: 0.3 + currentPos * 0.06,
         },
       };
     }
 
+    // Nếu người dùng lên hạng (di chuyển lên, có nghĩa là giảm index)
+    if (positionChange > 0) {
+      return {
+        initial: {
+          y: distance, // Bắt đầu từ vị trí cũ (ở dưới)
+          opacity: 0.8,
+          backgroundColor: 'rgba(34, 197, 94, 0.2)',
+          borderColor: 'rgba(34, 197, 94, 0.5)',
+        },
+        animate: {
+          y: 0, // Di chuyển lên vị trí mới (ở trên)
+          opacity: 1,
+          backgroundColor: ['rgba(34, 197, 94, 0.2)', 'transparent'],
+          borderColor: ['rgba(34, 197, 94, 0.5)', 'rgba(255, 255, 255, 0.05)'],
+        },
+        transition: {
+          type: 'spring',
+          stiffness: 80,
+          damping: 18,
+          mass: 1.2,
+          delay: 0.3 + currentPos * 0.06,
+          backgroundColor: { duration: 3 },
+          borderColor: { duration: 3 },
+        },
+      };
+    }
+
+    // Nếu người dùng xuống hạng (di chuyển xuống, có nghĩa là tăng index)
+    if (positionChange < 0) {
+      return {
+        initial: {
+          y: distance, // Bắt đầu từ vị trí cũ (ở trên)
+          opacity: 0.8,
+          backgroundColor: 'rgba(239, 68, 68, 0.2)',
+          borderColor: 'rgba(239, 68, 68, 0.5)',
+        },
+        animate: {
+          y: 0, // Di chuyển xuống vị trí mới (ở dưới)
+          opacity: 1,
+          backgroundColor: ['rgba(239, 68, 68, 0.2)', 'transparent'],
+          borderColor: ['rgba(239, 68, 68, 0.5)', 'rgba(255, 255, 255, 0.05)'],
+        },
+        transition: {
+          type: 'spring',
+          stiffness: 80,
+          damping: 18,
+          mass: 1.2,
+          delay: 0.3 + currentPos * 0.06,
+          backgroundColor: { duration: 3 },
+          borderColor: { duration: 3 },
+        },
+      };
+    }
+
+    // Fallback nếu không có trường hợp nào khớp
     return {
-      initial: { y: distance, opacity: 0.7 },
-      animate: { y: 0, opacity: 1 },
-      transition: {
-        type: 'spring',
-        stiffness: 120,
-        damping: 15,
-        mass: 0.8,
-        delay: 0.3 + currentPos * 0.07, // Delay tăng dần theo vị trí hiện tại
-      },
+      initial: { opacity: 0.5 },
+      animate: { opacity: 1 },
+      transition: { duration: 0.8 },
     };
   };
 
@@ -179,20 +275,37 @@ export default function HostRankingChange({
   const handleRefreshData = () => {
     if (sessionWebSocket && currentActivityId) {
       try {
+        console.log('[HostRankingChange] Bắt đầu tải lại dữ liệu...');
         // Đánh dấu animation chưa hoàn thành để chạy lại
         setAnimationComplete(false);
 
+        // Tải lại dữ liệu vị trí
+        const positionData =
+          sessionWebSocket.getRankingPositionData(currentActivityId);
+
+        console.log('[HostRankingChange] Dữ liệu vị trí mới (trước khi set):', {
+          positionData,
+          currentPositionCount: Object.keys(positionData.current || {}).length,
+          hasPrevious: positionData.previous !== null,
+        });
+
+        setPositionMap(positionData);
+
+        if (debugMode) {
+          console.log('[HostRankingChange] Dữ liệu vị trí mới:', positionData);
+        }
+
+        // Tải lại dữ liệu xếp hạng - đảm bảo gọi finishActivity
         const refreshedData =
           sessionWebSocket.publishRankingData(currentActivityId);
         setRankingData(refreshedData);
 
-        // Lấy lại dữ liệu vị trí cho animation
-        const positionData =
-          sessionWebSocket.getRankingPositionData(currentActivityId);
-        setPositionMap(positionData);
-
-        console.log('[HostRankingChange] Đã tải lại dữ liệu:', refreshedData);
-        console.log('[HostRankingChange] Dữ liệu vị trí mới:', positionData);
+        console.log('[HostRankingChange] Dữ liệu refreshed:', {
+          refreshedData,
+          hasChanges: Object.keys(refreshedData.changes || {}).length,
+          positionMapAfterRefresh:
+            sessionWebSocket.getRankingPositionData(currentActivityId),
+        });
 
         // Đặt lại hẹn giờ để đánh dấu hoàn thành animation
         if (animationTimeoutRef.current) {
@@ -200,11 +313,48 @@ export default function HostRankingChange({
         }
         animationTimeoutRef.current = setTimeout(() => {
           setAnimationComplete(true);
-        }, 2000);
+          console.log('[HostRankingChange] Animation đã hoàn thành');
+        }, 4500); // Tăng thời gian để animation chạy chậm hơn
       } catch (error) {
         console.error('[HostRankingChange] Lỗi khi tải lại dữ liệu:', error);
       }
     }
+  };
+
+  // Thêm phương thức để reset thủ công dữ liệu vị trí
+  const handleResetPositions = () => {
+    if (!rankingData) return;
+
+    const currentPositions: Record<string, number> = {};
+    rankingData.participants
+      .sort((a, b) => a.realtimeRanking - b.realtimeRanking)
+      .forEach((p, index) => {
+        currentPositions[p.displayName] = index;
+      });
+
+    // Tạo position map mới, trong đó previous = current
+    const newPositionMap = {
+      current: { ...currentPositions },
+      previous: { ...currentPositions },
+    };
+
+    setPositionMap(newPositionMap);
+    setAnimationComplete(false);
+
+    if (debugMode) {
+      console.log(
+        '[HostRankingChange] Đã reset dữ liệu vị trí, previous = current:',
+        newPositionMap
+      );
+    }
+
+    // Đặt lại hẹn giờ
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
+    }
+    animationTimeoutRef.current = setTimeout(() => {
+      setAnimationComplete(true);
+    }, 4500); // Tăng thời gian để animation chạy chậm hơn
   };
 
   // Toggle debug mode
@@ -322,7 +472,7 @@ export default function HostRankingChange({
           </div>
 
           <div className='overflow-y-auto custom-scrollbar h-[calc(100%-3.5rem)] p-2'>
-            <AnimatePresence initial={false}>
+            <AnimatePresence initial={true}>
               {sortedParticipants.map((participant, index) => {
                 const change = rankingData.changes[participant.displayName];
                 if (!change) return null;
@@ -344,6 +494,7 @@ export default function HostRankingChange({
                         ref as HTMLDivElement | null
                       )
                     }
+                    layout
                     {...animProps}
                   >
                     {/* Thứ hạng */}
@@ -389,34 +540,68 @@ export default function HostRankingChange({
                           {participant.displayName.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span
-                        className={`font-medium ${
-                          index < 3 ? 'text-white' : 'text-white/80'
-                        }`}
-                      >
-                        {participant.displayName}
-                      </span>
+                      <div className='flex items-center'>
+                        <span
+                          className={`font-medium ${
+                            index < 3 ? 'text-white' : 'text-white/80'
+                          }`}
+                        >
+                          {participant.displayName}
+                        </span>
+
+                        {/* Biểu tượng thay đổi thứ hạng bên cạnh tên */}
+                        {hasPreviousData &&
+                          change.direction !== 'new' &&
+                          change.direction !== 'same' && (
+                            <div
+                              className={`ml-2 flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium
+                              ${
+                                change.direction === 'up'
+                                  ? 'bg-green-500/20 text-green-300'
+                                  : 'bg-red-500/20 text-red-300'
+                              }`}
+                            >
+                              {change.direction === 'up' ? (
+                                <>
+                                  <ChevronUp className='h-3 w-3' />
+                                  <span className='ml-0.5'>
+                                    {change.change}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className='h-3 w-3' />
+                                  <span className='ml-0.5'>
+                                    {change.change}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )}
+                      </div>
                     </div>
 
                     {/* Điểm số */}
                     <div className='w-20 text-center'>
-                      <motion.span
-                        className={`font-bold text-[#aef359] ${
+                      <motion.div
+                        className={`font-bold ${
                           index < 3 ? 'text-lg' : 'text-base'
-                        }`}
+                        } bg-[#aef359]/20 rounded-full px-2 py-1 inline-block`}
                         initial={{ opacity: 0.8 }}
                         animate={{
                           opacity: [0.8, 1, 1],
                           scale: [1, 1.1, 1],
                         }}
                         transition={{
-                          duration: 0.6,
+                          duration: 1,
                           times: [0, 0.4, 1],
-                          delay: 0.8 + index * 0.05,
+                          delay: 1 + index * 0.08,
                         }}
                       >
-                        {participant.realtimeScore}
-                      </motion.span>
+                        <span className='text-[#aef359]'>
+                          {participant.realtimeScore}
+                        </span>
+                      </motion.div>
                     </div>
 
                     {/* Thay đổi thứ hạng */}
@@ -430,7 +615,7 @@ export default function HostRankingChange({
                             transition={{
                               type: 'spring',
                               stiffness: 300,
-                              delay: 0.6 + index * 0.04,
+                              delay: 0.8 + index * 0.06,
                             }}
                           >
                             Mới
@@ -442,22 +627,26 @@ export default function HostRankingChange({
                             animate={{
                               scale: 1,
                               opacity: 1,
-                              y: [0, -5, 0],
+                              y: [0, -8, 0],
                             }}
                             transition={{
                               type: 'spring',
                               stiffness: 300,
-                              delay: 0.6 + index * 0.04,
+                              delay: 0.8 + index * 0.06,
                               y: {
                                 times: [0, 0.5, 1],
-                                duration: 0.6,
+                                duration: 1.2,
                                 repeat: 1,
-                                repeatDelay: 0.2,
+                                repeatDelay: 0.3,
                               },
                             }}
                           >
-                            <ChevronUp className='h-5 w-5 mr-1' />
-                            <span className='font-medium'>{change.change}</span>
+                            <div className='bg-green-500/20 px-2 py-0.5 rounded-full flex items-center'>
+                              <ChevronUp className='h-5 w-5 mr-1' />
+                              <span className='font-medium'>
+                                {change.change}
+                              </span>
+                            </div>
                           </motion.div>
                         ) : change.direction === 'down' ? (
                           <motion.div
@@ -466,22 +655,26 @@ export default function HostRankingChange({
                             animate={{
                               scale: 1,
                               opacity: 1,
-                              y: [0, 5, 0],
+                              y: [0, 8, 0],
                             }}
                             transition={{
                               type: 'spring',
                               stiffness: 300,
-                              delay: 0.6 + index * 0.04,
+                              delay: 0.8 + index * 0.06,
                               y: {
                                 times: [0, 0.5, 1],
-                                duration: 0.6,
+                                duration: 1.2,
                                 repeat: 1,
-                                repeatDelay: 0.2,
+                                repeatDelay: 0.3,
                               },
                             }}
                           >
-                            <ChevronDown className='h-5 w-5 mr-1' />
-                            <span className='font-medium'>{change.change}</span>
+                            <div className='bg-red-500/20 px-2 py-0.5 rounded-full flex items-center'>
+                              <ChevronDown className='h-5 w-5 mr-1' />
+                              <span className='font-medium'>
+                                {change.change}
+                              </span>
+                            </div>
                           </motion.div>
                         ) : (
                           <motion.div
@@ -491,11 +684,13 @@ export default function HostRankingChange({
                             transition={{
                               type: 'spring',
                               stiffness: 300,
-                              delay: 0.5 + index * 0.03,
+                              delay: 0.8 + index * 0.04,
                             }}
                           >
-                            <Minus className='h-4 w-4 mr-1' />
-                            <span className='font-medium'>0</span>
+                            <div className='bg-gray-500/20 px-2 py-0.5 rounded-full flex items-center'>
+                              <Minus className='h-4 w-4 mr-1' />
+                              <span className='font-medium'>0</span>
+                            </div>
                           </motion.div>
                         )}
                       </div>
@@ -510,10 +705,87 @@ export default function HostRankingChange({
         {/* Debug info */}
         {debugMode && positionMap && (
           <div className='mt-2 p-3 bg-[#0e1c26]/80 backdrop-blur-md rounded-xl border border-white/10 text-xs text-white/70 overflow-auto max-h-40'>
+            <div className='flex items-center justify-between mb-2'>
+              <p className='font-mono'>Thông tin Debug:</p>
+              <div className='flex space-x-2'>
+                <button
+                  onClick={() => setDisableAnimation(!disableAnimation)}
+                  className={`px-2 py-1 rounded ${
+                    disableAnimation
+                      ? 'bg-red-500/30 text-red-300'
+                      : 'bg-green-500/30 text-green-300'
+                  }`}
+                >
+                  Animation: {disableAnimation ? 'Tắt' : 'Bật'}
+                </button>
+                <button
+                  onClick={handleResetPositions}
+                  className='px-2 py-1 bg-purple-500/20 rounded text-purple-300 hover:bg-purple-500/30'
+                >
+                  Reset Positions
+                </button>
+                <button
+                  onClick={handleRefreshData}
+                  className='px-2 py-1 bg-blue-500/20 rounded text-blue-300 hover:bg-blue-500/30'
+                >
+                  Tải lại dữ liệu
+                </button>
+              </div>
+            </div>
+
+            <div className='mb-2'>
+              <p className='mb-1'>
+                Activity ID:{' '}
+                <span className='text-green-300'>{currentActivityId}</span>
+              </p>
+              <p className='mb-1'>
+                Animation Complete:{' '}
+                <span
+                  className={
+                    animationComplete ? 'text-green-300' : 'text-amber-300'
+                  }
+                >
+                  {animationComplete ? 'Yes' : 'No'}
+                </span>
+              </p>
+              <p className='mb-1'>
+                Animation Status:{' '}
+                <span
+                  className={
+                    disableAnimation ? 'text-red-300' : 'text-green-300'
+                  }
+                >
+                  {disableAnimation ? 'Đã tắt' : 'Đang bật'}
+                </span>
+              </p>
+              <p className='mb-1'>
+                Participants:{' '}
+                <span className='text-green-300'>
+                  {rankingData?.participants.length || 0}
+                </span>
+              </p>
+            </div>
+
             <p className='font-mono mb-1'>Position Map:</p>
-            <pre className='overflow-auto'>
-              {JSON.stringify(positionMap, null, 2)}
-            </pre>
+            <div className='flex space-x-3'>
+              <div className='flex-1'>
+                <p className='text-amber-300 mb-1'>Previous:</p>
+                <pre className='overflow-auto bg-slate-800/50 p-1 rounded'>
+                  {JSON.stringify(positionMap.previous, null, 2)}
+                </pre>
+              </div>
+              <div className='flex-1'>
+                <p className='text-green-300 mb-1'>Current:</p>
+                <pre className='overflow-auto bg-slate-800/50 p-1 rounded'>
+                  {JSON.stringify(positionMap.current, null, 2)}
+                </pre>
+              </div>
+            </div>
+
+            <p className='mt-2 text-xs text-amber-300'>
+              * Nếu Previous và Current giống nhau, animation sẽ sử dụng hiệu
+              ứng "pulse" thay vì di chuyển
+            </p>
           </div>
         )}
       </div>
