@@ -5,10 +5,11 @@ declare global {
   interface Window {
     updateActivityTimer: ReturnType<typeof setTimeout>;
     updateActivityBackground?: (activityId: string, properties: { backgroundImage?: string, backgroundColor?: string }) => void;
+    savedBackgroundColors?: Record<string, string>;
   }
 }
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   CheckCircle,
   XCircle,
@@ -28,7 +29,9 @@ import {
   Eye,
   EyeOff,
   Palette,
-  AlertCircle
+  AlertCircle,
+  Check,
+  ChevronsUpDown
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -69,6 +72,19 @@ import {
   TabsTrigger
 } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 /**
  * Component that allows editing settings for a quiz question/activity.
@@ -189,50 +205,80 @@ export function QuestionSettings({
   onQuestionLocationChange,
   activity, // Nova propriedade para acessar a atividade atual
 }: QuestionSettingsProps) {
-  // State to store the correct answer text for text_answer type
-  const [correctAnswerText, setCorrectAnswerText] = React.useState(
-    activeQuestion?.correct_answer_text || ''
-  );
-  const [isSaving, setIsSaving] = useState(false);
-  const [activeSettingsTab, setActiveSettingsTab] = useState('content');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeType, setActiveType] = useState(activeQuestion?.question_type || "multiple_choice");
+  const [correctAnswerText, setCorrectAnswerText] = useState(activeQuestion?.correct_answer_text || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [invalidImageUrl, setInvalidImageUrl] = useState(false);
+  const [backgroundColor, setBackgroundColor] = useState(activity?.backgroundColor || "#FFFFFF");
+  const [customBackgroundMusic, setCustomBackgroundMusic] = useState(activity?.customBackgroundMusic || "");
+  const [title, setTitle] = useState(activity?.title || "");
+  const [description, setDescription] = useState(activity?.description || "");
+  const [isPublished, setIsPublished] = useState(activity?.is_published || false);
   const { toast } = useToast();
 
-  // States for additional fields
-  const [title, setTitle] = useState(activity?.title || '');
-  const [description, setDescription] = useState(activity?.description || '');
-  const [isPublished, setIsPublished] = useState(activity?.is_published || false);
-  const [backgroundColor, setBackgroundColor] = useState(activity?.backgroundColor || '#FFFFFF');
-  const [customBackgroundMusic, setCustomBackgroundMusic] = useState(activity?.customBackgroundMusic || '');
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [invalidImageUrl, setInvalidImageUrl] = useState(false);
+  // Track the activity ID to detect changes
+  const [prevActivityId, setPrevActivityId] = useState(activity?.id);
 
-  // Update state when activity changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (activity) {
-      setTitle(activity.title || '');
-      setDescription(activity.description || '');
+      setBackgroundColor(activity.backgroundColor || "#FFFFFF");
+      setCustomBackgroundMusic(activity.customBackgroundMusic || "");
+      setTitle(activity.title || "");
+      setDescription(activity.description || "");
       setIsPublished(activity.is_published || false);
-      setBackgroundColor(activity.backgroundColor || '#FFFFFF');
-      setCustomBackgroundMusic(activity.customBackgroundMusic || '');
+
+      // Check if we've switched to a different activity
+      if (activity.id !== prevActivityId) {
+        setPrevActivityId(activity.id);
+
+        // Update the local backgroundImage state if activity has changed
+        if (activity.backgroundImage !== backgroundImage) {
+          onBackgroundImageChange(activity.backgroundImage || "");
+        }
+      }
     }
-  }, [activity]);
+  }, [activity, backgroundImage, onBackgroundImageChange, prevActivityId]);
 
   // Update state when activeQuestion changes
   React.useEffect(() => {
-    setCorrectAnswerText(activeQuestion.correct_answer_text || '');
-  }, [activeQuestion.activity_id, activeQuestion.correct_answer_text]);
+    if (activeQuestion) {
+      setCorrectAnswerText(activeQuestion.correct_answer_text || '');
+      setActiveType(activeQuestion.question_type || 'multiple_choice');
+    }
+  }, [activeQuestion, activeQuestion.activity_id, activeQuestion.correct_answer_text]);
 
   // Update text answer when changing
   const handleTextAnswerChange = (value: string) => {
     setCorrectAnswerText(value);
+    // Immediately call the change handler to update parent state
+    if (onCorrectAnswerChange) {
+      onCorrectAnswerChange(value);
+    }
   };
 
   // Send to API when input loses focus
   const handleTextAnswerBlur = () => {
-    if (onCorrectAnswerChange) {
-      onCorrectAnswerChange(correctAnswerText);
+    if (activity && activity.id && activeQuestion.question_type === 'text_answer') {
+      // Update the quiz in the backend
+      try {
+        activitiesApi.updateTypeAnswerQuiz(activity.id, {
+          type: "TYPE_ANSWER",
+          questionText: activeQuestion.question_text,
+          pointType: "STANDARD",
+          timeLimitSeconds: timeLimit,
+          correctAnswer: correctAnswerText
+        });
+      } catch (error) {
+        console.error('Error updating text answer quiz:', error);
+        toast({
+          title: "Error saving answer",
+          description: "Could not save the correct answer. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -274,133 +320,74 @@ export function QuestionSettings({
     'info_slide': 'bg-indigo-100 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800 text-indigo-800 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/40',
   };
 
-  // Tạo nút chọn nhanh cho các loại question type
+  // Replace the QuestionTypeSelector component with this new combobox version
   const QuestionTypeSelector = () => {
+    const [open, setOpen] = useState(false);
+
+    const questionTypes = [
+      { value: 'multiple_choice', label: 'Single Choice', icon: <Radio className="h-4 w-4 mr-2 text-purple-600" /> },
+      { value: 'multiple_response', label: 'Multiple Choice', icon: <CheckSquare className="h-4 w-4 mr-2 text-blue-600" /> },
+      { value: 'true_false', label: 'True/False', icon: <div className="flex mr-2"><CheckCircle className="h-4 w-4 text-green-500" /><XCircle className="h-4 w-4 text-red-500 -ml-1" /></div> },
+      { value: 'text_answer', label: 'Text Answer', icon: <AlignLeft className="h-4 w-4 mr-2 text-pink-600" /> },
+      { value: 'reorder', label: 'Reorder', icon: <MoveVertical className="h-4 w-4 mr-2 text-orange-600" /> },
+      { value: 'location', label: 'Location', icon: <MapPin className="h-4 w-4 mr-2 text-cyan-600" /> },
+      { value: 'slide', label: 'Information Slide', icon: <FileText className="h-4 w-4 mr-2 text-yellow-600" /> },
+      { value: 'info_slide', label: 'Interactive Info Slide', icon: <FileText className="h-4 w-4 mr-2 text-indigo-600" /> },
+    ];
+
+    // Find the current question type
+    const currentType = questionTypes.find(type => type.value === activeQuestion.question_type) || questionTypes[0];
+
     return (
-      <div className="flex flex-col space-y-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "flex items-center justify-start h-12 w-full border",
-            activeQuestion.question_type === 'multiple_choice'
-              ? `${questionTypeColors['multiple_choice']} font-medium`
-              : "hover:bg-purple-50 dark:hover:bg-purple-900/10"
-          )}
-          onClick={() => onQuestionTypeChange('multiple_choice')}
-        >
-          <Radio className={cn("h-5 w-5 mr-2", activeQuestion.question_type === 'multiple_choice' ? "text-purple-600" : "text-gray-400")} />
-          <span className="text-sm font-medium">Single Choice</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "flex items-center justify-start h-12 w-full border",
-            activeQuestion.question_type === 'multiple_response'
-              ? `${questionTypeColors['multiple_response']} font-medium`
-              : "hover:bg-blue-50 dark:hover:bg-blue-900/10"
-          )}
-          onClick={() => onQuestionTypeChange('multiple_response')}
-        >
-          <CheckSquare className={cn("h-5 w-5 mr-2", activeQuestion.question_type === 'multiple_response' ? "text-blue-600" : "text-gray-400")} />
-          <span className="text-sm font-medium">Multiple Choice</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "flex items-center justify-start h-12 w-full border",
-            activeQuestion.question_type === 'true_false'
-              ? `${questionTypeColors['true_false']} font-medium`
-              : "hover:bg-green-50 dark:hover:bg-green-900/10"
-          )}
-          onClick={() => onQuestionTypeChange('true_false')}
-        >
-          <div className="flex mr-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            <XCircle className="h-5 w-5 text-red-500 -ml-1" />
-          </div>
-          <span className="text-sm font-medium">True/False</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "flex items-center justify-start h-12 w-full border",
-            activeQuestion.question_type === 'text_answer'
-              ? `${questionTypeColors['text_answer']} font-medium`
-              : "hover:bg-pink-50 dark:hover:bg-pink-900/10"
-          )}
-          onClick={() => onQuestionTypeChange('text_answer')}
-        >
-          <AlignLeft className={cn("h-5 w-5 mr-2", activeQuestion.question_type === 'text_answer' ? "text-pink-600" : "text-gray-400")} />
-          <span className="text-sm font-medium">Text Answer</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "flex items-center justify-start h-12 w-full border",
-            activeQuestion.question_type === 'reorder'
-              ? `${questionTypeColors['reorder']} font-medium`
-              : "hover:bg-orange-50 dark:hover:bg-orange-900/10"
-          )}
-          onClick={() => onQuestionTypeChange('reorder')}
-        >
-          <MoveVertical className={cn("h-5 w-5 mr-2", activeQuestion.question_type === 'reorder' ? "text-orange-600" : "text-gray-400")} />
-          <span className="text-sm font-medium">Reorder</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "flex items-center justify-start h-12 w-full border",
-            activeQuestion.question_type === 'location'
-              ? `${questionTypeColors['location']} font-medium`
-              : "hover:bg-cyan-50 dark:hover:bg-cyan-900/10"
-          )}
-          onClick={() => onQuestionTypeChange('location')}
-        >
-          <MapPin className={cn("h-5 w-5 mr-2", activeQuestion.question_type === 'location' ? "text-cyan-600" : "text-gray-400")} />
-          <span className="text-sm font-medium">Location</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "flex items-center justify-start h-12 w-full border",
-            activeQuestion.question_type === 'slide'
-              ? `${questionTypeColors['slide']} font-medium`
-              : "hover:bg-yellow-50 dark:hover:bg-yellow-900/10"
-          )}
-          onClick={() => onQuestionTypeChange('slide')}
-        >
-          <FileText className={cn("h-5 w-5 mr-2", activeQuestion.question_type === 'slide' ? "text-yellow-600" : "text-gray-400")} />
-          <span className="text-sm font-medium">Information Slide</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "flex items-center justify-start h-12 w-full border",
-            activeQuestion.question_type === 'info_slide'
-              ? `${questionTypeColors['info_slide']} font-medium`
-              : "hover:bg-indigo-50 dark:hover:bg-indigo-900/10"
-          )}
-          onClick={() => onQuestionTypeChange('info_slide')}
-        >
-          <FileText className={cn("h-5 w-5 mr-2", activeQuestion.question_type === 'info_slide' ? "text-indigo-600" : "text-gray-400")} />
-          <span className="text-sm font-medium">Interactive Info Slide</span>
-        </Button>
-      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn(
+              "w-full justify-between px-3 py-5 h-auto border",
+              activeQuestion.question_type && questionTypeColors[activeQuestion.question_type]
+            )}
+          >
+            <div className="flex items-center gap-2">
+              {currentType.icon}
+              <span className="text-sm font-medium">{currentType.label}</span>
+            </div>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px] p-0">
+          <Command>
+            <CommandInput placeholder="Search question type..." />
+            <CommandList>
+              <CommandEmpty>No question type found.</CommandEmpty>
+              <CommandGroup>
+                {questionTypes.map((type) => (
+                  <CommandItem
+                    key={type.value}
+                    value={type.value}
+                    onSelect={() => {
+                      onQuestionTypeChange(type.value);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2.5",
+                      activeQuestion.question_type === type.value && "bg-accent"
+                    )}
+                  >
+                    {type.icon}
+                    <span>{type.label}</span>
+                    {activeQuestion.question_type === type.value && (
+                      <Check className="ml-auto h-4 w-4" />
+                    )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
     );
   };
 
@@ -464,11 +451,116 @@ export function QuestionSettings({
   const TimeSettings = () => {
     const timePresets = [10, 20, 30, 60, 90, 120];
 
+    // Get time limit from the API if available, otherwise use the prop
+    const currentTimeLimit = (activity && activity.quiz?.timeLimitSeconds) || timeLimit;
+
+    const handleTimeChange = (value: number) => {
+      // Update local state immediately
+      onTimeLimitChange(value);
+
+      // Also update any local activity state to ensure UI is updated immediately
+      if (activity && activity.quiz) {
+        // Create a copy of the activity with updated time limit
+        const updatedActivity = {
+          ...activity,
+          quiz: {
+            ...activity.quiz,
+            timeLimitSeconds: value
+          }
+        };
+
+        // If we have direct access to setActivity, call it
+        if (typeof window !== 'undefined') {
+          // Force re-render by triggering state updates in parent components
+          const event = new CustomEvent('activity:timeLimit:updated', {
+            detail: { activityId: activity.id, timeLimitSeconds: value }
+          });
+          window.dispatchEvent(event);
+        }
+      }
+
+      // Call API to update the quiz based on question type
+      if (activity && activity.id) {
+        try {
+          // First determine what type of quiz we're dealing with
+          const questionType = activeQuestion.question_type;
+          const quizPayload = { timeLimitSeconds: value };
+
+          // Update with the appropriate quiz API call based on quiz type
+          switch (questionType) {
+            case 'multiple_choice':
+              activitiesApi.updateButtonsQuiz(activity.id, {
+                ...quizPayload,
+                type: "CHOICE",
+                questionText: activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: "STANDARD",
+                answers: activity.quiz?.quizAnswers || activeQuestion.options?.map(opt => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || ''
+                })) || []
+              });
+              break;
+            case 'multiple_response':
+              activitiesApi.updateCheckboxesQuiz(activity.id, {
+                ...quizPayload,
+                type: "CHOICE",
+                questionText: activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: "STANDARD",
+                answers: activity.quiz?.quizAnswers || activeQuestion.options?.map(opt => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || ''
+                })) || []
+              });
+              break;
+            case 'true_false':
+              activitiesApi.updateTrueFalseQuiz(activity.id, {
+                ...quizPayload,
+                type: "TRUE_FALSE",
+                questionText: activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: "STANDARD",
+                correctAnswer: activeQuestion.options?.find(o => o.is_correct)?.option_text.toLowerCase() === 'true'
+              });
+              break;
+            case 'text_answer':
+              activitiesApi.updateTypeAnswerQuiz(activity.id, {
+                ...quizPayload,
+                type: "TYPE_ANSWER",
+                questionText: activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: "STANDARD",
+                correctAnswer: activeQuestion.correct_answer_text || ''
+              });
+              break;
+            case 'reorder':
+              activitiesApi.updateReorderQuiz(activity.id, {
+                ...quizPayload,
+                type: "REORDER",
+                questionText: activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: "STANDARD",
+                correctOrder: activeQuestion.options?.map(o => o.option_text) || []
+              });
+              break;
+            default:
+              // For slide types or any other type, just update the activity directly
+              debouncedUpdateActivity({ timeLimitSeconds: value });
+              break;
+          }
+
+          console.log(`Updated time limit to ${value}s for ${questionType} question`);
+        } catch (error) {
+          console.error('Error updating time limit:', error);
+          // Fall back to general update if specific API fails
+          debouncedUpdateActivity({ timeLimitSeconds: value });
+        }
+      }
+    };
+
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <Label htmlFor="time-limit">Time Limit</Label>
-          <Badge variant="outline" className="px-2 py-1 font-mono">{timeLimit}s</Badge>
+          <Badge variant="outline" className="px-2 py-1 font-mono">{currentTimeLimit}s</Badge>
         </div>
 
         <div className="flex items-center gap-2">
@@ -477,8 +569,8 @@ export function QuestionSettings({
             min={5}
             max={120}
             step={5}
-            value={[timeLimit]}
-            onValueChange={(value) => onTimeLimitChange(value[0])}
+            value={[currentTimeLimit]}
+            onValueChange={(value) => handleTimeChange(value[0])}
             className="flex-1"
           />
         </div>
@@ -487,10 +579,10 @@ export function QuestionSettings({
           {timePresets.map(time => (
             <Button
               key={time}
-              variant={timeLimit === time ? "default" : "outline"}
+              variant={currentTimeLimit === time ? "default" : "outline"}
               size="sm"
               className="h-8 px-2 text-xs"
-              onClick={() => onTimeLimitChange(time)}
+              onClick={() => handleTimeChange(time)}
             >
               {time}s
             </Button>
@@ -713,6 +805,15 @@ export function QuestionSettings({
     if (!activity?.id) return;
 
     setIsSaving(true);
+
+    // Lưu trước màu mới vào global storage
+    if (data.backgroundColor && typeof window !== 'undefined') {
+      if (!window.savedBackgroundColors) {
+        window.savedBackgroundColors = {};
+      }
+      window.savedBackgroundColors[activity.id] = data.backgroundColor;
+    }
+
     try {
       // Ensure we're sending the correct API payload shape
       const payload = {
@@ -735,15 +836,36 @@ export function QuestionSettings({
       console.log('Updating activity with payload:', finalPayload);
       await activitiesApi.updateActivity(activity.id, finalPayload);
 
+      // Sau khi API thành công, phát sự kiện để đảm bảo UI được cập nhật đồng bộ
+      if (data.backgroundColor && typeof window !== 'undefined') {
+        // Đảm bảo lưu màu mới vào global storage
+        if (!window.savedBackgroundColors) {
+          window.savedBackgroundColors = {};
+        }
+        window.savedBackgroundColors[activity.id] = data.backgroundColor;
+
+        // Phát sự kiện để thông báo cho tất cả các component
+        const event = new CustomEvent('activity:background:updated', {
+          detail: {
+            activityId: activity.id,
+            properties: { backgroundColor: data.backgroundColor },
+            sender: 'questionSettings_api'
+          }
+        });
+        window.dispatchEvent(event);
+      }
+
       toast({
         title: "Saved successfully",
         description: "Your changes have been saved.",
       });
     } catch (error) {
       console.error('Error updating activity:', error);
+
+      // Thông báo lỗi nhưng VẪN GIỐNG màu trong UI (không reset về màu cũ)
       toast({
         title: "Error saving changes",
-        description: "Could not save your changes. Please try again.",
+        description: "Could not save your changes to the server. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -777,17 +899,65 @@ export function QuestionSettings({
 
   // Use debounced version for high-frequency updates like color changes
   const handleBackgroundColorChange = (value: string) => {
-    setBackgroundColor(value);
-    // Update in real-time but with debounce for better UX
+    // Cập nhật UI ngay lập tức
     if (activity) {
+      // Cập nhật trong state local trước
+      setBackgroundColor(value);
+
+      // Lưu vào global storage để các component khác có thể sử dụng
+      if (typeof window !== 'undefined') {
+        if (!window.savedBackgroundColors) window.savedBackgroundColors = {};
+        window.savedBackgroundColors[activity.id] = value;
+
+        // Phát sự kiện để thông báo cho các component khác
+        const event = new CustomEvent('activity:background:updated', {
+          detail: {
+            activityId: activity.id,
+            properties: { backgroundColor: value },
+            sender: 'questionSettings'
+          }
+        });
+        window.dispatchEvent(event);
+      }
+
+      // Gửi API update (debounced để tránh quá nhiều request)
       debouncedUpdateActivity({ backgroundColor: value });
 
-      // Use the immediate background update function if available
+      // Cập nhật background trong tất cả các component nếu cần thiết
       if (typeof window !== 'undefined' && window.updateActivityBackground) {
         window.updateActivityBackground(activity.id, { backgroundColor: value });
       }
     }
   };
+
+  // Thêm vào useEffect để lắng nghe các thay đổi về màu nền
+  useEffect(() => {
+    // Lắng nghe sự kiện cập nhật từ component khác
+    const handleBackgroundUpdate = (event: any) => {
+      if (event.detail &&
+        event.detail.activityId &&
+        event.detail.properties &&
+        event.detail.properties.backgroundColor &&
+        activity &&
+        activity.id === event.detail.activityId) {
+        // Cập nhật state local nếu sender không phải là chính mình
+        if (event.detail.sender !== 'questionSettings') {
+          setBackgroundColor(event.detail.properties.backgroundColor);
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('activity:background:updated', handleBackgroundUpdate);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('activity:background:updated', handleBackgroundUpdate);
+      }
+    };
+  }, [activity]);
 
   // Functions for updating basic fields
   const handleTitleChange = (value: string) => {
@@ -935,22 +1105,110 @@ export function QuestionSettings({
 
   // Background settings component with enhanced styling and upload
   const BackgroundSettings = () => {
+    // Thêm state để theo dõi các thay đổi màu và force re-render
+    const [colorRenderKey, setColorRenderKey] = useState(0);
+
+    // Thêm danh sách màu pastel dễ thương
+    const pastelColors = [
+      { color: '#FFD6E0', name: 'Pastel Pink' },
+      { color: '#FFEFCF', name: 'Pastel Yellow' },
+      { color: '#D1F0E0', name: 'Pastel Green' },
+      { color: '#D0F0FD', name: 'Pastel Blue' },
+      { color: '#E2D8FD', name: 'Pastel Purple' },
+      { color: '#FEE2D5', name: 'Pastel Peach' },
+      { color: '#E9F3E6', name: 'Mint Cream' },
+      { color: '#F0E6E4', name: 'Pastel Beige' }
+    ];
+
+    // Thêm useEffect để lắng nghe sự kiện thay đổi màu
+    useEffect(() => {
+      const handleBackgroundUpdate = (event: any) => {
+        if (event.detail &&
+          event.detail.activityId &&
+          event.detail.properties &&
+          event.detail.properties.backgroundColor &&
+          activity &&
+          activity.id === event.detail.activityId) {
+          // Force re-render khi có thay đổi màu
+          setColorRenderKey(prev => prev + 1);
+        }
+      };
+
+      if (typeof window !== 'undefined') {
+        window.addEventListener('activity:background:updated', handleBackgroundUpdate);
+      }
+
+      return () => {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('activity:background:updated', handleBackgroundUpdate);
+        }
+      };
+    }, [activity]);
+
+    // Lấy màu hiện tại từ cả hai nguồn
+    // Ưu tiên global storage trước, sau đó mới tới state local
+    const currentBackgroundColor = typeof window !== 'undefined' &&
+      window.savedBackgroundColors &&
+      activity?.id &&
+      window.savedBackgroundColors[activity.id]
+      ? window.savedBackgroundColors[activity.id]
+      : backgroundColor;
+
+    // Hàm chọn màu pastel
+    const handlePastelColorSelect = (color: string) => {
+      handleBackgroundColorChange(color);
+    };
+
     return (
-      <div className="space-y-5">
+      <div className="space-y-5" key={colorRenderKey}>
         <div className="space-y-3">
           <Label htmlFor="background-color">Background Color</Label>
           <div className="flex gap-3">
             <div
               className="h-10 w-10 rounded-md border overflow-hidden"
-              style={{ backgroundColor }}
+              style={{ backgroundColor: currentBackgroundColor }}
             />
             <Input
               id="background-color"
               type="color"
-              value={backgroundColor}
+              value={currentBackgroundColor}
               onChange={(e) => handleBackgroundColorChange(e.target.value)}
               className="w-full"
             />
+          </div>
+
+          {/* Pastel color palette */}
+          <div className="mt-3">
+            <div className="text-xs text-gray-500 mb-2 flex items-center">
+              <div className="w-3 h-3 bg-gradient-to-r from-pink-200 to-blue-200 rounded-full mr-1.5"></div>
+              Pastel Colors
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {pastelColors.map((pastel) => (
+                <button
+                  key={pastel.color}
+                  type="button"
+                  onClick={() => handlePastelColorSelect(pastel.color)}
+                  className="relative group h-14 rounded-md border border-gray-200 dark:border-gray-700 transition-all hover:scale-105 overflow-hidden"
+                  title={pastel.name}
+                >
+                  <div
+                    className="absolute inset-0"
+                    style={{ backgroundColor: pastel.color }}
+                  ></div>
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/10 flex items-center justify-center transition-opacity">
+                    <span className="text-xs font-medium text-gray-800 bg-white/80 px-1.5 py-0.5 rounded-sm">
+                      {pastel.name}
+                    </span>
+                  </div>
+                  {currentBackgroundColor.toUpperCase() === pastel.color.toUpperCase() && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1256,6 +1514,72 @@ export function QuestionSettings({
     );
   };
 
+  // Content tab for question settings
+  const ContentTab = () => {
+    return (
+      <div className="space-y-6">
+        <QuestionTypeSelector />
+
+        {/* Option list for choice questions */}
+        {(activeQuestion.question_type === 'multiple_choice' ||
+          activeQuestion.question_type === 'multiple_response') && (
+            <OptionList
+              options={activeQuestion.options}
+              activeQuestionIndex={activeQuestionIndex}
+              questionType={activeQuestion.question_type}
+              onAddOption={onAddOption}
+              onOptionChange={(questionIndex, optionIndex, field, value) => onOptionChange(questionIndex, optionIndex, field, value)}
+              onDeleteOption={onDeleteOption}
+            />
+          )}
+
+        {/* True/false selector */}
+        {activeQuestion.question_type === 'true_false' && (
+          <TrueFalseSelector
+            options={activeQuestion.options}
+            onOptionChange={onOptionChange}
+            activeQuestionIndex={activeQuestionIndex}
+          />
+        )}
+
+        {/* Text answer input */}
+        {activeQuestion.question_type === 'text_answer' && (
+          <TextAnswerForm
+            correctAnswerText={correctAnswerText}
+            onTextAnswerChange={handleTextAnswerChange}
+            onTextAnswerBlur={handleTextAnswerBlur}
+          />
+        )}
+
+        {/* Reorder options */}
+        {activeQuestion.question_type === 'reorder' && onReorderOptions && (
+          <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
+            <ReorderOptions
+              options={activeQuestion.options}
+              onOptionChange={(index, field, value) => onOptionChange(activeQuestionIndex, index, field, value)}
+              onDeleteOption={onDeleteOption}
+              onAddOption={onAddOption}
+              onReorder={onReorderOptions}
+            />
+          </div>
+        )}
+
+        {/* Slide content editor */}
+        {activeQuestion.question_type === 'slide' && (
+          <SlideSettings />
+        )}
+
+        {/* Location question editor */}
+        {activeQuestion.question_type === 'location' && (
+          <LocationSettings />
+        )}
+
+        {/* Time limit control - for all question types */}
+        <TimeSettings />
+      </div>
+    );
+  };
+
   return (
     <Card className="border-none overflow-hidden shadow-md h-full w-full">
       <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
@@ -1265,7 +1589,7 @@ export function QuestionSettings({
         </div>
       </CardHeader>
       <CardContent className="p-4 bg-white dark:bg-black overflow-auto" style={{ height: "calc(100% - 48px)" }}>
-        <Tabs value={activeSettingsTab} onValueChange={setActiveSettingsTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
           <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="content" className="text-xs">
               <Zap className="h-3.5 w-3.5 mr-1.5" />
@@ -1311,10 +1635,10 @@ export function QuestionSettings({
                     <OptionList
                       options={activeQuestion.options}
                       activeQuestionIndex={activeQuestionIndex}
-                      onAddOption={onAddOption}
-                      onOptionChange={onOptionChange}
-                      onDeleteOption={onDeleteOption}
                       questionType={activeQuestion.question_type}
+                      onAddOption={onAddOption}
+                      onOptionChange={(questionIndex, optionIndex, field, value) => onOptionChange(questionIndex, optionIndex, field, value)}
+                      onDeleteOption={onDeleteOption}
                     />
                   </div>
                 ) : activeQuestion.question_type === 'true_false' ? (
