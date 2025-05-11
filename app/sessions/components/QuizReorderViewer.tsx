@@ -24,6 +24,7 @@ interface QuizReorderViewerProps {
     description?: string;
     backgroundColor?: string;
     backgroundImage?: string;
+    hostShowAnswer?: boolean;
     quiz: {
       questionText: string;
       timeLimitSeconds: number;
@@ -146,12 +147,6 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
               </div>
             </div>
             <div className='flex items-center gap-1 md:gap-2'>
-              <div className='flex items-center gap-1 md:gap-2 bg-[#0e2838]/60 border border-white/5 px-2 py-1 rounded-full text-[10px] md:text-xs'>
-                <Users className='h-3 w-3 md:h-3.5 md:w-3.5 text-[#aef359]' />
-                <span className='text-white/90'>
-                  {answeredCount}/{totalParticipants}
-                </span>
-              </div>
               <motion.div
                 className='flex items-center gap-1 md:gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-[10px] md:text-xs font-medium'
                 animate={{
@@ -213,7 +208,7 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
           />
           {/* Participants Progress */}
           <motion.div
-            className='h-1 bg-amber-500/70'
+            className='h-1 bg-purple-500/70'
             initial={{ width: '0%' }}
             animate={{
               width: `${Math.min(
@@ -310,6 +305,55 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
             )}
           </AnimatePresence>
 
+          {/* Hiển thị đáp án khi host yêu cầu */}
+          <AnimatePresence>
+            {activity.hostShowAnswer && !isAnswered && (
+              <motion.div
+                className='mb-4 md:mb-6 p-3 md:p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              >
+                <div className='flex items-center gap-2 mb-2 md:mb-3'>
+                  <div className='flex items-center gap-2 text-[#aef359]'>
+                    <CheckCircle className='h-4 w-4 md:h-5 md:w-5' />
+                    <span className='text-sm md:text-base font-semibold'>
+                      Thứ tự đúng:
+                    </span>
+                  </div>
+                </div>
+                <div className='mt-1 md:mt-2 space-y-1 md:space-y-2'>
+                  {correctOrder.map((id, idx) => {
+                    const answer = activity.quiz.quizAnswers.find(
+                      (a) => a.quizAnswerId === id
+                    )!;
+                    return (
+                      <motion.div
+                        key={id}
+                        className='p-2 md:p-3 bg-gradient-to-r from-[#0f2231]/80 to-[#102942]/80 backdrop-blur-sm rounded-xl border border-[#aef359]/20 shadow-md relative overflow-hidden'
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                      >
+                        <div className='absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#aef359]/30 to-transparent' />
+                        <div className='flex items-center gap-2'>
+                          <div className='h-5 w-5 md:h-6 md:w-6 rounded-full bg-[#aef359]/20 flex items-center justify-center'>
+                            <span className='text-[10px] md:text-xs text-[#aef359]'>
+                              {idx + 1}
+                            </span>
+                          </div>
+                          <span className='text-sm md:text-base text-white/90'>
+                            {answer.answerText}
+                          </span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <motion.div
             className='space-y-3 md:space-y-4'
             initial={{ opacity: 0 }}
@@ -328,9 +372,17 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
             >
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || isAnswered || timeLeft === 0}
+                disabled={
+                  isSubmitting ||
+                  isAnswered ||
+                  timeLeft === 0 ||
+                  activity.hostShowAnswer
+                }
                 className={`w-full py-3 md:py-5 text-base md:text-lg font-semibold rounded-xl flex items-center justify-center gap-2 ${
-                  isSubmitting || isAnswered || timeLeft === 0
+                  isSubmitting ||
+                  isAnswered ||
+                  timeLeft === 0 ||
+                  activity.hostShowAnswer
                     ? 'bg-[#0e2838]/50 text-white/50 cursor-not-allowed'
                     : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-[#0e1c26] hover:from-[#9ee348] hover:to-[#d3e87c] hover:shadow-lg hover:shadow-[#aef359]/20'
                 }`}

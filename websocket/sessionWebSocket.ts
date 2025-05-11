@@ -72,6 +72,22 @@ export interface RankedParticipant extends SessionParticipant {
   realtimeRanking: number;
 }
 
+export interface RankingChangeData {
+  participants: RankedParticipant[];
+  changes: Record<
+    string,
+    {
+      previous: number | null;
+      current: number;
+      change: number;
+      direction: 'up' | 'down' | 'same' | 'new';
+    }
+  >;
+  previousActivityId: string | null;
+  currentActivityId: string | null;
+  timestamp: number;
+}
+
 export class LeaderboardManager {
   private static instance: LeaderboardManager;
   private participants: RankedParticipant[] = [];
@@ -82,6 +98,18 @@ export class LeaderboardManager {
   private updateQueue: SessionParticipant[][] = [];
   private updateTimer: NodeJS.Timeout | null = null;
   private updateThrottleMs: number = 300; // Giới hạn tốc độ cập nhật
+  private rankingHistory: Record<string, RankedParticipant[]> = {};
+  private lastActivityId: string | null = null;
+  private latestRankingChangeData: RankingChangeData | null = null;
+  private rankingChangeSubscribers: Set<(data: RankingChangeData) => void> =
+    new Set();
+  private activityTransitionHistory: Record<
+    string,
+    {
+      participants: RankedParticipant[];
+      timestamp: number;
+    }
+  > = {};
 
   private constructor() {}
 
@@ -243,6 +271,425 @@ export class LeaderboardManager {
     if (ms > 0) {
       this.updateThrottleMs = ms;
     }
+  }
+
+  public saveCurrentRankingSnapshot(activityId: string): void {
+    if (!activityId) return;
+
+    // Sao chép participants hiện tại để lưu vào history
+    this.rankingHistory[activityId] = [...this.participants];
+
+    // Nếu có activityId trước đó, tính toán thay đổi thứ hạng
+    if (this.lastActivityId && this.lastActivityId !== activityId) {
+      const rankingChanges = this._calculateRankingChanges(
+        this.lastActivityId,
+        activityId
+      );
+      this.latestRankingChangeData = {
+        ...rankingChanges,
+        previousActivityId: this.lastActivityId,
+        currentActivityId: activityId,
+        timestamp: Date.now(),
+      };
+
+      // Thông báo cho subscribers
+      this._notifyRankingChangeSubscribers();
+    }
+
+    this.lastActivityId = activityId;
+
+    console.log(
+      `[LeaderboardManager] Đã lưu snapshot thứ hạng cho activity: ${activityId}`,
+      this.rankingHistory[activityId].map((p) => ({
+        name: p.displayName,
+        rank: p.realtimeRanking,
+        score: p.realtimeScore,
+      }))
+    );
+  }
+
+  private _calculateRankingChanges(
+    previousActivityId: string,
+    currentActivityId: string
+  ): {
+    participants: RankedParticipant[];
+    changes: Record<
+      string,
+      {
+        previous: number | null;
+        current: number;
+        change: number;
+        direction: 'up' | 'down' | 'same' | 'new';
+      }
+    >;
+    previousActivityId: string | null;
+    currentActivityId: string;
+    timestamp: number;
+  } {
+    const result: Record<
+      string,
+      {
+        previous: number | null;
+        current: number;
+        change: number;
+        direction: 'up' | 'down' | 'same' | 'new';
+      }
+    > = {};
+
+    // Lấy dữ liệu thứ hạng trước đó
+    const previousRankings = this.rankingHistory[previousActivityId] || [];
+
+    // Tạo map lưu trữ thứ hạng trước đó theo tên
+    const previousRankMap: Record<string, number> = {};
+    previousRankings.forEach((p) => {
+      previousRankMap[p.displayName] = p.realtimeRanking;
+    });
+
+    // Tính toán thay đổi cho mỗi người tham gia hiện tại
+    this.participants.forEach((p) => {
+      const previousRank = previousRankMap[p.displayName];
+      const currentRank = p.realtimeRanking;
+
+      if (previousRank === undefined) {
+        // Người chơi mới
+        result[p.displayName] = {
+          previous: null,
+          current: currentRank,
+          change: 0,
+          direction: 'new',
+        };
+      } else {
+        // Tính toán thay đổi và hướng
+        const rankChange = previousRank - currentRank; // Nếu dương = tăng hạng, âm = giảm hạng
+        let direction: 'up' | 'down' | 'same';
+
+        if (rankChange > 0) {
+          direction = 'up'; // Thứ hạng tăng (số thứ tự giảm)
+        } else if (rankChange < 0) {
+          direction = 'down'; // Thứ hạng giảm (số thứ tự tăng)
+        } else {
+          direction = 'same'; // Không thay đổi
+        }
+
+        result[p.displayName] = {
+          previous: previousRank,
+          current: currentRank,
+          change: Math.abs(rankChange),
+          direction,
+        };
+      }
+    });
+
+    return {
+      participants: this.participants,
+      changes: result,
+      previousActivityId,
+      currentActivityId,
+      timestamp: Date.now(),
+    };
+  }
+
+  private _notifyRankingChangeSubscribers() {
+    if (!this.latestRankingChangeData) return;
+
+    this.rankingChangeSubscribers.forEach((callback) => {
+      try {
+        callback(this.latestRankingChangeData!);
+      } catch (error) {
+        console.error(
+          '[LeaderboardManager] Lỗi khi gọi ranking change callback:',
+          error
+        );
+      }
+    });
+  }
+
+  public getRankingChanges(currentActivityId: string): RankingChangeData {
+    // Nếu không có lưu trữ trước đó, trả về dữ liệu hiện tại không có so sánh
+    if (!this.lastActivityId || this.lastActivityId === currentActivityId) {
+      const changes: Record<
+        string,
+        {
+          previous: number | null;
+          current: number;
+          change: number;
+          direction: 'up' | 'down' | 'same' | 'new';
+        }
+      > = {};
+
+      // Đánh dấu tất cả là người chơi mới
+      this.participants.forEach((p) => {
+        changes[p.displayName] = {
+          previous: null,
+          current: p.realtimeRanking,
+          change: 0,
+          direction: 'new',
+        };
+      });
+
+      return {
+        participants: this.participants,
+        changes,
+        previousActivityId: null,
+        currentActivityId,
+        timestamp: Date.now(),
+      };
+    }
+
+    // Tính toán thay đổi
+    const rankingChanges = this._calculateRankingChanges(
+      this.lastActivityId,
+      currentActivityId
+    );
+
+    return {
+      ...rankingChanges,
+      previousActivityId: this.lastActivityId,
+      currentActivityId,
+      timestamp: Date.now(),
+    };
+  }
+
+  public getLatestRankingChangeData(): RankingChangeData | null {
+    return this.latestRankingChangeData;
+  }
+
+  public getRankingPositionData(activityId: string): {
+    current: Record<string, number>;
+    previous: Record<string, number> | null;
+  } {
+    const currentPositions: Record<string, number> = {};
+    this.participants.forEach((p, index) => {
+      currentPositions[p.displayName] = index;
+    });
+
+    // Ưu tiên sử dụng dữ liệu tại thời điểm chuyển activity nếu có
+    if (activityId && this.activityTransitionHistory[activityId]) {
+      const previousPositions: Record<string, number> = {};
+      this.activityTransitionHistory[activityId].participants.forEach(
+        (p, index) => {
+          previousPositions[p.displayName] = index;
+        }
+      );
+
+      return {
+        current: currentPositions,
+        previous: previousPositions,
+      };
+    }
+
+    // Nếu không có dữ liệu tại thời điểm chuyển, sử dụng dữ liệu từ rankingHistory
+    if (this.lastActivityId && this.rankingHistory[this.lastActivityId]) {
+      const previousPositions: Record<string, number> = {};
+      this.rankingHistory[this.lastActivityId].forEach((p, index) => {
+        previousPositions[p.displayName] = index;
+      });
+
+      return {
+        current: currentPositions,
+        previous: previousPositions,
+      };
+    }
+
+    return {
+      current: currentPositions,
+      previous: null,
+    };
+  }
+
+  public subscribeToRankingChanges(
+    callback: (data: RankingChangeData) => void
+  ) {
+    this.rankingChangeSubscribers.add(callback);
+
+    // Nếu đã có dữ liệu, gửi ngay lập tức
+    if (this.latestRankingChangeData) {
+      callback(this.latestRankingChangeData);
+    }
+
+    return () => {
+      this.rankingChangeSubscribers.delete(callback);
+    };
+  }
+
+  public getRankingHistoryForActivity(
+    activityId: string
+  ): RankedParticipant[] | null {
+    return this.rankingHistory[activityId] || null;
+  }
+
+  public clearRankingHistory(): void {
+    this.rankingHistory = {};
+    this.lastActivityId = null;
+    console.log('[LeaderboardManager] Đã xóa toàn bộ lịch sử thứ hạng');
+  }
+
+  // Thêm phương thức để lưu danh sách người tham gia tại thời điểm chuyển sang activity mới
+  public saveParticipantsAtTransition(activityId: string): void {
+    if (!activityId) return;
+
+    // Lưu snapshot dữ liệu người tham gia khi chuyển sang activity mới
+    this.activityTransitionHistory[activityId] = {
+      participants: [...this.participants],
+      timestamp: Date.now(),
+    };
+
+    console.log(
+      `[LeaderboardManager] Đã lưu danh sách người tham gia tại thời điểm chuyển sang activity: ${activityId}`,
+      this.activityTransitionHistory[activityId]
+    );
+  }
+
+  // Cập nhật phương thức publishRankingDataImmediately để sử dụng dữ liệu từ thời điểm chuyển activity
+  public publishRankingDataImmediately(activityId: string): RankingChangeData {
+    if (!activityId) {
+      console.error(
+        '[LeaderboardManager] ActivityId không được trống khi publish bảng xếp hạng.'
+      );
+      const defaultData: RankingChangeData = {
+        participants: this.participants,
+        changes: {},
+        previousActivityId: null,
+        currentActivityId: activityId || 'unknown',
+        timestamp: Date.now(),
+      };
+      return defaultData;
+    }
+
+    // Lưu snapshot hiện tại
+    this.rankingHistory[activityId] = [...this.participants];
+
+    // Tạo data để publish
+    let rankingData: RankingChangeData;
+
+    // Kiểm tra xem có dữ liệu từ thời điểm chuyển activity không
+    const hasTransitionData =
+      this.activityTransitionHistory[activityId] !== undefined;
+    const previousActivityId =
+      this.lastActivityId !== activityId ? this.lastActivityId : null;
+
+    if (hasTransitionData) {
+      // So sánh giữa dữ liệu hiện tại với dữ liệu tại thời điểm chuyển activity
+      const transitionParticipants =
+        this.activityTransitionHistory[activityId].participants;
+      const changes: Record<
+        string,
+        {
+          previous: number | null;
+          current: number;
+          change: number;
+          direction: 'up' | 'down' | 'same' | 'new';
+        }
+      > = {};
+
+      // Tạo map của dữ liệu tại thời điểm chuyển
+      const transitionRankMap: Record<string, number> = {};
+      transitionParticipants.forEach((p) => {
+        transitionRankMap[p.displayName] = p.realtimeRanking;
+      });
+
+      // Tính toán thay đổi thứ hạng
+      this.participants.forEach((p) => {
+        const previousRank = transitionRankMap[p.displayName];
+        const currentRank = p.realtimeRanking;
+
+        if (previousRank === undefined) {
+          // Người chơi mới
+          changes[p.displayName] = {
+            previous: null,
+            current: currentRank,
+            change: 0,
+            direction: 'new',
+          };
+        } else {
+          // Tính toán thay đổi và hướng
+          const rankChange = previousRank - currentRank; // Nếu dương = tăng hạng, âm = giảm hạng
+          let direction: 'up' | 'down' | 'same';
+
+          if (rankChange > 0) {
+            direction = 'up'; // Thứ hạng tăng (số thứ tự giảm)
+          } else if (rankChange < 0) {
+            direction = 'down'; // Thứ hạng giảm (số thứ tự tăng)
+          } else {
+            direction = 'same'; // Không thay đổi
+          }
+
+          changes[p.displayName] = {
+            previous: previousRank,
+            current: currentRank,
+            change: Math.abs(rankChange),
+            direction,
+          };
+        }
+      });
+
+      rankingData = {
+        participants: this.participants,
+        changes,
+        previousActivityId,
+        currentActivityId: activityId,
+        timestamp: Date.now(),
+      };
+
+      console.log(
+        `[LeaderboardManager] So sánh dữ liệu hiện tại với dữ liệu tại thời điểm chuyển activity: ${activityId}`,
+        changes
+      );
+    } else if (previousActivityId) {
+      // Sử dụng phương thức _calculateRankingChanges nếu không có dữ liệu tại thời điểm chuyển
+      rankingData = this._calculateRankingChanges(
+        previousActivityId,
+        activityId
+      );
+      rankingData = {
+        ...rankingData,
+        previousActivityId,
+        currentActivityId: activityId,
+        timestamp: Date.now(),
+      };
+    } else {
+      // Nếu không có history, tạo dữ liệu mới
+      const changes: Record<
+        string,
+        {
+          previous: number | null;
+          current: number;
+          change: number;
+          direction: 'up' | 'down' | 'same' | 'new';
+        }
+      > = {};
+
+      this.participants.forEach((p) => {
+        changes[p.displayName] = {
+          previous: null,
+          current: p.realtimeRanking,
+          change: 0,
+          direction: 'new',
+        };
+      });
+
+      rankingData = {
+        participants: this.participants,
+        changes,
+        previousActivityId: null,
+        currentActivityId: activityId,
+        timestamp: Date.now(),
+      };
+    }
+
+    // Cập nhật dữ liệu mới nhất và ID activity cuối cùng
+    this.latestRankingChangeData = rankingData;
+    this.lastActivityId = activityId;
+
+    // Thông báo cho tất cả subscribers
+    this._notifyRankingChangeSubscribers();
+
+    console.log(
+      `[LeaderboardManager] Đã publish dữ liệu xếp hạng ngay lập tức cho activity: ${activityId}`,
+      rankingData
+    );
+
+    return rankingData;
   }
 }
 
@@ -760,6 +1207,11 @@ export class SessionWebSocket {
       return;
     }
 
+    // Nếu có activityId hiện tại, lưu danh sách người tham gia tại thời điểm này
+    if (activityId) {
+      LeaderboardManager.getInstance().saveParticipantsAtTransition(activityId);
+    }
+
     // Reset bộ đếm khi chuyển hoạt động mới
     this.participantsEventCount = 0;
     this.currentActivityId = activityId || null;
@@ -919,5 +1371,73 @@ export class SessionWebSocket {
     console.log(
       `[WebSocket] Đã reset bộ đếm sự kiện participants về 0/${this.totalParticipantsCount}`
     );
+  }
+
+  public subscribeToRankingChanges(
+    callback: (data: RankingChangeData) => void
+  ): () => void {
+    return LeaderboardManager.getInstance().subscribeToRankingChanges(callback);
+  }
+
+  public requestRankingUpdate(activityId: string): void {
+    LeaderboardManager.getInstance().saveCurrentRankingSnapshot(activityId);
+  }
+
+  public getRankingPositionData(activityId?: string): {
+    current: Record<string, number>;
+    previous: Record<string, number> | null;
+  } {
+    return LeaderboardManager.getInstance().getRankingPositionData(
+      activityId || this.currentActivityId || ''
+    );
+  }
+
+  public getLatestRankingChangeData(): RankingChangeData | null {
+    return LeaderboardManager.getInstance().getLatestRankingChangeData();
+  }
+
+  public saveCurrentRankingSnapshot(activityId: string): void {
+    LeaderboardManager.getInstance().saveCurrentRankingSnapshot(activityId);
+  }
+
+  public getRankingChanges(currentActivityId: string): RankingChangeData {
+    return LeaderboardManager.getInstance().getRankingChanges(
+      currentActivityId
+    );
+  }
+
+  public getRankingHistoryForActivity(
+    activityId: string
+  ): RankedParticipant[] | null {
+    return LeaderboardManager.getInstance().getRankingHistoryForActivity(
+      activityId
+    );
+  }
+
+  public clearRankingHistory(): void {
+    LeaderboardManager.getInstance().clearRankingHistory();
+  }
+
+  // Thêm phương thức để publish dữ liệu xếp hạng ngay lập tức
+  public publishRankingData(activityId: string): RankingChangeData {
+    // Đảm bảo có activityId
+    if (!activityId) {
+      console.error(
+        '[SessionWebSocket] Không thể publish dữ liệu xếp hạng: activityId bị thiếu'
+      );
+      // Tạo dữ liệu mặc định nếu không có activityId
+      const currentActivityId = this.getCurrentActivityId() || 'unknown';
+      return LeaderboardManager.getInstance().publishRankingDataImmediately(
+        currentActivityId
+      );
+    }
+
+    // Gọi phương thức của LeaderboardManager để publish dữ liệu ngay lập tức
+    const rankingData =
+      LeaderboardManager.getInstance().publishRankingDataImmediately(
+        activityId
+      );
+
+    return rankingData;
   }
 }

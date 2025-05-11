@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as fabric from 'fabric';
 import { FabricImage } from 'fabric';
+import { useIsMobile } from '@/hooks/use-mobile';
+
 export type SlideElement = {
   slideElementId: string;
   slideElementType: 'TEXT' | 'IMAGE';
@@ -29,6 +31,7 @@ interface Slide {
   autoAdvanceSeconds: number;
   slideElements: SlideElement[];
 }
+
 export interface Activity {
   activityId: string;
   activityType: string;
@@ -56,9 +59,26 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const fabricCanvas = useRef<fabric.Canvas | null>(null);
+  const isMobile = useIsMobile();
   const { backgroundColor, backgroundImage, slide } = activity;
 
-  console.log('backgroundImage', backgroundImage);
+  // Kích thước chuẩn (giống với FabricEditor)
+  const STANDARD_CANVAS_WIDTH = 812; // ORIGINAL_CANVAS_WIDTH
+  const STANDARD_CANVAS_HEIGHT = (STANDARD_CANVAS_WIDTH * height) / width; // Giữ tỷ lệ 900:510 hoặc tương ứng
+
+  // Tính toán kích thước canvas responsive
+  const getCanvasDimensions = () => {
+    if (isMobile) {
+      const windowWidth = window.innerWidth;
+      const canvasWidth = Math.min(windowWidth * 0.95, 360); // Giới hạn tối đa 360px
+      const canvasHeight = canvasWidth * (height / width); // Giữ tỷ lệ
+      return { canvasWidth, canvasHeight };
+    }
+    return { canvasWidth: width, canvasHeight: height };
+  };
+
+  const { canvasWidth, canvasHeight } = getCanvasDimensions();
+
   // Khởi tạo canvas
   const initCanvas = (
     canvasEl: HTMLCanvasElement,
@@ -66,9 +86,9 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     backgroundImage: string | null
   ) => {
     const canvas = new fabric.Canvas(canvasEl, {
-      width: width,
-      height: height,
-      selection: false, // Vô hiệu hóa chọn trong chế độ xem
+      width: canvasWidth,
+      height: canvasHeight,
+      selection: false,
     });
 
     // Set background
@@ -81,14 +101,13 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
           originY: 'top',
         });
         canvas.backgroundImage = img;
+        canvas.renderAll();
       });
     }
 
     fabricCanvas.current = canvas;
     return canvas;
   };
-
-  const ORIGINAL_CANVAS_WIDTH = 812;
 
   const renderSlide = async (activity: Activity) => {
     console.log('Slide elements:', activity.slide.slideElements);
@@ -97,18 +116,21 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
 
     // Xóa nội dung canvas hiện tại
     canvas.clear();
-    canvas.backgroundColor = activity.backgroundColor || '#fff';
+    canvas.backgroundImage = undefined;
+    canvas.backgroundColor = backgroundColor || '#fff';
+    canvas.renderAll();
 
+    // Thiết lập hình ảnh nền nếu có
     if (backgroundImage) {
-      FabricImage.fromURL(backgroundImage).then((img) => {
-        img.set({
-          scaleX: canvas.getWidth() / img.width,
-          scaleY: canvas.getHeight() / img.height,
-          originX: 'left',
-          originY: 'top',
-        });
-        canvas.backgroundImage = img;
+      const img = await fabric.FabricImage.fromURL(backgroundImage);
+      img.set({
+        scaleX: canvas.getWidth() / img.width,
+        scaleY: canvas.getHeight() / img.height,
+        originX: 'left',
+        originY: 'top',
       });
+      canvas.backgroundImage = img;
+      canvas.renderAll();
     }
 
     // Sắp xếp elements theo layerOrder
@@ -136,6 +158,10 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     try {
       const loadedImages = await Promise.all(imagePromises);
 
+      // Tỷ lệ scale giữa canvas thực tế và canvas chuẩn
+      const scaleX = canvas.getWidth() / STANDARD_CANVAS_WIDTH;
+      const scaleY = canvas.getHeight() / STANDARD_CANVAS_HEIGHT;
+
       // Add all elements to canvas in order
       sortedElements.forEach((element) => {
         const {
@@ -148,14 +174,12 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
           content,
           sourceUrl,
         } = element;
-        const canvasWidth = canvas.getWidth();
-        const canvasHeight = canvas.getHeight();
 
-        // Tính toán vị trí và kích thước thực tế
-        const left = (positionX / 100) * canvasWidth;
-        const top = (positionY / 100) * canvasHeight;
-        const elementWidth = (width / 100) * canvasWidth;
-        const elementHeight = (height / 100) * canvasHeight;
+        // Tính toán vị trí và kích thước dựa trên kích thước chuẩn, sau đó scale
+        const left = (positionX / 100) * STANDARD_CANVAS_WIDTH * scaleX;
+        const top = (positionY / 100) * STANDARD_CANVAS_HEIGHT * scaleY;
+        const elementWidth = (width / 100) * STANDARD_CANVAS_WIDTH * scaleX;
+        const elementHeight = (height / 100) * STANDARD_CANVAS_HEIGHT * scaleY;
 
         if (slideElementType === 'IMAGE' && sourceUrl) {
           const loadedImage = loadedImages.find(
@@ -186,7 +210,9 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
           canvas.add(img);
         } else if (slideElementType === 'TEXT' && content) {
           const json = JSON.parse(content);
-          const fontSizePixel = (json.fontSize / 100) * ORIGINAL_CANVAS_WIDTH;
+          // Điều chỉnh fontSize theo tỷ lệ canvas
+          const fontSizePixel =
+            (json.fontSize / 100) * STANDARD_CANVAS_WIDTH * scaleX;
           const { type, version, ...validProps } = json;
           const textbox = new fabric.Textbox(json.text, {
             ...validProps,
@@ -207,7 +233,7 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
                 const style = line[charIndex];
                 if (style.fontSize) {
                   const scaledFontSize =
-                    (style.fontSize / 100) * ORIGINAL_CANVAS_WIDTH;
+                    (style.fontSize / 100) * STANDARD_CANVAS_WIDTH * scaleX;
                   textbox.setSelectionStyles(
                     { ...style, fontSize: scaledFontSize },
                     parseInt(charIndex),
@@ -233,6 +259,7 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       console.error('Lỗi tải ảnh:', err);
     }
   };
+
   // Khởi tạo canvas và render slide hiện tại
   useEffect(() => {
     if (
@@ -251,18 +278,30 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     );
     renderSlide(activity);
 
+    // Cập nhật lại kích thước canvas khi thay đổi kích thước cửa sổ
+    const handleResize = () => {
+      const { canvasWidth, canvasHeight } = getCanvasDimensions();
+      if (canvas) {
+        canvas.setDimensions({ width: canvasWidth, height: canvasHeight });
+        renderSlide(activity); // Render lại slide với kích thước mới
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
     return () => {
+      window.removeEventListener('resize', handleResize);
       canvas.dispose();
     };
-  }, [activity, currentSlideIndex, width, height]);
+  }, [activity, currentSlideIndex, canvasWidth, canvasHeight]);
 
   return (
     <div
-      className="flex items-center justify-center"
+      className="flex items-center justify-center mx-auto"
       style={{
         position: 'relative',
-        width: `${width}px`,
-        height: `${height}px`,
+        width: `${canvasWidth}px`,
+        height: `${canvasHeight}px`,
+        maxWidth: '100%',
       }}
     >
       {!activity ||

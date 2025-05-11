@@ -57,6 +57,7 @@ interface QuizActivityProps {
     backgroundImage?: string;
     customBackgroundMusic?: string;
     quiz: Quiz;
+    hostShowAnswer?: boolean;
   };
   sessionId?: string;
   sessionCode?: string;
@@ -261,12 +262,6 @@ export default function QuizLocationViewer({
               </div>
             </div>
             <div className='flex items-center gap-2'>
-              <div className='flex items-center gap-2 bg-[#0e2838]/60 border border-white/5 px-2 py-1 rounded-full text-xs'>
-                <Users className='h-3.5 w-3.5 text-[#aef359]' />
-                <span className='text-white/90'>
-                  {answeredCount}/{totalParticipants}
-                </span>
-              </div>
               <motion.div
                 className='flex items-center gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
                 animate={{
@@ -329,9 +324,9 @@ export default function QuizLocationViewer({
             }}
             transition={{ duration: 0.1 }}
           />
-          {/* Participants Progress */}
+          {/* Participants Progress - Đổi màu thành xanh dương thay vì cyan */}
           <motion.div
-            className='h-1 bg-cyan-500/70'
+            className='h-1 bg-blue-500/70'
             initial={{ width: '0%' }}
             animate={{
               width: `${Math.min(
@@ -405,7 +400,7 @@ export default function QuizLocationViewer({
           </motion.div>
 
           {/* Submit Button */}
-          {!isSubmitted && (
+          {!isSubmitted && !activity.hostShowAnswer && (
             <motion.div
               className='mt-6'
               initial={{ opacity: 0, y: 20 }}
@@ -438,36 +433,61 @@ export default function QuizLocationViewer({
 
           {/* Results */}
           <AnimatePresence>
-            {isSubmitted && showResults && (
+            {(isSubmitted && showResults) || activity.hostShowAnswer ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               >
-                <div className='flex items-center gap-2 mb-3'>
-                  <div className='flex items-center gap-2 text-[#aef359]'>
-                    <CheckCircle className='h-5 w-5' />
-                    <span className='font-semibold'>
-                      Điểm số: {calculateScore()}%
-                    </span>
+                {activity.hostShowAnswer && !isSubmitted ? (
+                  <div>
+                    <div className='flex items-center gap-2 mb-3 text-[#aef359]'>
+                      <CheckCircle className='h-5 w-5' />
+                      <span className='font-semibold'>Vị trí chính xác:</span>
+                    </div>
+                    {activity.quiz.quizAnswers[0]?.locationData && (
+                      <p className='text-white/70'>
+                        Tọa độ đúng:{' '}
+                        {activity.quiz.quizAnswers[0].locationData.lat.toFixed(
+                          6
+                        )}
+                        ,{' '}
+                        {activity.quiz.quizAnswers[0].locationData.lng.toFixed(
+                          6
+                        )}{' '}
+                        (bán kính{' '}
+                        {activity.quiz.quizAnswers[0].locationData.radius} km)
+                      </p>
+                    )}
                   </div>
-                </div>
-                {selectedLocation &&
-                  activity.quiz.quizAnswers[0]?.locationData && (
-                    <p className='text-white/70'>
-                      Khoảng cách từ vị trí bạn chọn đến vị trí đúng là{' '}
-                      {getDistanceFromLatLonInKm(
-                        selectedLocation.lat,
-                        selectedLocation.lng,
-                        activity.quiz.quizAnswers[0].locationData.lat,
-                        activity.quiz.quizAnswers[0].locationData.lng
-                      ).toFixed(2)}{' '}
-                      km.
-                    </p>
-                  )}
+                ) : (
+                  <>
+                    <div className='flex items-center gap-2 mb-3'>
+                      <div className='flex items-center gap-2 text-[#aef359]'>
+                        <CheckCircle className='h-5 w-5' />
+                        <span className='font-semibold'>
+                          Điểm số: {calculateScore()}%
+                        </span>
+                      </div>
+                    </div>
+                    {selectedLocation &&
+                      activity.quiz.quizAnswers[0]?.locationData && (
+                        <p className='text-white/70'>
+                          Khoảng cách từ vị trí bạn chọn đến vị trí đúng là{' '}
+                          {getDistanceFromLatLonInKm(
+                            selectedLocation.lat,
+                            selectedLocation.lng,
+                            activity.quiz.quizAnswers[0].locationData.lat,
+                            activity.quiz.quizAnswers[0].locationData.lng
+                          ).toFixed(2)}{' '}
+                          km.
+                        </p>
+                      )}
+                  </>
+                )}
               </motion.div>
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
       </Card>

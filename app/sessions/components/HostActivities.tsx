@@ -10,6 +10,7 @@ import InfoSlideViewer from '../show/components/info-slide-viewer';
 import QuizButtonViewer from './QuizButtonViewer';
 import HostSessionSummary from './HostSessionSummary';
 import RealtimeLeaderboard from './RealtimeLeaderboard';
+import HostRankingChange from './HostRankingChange';
 
 import QuizCheckboxViewer from './QuizCheckboxViewer';
 import QuizTypeAnswerViewer from './QuizTypeAnswerViewer';
@@ -23,6 +24,7 @@ import {
   Award,
   Clock,
   ArrowUpDown,
+  BarChart,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -81,11 +83,35 @@ export default function HostActivities({
   const [participantsEventCount, setParticipantsEventCount] = useState(0);
   const lastActivityIdRef = useRef<string | null>(null);
 
+  // Thêm state để quản lý hiển thị bảng xếp hạng
+  const [showRankingChange, setShowRankingChange] = useState(false);
+  // Thêm state để lưu trữ id activity hiện tại để hiển thị bảng xếp hạng
+  const [currentRankingActivityId, setCurrentRankingActivityId] = useState<
+    string | null
+  >(null);
+  // Thêm state để kiểm soát thời điểm hiển thị nút xem bảng xếp hạng
+  const [canShowRanking, setCanShowRanking] = useState(false);
+  // State lưu trữ tỷ lệ người dùng đã trả lời
+  const [responseRatio, setResponseRatio] = useState<{
+    count: number;
+    total: number;
+    percentage: number;
+  }>({
+    count: 0,
+    total: 0,
+    percentage: 0,
+  });
+
   // Thêm ref để theo dõi participants
   const prevParticipantsRef = useRef<{ [key: string]: number }>({});
 
   // Thêm ref để theo dõi element của quiz cho chế độ toàn màn hình
   const quizContainerRef = useRef<HTMLDivElement>(null);
+
+  // Thêm biến state để theo dõi trạng thái luồng hoạt động
+  const [activityTransitionState, setActivityTransitionState] = useState<
+    'showing_current' | 'showing_ranking' | 'transitioning_to_next'
+  >('showing_current');
 
   // Hàm toggle fullscreen
   const toggleFullscreen = () => {
@@ -157,6 +183,8 @@ export default function HostActivities({
       // Lấy thông tin tỷ lệ tham gia từ WebSocket
       const participantsRatio = sessionWs.getParticipantsEventRatio();
       setParticipantsEventCount(participantsRatio.count);
+      setResponseRatio(participantsRatio); // Cập nhật state lưu trữ tỷ lệ
+
       console.log(
         `[HostActivities] Đã nhận sự kiện participants lần thứ ${
           participantsRatio.count
@@ -164,6 +192,12 @@ export default function HostActivities({
           participantsRatio.percentage
         }%) cho activity: ${sessionWs.getCurrentActivityId()}`
       );
+
+      // Nếu tất cả người dùng đã phản hồi, cho phép hiển thị bảng xếp hạng
+      if (participantsRatio.percentage >= 100 && currentActivity) {
+        setCanShowRanking(true);
+        setCurrentRankingActivityId(currentActivity.activityId);
+      }
 
       // Đảm bảo các trường dữ liệu được chuẩn hóa
       const sanitizedParticipants = updatedParticipants.map((p) => ({
@@ -236,6 +270,9 @@ export default function HostActivities({
           }
         }, 1000);
       } else {
+        // Reset state khi nhận activity mới
+        setCanShowRanking(false);
+
         // Cập nhật số đếm trên UI dựa trên giá trị từ WebSocket
         setParticipantsEventCount(sessionWs.getParticipantsEventCount());
         lastActivityIdRef.current = activity.activityId || null;
@@ -289,17 +326,73 @@ export default function HostActivities({
     };
   }, [sessionWs, sessionId, onSessionEnd, onNextActivityLog]);
 
+  // Thêm useEffect để xử lý theo dõi sự thay đổi xếp hạng
+  useEffect(() => {
+    if (!sessionWs || !currentActivity) return;
+
+    // Lắng nghe sự kiện thay đổi xếp hạng
+    const unsubscribe = sessionWs.subscribeToRankingChanges((data) => {
+      // Khi nhận được dữ liệu thay đổi xếp hạng mới, cho phép hiển thị nút bảng xếp hạng
+      if (responseRatio.percentage >= 100) {
+        setCanShowRanking(true);
+        setCurrentRankingActivityId(currentActivity.activityId);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [sessionWs, currentActivity, responseRatio.percentage]);
+
+  // Cập nhật phần hiển thị bảng xếp hạng
+  useEffect(() => {
+    if (!sessionWs) return;
+
+    // Khi tỷ lệ phản hồi đạt 100%, tự động lưu snapshot xếp hạng
+    if (responseRatio.percentage >= 100 && currentActivity?.activityId) {
+      // Tự động lưu snapshot
+      sessionWs.saveCurrentRankingSnapshot(currentActivity.activityId);
+      setCurrentRankingActivityId(currentActivity.activityId);
+      setCanShowRanking(true);
+    }
+  }, [responseRatio.percentage, sessionWs, currentActivity]);
+
   const handleNextActivity = async () => {
     if (!sessionWs || !sessionWs.isClientConnected()) {
       setError('Không thể chuyển hoạt động lúc này');
       return;
     }
 
+    // Nếu đang trong trạng thái hiển thị activity hiện tại, chuyển sang hiển thị bảng xếp hạng
+    if (activityTransitionState === 'showing_current') {
+      if (currentActivity && currentActivity.activityId) {
+        // Lưu snapshot thứ hạng hiện tại và thông báo cho subscribers
+        sessionWs.requestRankingUpdate(currentActivity.activityId);
+        setCurrentRankingActivityId(currentActivity.activityId);
+        setShowRankingChange(true);
+        setActivityTransitionState('showing_ranking');
+      } else {
+        // Trường hợp không có dữ liệu để hiển thị bảng xếp hạng, chuyển thẳng sang activity tiếp theo
+        proceedToNextActivity();
+      }
+      return;
+    }
+
+    // Nếu đang hiển thị bảng xếp hạng, đóng bảng xếp hạng và chuyển sang activity tiếp theo
+    if (activityTransitionState === 'showing_ranking') {
+      setShowRankingChange(false);
+      proceedToNextActivity();
+      return;
+    }
+  };
+
+  // Hàm thực hiện việc chuyển sang activity tiếp theo
+  const proceedToNextActivity = async () => {
     try {
       setShowCountdown(true);
       setIsLoading(true);
+      setActivityTransitionState('transitioning_to_next');
 
-      // Không cần reset ở đây vì đã được xử lý trong SessionWebSocket.nextActivity()
       const currentActivityId = currentActivity?.activityId;
       console.log(
         `[HostActivities] Bắt đầu chuyển sang activity mới, reset bộ đếm participants events`
@@ -317,8 +410,16 @@ export default function HostActivities({
     }
   };
 
+  // Cập nhật hàm đóng bảng xếp hạng
+  const handleCloseRankingChange = () => {
+    setShowRankingChange(false);
+    setActivityTransitionState('showing_current');
+  };
+
+  // Cập nhật hàm handleCountdownComplete
   const handleCountdownComplete = () => {
     setShowCountdown(false);
+    setActivityTransitionState('showing_current');
   };
 
   const handleEndSession = async () => {
@@ -368,26 +469,37 @@ export default function HostActivities({
     prevParticipantsRef.current = newScores;
   }, [participants]);
 
-  // Thêm useEffect để phát hiện phím mũi tên sang phải
+  // Thêm lại useEffect để phát hiện phím mũi tên sang phải
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowRight' && isConnected && !noMoreActivities) {
-        // Lấy currentActivityId hiện tại, giống như khi gọi handleNextActivity trực tiếp
-        if (!sessionWs || !sessionWs.isClientConnected()) {
-          setError('Không thể chuyển hoạt động lúc này');
-          return;
+      if (isConnected && !noMoreActivities) {
+        // Xử lý phím mũi tên phải
+        if (event.key === 'ArrowRight') {
+          // Sử dụng handleNextActivity thay vì tự xử lý
+          handleNextActivity();
         }
 
-        try {
-          setShowCountdown(true);
-          const currentActivityId = currentActivity?.activityId;
-          sessionWs.nextActivity(sessionId, currentActivityId).catch((err) => {
-            console.error('Error moving to next activity via keyboard:', err);
-            setError('Không thể chuyển hoạt động');
-          });
-        } catch (err) {
-          setError('Không thể chuyển hoạt động');
-          console.error('Error moving to next activity via keyboard:', err);
+        // Thêm xử lý phím mũi tên trái - logic tương tự mũi tên phải
+        if (event.key === 'ArrowLeft') {
+          // Nếu đang ở trạng thái hiển thị activity hiện tại, chuyển sang hiển thị bảng xếp hạng
+          if (activityTransitionState === 'showing_current') {
+            if (
+              currentActivity &&
+              currentActivity.activityId &&
+              canShowRanking
+            ) {
+              // Lưu snapshot thứ hạng hiện tại và thông báo cho subscribers
+              sessionWs.requestRankingUpdate(currentActivity.activityId);
+              setCurrentRankingActivityId(currentActivity.activityId);
+              setShowRankingChange(true);
+              setActivityTransitionState('showing_ranking');
+            }
+          }
+          // Nếu đang hiển thị bảng xếp hạng, đóng bảng xếp hạng và chuyển sang activity tiếp theo
+          else if (activityTransitionState === 'showing_ranking') {
+            setShowRankingChange(false);
+            proceedToNextActivity();
+          }
         }
       }
     };
@@ -397,9 +509,17 @@ export default function HostActivities({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isConnected, noMoreActivities, currentActivity, sessionId, sessionWs]);
+  }, [
+    isConnected,
+    noMoreActivities,
+    activityTransitionState,
+    handleNextActivity,
+    canShowRanking,
+    currentActivity,
+    sessionWs,
+  ]);
 
-  // Thêm useEffect để cập nhật participantsEventCount định kỳ
+  // Thêm lại useEffect để cập nhật participantsEventCount định kỳ
   useEffect(() => {
     if (!sessionWs) return;
 
@@ -413,6 +533,7 @@ export default function HostActivities({
     };
   }, [sessionWs]);
 
+  // Thêm lại câu điều kiện để hiển thị HostSessionSummary
   if (sessionSummaries.length > 0) {
     return (
       <HostSessionSummary
@@ -424,6 +545,7 @@ export default function HostActivities({
     );
   }
 
+  // Thêm lại hàm renderActivityContent
   const renderActivityContent = () => {
     if (isLoading) {
       return (
@@ -445,26 +567,36 @@ export default function HostActivities({
       );
     }
 
-    return (
-      <>
-        {showCountdown && (
-          <CountdownOverlay onComplete={handleCountdownComplete} />
-        )}
-        {!showCountdown && renderActivityByType()}
-      </>
-    );
+    return renderActivityByType();
   };
 
+  // Thêm lại hàm renderActivityByType
   const renderActivityByType = () => {
     // Nếu host không tham gia, hiển thị chỉ xem cho tất cả các hoạt động
     if (!isParticipating) {
       return (
         <div className='relative'>
           {/* Overlay trong suốt để ngăn tương tác nhưng không che nội dung */}
-          <div className='absolute inset-0 z-10 pointer-events-auto'>
-            {/* Thông báo nhỏ ở góc trên bên phải */}
-            
-          </div>
+          <div className='absolute inset-0 z-10 pointer-events-auto'></div>
+
+          {/* Nút hiển thị đáp án cho host không tham gia */}
+          {isQuizActivity(currentActivity?.activityType) && (
+            <div className='absolute top-4 right-4 z-20'>
+              <Button
+                onClick={() => {
+                  // Chuyển thông tin showAnswer = true vào component Quiz
+                  const updatedActivity = {
+                    ...currentActivity,
+                    hostShowAnswer: true,
+                  };
+                  setCurrentActivity(updatedActivity);
+                }}
+                className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium shadow-md border border-[#aef359]/20'
+              >
+                Hiển thị đáp án
+              </Button>
+            </div>
+          )}
 
           {/* Hiển thị nội dung activity bình thường nhưng vô hiệu hóa tương tác */}
           <div className='pointer-events-none'>{renderRegularActivity()}</div>
@@ -475,7 +607,19 @@ export default function HostActivities({
     return renderRegularActivity();
   };
 
-  // Hàm hiển thị nội dung activity thông thường
+  // Thêm hàm kiểm tra loại activity là quiz hay không
+  const isQuizActivity = (activityType?: string): boolean => {
+    return (
+      activityType === 'QUIZ_BUTTONS' ||
+      activityType === 'QUIZ_CHECKBOXES' ||
+      activityType === 'QUIZ_REORDER' ||
+      activityType === 'QUIZ_TYPE_ANSWER' ||
+      activityType === 'QUIZ_TRUE_OR_FALSE' ||
+      activityType === 'QUIZ_LOCATION'
+    );
+  };
+
+  // Thêm lại hàm renderRegularActivity
   const renderRegularActivity = () => {
     switch (currentActivity.activityType) {
       case 'INFO_SLIDE':
@@ -533,8 +677,26 @@ export default function HostActivities({
     }
   };
 
+  // Đặt CountdownOverlay ở mức cao nhất với vị trí z-index lớn để luôn hiển thị đè lên mọi phần tử
   return (
     <div className='min-h-screen bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white'>
+      {/* Hiển thị CountdownOverlay với z-index cao hơn các phần tử khác khi KHÔNG ở chế độ toàn màn hình */}
+      {showCountdown && !isFullscreenMode && (
+        <div className='fixed inset-0 z-[9999]'>
+          <CountdownOverlay onComplete={handleCountdownComplete} />
+        </div>
+      )}
+
+      {/* Hiển thị component HostRankingChange khi showRankingChange = true và KHÔNG ở chế độ toàn màn hình */}
+      {showRankingChange && currentRankingActivityId && !isFullscreenMode && (
+        <HostRankingChange
+          sessionWebSocket={sessionWs}
+          currentActivityId={currentRankingActivityId}
+          onClose={handleCloseRankingChange}
+          isFullscreenMode={false}
+        />
+      )}
+
       {/* Animated background elements */}
       <div className='absolute inset-0 overflow-hidden pointer-events-none'>
         {/* Gradient orbs with reduced opacity */}
@@ -625,6 +787,25 @@ export default function HostActivities({
                   ({sessionWs.getParticipantsEventRatio().percentage}%)
                 </span>
               </motion.div>
+
+              {/* Thêm nút hiển thị bảng xếp hạng (chỉ hiển thị khi canShowRanking = true) */}
+              {canShowRanking && (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className='ml-2'
+                >
+                  <Button
+                    onClick={handleNextActivity}
+                    className='bg-gradient-to-r from-purple-600/70 to-blue-500/70 hover:from-purple-600/80 hover:to-blue-500/80 text-white border border-purple-400/30 flex items-center gap-2'
+                  >
+                    <BarChart className='h-4 w-4' />
+                    <span>Xếp hạng</span>
+                  </Button>
+                </motion.div>
+              )}
             </div>
 
             <div className='flex space-x-3'>
@@ -783,21 +964,88 @@ export default function HostActivities({
                 ({sessionWs.getParticipantsEventRatio().percentage}%)
               </span>
             </motion.div>
-            <motion.button
-              onClick={handleNextActivity}
-              disabled={!isConnected || noMoreActivities}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium disabled:opacity-50 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-md'
-            >
-              <span className='font-medium'>Tiếp theo</span>
-              <ArrowRight className='h-4 w-4' />
-            </motion.button>
+
+            {/* Nút xem bảng xếp hạng - hiển thị khi activityTransitionState = 'showing_current' và canShowRanking = true */}
+            {canShowRanking &&
+              activityTransitionState === 'showing_current' && (
+                <motion.button
+                  onClick={() => {
+                    if (currentActivity && currentActivity.activityId) {
+                      sessionWs.requestRankingUpdate(
+                        currentActivity.activityId
+                      );
+                      setCurrentRankingActivityId(currentActivity.activityId);
+                      setShowRankingChange(true);
+                      setActivityTransitionState('showing_ranking');
+                    }
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className='bg-gradient-to-r from-purple-600/70 to-blue-500/70 hover:from-purple-600/80 hover:to-blue-500/80 text-white border border-purple-400/30 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-md'
+                >
+                  <BarChart className='h-4 w-4' />
+                  <span className='font-medium'>Bảng xếp hạng</span>
+                </motion.button>
+              )}
+
+            {/* Nút chuyển sang activity tiếp theo - hiển thị khi activityTransitionState = 'showing_ranking' */}
+            {activityTransitionState === 'showing_ranking' && (
+              <motion.button
+                onClick={() => {
+                  setShowRankingChange(false);
+                  proceedToNextActivity();
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium disabled:opacity-50 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-md'
+              >
+                <span className='font-medium'>Tiếp theo</span>
+                <ArrowRight className='h-4 w-4' />
+              </motion.button>
+            )}
           </motion.div>
         )}
 
         {/* Always visible Next Activity button in fullscreen mode */}
-        {isFullscreenMode && (
+        {isFullscreenMode &&
+          activityTransitionState === 'showing_current' &&
+          !canShowRanking && (
+            <motion.div
+              className='fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 bg-[#0e1c26]/90 backdrop-blur-md px-4 py-3 rounded-full border border-white/10 shadow-xl'
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            >
+              <motion.button
+                onClick={handleNextActivity}
+                disabled={!isConnected || noMoreActivities}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-bold disabled:opacity-50 flex items-center gap-2 px-5 py-3 rounded-full shadow-lg'
+              >
+                <span className='text-base'>Hoạt động tiếp theo</span>
+                <ArrowRight className='h-5 w-5' />
+              </motion.button>
+
+              <motion.button
+                onClick={handleEndSession}
+                disabled={!isConnected}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className='bg-red-500/80 hover:bg-red-600/90 text-white font-medium border border-red-600/30 flex items-center gap-2 px-4 py-3 rounded-full shadow-md'
+              >
+                <span>Kết thúc phiên</span>
+              </motion.button>
+            </motion.div>
+          )}
+
+        {/* Hiển thị nút xác nhận tiếp tục khi đang xem bảng xếp hạng */}
+        {isFullscreenMode && activityTransitionState === 'showing_ranking' && (
           <motion.div
             className='fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 bg-[#0e1c26]/90 backdrop-blur-md px-4 py-3 rounded-full border border-white/10 shadow-xl'
             initial={{ y: 100, opacity: 0 }}
@@ -806,13 +1054,15 @@ export default function HostActivities({
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           >
             <motion.button
-              onClick={handleNextActivity}
-              disabled={!isConnected || noMoreActivities}
+              onClick={() => {
+                setShowRankingChange(false);
+                proceedToNextActivity();
+              }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-bold disabled:opacity-50 flex items-center gap-2 px-5 py-3 rounded-full shadow-lg'
+              className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-bold flex items-center gap-2 px-5 py-3 rounded-full shadow-lg'
             >
-              <span className='text-base'>Hoạt động tiếp theo</span>
+              <span className='text-base'>Tiếp tục</span>
               <ArrowRight className='h-5 w-5' />
             </motion.button>
 
@@ -859,6 +1109,27 @@ export default function HostActivities({
                     : 'p-6'
                 }`}
               >
+                {/* Hiển thị CountdownOverlay trong phần nội dung khi ở chế độ toàn màn hình */}
+                {showCountdown && isFullscreenMode && (
+                  <div className='absolute inset-0 z-50'>
+                    <CountdownOverlay onComplete={handleCountdownComplete} />
+                  </div>
+                )}
+
+                {/* Hiển thị HostRankingChange trong phần nội dung khi ở chế độ toàn màn hình */}
+                {showRankingChange &&
+                  currentRankingActivityId &&
+                  isFullscreenMode && (
+                    <div className='absolute inset-0 z-50'>
+                      <HostRankingChange
+                        sessionWebSocket={sessionWs}
+                        currentActivityId={currentRankingActivityId}
+                        onClose={handleCloseRankingChange}
+                        isFullscreenMode={true}
+                      />
+                    </div>
+                  )}
+
                 {noMoreActivities ? (
                   <div className='text-center py-8 bg-[#0e2838]/30 rounded-lg border border-yellow-500/20'>
                     <motion.div

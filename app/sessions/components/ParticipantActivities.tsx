@@ -391,90 +391,90 @@ export default function ParticipantActivities({
   const renderActivityByType = () => {
     return (
       <>
-        {showCountdown && (
-          <CountdownOverlay onComplete={handleCountdownComplete} />
-        )}
-        {!showCountdown && (
-          <>
-            {(() => {
-              switch (currentActivity.activityType) {
-                case 'INFO_SLIDE':
-                  return <InfoSlideViewer activity={currentActivity} />;
-                case 'QUIZ_BUTTONS':
-                  return (
-                    <QuizButtonViewer
-                      activity={currentActivity}
-                      sessionCode={sessionCode}
-                      sessionWebSocket={sessionWs}
-                      onAnswerSubmit={handleSubmitActivity}
-                    />
-                  );
-                case 'QUIZ_CHECKBOXES':
-                  return (
-                    <QuizCheckboxViewer
-                      key={currentActivity.activityId}
-                      activity={currentActivity}
-                      sessionCode={sessionCode}
-                      sessionWebSocket={sessionWs}
-                    />
-                  );
-                case 'QUIZ_TYPE_ANSWER':
-                  return (
-                    <QuizTypeAnswerViewer
-                      key={currentActivity.activityId}
-                      activity={currentActivity}
-                      sessionId={sessionCode}
-                      sessionWebSocket={sessionWs}
-                    />
-                  );
-                case 'QUIZ_REORDER':
-                  return (
-                    <QuizReorderViewer
-                      key={currentActivity.activityId}
-                      activity={currentActivity}
-                      sessionId={sessionCode}
-                      sessionWebSocket={sessionWs}
-                    />
-                  );
-                case 'QUIZ_TRUE_OR_FALSE':
-                  return (
-                    <QuizTrueOrFalseViewer
-                      key={currentActivity.activityId}
-                      activity={currentActivity}
-                      sessionId={sessionCode}
-                      sessionWebSocket={sessionWs}
-                    />
-                  );
-                default:
-                  return (
-                    <div className='p-6 bg-[#0e1c26]/50 rounded-lg border border-white/10'>
-                      <h3 className='font-medium text-lg mb-2 text-white/90'>
-                        {currentActivity.title || 'Hoạt động chưa được hỗ trợ'}
-                      </h3>
-                      <p className='mb-4 text-white/70'>
-                        {currentActivity.description ||
-                          'Không có mô tả cho hoạt động này'}
-                      </p>
-                      <div className='bg-[#0e2838]/50 p-4 rounded-md border border-white/10'>
-                        <p className='text-sm text-white/50 mb-2'>
-                          Chi tiết hoạt động:
-                        </p>
-                        <pre className='text-xs whitespace-pre-wrap overflow-auto max-h-60 bg-[#0e1c26]/80 p-2 rounded border border-white/10 text-white/60'>
-                          {JSON.stringify(currentActivity, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  );
-              }
-            })()}
-          </>
-        )}
+        {(() => {
+          switch (currentActivity.activityType) {
+            case 'INFO_SLIDE':
+              return <InfoSlideViewer activity={currentActivity} />;
+            case 'QUIZ_BUTTONS':
+              return (
+                <QuizButtonViewer
+                  activity={currentActivity}
+                  sessionCode={sessionCode}
+                  sessionWebSocket={sessionWs}
+                  onAnswerSubmit={handleSubmitActivity}
+                />
+              );
+            case 'QUIZ_CHECKBOXES':
+              return (
+                <QuizCheckboxViewer
+                  key={currentActivity.activityId}
+                  activity={currentActivity}
+                  sessionCode={sessionCode}
+                  sessionWebSocket={sessionWs}
+                />
+              );
+            case 'QUIZ_TYPE_ANSWER':
+              return (
+                <QuizTypeAnswerViewer
+                  key={currentActivity.activityId}
+                  activity={currentActivity}
+                  sessionId={sessionCode}
+                  sessionWebSocket={sessionWs}
+                />
+              );
+            case 'QUIZ_REORDER':
+              return (
+                <QuizReorderViewer
+                  key={currentActivity.activityId}
+                  activity={currentActivity}
+                  sessionId={sessionCode}
+                  sessionWebSocket={sessionWs}
+                />
+              );
+            case 'QUIZ_TRUE_OR_FALSE':
+              return (
+                <QuizTrueOrFalseViewer
+                  key={currentActivity.activityId}
+                  activity={currentActivity}
+                  sessionId={sessionCode}
+                  sessionWebSocket={sessionWs}
+                />
+              );
+            default:
+              return (
+                <div className='p-6 bg-[#0e1c26]/50 rounded-lg border border-white/10'>
+                  <h3 className='font-medium text-lg mb-2 text-white/90'>
+                    {currentActivity.title || 'Hoạt động chưa được hỗ trợ'}
+                  </h3>
+                  <p className='mb-4 text-white/70'>
+                    {currentActivity.description ||
+                      'Không có mô tả cho hoạt động này'}
+                  </p>
+                  <div className='bg-[#0e2838]/50 p-4 rounded-md border border-white/10'>
+                    <p className='text-sm text-white/50 mb-2'>
+                      Chi tiết hoạt động:
+                    </p>
+                    <pre className='text-xs whitespace-pre-wrap overflow-auto max-h-60 bg-[#0e1c26]/80 p-2 rounded border border-white/10 text-white/60'>
+                      {JSON.stringify(currentActivity, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              );
+          }
+        })()}
       </>
     );
   };
 
   return (
     <div className='min-h-screen bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white'>
+      {/* Hiển thị CountdownOverlay ở mức cao nhất để che phủ toàn màn hình khi KHÔNG ở chế độ toàn màn hình */}
+      {showCountdown && !isFullscreenMode && (
+        <div className='fixed inset-0 z-[9999]'>
+          <CountdownOverlay onComplete={handleCountdownComplete} />
+        </div>
+      )}
+
       {/* Animated background elements */}
       <div className='absolute inset-0 overflow-hidden pointer-events-none'>
         {/* Gradient orbs with reduced opacity */}
@@ -775,6 +775,13 @@ export default function ParticipantActivities({
                     : 'p-6'
                 }`}
               >
+                {/* Hiển thị CountdownOverlay trong phần nội dung khi ở chế độ toàn màn hình */}
+                {showCountdown && isFullscreenMode && (
+                  <div className='absolute inset-0 z-50'>
+                    <CountdownOverlay onComplete={handleCountdownComplete} />
+                  </div>
+                )}
+
                 <div
                   className={`
                     ${

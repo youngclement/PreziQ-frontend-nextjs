@@ -40,6 +40,7 @@ interface QuizActivityProps {
     backgroundImage?: string;
     customBackgroundMusic?: string;
     quiz: Quiz;
+    hostShowAnswer?: boolean;
   };
   sessionId?: string;
   sessionCode?: string;
@@ -151,13 +152,12 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
         glow: '#5c8dff',
       },
       {
-        bg: 'from-green-500/70 to-emerald-600/70',
-        bgSelected: 'from-green-500/90 to-emerald-600/90',
+        bg: 'from-purple-500/70 to-violet-600/70',
+        bgSelected: 'from-purple-500/90 to-violet-600/90',
         bgCorrect: 'from-green-500/80 to-emerald-600/80',
         bgIncorrect: 'from-red-500/70 to-rose-600/70',
-        iconBg:
-          'bg-gradient-to-r from-green-600 via-emerald-500 to-emerald-700',
-        glow: '#5cff8d',
+        iconBg: 'bg-gradient-to-r from-purple-600 via-violet-500 to-violet-700',
+        glow: '#c45cff',
       },
       {
         bg: 'from-amber-500/70 to-orange-600/70',
@@ -371,7 +371,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
           </motion.div>
 
           {/* Submit Button */}
-          {!isSubmitted && (
+          {!isSubmitted && !activity.hostShowAnswer && (
             <motion.div
               className='mt-6'
               initial={{ opacity: 0, y: 20 }}
@@ -414,35 +414,72 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
 
           {/* Explanation */}
           <AnimatePresence>
-            {isSubmitted && selectedAnswerId && (
+            {(isSubmitted || activity.hostShowAnswer) && (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               >
-                <div className='flex items-center gap-2 mb-2'>
-                  {activity.quiz.quizAnswers.find(
-                    (a) => a.quizAnswerId === selectedAnswerId
-                  )?.isCorrect ? (
-                    <div className='flex items-center gap-2 text-[#aef359]'>
-                      <CheckCircle className='h-5 w-5' />
-                      <span className='font-semibold'>Chính xác!</span>
-                    </div>
-                  ) : (
-                    <div className='flex items-center gap-2 text-red-400'>
-                      <AlertCircle className='h-5 w-5' />
-                      <span className='font-semibold'>Chưa chính xác</span>
-                    </div>
-                  )}
-                </div>
-                <p className='text-white/70'>
-                  {
-                    activity.quiz.quizAnswers.find(
+                {activity.hostShowAnswer && !isSubmitted && (
+                  <div className='flex items-center gap-2 mb-2 text-[#aef359]'>
+                    <CheckCircle className='h-5 w-5' />
+                    <span className='font-semibold'>Đáp án chính xác:</span>
+                  </div>
+                )}
+
+                {isSubmitted && (
+                  <div className='flex items-center gap-2 mb-2'>
+                    {activity.quiz.quizAnswers.find(
                       (a) => a.quizAnswerId === selectedAnswerId
-                    )?.explanation
-                  }
-                </p>
+                    )?.isCorrect ? (
+                      <div className='flex items-center gap-2 text-[#aef359]'>
+                        <CheckCircle className='h-5 w-5' />
+                        <span className='font-semibold'>Chính xác!</span>
+                      </div>
+                    ) : (
+                      <div className='flex items-center gap-2 text-red-400'>
+                        <AlertCircle className='h-5 w-5' />
+                        <span className='font-semibold'>Chưa chính xác</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activity.hostShowAnswer && !isSubmitted ? (
+                  <div className='space-y-2'>
+                    {activity.quiz.quizAnswers
+                      .filter((answer) => answer.isCorrect)
+                      .map((answer, idx) => (
+                        <div
+                          key={idx}
+                          className='flex items-center gap-2 text-white/80'
+                        >
+                          <div className='h-2 w-2 rounded-full bg-[#aef359]'></div>
+                          <p>{answer.answerText}</p>
+                        </div>
+                      ))}
+                    {activity.quiz.quizAnswers.filter(
+                      (answer) => answer.isCorrect
+                    )[0]?.explanation && (
+                      <p className='text-white/70 mt-2 pt-2 border-t border-white/10'>
+                        {
+                          activity.quiz.quizAnswers.filter(
+                            (answer) => answer.isCorrect
+                          )[0].explanation
+                        }
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className='text-white/70'>
+                    {
+                      activity.quiz.quizAnswers.find(
+                        (a) => a.quizAnswerId === selectedAnswerId
+                      )?.explanation
+                    }
+                  </p>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

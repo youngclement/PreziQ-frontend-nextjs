@@ -45,6 +45,7 @@ interface QuizActivityProps {
     backgroundColor?: string;
     backgroundImage?: string;
     customBackgroundMusic?: string;
+    hostShowAnswer?: boolean;
     quiz: Quiz;
   };
   sessionId?: string;
@@ -211,11 +212,11 @@ export default function QuizCheckboxViewer({
         glow: '#5c8dff',
       },
       {
-        bg: 'from-green-500/70 to-emerald-600/70',
-        bgSelected: 'from-green-500/90 to-emerald-600/90',
+        bg: 'from-purple-500/70 to-violet-600/70',
+        bgSelected: 'from-purple-500/90 to-violet-600/90',
         bgCorrect: 'from-green-500/80 to-emerald-600/80',
         bgIncorrect: 'from-red-500/70 to-rose-600/70',
-        glow: '#5cff8d',
+        glow: '#c45cff',
       },
       {
         bg: 'from-amber-500/70 to-orange-600/70',
@@ -284,12 +285,6 @@ export default function QuizCheckboxViewer({
               </div>
             </div>
             <div className='flex items-center gap-2'>
-              <div className='flex items-center gap-2 bg-[#0e2838]/60 border border-white/5 px-2 py-1 rounded-full text-xs'>
-                <Users className='h-3.5 w-3.5 text-[#aef359]' />
-                <span className='text-white/90'>
-                  {answeredCount}/{totalParticipants}
-                </span>
-              </div>
               <motion.div
                 className='flex items-center gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
                 animate={{
@@ -492,7 +487,7 @@ export default function QuizCheckboxViewer({
           </motion.div>
 
           {/* Submit Button */}
-          {!isSubmitted && (
+          {!isSubmitted && !activity.hostShowAnswer && (
             <motion.div
               className='mt-6'
               initial={{ opacity: 0, y: 20 }}
@@ -525,37 +520,64 @@ export default function QuizCheckboxViewer({
 
           {/* Results */}
           <AnimatePresence>
-            {isSubmitted && showResults && (
+            {(isSubmitted && showResults) || activity.hostShowAnswer ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               >
-                <div className='flex items-center gap-2 mb-3'>
-                  <div className='flex items-center gap-2 text-[#aef359]'>
-                    <CheckCircle className='h-5 w-5' />
-                    <span className='font-semibold'>
-                      Điểm số: {calculateScore()}%
-                    </span>
+                {activity.hostShowAnswer && !isSubmitted ? (
+                  <div>
+                    <div className='flex items-center gap-2 mb-3 text-[#aef359]'>
+                      <CheckCircle className='h-5 w-5' />
+                      <span className='font-semibold'>Đáp án chính xác:</span>
+                    </div>
+                    <div className='space-y-2'>
+                      {activity.quiz.quizAnswers
+                        .filter((answer) => answer.isCorrect)
+                        .map((answer, idx) => (
+                          <div
+                            key={idx}
+                            className='flex items-center gap-2 text-white/80'
+                          >
+                            <div className='h-2 w-2 rounded-full bg-[#aef359]'></div>
+                            <p>{answer.answerText}</p>
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                </div>
-                <p className='text-white/70'>
-                  Bạn đã chọn đúng{' '}
-                  {
-                    selectedAnswers.filter(
-                      (id) =>
-                        activity.quiz.quizAnswers.find(
-                          (a) => a.quizAnswerId === id
-                        )?.isCorrect
-                    ).length
-                  }{' '}
-                  trong số{' '}
-                  {activity.quiz.quizAnswers.filter((a) => a.isCorrect).length}{' '}
-                  đáp án đúng.
-                </p>
+                ) : (
+                  <>
+                    <div className='flex items-center gap-2 mb-3'>
+                      <div className='flex items-center gap-2 text-[#aef359]'>
+                        <CheckCircle className='h-5 w-5' />
+                        <span className='font-semibold'>
+                          Điểm số: {calculateScore()}%
+                        </span>
+                      </div>
+                    </div>
+                    <p className='text-white/70'>
+                      Bạn đã chọn đúng{' '}
+                      {
+                        selectedAnswers.filter(
+                          (id) =>
+                            activity.quiz.quizAnswers.find(
+                              (a) => a.quizAnswerId === id
+                            )?.isCorrect
+                        ).length
+                      }{' '}
+                      trong số{' '}
+                      {
+                        activity.quiz.quizAnswers.filter((a) => a.isCorrect)
+                          .length
+                      }{' '}
+                      đáp án đúng.
+                    </p>
+                  </>
+                )}
               </motion.div>
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
       </Card>

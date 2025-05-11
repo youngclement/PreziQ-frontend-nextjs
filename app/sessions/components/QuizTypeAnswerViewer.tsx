@@ -25,6 +25,7 @@ interface QuizTypeAnswerViewerProps {
     description: string;
     backgroundColor?: string;
     backgroundImage?: string;
+    hostShowAnswer?: boolean;
     quiz: {
       questionText: string;
       timeLimitSeconds: number;
@@ -138,12 +139,6 @@ export default function QuizTypeAnswerViewer({
               </div>
             </div>
             <div className='flex items-center gap-2'>
-              <div className='flex items-center gap-2 bg-[#0e2838]/60 border border-white/5 px-2 py-1 rounded-full text-xs'>
-                <Users className='h-3.5 w-3.5 text-[#aef359]' />
-                <span className='text-white/90'>
-                  {answeredCount}/{totalParticipants}
-                </span>
-              </div>
               <motion.div
                 className='flex items-center gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
                 animate={{
@@ -205,7 +200,7 @@ export default function QuizTypeAnswerViewer({
           />
           {/* Participants Progress */}
           <motion.div
-            className='h-1 bg-indigo-500/70'
+            className='h-1 bg-purple-500/70'
             initial={{ width: '0%' }}
             animate={{
               width: `${Math.min(
@@ -281,7 +276,7 @@ export default function QuizTypeAnswerViewer({
             </div>
 
             {/* Submit Button */}
-            {!isAnswered && (
+            {!isAnswered && !activity.hostShowAnswer && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -313,37 +308,59 @@ export default function QuizTypeAnswerViewer({
 
             {/* Results */}
             <AnimatePresence>
-              {isAnswered && (
+              {(isAnswered || activity.hostShowAnswer) && (
                 <motion.div
                   className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                 >
-                  <div className='flex items-center gap-2 mb-3'>
-                    {isCorrect ? (
-                      <div className='flex items-center gap-2 text-[#aef359]'>
+                  {activity.hostShowAnswer && !isAnswered ? (
+                    <div>
+                      <div className='flex items-center gap-2 mb-3 text-[#aef359]'>
                         <CheckCircle className='h-5 w-5' />
-                        <span className='font-semibold'>Câu trả lời đúng!</span>
+                        <span className='font-semibold'>Đáp án đúng:</span>
                       </div>
-                    ) : (
-                      <div className='flex items-center gap-2 text-red-400'>
-                        <XCircle className='h-5 w-5' />
-                        <span className='font-semibold'>
-                          Câu trả lời chưa đúng
+                      <div className='flex items-center gap-2 text-white/80'>
+                        <div className='h-2 w-2 rounded-full bg-[#aef359]'></div>
+                        <p>
+                          {
+                            activity.quiz.quizAnswers.find((a) => a.isCorrect)
+                              ?.answerText
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className='flex items-center gap-2 mb-3'>
+                        {isCorrect ? (
+                          <div className='flex items-center gap-2 text-[#aef359]'>
+                            <CheckCircle className='h-5 w-5' />
+                            <span className='font-semibold'>
+                              Câu trả lời đúng!
+                            </span>
+                          </div>
+                        ) : (
+                          <div className='flex items-center gap-2 text-red-400'>
+                            <XCircle className='h-5 w-5' />
+                            <span className='font-semibold'>
+                              Câu trả lời chưa đúng
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <p className='text-white/70'>
+                        Đáp án đúng là:{' '}
+                        <span className='font-medium text-[#aef359]'>
+                          {
+                            activity.quiz.quizAnswers.find((a) => a.isCorrect)
+                              ?.answerText
+                          }
                         </span>
-                      </div>
-                    )}
-                  </div>
-                  <p className='text-white/70'>
-                    Đáp án đúng là:{' '}
-                    <span className='font-medium text-[#aef359]'>
-                      {
-                        activity.quiz.quizAnswers.find((a) => a.isCorrect)
-                          ?.answerText
-                      }
-                    </span>
-                  </p>
+                      </p>
+                    </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
