@@ -9,6 +9,8 @@ declare global {
         lastQuestionClick?: number;
         lastActivityClick?: number;
         updateActivityBackground?: (activityId: string, properties: { backgroundImage?: string, backgroundColor?: string }) => void;
+        scrollToNewestQuestion?: () => void;
+        savedBackgroundColors?: Record<string, string>;
     }
 }
 
@@ -75,12 +77,13 @@ export default function QuestionsPageContent() {
     const {
         timeLimit,
         setTimeLimit,
-        handleAddQuestion,
+        handleAddQuestion: handleAddQuestionFromHook,
         handleDeleteQuestion,
         handleDeleteActivity,
         handleQuestionTypeChange,
         handleQuestionLocationChange,
-        handleQuestionTextChange
+        handleQuestionTextChange,
+        handleTimeLimitChange
     } = useQuestionOperations(
         collectionId,
         activities,
@@ -98,9 +101,9 @@ export default function QuestionsPageContent() {
     const {
         handleOptionChange,
         handleReorderOptions,
+        handleCorrectAnswerChange,
         handleAddOption,
         handleDeleteOption,
-        handleCorrectAnswerChange,
         updateReorderOptionContent
     } = useOptionOperations(
         questions,
@@ -143,6 +146,60 @@ export default function QuestionsPageContent() {
             setBackgroundImage(activity.backgroundImage);
         }
     }, [activity]);
+
+    // Use effect to listen for time limit update events
+    useEffect(() => {
+        const handleTimeLimitUpdate = (event: any) => {
+            // Check if this update is for our current activity
+            if (activity && event.detail && event.detail.activityId === activity.id) {
+                console.log('Parent component detected time limit update:', event.detail.timeLimitSeconds);
+
+                // Save current scroll positions of all containers
+                const scrollPositions: Record<string, number> = {};
+                document.querySelectorAll('.overflow-auto').forEach((container, index) => {
+                    scrollPositions[`container-${index}`] = (container as HTMLElement).scrollTop;
+                });
+
+                // Update time limit in parent state
+                setTimeLimit(event.detail.timeLimitSeconds);
+
+                // Also update the activity object in state
+                const updatedActivity = {
+                    ...activity,
+                    quiz: {
+                        ...activity.quiz,
+                        timeLimitSeconds: event.detail.timeLimitSeconds
+                    }
+                };
+                setActivity(updatedActivity);
+
+                // Update activities array as well
+                if (activities) {
+                    const updatedActivities = activities.map(act =>
+                        act.id === activity.id ? updatedActivity : act
+                    );
+                    setActivities(updatedActivities);
+                }
+
+                // Restore scroll positions after state updates
+                setTimeout(() => {
+                    document.querySelectorAll('.overflow-auto').forEach((container, index) => {
+                        if (scrollPositions[`container-${index}`]) {
+                            (container as HTMLElement).scrollTop = scrollPositions[`container-${index}`];
+                        }
+                    });
+                }, 10);
+            }
+        };
+
+        // Add event listener
+        window.addEventListener('activity:timeLimit:updated', handleTimeLimitUpdate);
+
+        // Cleanup
+        return () => {
+            window.removeEventListener('activity:timeLimit:updated', handleTimeLimitUpdate);
+        };
+    }, [activity, activities, setActivity, setActivities, setTimeLimit]);
 
     // Handle selecting a question from the list
     const handleQuestionSelect = (index: number) => {
@@ -238,15 +295,43 @@ export default function QuestionsPageContent() {
 
         // Se tivermos uma atividade atual, atualizar os dados da atividade também
         if (activity) {
-            const updatedActivity = { ...activity, backgroundImage: value };
+            // Tạo bản sao của activity và cập nhật
+            const updatedActivity = {
+                ...activity,
+                backgroundImage: value
+            };
+
+            // Cập nhật background trong cả state và global storage ngay lập tức
+            if (typeof window !== 'undefined') {
+                // Cập nhật vào global storage
+                if (!window.savedBackgroundColors) {
+                    window.savedBackgroundColors = {};
+                }
+
+                // Lưu lại backgroundColor hiện tại
+                if (activity.backgroundColor) {
+                    window.savedBackgroundColors[activity.id] = activity.backgroundColor;
+                }
+
+                // Phát sự kiện background updated để tất cả các component cập nhật UI
+                const event = new CustomEvent('activity:background:updated', {
+                    detail: {
+                        activityId: activity.id,
+                        properties: {
+                            backgroundImage: value,
+                            backgroundColor: activity.backgroundColor
+                        },
+                        sender: 'questionsPageContent'
+                    }
+                });
+                window.dispatchEvent(event);
+            }
 
             // Atualizar estado local
-            const updatedActivities = [...activities];
-            const activityIndex = updatedActivities.findIndex(a => a.id === activity.id);
-            if (activityIndex >= 0) {
-                updatedActivities[activityIndex] = updatedActivity;
-                setActivities(updatedActivities);
-            }
+            const updatedActivities = activities.map(a =>
+                a.id === activity.id ? updatedActivity : a
+            );
+            setActivities(updatedActivities);
 
             // Atualizar atividade atual
             setActivity(updatedActivity);
@@ -295,12 +380,9 @@ export default function QuestionsPageContent() {
 
                 // Update the state with the reordered activities
                 setActivities(reorderedActivities as any);
-
-                toast.success("Activities reordered successfully");
             }
         } catch (error) {
             console.error("Error reordering activities:", error);
-            toast.error("Failed to reorder activities");
         }
     };
 
@@ -319,14 +401,31 @@ export default function QuestionsPageContent() {
 
             // Then call the API to persist the changes
             await CollectionService.reorderQuestions(activity.id, orderedQuestionIds);
-
-            toast.success("Questions reordered successfully");
         } catch (error) {
             console.error("Error reordering questions:", error);
-            toast.error("Failed to reorder questions");
 
             // If there was an error, refresh the data to ensure UI is in sync with server
             refreshCollectionData();
+        }
+    };
+
+    // Replace the original handleAddQuestion function with a simplified version that uses the hook
+    const handleAddQuestion = async () => {
+        await handleAddQuestionFromHook();
+
+        // Use the scrollToNewestQuestion function exposed by QuestionPreview
+        setTimeout(() => {
+            if (typeof window !== 'undefined' && window.scrollToNewestQuestion) {
+                window.scrollToNewestQuestion();
+            }
+        }, 200);
+    };
+
+    const handleSetTimeLimit = (value: number) => {
+        setTimeLimit(value);
+        // Call the hook's handleTimeLimitChange function which will update the API
+        if (handleTimeLimitChange) {
+            handleTimeLimitChange(value);
         }
     };
 
@@ -381,6 +480,83 @@ export default function QuestionsPageContent() {
                                     activity={activity}
                                     onSetActivitiesBackgrounds={handleSetActivitiesBackgrounds}
                                     onUpdateActivityBackground={handleUpdateActivityBackground}
+                                    onAddOption={handleAddOption}
+                                    onDeleteOption={handleDeleteOption}
+                                    onDeleteActivity={(activityId) => {
+                                        // Lưu vị trí cuộn hiện tại của tất cả các container có scroll
+                                        const scrollPositions: Record<string, number> = {};
+                                        document.querySelectorAll('.overflow-auto').forEach((container, index) => {
+                                            scrollPositions[`container-${index}`] = (container as HTMLElement).scrollTop;
+                                        });
+
+                                        // Tạm thời vô hiệu hóa scroll để ngăn UI nhảy
+                                        if (typeof document !== 'undefined') {
+                                            document.body.style.overflow = 'hidden';
+                                        }
+
+                                        // Update local state without refreshing page
+                                        // Remove activity from activities array
+                                        const updatedActivities = activities.filter(a => a.id !== activityId);
+                                        setActivities(updatedActivities);
+
+                                        // Remove question from questions array
+                                        const questionIndex = questions.findIndex(q => q.activity_id === activityId);
+                                        if (questionIndex !== -1) {
+                                            const updatedQuestions = [...questions];
+                                            updatedQuestions.splice(questionIndex, 1);
+
+                                            // Calculate new active index before updating questions
+                                            let newActiveIndex = activeQuestionIndex;
+
+                                            // If deleting the active question or one before it, adjust the index
+                                            if (questionIndex === activeQuestionIndex) {
+                                                // If deleting active question, go to previous question if possible
+                                                newActiveIndex = questionIndex > 0 ? questionIndex - 1 : 0;
+                                            } else if (questionIndex < activeQuestionIndex) {
+                                                // If deleting a question before the active one, decrement the index
+                                                newActiveIndex = activeQuestionIndex - 1;
+                                            }
+
+                                            // Make sure the new index is valid
+                                            newActiveIndex = Math.min(newActiveIndex, updatedQuestions.length - 1);
+                                            newActiveIndex = Math.max(0, newActiveIndex);
+
+                                            // Update questions array first
+                                            setQuestions(updatedQuestions);
+
+                                            // Only update activity and active index if we have questions left
+                                            if (updatedQuestions.length > 0) {
+                                                // Set active index and activity in a single batched update to minimize repaints
+                                                const newActiveQuestion = updatedQuestions[newActiveIndex];
+                                                const newActiveActivity = updatedActivities.find(a => a.id === newActiveQuestion.activity_id);
+
+                                                // Important: Don't trigger scroll by setting lastQuestionClick timestamp
+                                                window.lastQuestionClick = Date.now();
+
+                                                // Update state in one pass to reduce renders
+                                                setActiveQuestionIndex(newActiveIndex);
+                                                if (newActiveActivity) {
+                                                    setActivity(newActiveActivity);
+                                                }
+                                            } else {
+                                                setActivity(null);
+                                            }
+
+                                            // Khôi phục vị trí cuộn sau khi cập nhật state
+                                            setTimeout(() => {
+                                                document.querySelectorAll('.overflow-auto').forEach((container, index) => {
+                                                    if (scrollPositions[`container-${index}`]) {
+                                                        (container as HTMLElement).scrollTop = scrollPositions[`container-${index}`];
+                                                    }
+                                                });
+
+                                                // Bật lại scroll sau khi đã khôi phục vị trí
+                                                if (typeof document !== 'undefined') {
+                                                    document.body.style.overflow = '';
+                                                }
+                                            }, 50);
+                                        }
+                                    }}
                                 />
                             )}
                         </div>
@@ -399,7 +575,7 @@ export default function QuestionsPageContent() {
                                 onQuestionTypeChange={(value) => {
                                     handleQuestionTypeChange(value as any);
                                 }}
-                                onTimeLimitChange={setTimeLimit}
+                                onTimeLimitChange={handleSetTimeLimit}
                                 onBackgroundImageChange={(value) => handleBackgroundImageChange(value)}
                                 onClearBackground={() => handleBackgroundImageChange('')}
                                 onAddOption={handleAddOption}

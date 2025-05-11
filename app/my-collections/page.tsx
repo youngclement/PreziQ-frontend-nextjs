@@ -138,7 +138,7 @@ export default function MyCollectionsPage() {
     };
 
     const handleCreateCollection = () => {
-        router.push('/collection/create');
+        router.push('/collections/create');
     };
 
     const handleEditCollection = (id: string) => {

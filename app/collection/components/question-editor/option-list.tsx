@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Plus, Trash, CheckCircle, GripVertical, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,31 @@ export function OptionList({
     onOptionChange,
     onDeleteOption
 }: OptionListProps) {
+    // Reference to the option container to scroll to newly added options
+    const optionsContainerRef = useRef<HTMLDivElement>(null);
+
+    // Scroll to the bottom when options change (new option added)
+    useEffect(() => {
+        if (optionsContainerRef.current && options.length > 0) {
+            const container = optionsContainerRef.current;
+            container.scrollTop = container.scrollHeight;
+        }
+    }, [options.length]);
+
+    // Function to handle radio button change for multiple choice questions
+    const handleCorrectAnswerChange = (optionIndex: number, checked: boolean) => {
+        if (questionType === 'multiple_choice' && checked) {
+            // For multiple choice, set all other options to false and this one to true
+            options.forEach((_, index) => {
+                const newValue = index === optionIndex;
+                onOptionChange(activeQuestionIndex, index, "is_correct", newValue);
+            });
+        } else {
+            // For multiple response, just toggle the checked state for this option
+            onOptionChange(activeQuestionIndex, optionIndex, "is_correct", checked);
+        }
+    };
+
     return (
         <div className="space-y-3">
             <div className="flex justify-between items-center">
@@ -40,7 +65,7 @@ export function OptionList({
                 </Button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1" ref={optionsContainerRef}>
                 {options.map((option, index) => (
                     <div
                         key={index}
@@ -78,12 +103,7 @@ export function OptionList({
                                 <input
                                     type={questionType === 'multiple_choice' ? 'radio' : 'checkbox'}
                                     checked={option.is_correct}
-                                    onChange={(e) => {
-                                        // For checkbox (multiple_response), directly use the checked state
-                                        // For radio (multiple_choice), always true when selected
-                                        const newValue = questionType === 'multiple_choice' ? true : e.target.checked;
-                                        onOptionChange(activeQuestionIndex, index, "is_correct", newValue);
-                                    }}
+                                    onChange={(e) => handleCorrectAnswerChange(index, e.target.checked)}
                                     className="h-4 w-4"
                                 />
                                 <Label>Correct Answer</Label>

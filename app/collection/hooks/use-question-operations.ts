@@ -625,6 +625,109 @@ export function useQuestionOperations(
     }
   };
 
+  // Update the time limit for the current question
+  const handleTimeLimitChange = (value: number) => {
+    const questionIndex = activeQuestionIndex;
+    if (questionIndex < 0 || !questions[questionIndex]) return;
+
+    // Clone the questions array to avoid direct state mutation
+    const updatedQuestions = [...questions];
+    const updatedQuestion = { ...questions[questionIndex], time_limit: value };
+    updatedQuestions[questionIndex] = updatedQuestion;
+
+    // Update the local state
+    setQuestions(updatedQuestions);
+
+    // Call API to update the time limit
+    const questionId = questions[questionIndex].id;
+    if (questionId && !questionId.startsWith("temp-") && activity) {
+      // Debounce API calls for time limit changes
+      if (window.updateQuestionTimer) {
+        clearTimeout(window.updateQuestionTimer);
+      }
+
+      window.updateQuestionTimer = setTimeout(async () => {
+        try {
+          // Call API to update the question based on its type
+          const activeQuestion = updatedQuestion;
+          const activityType = activity.activity_type_id;
+
+          // Selectively call the appropriate API method
+          switch (activityType) {
+            case "QUIZ_BUTTONS":
+              await activitiesApi.updateButtonsQuiz(activity.id, {
+                type: "CHOICE",
+                questionText: activeQuestion.question_text,
+                timeLimitSeconds: value,
+                pointType: "STANDARD",
+                answers: activeQuestion.options.map((opt) => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || "",
+                })),
+              });
+              break;
+            case "QUIZ_CHECKBOXES":
+              await activitiesApi.updateCheckboxesQuiz(activity.id, {
+                type: "CHOICE",
+                questionText: activeQuestion.question_text,
+                timeLimitSeconds: value,
+                pointType: "STANDARD",
+                answers: activeQuestion.options.map((opt) => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || "",
+                })),
+              });
+              break;
+            case "QUIZ_TRUE_OR_FALSE":
+              const correctOption = activeQuestion.options.find(
+                (opt) => opt.is_correct
+              );
+              await activitiesApi.updateTrueFalseQuiz(activity.id, {
+                type: "TRUE_FALSE",
+                questionText: activeQuestion.question_text,
+                timeLimitSeconds: value,
+                pointType: "STANDARD",
+                correctAnswer:
+                  correctOption?.option_text.toLowerCase() === "true",
+              });
+              break;
+            case "QUIZ_TYPE_ANSWER":
+              await activitiesApi.updateTypeAnswerQuiz(activity.id, {
+                type: "TYPE_ANSWER",
+                questionText: activeQuestion.question_text,
+                timeLimitSeconds: value,
+                pointType: "STANDARD",
+                correctAnswer: activeQuestion.correct_answer_text || "",
+              });
+              break;
+            case "QUIZ_REORDER":
+              await activitiesApi.updateReorderQuiz(activity.id, {
+                type: "REORDER",
+                questionText: activeQuestion.question_text,
+                timeLimitSeconds: value,
+                pointType: "STANDARD",
+                correctOrder: activeQuestion.options.map(
+                  (opt) => opt.option_text
+                ),
+              });
+              break;
+            default:
+              // For other activity types like slides, we can't set time directly in the API
+              // So just update the local state and log a message
+              console.log(
+                `Time limit set to ${value}s for activity type ${activityType}, but API doesn't support direct time updates`
+              );
+              break;
+          }
+        } catch (error) {
+          console.error("Error updating question time limit:", error);
+        }
+      }, 500);
+    }
+  };
+
   return {
     timeLimit,
     setTimeLimit,
@@ -634,5 +737,6 @@ export function useQuestionOperations(
     handleQuestionTypeChange,
     handleQuestionLocationChange,
     handleQuestionTextChange,
+    handleTimeLimitChange,
   };
 }
