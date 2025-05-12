@@ -1653,24 +1653,7 @@ export class SessionWebSocket {
     total: number;
     percentage: number;
   } {
-    let total = this.totalParticipantsCount;
-
-    // Nếu host không tham gia và có người dùng tên 'Host' trong danh sách, giảm tổng số đi 1
-    if (!this.isHostParticipating) {
-      // Giảm tổng số đi 1 nếu tổng số lớn hơn 0
-      // Chú ý: Chúng ta không thể kiểm tra trực tiếp xem có 'Host' trong participantsData,
-      // vì chúng ta không lưu danh sách đầy đủ người tham gia ở đây.
-      // Nhưng nếu isHostParticipating = false, chắc chắn có 1 người dùng tên 'Host'
-      if (total > 0) {
-        total--;
-        console.log(
-          `[WebSocket] Điều chỉnh tổng số người tham gia từ ${this.totalParticipantsCount} xuống ${total} do host không tham gia`
-        );
-      }
-    }
-
-    // Đảm bảo total ít nhất là 1 để tránh chia cho 0
-    total = Math.max(1, total);
+    const total = Math.max(1, this.totalParticipantsCount);
     const percentage = Math.min(
       100,
       Math.round((this.participantsEventCount / total) * 100)

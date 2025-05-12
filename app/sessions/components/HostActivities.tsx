@@ -113,6 +113,28 @@ export default function HostActivities({
     'showing_current' | 'showing_ranking' | 'transitioning_to_next'
   >('showing_current');
 
+  // Thêm hàm kiểm tra loại activity là quiz hay không
+  const isQuizActivity = (activityType?: string): boolean => {
+    return (
+      activityType === 'QUIZ_BUTTONS' ||
+      activityType === 'QUIZ_CHECKBOXES' ||
+      activityType === 'QUIZ_REORDER' ||
+      activityType === 'QUIZ_TYPE_ANSWER' ||
+      activityType === 'QUIZ_TRUE_OR_FALSE' ||
+      activityType === 'QUIZ_LOCATION'
+    );
+  };
+
+  // Thêm hàm kiểm tra loại activity là info slide hay không
+  const isInfoSlideActivity = (activityType?: string): boolean => {
+    console.log(
+      `[SLIDE] Kiểm tra activity có phải là slide không: ${activityType} => ${
+        activityType === 'INFO_SLIDE'
+      }`
+    );
+    return activityType === 'INFO_SLIDE';
+  };
+
   // Thêm useEffect để ghi log trạng thái tham gia của host khi component khởi tạo
   useEffect(() => {
     console.log(
@@ -189,17 +211,8 @@ export default function HostActivities({
         return;
       }
 
-      // Lọc bỏ người dùng 'Host' khi host chọn không tham gia
-      let filteredParticipants = updatedParticipants;
-      if (!isParticipating) {
-        filteredParticipants = updatedParticipants.filter(
-          (p) => p.displayName !== 'Host'
-        );
-        console.log(
-          '[HostActivities] Đã loại bỏ người dùng Host khỏi danh sách người tham gia:',
-          filteredParticipants
-        );
-      }
+      // Host đã được lọc trong sessionWebSocket nên không cần lọc lại ở đây
+      const filteredParticipants = updatedParticipants;
 
       // Lấy thông tin tỷ lệ tham gia từ WebSocket
       const participantsRatio = sessionWs.getParticipantsEventRatio();
@@ -276,15 +289,20 @@ export default function HostActivities({
 
     sessionWs.onNextActivityHandler((activity) => {
       if (!isMounted.current) return;
-      console.log('Next activity received:', activity);
+      console.log('[SLIDE] Nhận được hoạt động mới:', activity);
       if (onNextActivityLog) onNextActivityLog(activity);
 
       if (!activity) {
-        console.log('No more activities in session, preparing to end session');
+        console.log(
+          '[SLIDE] Không còn hoạt động nào trong phiên, chuẩn bị kết thúc phiên'
+        );
         setNoMoreActivities(true);
 
         setTimeout(() => {
           if (isMounted.current && sessionId) {
+            console.log(
+              `[SLIDE] Tự động kết thúc phiên ${sessionId} sau khi hết hoạt động`
+            );
             sessionWs.endSession(sessionId).catch((err) => {
               console.error('Error ending session automatically:', err);
             });
@@ -293,16 +311,39 @@ export default function HostActivities({
       } else {
         // Reset state khi nhận activity mới
         setCanShowRanking(false);
+        console.log(
+          `[SLIDE] Đặt lại trạng thái canShowRanking = false cho activity mới: ${activity.activityId}`
+        );
+
+        // Nếu activity mới là INFO_SLIDE, tắt countdown vì không cần đếm ngược cho slides
+        if (activity.activityType === 'INFO_SLIDE') {
+          console.log(
+            `[SLIDE] Nhận activity mới là slide: ${activity.activityId}, tắt countdown`
+          );
+          setShowCountdown(false);
+        } else {
+          console.log(
+            `[SLIDE] Nhận activity mới KHÔNG phải là slide: ${activity.activityId}, loại: ${activity.activityType}`
+          );
+        }
 
         // Cập nhật số đếm trên UI dựa trên giá trị từ WebSocket
-        setParticipantsEventCount(sessionWs.getParticipantsEventCount());
+        const participantCount = sessionWs.getParticipantsEventCount();
+        console.log(
+          `[SLIDE] Số người tham gia đã phản hồi: ${participantCount}`
+        );
+        setParticipantsEventCount(participantCount);
+
         lastActivityIdRef.current = activity.activityId || null;
         console.log(
-          `[HostActivities] Chuyển sang activity mới: ${activity.activityId}, reset bộ đếm participants events`
+          `[SLIDE] Chuyển sang activity mới: ${activity.activityId}, loại: ${activity.activityType}, reset bộ đếm participants events`
         );
 
         setCurrentActivity(activity);
         setNoMoreActivities(false);
+        console.log(
+          `[SLIDE] Đã cập nhật state với activity mới: ${activity.activityId}, activityTransitionState = ${activityTransitionState}`
+        );
       }
     });
 
@@ -334,6 +375,9 @@ export default function HostActivities({
       hasStartedFirstActivity.current = true;
       setTimeout(() => {
         setShowCountdown(true);
+        console.log(
+          `[SLIDE] Bắt đầu khởi động hoạt động đầu tiên của phiên ${sessionId}`
+        );
         sessionWs.nextActivity(sessionId).catch((err) => {
           console.error('Error starting first activity:', err);
           setError('Failed to start first activity');
@@ -379,21 +423,55 @@ export default function HostActivities({
   }, [responseRatio.percentage, sessionWs, currentActivity]);
 
   const handleNextActivity = async () => {
+    console.log(
+      `[SLIDE] handleNextActivity được gọi, trạng thái hiện tại: ${activityTransitionState}`
+    );
+
     if (!sessionWs || !sessionWs.isClientConnected()) {
+      console.log(
+        `[SLIDE] Không thể chuyển hoạt động: WebSocket không được kết nối`
+      );
       setError('Không thể chuyển hoạt động lúc này');
       return;
     }
 
     // Nếu đang trong trạng thái hiển thị activity hiện tại, chuyển sang hiển thị bảng xếp hạng
     if (activityTransitionState === 'showing_current') {
+      console.log(
+        `[SLIDE] Trạng thái hiện tại: showing_current, currentActivity: ${currentActivity?.activityId}`
+      );
+
+      // Nếu activity hiện tại là INFO_SLIDE, chuyển thẳng sang activity tiếp theo mà không hiển thị bảng xếp hạng
+      if (isInfoSlideActivity(currentActivity?.activityType)) {
+        console.log(
+          `[SLIDE] Chuyển thẳng sang activity tiếp theo vì đây là slide: ${currentActivity?.activityId}`
+        );
+        proceedToNextActivity();
+        return;
+      } else {
+        console.log(
+          `[SLIDE] Activity hiện tại KHÔNG phải là slide: ${currentActivity?.activityId}, loại: ${currentActivity?.activityType}, chuẩn bị hiển thị bảng xếp hạng`
+        );
+      }
+
       if (currentActivity && currentActivity.activityId) {
         // Lưu snapshot thứ hạng hiện tại và thông báo cho subscribers
+        console.log(
+          `[SLIDE] Lưu snapshot xếp hạng cho activity: ${currentActivity.activityId}`
+        );
         sessionWs.requestRankingUpdate(currentActivity.activityId);
         setCurrentRankingActivityId(currentActivity.activityId);
+        console.log(
+          `[SLIDE] Hiển thị bảng xếp hạng cho activity: ${currentActivity.activityId}`
+        );
         setShowRankingChange(true);
         setActivityTransitionState('showing_ranking');
+        console.log(`[SLIDE] Đã chuyển trạng thái sang showing_ranking`);
       } else {
         // Trường hợp không có dữ liệu để hiển thị bảng xếp hạng, chuyển thẳng sang activity tiếp theo
+        console.log(
+          `[SLIDE] Không có activity hiện tại, chuyển thẳng sang activity tiếp theo`
+        );
         proceedToNextActivity();
       }
       return;
@@ -401,44 +479,108 @@ export default function HostActivities({
 
     // Nếu đang hiển thị bảng xếp hạng, đóng bảng xếp hạng và chuyển sang activity tiếp theo
     if (activityTransitionState === 'showing_ranking') {
+      console.log(
+        `[SLIDE] Đóng bảng xếp hạng và chuyển sang activity tiếp theo`
+      );
       setShowRankingChange(false);
+      console.log(
+        `[SLIDE] Đã đóng bảng xếp hạng, chuẩn bị chuyển sang activity tiếp theo`
+      );
       proceedToNextActivity();
       return;
+    }
+
+    // Xử lý trường hợp đặc biệt: nếu đang ở trạng thái transitioning_to_next và activity hiện tại là slide
+    // Vẫn cho phép gọi proceedToNextActivity để chuyển sang activity tiếp theo
+    if (activityTransitionState === 'transitioning_to_next') {
+      console.log(
+        `[SLIDE] Phát hiện trạng thái đặc biệt: transitioning_to_next với activity hiện tại ${currentActivity?.activityId}`
+      );
+
+      if (isInfoSlideActivity(currentActivity?.activityType)) {
+        console.log(
+          `[SLIDE] Cho phép chuyển tiếp từ slide sang activity tiếp theo mặc dù đang ở trạng thái transitioning_to_next`
+        );
+        proceedToNextActivity();
+        return;
+      } else {
+        console.log(
+          `[SLIDE] Đang ở trạng thái transitioning_to_next với non-slide activity, đợi hoàn thành`
+        );
+      }
     }
   };
 
   // Hàm thực hiện việc chuyển sang activity tiếp theo
   const proceedToNextActivity = async () => {
+    console.log(
+      `[SLIDE] proceedToNextActivity được gọi, currentActivity: ${currentActivity?.activityId}`
+    );
+
     try {
-      setShowCountdown(true);
+      // Đặt loading là true trong mọi trường hợp
       setIsLoading(true);
+      console.log(`[SLIDE] Đặt isLoading = true`);
+
       setActivityTransitionState('transitioning_to_next');
+      console.log(`[SLIDE] Đã chuyển trạng thái sang transitioning_to_next`);
 
       const currentActivityId = currentActivity?.activityId;
       console.log(
-        `[HostActivities] Bắt đầu chuyển sang activity mới, reset bộ đếm participants events`
+        `[SLIDE] Bắt đầu chuyển sang activity mới, từ activity: ${currentActivityId}, loại: ${currentActivity?.activityType}`
       );
 
+      // Kiểm tra xem activity hiện tại có phải là slide không
+      if (isInfoSlideActivity(currentActivity?.activityType)) {
+        console.log(
+          `[SLIDE] Activity hiện tại là slide, không hiển thị countdown khi chuyển`
+        );
+      } else {
+        console.log(
+          `[SLIDE] Activity hiện tại KHÔNG phải là slide, sẽ hiển thị countdown khi chuyển`
+        );
+        setShowCountdown(true);
+        console.log(`[SLIDE] Đã bật countdown cho chuyển đổi activity`);
+      }
+
+      console.log(
+        `[SLIDE] Gọi API nextActivity với sessionId: ${sessionId}, currentActivityId: ${currentActivityId}`
+      );
       await sessionWs.nextActivity(sessionId, currentActivityId);
+      console.log(`[SLIDE] API nextActivity đã được gọi thành công`);
 
       // Cập nhật UI với giá trị mới từ WebSocket
-      setParticipantsEventCount(sessionWs.getParticipantsEventCount());
+      const participantCount = sessionWs.getParticipantsEventCount();
+      console.log(
+        `[SLIDE] Cập nhật số người tham gia đã phản hồi: ${participantCount}`
+      );
+      setParticipantsEventCount(participantCount);
     } catch (err) {
+      console.error(`[SLIDE] Lỗi khi chuyển đến hoạt động tiếp theo:`, err);
       setError('Không thể chuyển hoạt động');
-      console.error('Error moving to next activity:', err);
+      console.error('Error moving to SLIDE:', err);
     } finally {
+      console.log(
+        `[SLIDE] Kết thúc quá trình chuyển đổi activity, đặt isLoading = false`
+      );
       setIsLoading(false);
     }
   };
 
   // Cập nhật hàm đóng bảng xếp hạng
   const handleCloseRankingChange = () => {
+    console.log(
+      `[SLIDE] Đóng bảng xếp hạng và trở về trạng thái showing_current`
+    );
     setShowRankingChange(false);
     setActivityTransitionState('showing_current');
   };
 
   // Cập nhật hàm handleCountdownComplete
   const handleCountdownComplete = () => {
+    console.log(
+      `[SLIDE] Countdown hoàn thành, ẩn countdown và đặt trạng thái showing_current`
+    );
     setShowCountdown(false);
     setActivityTransitionState('showing_current');
   };
@@ -554,96 +696,11 @@ export default function HostActivities({
     };
   }, [sessionWs]);
 
-  // Thêm lại câu điều kiện để hiển thị HostSessionSummary
-  if (sessionSummaries.length > 0) {
-    return (
-      <HostSessionSummary
-        sessionId={sessionId}
-        sessionCode={sessionCode}
-        participants={sessionSummaries}
-        onNavigateToHome={() => (window.location.href = '/sessions/host')}
-      />
-    );
-  }
-
-  // Thêm lại hàm renderActivityContent
-  const renderActivityContent = () => {
-    if (isLoading) {
-      return (
-        <div className='flex flex-col items-center justify-center py-12'>
-          <Loader2 className='h-8 w-8 animate-spin mb-2 text-[#aef359]' />
-          <p className='text-white/70'>Đang tải hoạt động...</p>
-        </div>
-      );
-    }
-
-    if (!currentActivity) {
-      return (
-        <div className='text-center py-12'>
-          <p className='mb-2 text-lg text-white/70'>Chưa có hoạt động nào</p>
-          <p className='text-sm text-white/50'>
-            Bắt đầu phiên học để hiển thị hoạt động đầu tiên
-          </p>
-        </div>
-      );
-    }
-
-    return renderActivityByType();
-  };
-
-  // Thêm lại hàm renderActivityByType
-  const renderActivityByType = () => {
-    // Nếu host không tham gia, hiển thị chỉ xem cho tất cả các hoạt động
-    if (!isParticipating) {
-      return (
-        <div className='relative'>
-          {/* Overlay trong suốt để ngăn tương tác nhưng không che nội dung */}
-          <div className='absolute inset-0 z-10 pointer-events-auto'></div>
-
-          {/* Nút hiển thị đáp án cho host không tham gia */}
-          {isQuizActivity(currentActivity?.activityType) && (
-            <div className='absolute top-4 right-4 z-20'>
-              <Button
-                onClick={() => {
-                  // Chuyển thông tin showAnswer = true vào component Quiz
-                  const updatedActivity = {
-                    ...currentActivity,
-                    hostShowAnswer: true,
-                  };
-                  setCurrentActivity(updatedActivity);
-                }}
-                className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium shadow-md border border-[#aef359]/20'
-              >
-                Hiển thị đáp án
-              </Button>
-            </div>
-          )}
-
-          {/* Hiển thị nội dung activity bình thường nhưng vô hiệu hóa tương tác */}
-          <div className='pointer-events-none'>{renderRegularActivity()}</div>
-        </div>
-      );
-    }
-
-    return renderRegularActivity();
-  };
-
-  // Thêm hàm kiểm tra loại activity là quiz hay không
-  const isQuizActivity = (activityType?: string): boolean => {
-    return (
-      activityType === 'QUIZ_BUTTONS' ||
-      activityType === 'QUIZ_CHECKBOXES' ||
-      activityType === 'QUIZ_REORDER' ||
-      activityType === 'QUIZ_TYPE_ANSWER' ||
-      activityType === 'QUIZ_TRUE_OR_FALSE' ||
-      activityType === 'QUIZ_LOCATION'
-    );
-  };
-
   // Thêm lại hàm renderRegularActivity
   const renderRegularActivity = () => {
     switch (currentActivity.activityType) {
       case 'INFO_SLIDE':
+        console.log(`[SLIDE] Render slide: ${currentActivity.activityId}`);
         return <InfoSlideViewer activity={currentActivity} />;
       case 'QUIZ_BUTTONS':
         return (
@@ -698,6 +755,83 @@ export default function HostActivities({
     }
   };
 
+  // Thêm lại hàm renderActivityByType
+  const renderActivityByType = () => {
+    // Nếu host không tham gia, hiển thị chỉ xem cho tất cả các hoạt động
+    if (!isParticipating) {
+      return (
+        <div className='relative'>
+          {/* Overlay trong suốt để ngăn tương tác nhưng không che nội dung */}
+          <div className='absolute inset-0 z-10 pointer-events-auto'></div>
+
+          {/* Nút hiển thị đáp án cho host không tham gia */}
+          {isQuizActivity(currentActivity?.activityType) && (
+            <div className='absolute top-4 right-4 z-20'>
+              <Button
+                onClick={() => {
+                  // Chuyển thông tin showAnswer = true vào component Quiz
+                  const updatedActivity = {
+                    ...currentActivity,
+                    hostShowAnswer: true,
+                  };
+                  setCurrentActivity(updatedActivity);
+                }}
+                className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium shadow-md border border-[#aef359]/20'
+              >
+                Hiển thị đáp án
+              </Button>
+            </div>
+          )}
+
+          {/* Hiển thị nội dung activity bình thường nhưng vô hiệu hóa tương tác */}
+          <div className='pointer-events-none'>{renderRegularActivity()}</div>
+        </div>
+      );
+    }
+
+    return renderRegularActivity();
+  };
+
+  // Thêm lại hàm renderActivityContent
+  const renderActivityContent = () => {
+    if (isLoading) {
+      return (
+        <div className='flex flex-col items-center justify-center py-12'>
+          <Loader2 className='h-8 w-8 animate-spin mb-2 text-[#aef359]' />
+          <p className='text-white/70'>Đang tải hoạt động...</p>
+        </div>
+      );
+    }
+
+    if (!currentActivity) {
+      return (
+        <div className='text-center py-12'>
+          <p className='mb-2 text-lg text-white/70'>Chưa có hoạt động nào</p>
+          <p className='text-sm text-white/50'>
+            Bắt đầu phiên học để hiển thị hoạt động đầu tiên
+          </p>
+        </div>
+      );
+    }
+
+    return renderActivityByType();
+  };
+
+  // Thêm lại câu điều kiện để hiển thị HostSessionSummary - chuyển xuống cuối hàm, ngay trước return chính
+  if (sessionSummaries.length > 0) {
+    console.log(
+      `[SLIDE] Hiển thị màn hình kết quả phiên học với ${sessionSummaries.length} người tham gia`
+    );
+    return (
+      <HostSessionSummary
+        sessionId={sessionId}
+        sessionCode={sessionCode}
+        participants={sessionSummaries}
+        onNavigateToHome={() => (window.location.href = '/sessions/host')}
+      />
+    );
+  }
+
   // Đặt CountdownOverlay ở mức cao nhất với vị trí z-index lớn để luôn hiển thị đè lên mọi phần tử
   return (
     <div className='min-h-screen bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white'>
@@ -708,15 +842,18 @@ export default function HostActivities({
         </div>
       )}
 
-      {/* Hiển thị component HostRankingChange khi showRankingChange = true và KHÔNG ở chế độ toàn màn hình */}
-      {showRankingChange && currentRankingActivityId && !isFullscreenMode && (
-        <HostRankingChange
-          sessionWebSocket={sessionWs}
-          currentActivityId={currentRankingActivityId}
-          onClose={handleCloseRankingChange}
-          isFullscreenMode={false}
-        />
-      )}
+      {/* Hiển thị component HostRankingChange khi showRankingChange = true và KHÔNG ở chế độ toàn màn hình và currentActivity KHÔNG phải là INFO_SLIDE */}
+      {showRankingChange &&
+        currentRankingActivityId &&
+        !isFullscreenMode &&
+        !isInfoSlideActivity(currentActivity?.activityType) && (
+          <HostRankingChange
+            sessionWebSocket={sessionWs}
+            currentActivityId={currentRankingActivityId}
+            onClose={handleCloseRankingChange}
+            isFullscreenMode={false}
+          />
+        )}
 
       {/* Animated background elements */}
       <div className='absolute inset-0 overflow-hidden pointer-events-none'>
@@ -1031,7 +1168,7 @@ export default function HostActivities({
           </motion.div>
         )}
 
-        {/* Always visible Next Activity button in fullscreen mode */}
+        {/* Always visible SLIDE button in fullscreen mode */}
         {isFullscreenMode &&
           activityTransitionState === 'showing_current' &&
           !canShowRanking && (
@@ -1140,7 +1277,8 @@ export default function HostActivities({
                 {/* Hiển thị HostRankingChange trong phần nội dung khi ở chế độ toàn màn hình */}
                 {showRankingChange &&
                   currentRankingActivityId &&
-                  isFullscreenMode && (
+                  isFullscreenMode &&
+                  !isInfoSlideActivity(currentActivity?.activityType) && (
                     <div className='absolute inset-0 z-50'>
                       <HostRankingChange
                         sessionWebSocket={sessionWs}

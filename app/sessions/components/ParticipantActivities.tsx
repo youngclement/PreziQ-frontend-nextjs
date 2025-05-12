@@ -61,6 +61,11 @@ export default function ParticipantActivities({
 
   const quizContainerRef = useRef<HTMLDivElement>(null);
 
+  // Hàm kiểm tra loại activity là info slide hay không
+  const isInfoSlideActivity = (activityType?: string): boolean => {
+    return activityType === 'INFO_SLIDE';
+  };
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       if (quizContainerRef.current?.requestFullscreen) {
@@ -256,8 +261,13 @@ export default function ParticipantActivities({
             `[ParticipantActivities] Chuyển sang activity mới: ${activity.activityId}, reset bộ đếm participants events`
           );
 
-          // Hiển thị countdown và cập nhật state
-          setShowCountdown(true);
+          // Hiển thị countdown chỉ khi activity không phải là INFO_SLIDE
+          if (!isInfoSlideActivity(activity.activityType)) {
+            setShowCountdown(true);
+          } else {
+            setShowCountdown(false);
+          }
+
           setCurrentActivity(activity);
           setNoMoreActivities(false);
         }
