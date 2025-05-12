@@ -421,7 +421,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
       <Card className='bg-[#0e1c26]/80 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
         {/* Header với thời gian và tiến trình */}
         <motion.div
-          className='aspect-[16/4] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
+          className='rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
           style={{
             backgroundImage: activity.backgroundImage
               ? `url(${activity.backgroundImage})`
@@ -435,7 +435,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
           <div className='absolute inset-0 bg-gradient-to-b from-[#0a1b25]/80 to-[#0f2231]/70' />
 
           {/* Status Bar */}
-          <div className='absolute top-0 left-0 right-0 h-12 bg-[#0e1c26]/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-5 text-white z-10'>
+          <div className='sticky top-0 left-0 right-0 h-12 bg-[#0e1c26]/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-5 text-white z-20'>
             <div className='flex items-center gap-3'>
               <div className='h-7 w-7 rounded-full bg-gradient-to-r from-[#aef359] to-[#e4f88d] flex items-center justify-center shadow-md'>
                 <Radio className='h-4 w-4 text-[#0e1c26]' />
@@ -514,15 +514,17 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
           </div>
 
           {/* Question Text */}
-          <div className='flex-1 flex flex-col items-center justify-center z-10 py-8 px-5'>
-            <motion.h2
+          <div className='flex flex-col items-center z-10 px-4 md:px-6 py-6 md:py-8'>
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className='text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-lg'
+              className='w-full flex flex-col items-center justify-center'
             >
-              {activity.quiz.questionText}
-            </motion.h2>
+              <h2 className='text-base md:text-xl lg:text-2xl font-bold text-center text-white drop-shadow-lg'>
+                {activity.quiz.questionText}
+              </h2>
+            </motion.div>
           </div>
         </motion.div>
 

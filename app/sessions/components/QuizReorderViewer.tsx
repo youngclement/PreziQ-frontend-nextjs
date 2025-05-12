@@ -162,7 +162,7 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
       <Card className='bg-[#0e1c26]/80 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
         {/* Header với thời gian và tiến trình */}
         <motion.div
-          className='aspect-[16/5] md:aspect-[16/4] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
+          className='rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
           style={{
             backgroundImage: activity.backgroundImage
               ? `url(${activity.backgroundImage})`
@@ -176,7 +176,7 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
           <div className='absolute inset-0 bg-gradient-to-b from-[#0a1b25]/80 to-[#0f2231]/70' />
 
           {/* Status Bar */}
-          <div className='absolute top-0 left-0 right-0 h-12 bg-[#0e1c26]/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-3 md:px-5 text-white z-10'>
+          <div className='sticky top-0 left-0 right-0 h-12 bg-[#0e1c26]/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-3 md:px-5 text-white z-20'>
             <div className='flex items-center gap-2 md:gap-3'>
               <div className='h-6 w-6 md:h-7 md:w-7 rounded-full bg-gradient-to-r from-[#aef359] to-[#e4f88d] flex items-center justify-center shadow-md'>
                 <ArrowUpDown className='h-3 w-3 md:h-4 md:w-4 text-[#0e1c26]' />
@@ -245,25 +245,22 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
           </div>
 
           {/* Question Text */}
-          <div className='flex-1 flex flex-col items-center justify-center z-10 py-5 md:py-8 px-3 md:px-5'>
-            <motion.h2
+          <div className='flex flex-col items-center z-10 px-3 md:px-5 py-5 md:py-7'>
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className='text-lg md:text-xl lg:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-lg'
+              className='w-full flex flex-col items-center justify-center'
             >
-              {activity.quiz.questionText}
-            </motion.h2>
-            {activity.description && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.8 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className='mt-2 text-xs md:text-sm text-white/80 text-center max-w-xl'
-              >
-                {activity.description}
-              </motion.p>
-            )}
+              <h2 className='text-sm md:text-lg lg:text-xl font-bold text-center text-white drop-shadow-lg'>
+                {activity.quiz.questionText}
+              </h2>
+              {activity.description && (
+                <p className='mt-1 text-xs md:text-sm text-white/80 text-center'>
+                  {activity.description}
+                </p>
+              )}
+            </motion.div>
           </div>
         </motion.div>
 
