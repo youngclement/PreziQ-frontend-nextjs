@@ -1142,7 +1142,7 @@ export class SessionWebSocket {
           console.log('[WebSocket] Parsed response:', response);
           const participantsData = response.data || [];
           console.log(
-            '[WebSocket] Participants data trước khi gửi:',
+            '[WebSocket] Participants data trước khi xử lý:',
             participantsData
           );
 
@@ -1162,34 +1162,55 @@ export class SessionWebSocket {
               }`
             );
 
-            // Cập nhật tổng số người tham gia
-            this.totalParticipantsCount = participantsData.length;
+            // Luôn lọc bỏ người dùng 'Host' khỏi danh sách
+            let filteredParticipants = participantsData;
+            if (hasHost) {
+              const originalCount = participantsData.length;
+              filteredParticipants = participantsData.filter(
+                (p) => p.displayName !== 'Host'
+              );
+              console.log(
+                `[WebSocket] Đã loại bỏ người dùng Host khỏi danh sách người tham gia. Trước: ${originalCount}, Sau: ${filteredParticipants.length}`
+              );
+            }
 
-            participantsData.forEach((participant, index) => {
+            // Cập nhật tổng số người tham gia sau khi đã lọc host
+            this.totalParticipantsCount = filteredParticipants.length;
+
+            // Log danh sách người tham gia sau khi đã lọc
+            console.log(
+              '[WebSocket] Participants data sau khi lọc:',
+              filteredParticipants
+            );
+            filteredParticipants.forEach((participant, index) => {
               console.log(`[WebSocket] Participant ${index}:`, {
                 id: participant.id,
                 displayName: participant.displayName,
                 realtimeScore: participant.realtimeScore,
               });
             });
-          }
 
-          // Tăng bộ đếm sự kiện participants - nhưng đảm bảo không vượt quá tổng số
-          this.participantsEventCount++;
+            // Tăng bộ đếm sự kiện participants - nhưng đảm bảo không vượt quá tổng số
+            this.participantsEventCount++;
 
-          // Đảm bảo giá trị participantsEventCount không vượt quá totalParticipantsCount
-          if (this.participantsEventCount > this.totalParticipantsCount) {
-            this.participantsEventCount = this.totalParticipantsCount;
-          }
+            // Đảm bảo giá trị participantsEventCount không vượt quá totalParticipantsCount
+            if (this.participantsEventCount > this.totalParticipantsCount) {
+              this.participantsEventCount = this.totalParticipantsCount;
+            }
 
-          console.log(
-            `[WebSocket] Số lần nhận sự kiện participants: ${this.participantsEventCount}/${this.totalParticipantsCount}`
-          );
+            console.log(
+              `[WebSocket] Số lần nhận sự kiện participants: ${this.participantsEventCount}/${this.totalParticipantsCount}`
+            );
 
-          LeaderboardManager.getInstance().updateParticipants(participantsData);
+            // Sử dụng danh sách đã lọc để cập nhật LeaderboardManager
+            LeaderboardManager.getInstance().updateParticipants(
+              filteredParticipants
+            );
 
-          if (this.onParticipantsUpdate) {
-            this.onParticipantsUpdate(participantsData);
+            // Sử dụng danh sách đã lọc cho onParticipantsUpdate callback
+            if (this.onParticipantsUpdate) {
+              this.onParticipantsUpdate(filteredParticipants);
+            }
           }
         } catch (e) {
           console.error('[WebSocket] Error parsing participants:', e);
