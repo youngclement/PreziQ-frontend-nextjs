@@ -85,7 +85,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
+import { SlideSettings } from '../slide/sidebar/slide-settings';
 /**
  * Component that allows editing settings for a quiz question/activity.
  * 
@@ -1385,15 +1385,20 @@ export function QuestionSettings({
   };
 
   // Slide settings component
-  const SlideSettings = () => {
+  const SlideSettingsComponent = () => {
     return (
       <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-100 dark:border-yellow-800">
-        <div className="mb-4">
-          <Label htmlFor="slide-content" className="text-yellow-800 dark:text-yellow-300">Slide Content</Label>
+        {/* <div className="mb-4">
+          <Label
+            htmlFor="slide-content"
+            className="text-yellow-800 dark:text-yellow-300"
+          >
+            Slide Content
+          </Label>
           <Textarea
             id="slide-content"
             placeholder="Enter slide content"
-            value={activeQuestion.slide_content || ""}
+            value={activeQuestion.slide_content || ''}
             onChange={(e) => handleSlideContentChange(e.target.value)}
             className="min-h-[100px] mt-2 bg-white dark:bg-black border-yellow-200 dark:border-yellow-700 focus-visible:ring-yellow-300"
           />
@@ -1403,13 +1408,20 @@ export function QuestionSettings({
         </div>
 
         <div className="mb-4">
-          <Label htmlFor="slide-image-url" className="text-yellow-800 dark:text-yellow-300">Slide Image URL</Label>
+          <Label
+            htmlFor="slide-image-url"
+            className="text-yellow-800 dark:text-yellow-300"
+          >
+            Slide Image URL
+          </Label>
           <div className="relative mt-2">
             <Input
               id="slide-image-url"
               placeholder="Enter image URL"
-              value={activeQuestion.slide_image || ""}
-              onChange={(e) => handleSlideImageChange(e.target.value, activeQuestionIndex)}
+              value={activeQuestion.slide_image || ''}
+              onChange={(e) =>
+                handleSlideImageChange(e.target.value, activeQuestionIndex)
+              }
               className="pr-10 bg-white dark:bg-black border-yellow-200 dark:border-yellow-700 focus-visible:ring-yellow-300"
             />
             {activeQuestion.slide_image && (
@@ -1418,7 +1430,7 @@ export function QuestionSettings({
                 size="sm"
                 className="absolute right-1 top-1 h-7 text-xs"
                 onClick={() => {
-                  handleSlideImageChange("", activeQuestionIndex);
+                  handleSlideImageChange('', activeQuestionIndex);
                 }}
               >
                 Clear
@@ -1433,18 +1445,32 @@ export function QuestionSettings({
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   // Prevent infinite loops by checking if already set to placeholder
-                  if (!(e.target as HTMLImageElement).src.includes('via.placeholder.com')) {
-                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=Invalid+Image+URL';
+                  if (
+                    !(e.target as HTMLImageElement).src.includes(
+                      'via.placeholder.com'
+                    )
+                  ) {
+                    (e.target as HTMLImageElement).src =
+                      'https://via.placeholder.com/300x200?text=Invalid+Image+URL';
                   }
                 }}
               />
             </div>
           )}
-        </div>
+        </div> */}
+
+          <SlideSettings
+            activeQuestion={activeQuestion}
+            activeQuestionIndex={activeQuestionIndex}
+            handleSlideBackgroundChange={handleBackgroundColorChange}
+            handleSlideBackgroundImageChange={handleSlideImageChange}
+          />
 
         <div className="mt-5 pt-4 border-t border-yellow-200 dark:border-yellow-800">
-          <h4 className="text-sm font-medium mb-3 text-yellow-800 dark:text-yellow-300">Advanced Editing Options</h4>
-          <FabricToolbar
+          <h4 className="text-sm font-medium mb-3 text-yellow-800 dark:text-yellow-300">
+            Advanced Editing Options
+          </h4>
+          {/* <FabricToolbar
             onAddText={() => {
               const event = new CustomEvent('fabric:add-text');
               window.dispatchEvent(event);
@@ -1459,7 +1485,7 @@ export function QuestionSettings({
               const event = new Event('fabric:clear');
               window.dispatchEvent(event);
             }}
-          />
+          /> */}
         </div>
       </div>
     );
@@ -1523,15 +1549,17 @@ export function QuestionSettings({
         {/* Option list for choice questions */}
         {(activeQuestion.question_type === 'multiple_choice' ||
           activeQuestion.question_type === 'multiple_response') && (
-            <OptionList
-              options={activeQuestion.options}
-              activeQuestionIndex={activeQuestionIndex}
-              questionType={activeQuestion.question_type}
-              onAddOption={onAddOption}
-              onOptionChange={(questionIndex, optionIndex, field, value) => onOptionChange(questionIndex, optionIndex, field, value)}
-              onDeleteOption={onDeleteOption}
-            />
-          )}
+          <OptionList
+            options={activeQuestion.options}
+            activeQuestionIndex={activeQuestionIndex}
+            questionType={activeQuestion.question_type}
+            onAddOption={onAddOption}
+            onOptionChange={(questionIndex, optionIndex, field, value) =>
+              onOptionChange(questionIndex, optionIndex, field, value)
+            }
+            onDeleteOption={onDeleteOption}
+          />
+        )}
 
         {/* True/false selector */}
         {activeQuestion.question_type === 'true_false' && (
@@ -1556,7 +1584,9 @@ export function QuestionSettings({
           <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
             <ReorderOptions
               options={activeQuestion.options}
-              onOptionChange={(index, field, value) => onOptionChange(activeQuestionIndex, index, field, value)}
+              onOptionChange={(index, field, value) =>
+                onOptionChange(activeQuestionIndex, index, field, value)
+              }
               onDeleteOption={onDeleteOption}
               onAddOption={onAddOption}
               onReorder={onReorderOptions}
@@ -1565,14 +1595,10 @@ export function QuestionSettings({
         )}
 
         {/* Slide content editor */}
-        {activeQuestion.question_type === 'slide' && (
-          <SlideSettings />
-        )}
+        {activeQuestion.question_type === 'slide' && <SlideSettingsComponent />}
 
         {/* Location question editor */}
-        {activeQuestion.question_type === 'location' && (
-          <LocationSettings />
-        )}
+        {activeQuestion.question_type === 'location' && <LocationSettings />}
 
         {/* Time limit control - for all question types */}
         <TimeSettings />
@@ -1583,12 +1609,17 @@ export function QuestionSettings({
   return (
     <Card className="border-none overflow-hidden shadow-md h-full w-full">
       <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
-        <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">Settings</CardTitle>
+        <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Settings
+        </CardTitle>
         <div className="flex items-center gap-1">
           <Settings className="h-4 w-4 text-gray-400" />
         </div>
       </CardHeader>
-      <CardContent className="p-4 bg-white dark:bg-black overflow-auto" style={{ height: "calc(100% - 48px)" }}>
+      <CardContent
+        className="p-4 bg-white dark:bg-black overflow-auto"
+        style={{ height: 'calc(100% - 48px)' }}
+      >
         <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
           <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="content" className="text-xs">
@@ -1621,23 +1652,36 @@ export function QuestionSettings({
               <div>
                 <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                  {activeQuestion.question_type === 'slide' || activeQuestion.question_type === 'info_slide' ? "Slide Content" : "Answer Options"}
+                  {activeQuestion.question_type === 'slide' ||
+                  activeQuestion.question_type === 'info_slide'
+                    ? 'Slide Content'
+                    : 'Answer Options'}
                 </h3>
 
                 {/* Display different content based on question type */}
-                {activeQuestion.question_type === 'multiple_choice' || activeQuestion.question_type === 'multiple_response' ? (
-                  <div className={cn(
-                    "p-3 rounded-md border",
-                    activeQuestion.question_type === 'multiple_choice'
-                      ? "bg-purple-50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-800"
-                      : "bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800"
-                  )}>
+                {activeQuestion.question_type === 'multiple_choice' ||
+                activeQuestion.question_type === 'multiple_response' ? (
+                  <div
+                    className={cn(
+                      'p-3 rounded-md border',
+                      activeQuestion.question_type === 'multiple_choice'
+                        ? 'bg-purple-50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-800'
+                        : 'bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800'
+                    )}
+                  >
                     <OptionList
                       options={activeQuestion.options}
                       activeQuestionIndex={activeQuestionIndex}
                       questionType={activeQuestion.question_type}
                       onAddOption={onAddOption}
-                      onOptionChange={(questionIndex, optionIndex, field, value) => onOptionChange(questionIndex, optionIndex, field, value)}
+                      onOptionChange={(
+                        questionIndex,
+                        optionIndex,
+                        field,
+                        value
+                      ) =>
+                        onOptionChange(questionIndex, optionIndex, field, value)
+                      }
                       onDeleteOption={onDeleteOption}
                     />
                   </div>
@@ -1655,13 +1699,16 @@ export function QuestionSettings({
                     onTextAnswerChange={handleTextAnswerChange}
                     onTextAnswerBlur={handleTextAnswerBlur}
                   />
-                ) : activeQuestion.question_type === 'slide' || activeQuestion.question_type === 'info_slide' ? (
-                  <SlideSettings />
+                ) : activeQuestion.question_type === 'slide' ||
+                  activeQuestion.question_type === 'info_slide' ? (
+                  <SlideSettingsComponent />
                 ) : activeQuestion.question_type === 'reorder' ? (
                   <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
                     <ReorderOptions
                       options={activeQuestion.options}
-                      onOptionChange={(index, field, value) => onOptionChange(activeQuestionIndex, index, field, value)}
+                      onOptionChange={(index, field, value) =>
+                        onOptionChange(activeQuestionIndex, index, field, value)
+                      }
                       onDeleteOption={onDeleteOption}
                       onAddOption={onAddOption}
                       onReorder={onReorderOptions}

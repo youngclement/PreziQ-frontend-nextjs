@@ -143,22 +143,22 @@ axiosClient.interceptors.response.use(
     }
 
     // Xử lý thông báo lỗi
-    let errorMessage = error.message;
-    if (error.response?.data && typeof error.response.data === "object") {
-      const data = error.response.data as Record<string, any>;
-      if (data.errors && Array.isArray(data.errors)) {
-        errorMessage = data.errors.map((err: any) => err.message).join("; ");
-      } else if (data.message) {
-        errorMessage = data.message;
-      }
-    }
+    // let errorMessage = error.message;
+    // if (error.response?.data && typeof error.response.data === "object") {
+    //   const data = error.response.data as Record<string, any>;
+    //   if (data.errors && Array.isArray(data.errors)) {
+    //     errorMessage = data.errors.map((err: any) => err.message).join("; ");
+    //   } else if (data.message) {
+    //     errorMessage = data.message;
+    //   }
+    // }
 
-    if (error.response?.status !== 410) {
-      toast({
-        title: errorMessage,
-        variant: "destructive",
-      });
-    }
+    // if (error.response?.status !== 410) {
+    //   toast({
+    //     title: errorMessage,
+    //     variant: "destructive",
+    //   });
+    // }
 
     return Promise.reject(error);
   }

@@ -3,13 +3,8 @@
 import type React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Plus,
-  ImagePlus,
-  Trash2,
-  ChevronRight,
-} from 'lucide-react';
-import PexelsPanel from './sidebar/pexels-penel';
+import { Plus, ImagePlus, Trash2, ChevronRight } from 'lucide-react';
+import PexelsPanel from './sidebar/pexels-panel';
 import { TextEditorToolbar } from './sidebar/text-editor-toolbar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';

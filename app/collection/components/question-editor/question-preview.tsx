@@ -95,6 +95,24 @@ interface QuestionPreviewProps {
   onReorderOptions?: (fromIndex: number, toIndex: number) => void;
 }
 
+interface SlideData {
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  activityId: string;
+  activityType: ActivityType;
+  title: string;
+  description: string;
+  isPublished: boolean;
+  orderIndex: number;
+  backgroundColor?: string;
+  backgroundImage?: string;
+  customBackgroundMusic?: string;
+  slide?: {
+    slideElements: SlideElementPayload[];
+  };
+}
+
 // Update the QuestionPreview component to include a hardcoded location quiz
 
 export function QuestionPreview({
@@ -133,8 +151,9 @@ export function QuestionPreview({
   // Add state for delete confirmation dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
+  const [slidesData, setSlidesData] = useState<Record<string, SlideData>>({});
+  const [slidesElements, setSlidesElements] = useState<Record<string, SlideElementPayload[]>>({});
 
-  console.log('activity', activity);
   // React to changes in activity props to update UI
   const [backgroundState, setBackgroundState] = React.useState({
     backgroundImage: activity?.backgroundImage || backgroundImage,
@@ -150,6 +169,84 @@ export function QuestionPreview({
 
   // Add this state to track when we need to force re-render
   const [renderKey, setRenderKey] = useState(0);
+
+  useEffect(() => {
+    const fetchActivityData = async (
+      activityId: string,
+      questionIndex: number
+    ) => {
+      if (!activityId) {
+        console.warn(
+          'No activity_id found for question at index',
+          questionIndex
+        );
+        return;
+      }
+
+      try {
+        const response = await activitiesApi.getActivityById(activityId);
+        const activityData = response.data.data;
+        console.log('activityData', activityData);
+
+        // Lưu dữ liệu slide riêng cho từng activityId
+        setSlidesData((prev) => ({
+          ...prev,
+          [activityId]: activityData,
+        }));
+
+        // Cập nhật activityBackgrounds
+        if (
+          ['slide', 'info_slide'].includes(
+            questions[questionIndex].question_type
+          ) &&
+          activityData.slide?.slideElements
+        ) {
+          setSlidesElements((prev) => ({
+            ...prev,
+            [activityId]: activityData.slide.slideElements,
+          }));
+        }
+
+        // Cập nhật backgroundState nếu đây là activity hiện tại
+        // if (activity?.id === currentQuestion.activity_id) {
+        //   setBackgroundState({
+        //     backgroundImage: activityData.backgroundImage || '',
+        //     backgroundColor: activityData.backgroundColor || '#FFFFFF',
+        //   });
+        // }
+
+        // Cập nhật localSlideElements nếu là slide
+        // if (
+        //   ['slide', 'info_slide'].includes(currentQuestion.question_type) &&
+        //   activityData.slide?.slideElements
+        // ) {
+        //   setLocalSlideElements((prev) => ({
+        //     ...prev,
+        //     [currentQuestion.activity_id]: activityData.slide.slideElements,
+        //   }));
+        // }
+
+        // Cập nhật question text và slide content nếu cần
+        // if (activityData.title !== currentQuestion.question_text) {
+        //   onQuestionTextChange(activityData.title, activeQuestionIndex);
+        // }
+        // if (
+        //   activityData.description !== currentQuestion.slide_content &&
+        //   onSlideContentChange
+        // ) {
+        //   onSlideContentChange(activityData.description);
+        // }
+      } catch (error) {
+        console.error('Error fetching activity data:', error);
+      }
+    };
+    questions.forEach((question, index) => {
+      if (question.activity_id && !slidesData[question.activity_id]) {
+        fetchActivityData(question.activity_id, index);
+      }
+    });
+  }, [questions, slidesData]);
+
 
   // Add this useEffect to listen for time limit update events
   useEffect(() => {
@@ -526,6 +623,11 @@ export function QuestionPreview({
   function renderQuestionContent(question: QuizQuestion, questionIndex: number, isActive: boolean, viewMode: string, backgroundImage: string) {
     const isSlideType = question.question_type === 'slide' || question.question_type === 'info_slide';
 
+    const slideData = question.activity_id ? slidesData[question.activity_id] : undefined;
+    const slideElements = question.activity_id
+  ? slidesElements[question.activity_id] || slidesData[question.activity_id]?.slide?.slideElements || []
+  : [];
+
     // Find activity specific background for this question
     let actualBackgroundImage = ''; // Initialize with empty string instead of inheriting
     let actualBackgroundColor = '#FFFFFF'; // Safe default
@@ -570,7 +672,9 @@ export function QuestionPreview({
     if (isSlideType) {
       const slideTypeText = question.question_type === 'info_slide' ? 'Info Slide' : 'Slide';
 
-      const slideElements = activity?.slide?.slideElements || [];
+        const slideBackgroundImage = slideData?.backgroundImage;
+        const slideBackgroundColor = slideData?.backgroundColor;
+
       return (
         <div
           className={cn(
@@ -583,12 +687,12 @@ export function QuestionPreview({
             viewMode === 'mobile' && 'max-w-sm'
           )}
           style={{
-            backgroundImage: hasBackgroundImage
-              ? `url(${actualBackgroundImage})`
-              : 'none',
-            backgroundColor: hasBackgroundImage
-              ? 'transparent'
-              : actualBackgroundColor,
+            // backgroundImage: hasBackgroundImage
+            //   ? `url(${actualBackgroundImage})`
+            //   : 'none',
+            // backgroundColor: hasBackgroundImage
+            //   ? 'transparent'
+            //   : actualBackgroundColor,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -610,7 +714,7 @@ export function QuestionPreview({
               </motion.div>
             </div>
 
-
+            {/* 
             {editMode !== null ? (
               <div className="w-full max-w-2xl">
                 <Textarea
@@ -674,7 +778,7 @@ export function QuestionPreview({
                   className="max-h-96 w-auto rounded-lg object-contain shadow-md"
                 />
               </motion.div>
-            )}
+            )} */}
 
             <div className="flex-1 w-full">
               <FabricEditor
@@ -684,11 +788,67 @@ export function QuestionPreview({
                 }
                 slideContent={question.slide_content || ''}
                 onUpdate={(data) => {
-                  if (onQuestionTextChange) {
+                  if (data.title) {
                     onQuestionTextChange(data.title, questionIndex);
                   }
-                  if (onSlideContentChange) {
+                  if (data.content && onSlideContentChange) {
                     onSlideContentChange(data.content);
+                  }
+                  if (data.slideElements && question.activity_id) {
+                    setSlidesElements((prev) => ({
+                      ...prev,
+                      [question.activity_id!]: data.slideElements ?? [],
+                    }));
+
+                    // Cập nhật từng slideElement qua API
+                    data.slideElements.forEach((element) => {
+                      if (element.slideElementId && question.activity_id) {
+                        slidesApi
+                          .updateSlidesElement(
+                            question.activity_id,
+                            element.slideElementId,
+                            element
+                          )
+                          .then((res) => {
+                            console.log(
+                              `Updated slide element ${element.slideElementId}:`,
+                              res.data
+                            );
+                            // Cập nhật slidesData
+                            setSlidesData((prevData) => {
+                              if (!question.activity_id) {
+                                console.error(
+                                  'question.activity_id is undefined'
+                                );
+                                return prevData;
+                              }
+                              return {
+                                ...prevData,
+                                [question.activity_id]: {
+                                  ...(prevData[question.activity_id] ?? {
+                                    activityId: question.activity_id,
+                                    slide: {
+                                      slideElements: [],
+                                    },
+                                    // Các thuộc tính khác của SlideData
+                                  }),
+                                  slide: {
+                                    ...(prevData[question.activity_id]
+                                      ?.slide ?? { slideElements: [] }),
+                                    slideElements: data.slideElements ?? [],
+                                  },
+                                },
+                              };
+                            });
+                          })
+                          .catch((error) => {
+                            console.error(
+                              `Error updating slide element ${element.slideElementId}:`,
+                              error
+                            );
+                          });
+                      }
+                    });
                   }
                 }}
                 width={
@@ -696,20 +856,20 @@ export function QuestionPreview({
                     ? viewMode === 'mobile'
                       ? 300
                       : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                      ? 650
+                      : 812
                     : viewMode === 'mobile'
-                      ? 300
-                      : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                    ? 300
+                    : viewMode === 'tablet'
+                    ? 650
+                    : 812
                 }
                 height={460}
                 zoom={1}
                 slideId={question.activity_id}
-                onSavingStateChange={(saving) => setIsSaving(saving)}
                 slideElements={slideElements}
-                backgroundImage={backgroundImage}
+                backgroundImage={slideBackgroundImage}
+                backgroundColor={slideBackgroundColor}
               />
             </div>
           </div>

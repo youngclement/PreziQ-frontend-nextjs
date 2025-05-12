@@ -77,7 +77,7 @@ const ColorCircle = ({ color }: { color: string }) => {
   );
 };
 
-export function TextEditorToolbar() {
+export function TextEditorToolbar(slideId: any) {
   const [formatting, setFormatting] = useState({
     bold: false,
     italic: false,
@@ -202,7 +202,11 @@ export function TextEditorToolbar() {
   };
 
   const handleAddTextbox = () => {
-    window.dispatchEvent(new CustomEvent('fabric:add-textbox'));
+    window.dispatchEvent(
+      new CustomEvent('fabric:add-textbox', {
+        detail: { slideId: slideId },
+      })
+    );
   };
 
   const handleAlignElement = (

@@ -133,7 +133,7 @@ export const activitiesApi = {
    * @returns Promise with API results
    */
   createActivity(payload: CreateActivityPayload) {
-    return axiosClient.post<ActivityResponse>("/activities", payload);
+    return axiosClient.post<ActivityResponse>('/activities', payload);
   },
 
   /**
@@ -141,7 +141,7 @@ export const activitiesApi = {
    * @returns Promise with the list of activity types
    */
   getActivityTypes() {
-    return axiosClient.get<ActivityTypesResponse>("/activities/types");
+    return axiosClient.get<ActivityTypesResponse>('/activities/types');
   },
 
   /**
@@ -188,16 +188,16 @@ export const activitiesApi = {
     activityId: string,
     payload: CheckboxesQuizPayload
   ) => {
-    console.log("Updating checkboxes quiz with payload:", payload);
+    console.log('Updating checkboxes quiz with payload:', payload);
     try {
       const response = await axiosClient.put(
         `/activities/${activityId}/quiz`,
         payload
       );
-      console.log("Checkboxes quiz update response:", response);
+      console.log('Checkboxes quiz update response:', response);
       return response;
     } catch (error) {
-      console.error("Error updating checkboxes quiz:", error);
+      console.error('Error updating checkboxes quiz:', error);
       throw error;
     }
   },
@@ -230,5 +230,9 @@ export const activitiesApi = {
    */
   updateReorderQuiz(activityId: string, payload: ReorderQuizPayload) {
     return axiosClient.put(`/activities/${activityId}/quiz`, payload);
+  },
+
+  getActivityById(activityId: string) {
+    return axiosClient.get(`/activities/${activityId}`);
   },
 };

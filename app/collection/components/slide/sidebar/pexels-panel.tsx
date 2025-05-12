@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { storageApi } from '@/api-client/storage-api'; // Import storageApi
 
 function PexelsPanel() {
-  const [open, setOpen] = useState(true);
 
   // Gửi sự kiện để thêm ảnh vào canvas
   const handleAddToCanvas = (url: string) => {
