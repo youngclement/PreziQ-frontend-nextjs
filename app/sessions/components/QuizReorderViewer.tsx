@@ -53,6 +53,7 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [totalParticipants, setTotalParticipants] = useState(0);
+  const [isQuizEnded, setIsQuizEnded] = useState(false);
 
   // Đáp án đúng
   const correctOrder = useMemo(() => {
@@ -77,18 +78,56 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
     }
   }, [timeLeft, isAnswered]);
 
+  // Thêm useEffect để kiểm tra khi nào quiz kết thúc
+  useEffect(() => {
+    // Quiz kết thúc khi hết thời gian hoặc tất cả đã trả lời
+    if (
+      timeLeft <= 0 ||
+      (answeredCount > 0 && answeredCount >= totalParticipants)
+    ) {
+      setIsQuizEnded(true);
+    }
+  }, [timeLeft, answeredCount, totalParticipants]);
+
   // Cập nhật participants từ WebSocket
   useEffect(() => {
     if (!sessionWebSocket) return;
-    const handler = (list: any[]) => {
-      setTotalParticipants(list.length);
-      setAnsweredCount(list.filter((p) => p.hasAnswered).length);
+
+    console.log('[QuizReorder] Khởi tạo cập nhật số người tham gia');
+
+    // Hàm cập nhật responseRatio - lấy trực tiếp từ WebSocket
+    const updateResponseRatio = () => {
+      // Lấy giá trị từ WebSocket
+      const participantsRatio = sessionWebSocket.getParticipantsEventRatio();
+
+      console.log(
+        `[QuizReorder] Số người tham gia đã trả lời: ${participantsRatio.count}/${participantsRatio.total} (${participantsRatio.percentage}%)`
+      );
+
+      // Cập nhật số lượng đếm
+      setAnsweredCount(participantsRatio.count);
+      setTotalParticipants(participantsRatio.total);
     };
-    sessionWebSocket.onParticipantsUpdateHandler(handler);
+
+    // Cập nhật ban đầu
+    updateResponseRatio();
+
+    // Thiết lập interval để cập nhật liên tục
+    const intervalId = setInterval(updateResponseRatio, 2000);
+
+    // Đăng ký lắng nghe sự kiện participants update từ WebSocket
+    sessionWebSocket.onParticipantsUpdateHandler(() => {
+      updateResponseRatio();
+    });
+
+    return () => {
+      console.log('[QuizReorder] Dọn dẹp cập nhật số người tham gia');
+      clearInterval(intervalId);
+    };
   }, [sessionWebSocket]);
 
   const handleSubmit = async () => {
-    if (isSubmitting || isAnswered) return;
+    if (isSubmitting || isAnswered || isQuizEnded) return;
     setIsSubmitting(true);
     setError(null);
 
@@ -166,6 +205,42 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
                   {formatTime(timeLeft)}
                 </span>
               </motion.div>
+
+              {/* Thêm hiển thị số người đã trả lời */}
+              {sessionWebSocket && (
+                <motion.div
+                  key={`${answeredCount}-${totalParticipants}`}
+                  className={`
+                    flex items-center gap-1 md:gap-1.5 mr-1 md:mr-2 ${
+                      answeredCount >= totalParticipants
+                        ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
+                        : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
+                    } border border-white/10 px-2 py-1 rounded-full text-[10px] md:text-xs font-medium`}
+                  animate={{
+                    scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
+                    transition: { duration: 0.5 },
+                  }}
+                >
+                  <Users className='h-3 w-3 md:h-3.5 md:w-3.5 text-[#aef359]' />
+                  <span
+                    className={
+                      answeredCount >= totalParticipants
+                        ? 'text-[#aef359]'
+                        : 'text-amber-400'
+                    }
+                  >
+                    {answeredCount}
+                  </span>
+                  <span className='text-white/50'>/{totalParticipants}</span>
+                  <span className='ml-1 text-[9px] md:text-xs opacity-75'>
+                    (
+                    {Math.round(
+                      (answeredCount / Math.max(1, totalParticipants)) * 100
+                    )}
+                    %)
+                  </span>
+                </motion.div>
+              )}
             </div>
           </div>
 
@@ -242,7 +317,7 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
           </AnimatePresence>
 
           <AnimatePresence>
-            {isAnswered && isCorrect !== null && (
+            {isAnswered && isQuizEnded && isCorrect !== null && (
               <motion.div
                 className='mb-4 md:mb-6 p-3 md:p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
@@ -354,6 +429,44 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
             )}
           </AnimatePresence>
 
+          {/* Thông báo đã gửi câu trả lời khi submit nhưng chưa kết thúc quiz */}
+          {isAnswered && !isQuizEnded && (
+            <motion.div
+              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30 text-white/90'
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className='flex items-center gap-2 mb-2 text-[#aef359]'>
+                <CheckCircle className='h-5 w-5' />
+                <span className='font-semibold'>Đã gửi câu trả lời!</span>
+              </div>
+              <p className='text-white/70'>
+                Câu trả lời của bạn đã được ghi nhận. Kết quả sẽ được hiển thị
+                khi tất cả người tham gia đã trả lời hoặc hết thời gian.
+              </p>
+            </motion.div>
+          )}
+
+          {/* Show Time Expired Message when quiz has ended but not submitted */}
+          {isQuizEnded && !isAnswered && (
+            <motion.div
+              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className='flex items-center gap-2 mb-2 text-amber-400'>
+                <Clock className='h-5 w-5' />
+                <span className='font-semibold'>Hết thời gian!</span>
+              </div>
+              <p className='text-white/70'>
+                Thời gian trả lời đã hết hoặc tất cả người tham gia đã trả lời.
+                Bạn không thể nộp câu trả lời nữa.
+              </p>
+            </motion.div>
+          )}
+
           <motion.div
             className='space-y-3 md:space-y-4'
             initial={{ opacity: 0 }}
@@ -362,7 +475,11 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
           >
             {/* DnD list */}
             <div className='bg-[#0e2838]/30 p-1 md:p-2 rounded-xl border border-white/5'>
-              <SortableList items={items} onChange={setItems} />
+              <SortableList
+                items={items}
+                onChange={setItems}
+                disabled={isAnswered || isQuizEnded}
+              />
             </div>
 
             <motion.div
@@ -375,13 +492,13 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
                 disabled={
                   isSubmitting ||
                   isAnswered ||
-                  timeLeft === 0 ||
+                  isQuizEnded ||
                   activity.hostShowAnswer
                 }
                 className={`w-full py-3 md:py-5 text-base md:text-lg font-semibold rounded-xl flex items-center justify-center gap-2 ${
                   isSubmitting ||
                   isAnswered ||
-                  timeLeft === 0 ||
+                  isQuizEnded ||
                   activity.hostShowAnswer
                     ? 'bg-[#0e2838]/50 text-white/50 cursor-not-allowed'
                     : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-[#0e1c26] hover:from-[#9ee348] hover:to-[#d3e87c] hover:shadow-lg hover:shadow-[#aef359]/20'
@@ -394,7 +511,7 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
                   </>
                 ) : isAnswered ? (
                   'Đã gửi câu trả lời'
-                ) : timeLeft === 0 ? (
+                ) : isQuizEnded ? (
                   'Hết thời gian'
                 ) : (
                   <>

@@ -208,7 +208,7 @@ export default function RealtimeLeaderboard({
               repeat: Infinity,
               repeatType: 'reverse',
             }}
-            className='text-sm text-white/50 bg-[#0e2838]/80 px-2 py-0.5 rounded-full text-xs border border-white/10'
+            className=' text-white/50 bg-[#0e2838]/80 px-2 py-0.5 rounded-full text-xs border border-white/10'
           >
             {participants.length} người chơi
           </motion.span>

@@ -71,6 +71,7 @@ export default function QuizCheckboxViewer({
   const [error, setError] = useState<string | null>(null);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [totalParticipants, setTotalParticipants] = useState(0);
+  const [isQuizEnded, setIsQuizEnded] = useState(false);
 
   // Reset state when activity changes
   useEffect(() => {
@@ -93,31 +94,55 @@ export default function QuizCheckboxViewer({
     }
   }, [timeLeft, isSubmitted]);
 
+  useEffect(() => {
+    if (
+      timeLeft <= 0 ||
+      (answeredCount > 0 && answeredCount >= totalParticipants)
+    ) {
+      setIsQuizEnded(true);
+    }
+  }, [timeLeft, answeredCount, totalParticipants]);
+
   // Lắng nghe cập nhật số người tham gia
   useEffect(() => {
     if (!sessionWebSocket) return;
 
-    const handleParticipantsUpdate = (participants: any[]) => {
-      console.log('[QuizCheckbox] Nhận cập nhật participants:', {
-        totalParticipants: participants.length,
-        participants,
-      });
+    console.log('[QuizCheckbox] Khởi tạo cập nhật số người tham gia');
 
-      setTotalParticipants(participants.length);
-      // Đếm số người đã trả lời
-      const answered = participants.filter((p) => p.hasAnswered).length;
-      console.log('[QuizCheckbox] Số người đã trả lời:', answered);
-      setAnsweredCount(answered);
+    // Hàm cập nhật responseRatio - lấy trực tiếp từ WebSocket
+    const updateResponseRatio = () => {
+      // Lấy giá trị từ WebSocket
+      const participantsRatio = sessionWebSocket.getParticipantsEventRatio();
+
+      console.log(
+        `[QuizCheckbox] Số người tham gia đã trả lời: ${participantsRatio.count}/${participantsRatio.total} (${participantsRatio.percentage}%)`
+      );
+
+      // Cập nhật số lượng đếm
+      setAnsweredCount(participantsRatio.count);
+      setTotalParticipants(participantsRatio.total);
     };
 
-    sessionWebSocket.onParticipantsUpdateHandler(handleParticipantsUpdate);
+    // Cập nhật ban đầu
+    updateResponseRatio();
+
+    // Thiết lập interval để cập nhật liên tục
+    const intervalId = setInterval(updateResponseRatio, 2000);
+
+    // Đăng ký lắng nghe sự kiện participants update từ WebSocket
+    sessionWebSocket.onParticipantsUpdateHandler(() => {
+      updateResponseRatio();
+    });
 
     return () => {
-      // Cleanup subscription if needed
+      console.log('[QuizCheckbox] Dọn dẹp cập nhật số người tham gia');
+      clearInterval(intervalId);
     };
   }, [sessionWebSocket]);
 
   const handleAnswerChange = (answerId: string) => {
+    if (isSubmitted || isQuizEnded) return;
+
     setSelectedAnswers((prev) => {
       if (prev.includes(answerId)) {
         return prev.filter((id) => id !== answerId);
@@ -128,7 +153,13 @@ export default function QuizCheckboxViewer({
   };
 
   const handleSubmit = async () => {
-    if (isSubmitting || isSubmitted || selectedAnswers.length === 0) return;
+    if (
+      isSubmitting ||
+      isSubmitted ||
+      selectedAnswers.length === 0 ||
+      isQuizEnded
+    )
+      return;
 
     setIsSubmitting(true);
     setError(null);
@@ -159,7 +190,7 @@ export default function QuizCheckboxViewer({
       }
 
       setIsSubmitted(true);
-      setShowResults(true);
+      setShowResults(isQuizEnded);
     } catch (err) {
       console.error('[QuizCheckbox] Lỗi khi gửi câu trả lời:', err);
       setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
@@ -229,7 +260,7 @@ export default function QuizCheckboxViewer({
 
     const baseStyle = styles[index % styles.length];
 
-    if (isSubmitted) {
+    if (isSubmitted && isQuizEnded) {
       if (isCorrect) {
         return {
           bg: `bg-gradient-to-r ${baseStyle.bgCorrect}`,
@@ -304,6 +335,41 @@ export default function QuizCheckboxViewer({
                   {formatTime(timeLeft)}
                 </span>
               </motion.div>
+              {/* Thêm hiển thị số người đã trả lời */}
+              {sessionWebSocket && (
+                <motion.div
+                  key={`${answeredCount}-${totalParticipants}`}
+                  className={`
+                    flex items-center gap-1.5 mr-2 ${
+                      answeredCount >= totalParticipants
+                        ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
+                        : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
+                    } border border-white/10 px-2 py-1 rounded-full text-xs font-medium`}
+                  animate={{
+                    scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
+                    transition: { duration: 0.5 },
+                  }}
+                >
+                  <Users className='h-3.5 w-3.5 text-[#aef359]' />
+                  <span
+                    className={
+                      answeredCount >= totalParticipants
+                        ? 'text-[#aef359]'
+                        : 'text-amber-400'
+                    }
+                  >
+                    {answeredCount}
+                  </span>
+                  <span className='text-white/50'>/{totalParticipants}</span>
+                  <span className='ml-1 text-xs opacity-75'>
+                    (
+                    {Math.round(
+                      (answeredCount / Math.max(1, totalParticipants)) * 100
+                    )}
+                    %)
+                  </span>
+                </motion.div>
+              )}
             </div>
           </div>
 
@@ -406,13 +472,19 @@ export default function QuizCheckboxViewer({
                 return (
                   <motion.div
                     key={answer.quizAnswerId}
-                    whileHover={{ scale: !isSubmitted ? 1.02 : 1 }}
-                    whileTap={{ scale: !isSubmitted ? 0.98 : 1 }}
+                    whileHover={{
+                      scale: !isSubmitted && !isQuizEnded ? 1.02 : 1,
+                    }}
+                    whileTap={{
+                      scale: !isSubmitted && !isQuizEnded ? 0.98 : 1,
+                    }}
                     className={`relative rounded-xl ${
                       isSelected ? 'z-10' : 'z-0'
                     }`}
                     onClick={() =>
-                      !isSubmitted && handleAnswerChange(answer.quizAnswerId)
+                      !isSubmitted &&
+                      !isQuizEnded &&
+                      handleAnswerChange(answer.quizAnswerId)
                     }
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -464,7 +536,7 @@ export default function QuizCheckboxViewer({
                             disabled={isSubmitted}
                           />
 
-                          {isSubmitted && isCorrect && (
+                          {isQuizEnded && isCorrect && (
                             <motion.div
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
@@ -487,7 +559,7 @@ export default function QuizCheckboxViewer({
           </motion.div>
 
           {/* Submit Button */}
-          {!isSubmitted && !activity.hostShowAnswer && (
+          {!isSubmitted && !isQuizEnded && !activity.hostShowAnswer && (
             <motion.div
               className='mt-6'
               initial={{ opacity: 0, y: 20 }}
@@ -518,9 +590,47 @@ export default function QuizCheckboxViewer({
             </motion.div>
           )}
 
+          {/* Thông báo đã gửi câu trả lời khi submit nhưng chưa kết thúc quiz */}
+          {isSubmitted && !showResults && !isQuizEnded && (
+            <motion.div
+              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30 text-white/90'
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className='flex items-center gap-2 mb-2 text-[#aef359]'>
+                <CheckCircle className='h-5 w-5' />
+                <span className='font-semibold'>Đã gửi câu trả lời!</span>
+              </div>
+              <p className='text-white/70'>
+                Câu trả lời của bạn đã được ghi nhận. Kết quả sẽ được hiển thị
+                khi tất cả người tham gia đã trả lời hoặc hết thời gian.
+              </p>
+            </motion.div>
+          )}
+
+          {/* Show Time Expired Message when quiz has ended but not submitted */}
+          {isQuizEnded && !isSubmitted && (
+            <motion.div
+              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className='flex items-center gap-2 mb-2 text-amber-400'>
+                <Clock className='h-5 w-5' />
+                <span className='font-semibold'>Hết thời gian!</span>
+              </div>
+              <p className='text-white/70'>
+                Thời gian trả lời đã hết hoặc tất cả người tham gia đã trả lời.
+                Bạn không thể nộp câu trả lời nữa.
+              </p>
+            </motion.div>
+          )}
+
           {/* Results */}
           <AnimatePresence>
-            {(isSubmitted && showResults) || activity.hostShowAnswer ? (
+            {(isSubmitted && isQuizEnded) || activity.hostShowAnswer ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}

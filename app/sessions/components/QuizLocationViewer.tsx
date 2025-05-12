@@ -84,6 +84,7 @@ export default function QuizLocationViewer({
   const [error, setError] = useState<string | null>(null);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [totalParticipants, setTotalParticipants] = useState(0);
+  const [isQuizEnded, setIsQuizEnded] = useState(false);
 
   // Reset state when activity changes
   useEffect(() => {
@@ -106,31 +107,54 @@ export default function QuizLocationViewer({
     }
   }, [timeLeft, isSubmitted]);
 
+  useEffect(() => {
+    if (
+      timeLeft <= 0 ||
+      (answeredCount > 0 && answeredCount >= totalParticipants)
+    ) {
+      setIsQuizEnded(true);
+    }
+  }, [timeLeft, answeredCount, totalParticipants]);
+
   // Lắng nghe cập nhật số người tham gia
   useEffect(() => {
     if (!sessionWebSocket) return;
 
-    const handleParticipantsUpdate = (participants: any[]) => {
-      console.log('[QuizLocation] Nhận cập nhật participants:', {
-        totalParticipants: participants.length,
-        participants,
-      });
+    console.log('[QuizLocation] Khởi tạo cập nhật số người tham gia');
 
-      setTotalParticipants(participants.length);
-      const answered = participants.filter((p) => p.hasAnswered).length;
-      console.log('[QuizLocation] Số người đã trả lời:', answered);
-      setAnsweredCount(answered);
+    // Hàm cập nhật responseRatio - lấy trực tiếp từ WebSocket
+    const updateResponseRatio = () => {
+      // Lấy giá trị từ WebSocket
+      const participantsRatio = sessionWebSocket.getParticipantsEventRatio();
+
+      console.log(
+        `[QuizLocation] Số người tham gia đã trả lời: ${participantsRatio.count}/${participantsRatio.total} (${participantsRatio.percentage}%)`
+      );
+
+      // Cập nhật số lượng đếm
+      setAnsweredCount(participantsRatio.count);
+      setTotalParticipants(participantsRatio.total);
     };
 
-    sessionWebSocket.onParticipantsUpdateHandler(handleParticipantsUpdate);
+    // Cập nhật ban đầu
+    updateResponseRatio();
+
+    // Thiết lập interval để cập nhật liên tục
+    const intervalId = setInterval(updateResponseRatio, 2000);
+
+    // Đăng ký lắng nghe sự kiện participants update từ WebSocket
+    sessionWebSocket.onParticipantsUpdateHandler(() => {
+      updateResponseRatio();
+    });
 
     return () => {
-      // Cleanup subscription if needed
+      console.log('[QuizLocation] Dọn dẹp cập nhật số người tham gia');
+      clearInterval(intervalId);
     };
   }, [sessionWebSocket]);
 
   const handleLocationSelect = (isCorrect: boolean, distance: number) => {
-    if (isSubmitted) return;
+    if (isSubmitted || isQuizEnded) return;
     const location = activity.quiz.quizAnswers[0]?.locationData;
     if (location) {
       setSelectedLocation(location);
@@ -138,7 +162,7 @@ export default function QuizLocationViewer({
   };
 
   const handleSubmit = async () => {
-    if (isSubmitting || isSubmitted || !selectedLocation) return;
+    if (isSubmitting || isSubmitted || !selectedLocation || isQuizEnded) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -176,7 +200,7 @@ export default function QuizLocationViewer({
       }
 
       setIsSubmitted(true);
-      setShowResults(true);
+      setShowResults(isQuizEnded);
     } catch (err) {
       console.error('[QuizLocation] Lỗi khi gửi câu trả lời:', err);
       setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
@@ -281,6 +305,40 @@ export default function QuizLocationViewer({
                   {formatTime(timeLeft)}
                 </span>
               </motion.div>
+              {sessionWebSocket && (
+                <motion.div
+                  key={`${answeredCount}-${totalParticipants}`}
+                  className={`
+                    flex items-center gap-1.5 mr-2 ${
+                      answeredCount >= totalParticipants
+                        ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
+                        : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
+                    } border border-white/10 px-2 py-1 rounded-full text-xs font-medium`}
+                  animate={{
+                    scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
+                    transition: { duration: 0.5 },
+                  }}
+                >
+                  <Users className='h-3.5 w-3.5 text-[#aef359]' />
+                  <span
+                    className={
+                      answeredCount >= totalParticipants
+                        ? 'text-[#aef359]'
+                        : 'text-amber-400'
+                    }
+                  >
+                    {answeredCount}
+                  </span>
+                  <span className='text-white/50'>/{totalParticipants}</span>
+                  <span className='ml-1 text-xs opacity-75'>
+                    (
+                    {Math.round(
+                      (answeredCount / Math.max(1, totalParticipants)) * 100
+                    )}
+                    %)
+                  </span>
+                </motion.div>
+              )}
             </div>
           </div>
 
@@ -381,7 +439,7 @@ export default function QuizLocationViewer({
                     }
               }
               onAnswer={(isCorrect, distance) => {
-                if (isSubmitted) return;
+                if (isSubmitted || isQuizEnded) return;
                 const location = activity.quiz.locationAnswers?.[0]
                   ? {
                       lat: activity.quiz.locationAnswers[0].latitude,
@@ -400,7 +458,7 @@ export default function QuizLocationViewer({
           </motion.div>
 
           {/* Submit Button */}
-          {!isSubmitted && !activity.hostShowAnswer && (
+          {!isSubmitted && !isQuizEnded && !activity.hostShowAnswer && (
             <motion.div
               className='mt-6'
               initial={{ opacity: 0, y: 20 }}
@@ -431,9 +489,47 @@ export default function QuizLocationViewer({
             </motion.div>
           )}
 
+          {/* Thông báo đã gửi câu trả lời khi submit nhưng chưa kết thúc quiz */}
+          {isSubmitted && !showResults && !isQuizEnded && (
+            <motion.div
+              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30 text-white/90'
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className='flex items-center gap-2 mb-2 text-[#aef359]'>
+                <CheckCircle className='h-5 w-5' />
+                <span className='font-semibold'>Đã gửi câu trả lời!</span>
+              </div>
+              <p className='text-white/70'>
+                Câu trả lời của bạn đã được ghi nhận. Kết quả sẽ được hiển thị
+                khi tất cả người tham gia đã trả lời hoặc hết thời gian.
+              </p>
+            </motion.div>
+          )}
+
+          {/* Show Time Expired Message when quiz has ended but not submitted */}
+          {isQuizEnded && !isSubmitted && (
+            <motion.div
+              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className='flex items-center gap-2 mb-2 text-amber-400'>
+                <Clock className='h-5 w-5' />
+                <span className='font-semibold'>Hết thời gian!</span>
+              </div>
+              <p className='text-white/70'>
+                Thời gian trả lời đã hết hoặc tất cả người tham gia đã trả lời.
+                Bạn không thể nộp câu trả lời nữa.
+              </p>
+            </motion.div>
+          )}
+
           {/* Results */}
           <AnimatePresence>
-            {(isSubmitted && showResults) || activity.hostShowAnswer ? (
+            {(isSubmitted && isQuizEnded) || activity.hostShowAnswer ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}

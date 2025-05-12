@@ -113,6 +113,15 @@ export default function HostActivities({
     'showing_current' | 'showing_ranking' | 'transitioning_to_next'
   >('showing_current');
 
+  // Thêm useEffect để ghi log trạng thái tham gia của host khi component khởi tạo
+  useEffect(() => {
+    console.log(
+      `[HostActivities] Host đang ở chế độ: ${
+        isParticipating ? 'Tham gia trả lời' : 'Chỉ quan sát'
+      }`
+    );
+  }, [isParticipating]);
+
   // Hàm toggle fullscreen
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -180,6 +189,18 @@ export default function HostActivities({
         return;
       }
 
+      // Lọc bỏ người dùng 'Host' khi host chọn không tham gia
+      let filteredParticipants = updatedParticipants;
+      if (!isParticipating) {
+        filteredParticipants = updatedParticipants.filter(
+          (p) => p.displayName !== 'Host'
+        );
+        console.log(
+          '[HostActivities] Đã loại bỏ người dùng Host khỏi danh sách người tham gia:',
+          filteredParticipants
+        );
+      }
+
       // Lấy thông tin tỷ lệ tham gia từ WebSocket
       const participantsRatio = sessionWs.getParticipantsEventRatio();
       setParticipantsEventCount(participantsRatio.count);
@@ -200,7 +221,7 @@ export default function HostActivities({
       }
 
       // Đảm bảo các trường dữ liệu được chuẩn hóa
-      const sanitizedParticipants = updatedParticipants.map((p) => ({
+      const sanitizedParticipants = filteredParticipants.map((p) => ({
         ...p,
         realtimeScore:
           typeof p.realtimeScore === 'number' ? p.realtimeScore : 0,

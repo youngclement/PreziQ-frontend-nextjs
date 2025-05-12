@@ -52,6 +52,7 @@ export default function QuizTypeAnswerViewer({
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [totalParticipants, setTotalParticipants] = useState(0);
+  const [isQuizEnded, setIsQuizEnded] = useState(false);
 
   useEffect(() => {
     if (timeLeft > 0 && !isAnswered) {
@@ -63,19 +64,52 @@ export default function QuizTypeAnswerViewer({
   }, [timeLeft, isAnswered]);
 
   useEffect(() => {
+    if (
+      timeLeft <= 0 ||
+      (answeredCount > 0 && answeredCount >= totalParticipants)
+    ) {
+      setIsQuizEnded(true);
+    }
+  }, [timeLeft, answeredCount, totalParticipants]);
+
+  useEffect(() => {
     if (!sessionWebSocket) return;
 
-    const handleParticipantsUpdate = (participants: any[]) => {
-      setTotalParticipants(participants.length);
-      const answered = participants.filter((p) => p.hasAnswered).length;
-      setAnsweredCount(answered);
+    console.log('[QuizTypeAnswer] Khởi tạo cập nhật số người tham gia');
+
+    // Hàm cập nhật responseRatio - lấy trực tiếp từ WebSocket
+    const updateResponseRatio = () => {
+      // Lấy giá trị từ WebSocket
+      const participantsRatio = sessionWebSocket.getParticipantsEventRatio();
+
+      console.log(
+        `[QuizTypeAnswer] Số người tham gia đã trả lời: ${participantsRatio.count}/${participantsRatio.total} (${participantsRatio.percentage}%)`
+      );
+
+      // Cập nhật số lượng đếm
+      setAnsweredCount(participantsRatio.count);
+      setTotalParticipants(participantsRatio.total);
     };
 
-    sessionWebSocket.onParticipantsUpdateHandler(handleParticipantsUpdate);
+    // Cập nhật ban đầu
+    updateResponseRatio();
+
+    // Thiết lập interval để cập nhật liên tục
+    const intervalId = setInterval(updateResponseRatio, 2000);
+
+    // Đăng ký lắng nghe sự kiện participants update từ WebSocket
+    sessionWebSocket.onParticipantsUpdateHandler(() => {
+      updateResponseRatio();
+    });
+
+    return () => {
+      console.log('[QuizTypeAnswer] Dọn dẹp cập nhật số người tham gia');
+      clearInterval(intervalId);
+    };
   }, [sessionWebSocket]);
 
   const handleSubmit = async () => {
-    if (!answer.trim() || isSubmitting || isAnswered) return;
+    if (!answer.trim() || isSubmitting || isAnswered || isQuizEnded) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -158,6 +192,40 @@ export default function QuizTypeAnswerViewer({
                   {formatTime(timeLeft)}
                 </span>
               </motion.div>
+              {sessionWebSocket && (
+                <motion.div
+                  key={`${answeredCount}-${totalParticipants}`}
+                  className={`
+                    flex items-center gap-1.5 mr-2 ${
+                      answeredCount >= totalParticipants
+                        ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
+                        : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
+                    } border border-white/10 px-2 py-1 rounded-full text-xs font-medium`}
+                  animate={{
+                    scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
+                    transition: { duration: 0.5 },
+                  }}
+                >
+                  <Users className='h-3.5 w-3.5 text-[#aef359]' />
+                  <span
+                    className={
+                      answeredCount >= totalParticipants
+                        ? 'text-[#aef359]'
+                        : 'text-amber-400'
+                    }
+                  >
+                    {answeredCount}
+                  </span>
+                  <span className='text-white/50'>/{totalParticipants}</span>
+                  <span className='ml-1 text-xs opacity-75'>
+                    (
+                    {Math.round(
+                      (answeredCount / Math.max(1, totalParticipants)) * 100
+                    )}
+                    %)
+                  </span>
+                </motion.div>
+              )}
             </div>
           </div>
 
@@ -254,13 +322,14 @@ export default function QuizTypeAnswerViewer({
                 placeholder='Nhập câu trả lời của bạn...'
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
-                disabled={isSubmitting || isAnswered}
+                disabled={isSubmitting || isAnswered || isQuizEnded}
                 className='w-full h-14 text-lg pl-12 pr-4 bg-[#0e2838]/90 border-2 border-white/10 focus:border-[#aef359]/50 rounded-xl shadow-lg backdrop-blur-lg transition-all duration-300 focus:ring-2 focus:ring-[#aef359]/20 text-white/90 placeholder:text-white/50'
                 onKeyDown={(e) => {
                   if (
                     e.key === 'Enter' &&
                     !isSubmitting &&
                     !isAnswered &&
+                    !isQuizEnded &&
                     answer.trim()
                   ) {
                     handleSubmit();
@@ -276,7 +345,7 @@ export default function QuizTypeAnswerViewer({
             </div>
 
             {/* Submit Button */}
-            {!isAnswered && !activity.hostShowAnswer && (
+            {!isAnswered && !isQuizEnded && !activity.hostShowAnswer && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -306,9 +375,47 @@ export default function QuizTypeAnswerViewer({
               </motion.div>
             )}
 
+            {/* Thông báo đã gửi câu trả lời khi submit nhưng chưa kết thúc quiz */}
+            {isAnswered && !isQuizEnded && (
+              <motion.div
+                className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30 text-white/90'
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className='flex items-center gap-2 mb-2 text-[#aef359]'>
+                  <CheckCircle className='h-5 w-5' />
+                  <span className='font-semibold'>Đã gửi câu trả lời!</span>
+                </div>
+                <p className='text-white/70'>
+                  Câu trả lời của bạn đã được ghi nhận. Kết quả sẽ được hiển thị
+                  khi tất cả người tham gia đã trả lời hoặc hết thời gian.
+                </p>
+              </motion.div>
+            )}
+
+            {/* Show Time Expired Message when quiz has ended but not submitted */}
+            {isQuizEnded && !isAnswered && (
+              <motion.div
+                className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className='flex items-center gap-2 mb-2 text-amber-400'>
+                  <Clock className='h-5 w-5' />
+                  <span className='font-semibold'>Hết thời gian!</span>
+                </div>
+                <p className='text-white/70'>
+                  Thời gian trả lời đã hết hoặc tất cả người tham gia đã trả
+                  lời. Bạn không thể nộp câu trả lời nữa.
+                </p>
+              </motion.div>
+            )}
+
             {/* Results */}
             <AnimatePresence>
-              {(isAnswered || activity.hostShowAnswer) && (
+              {(isAnswered && isQuizEnded) || activity.hostShowAnswer ? (
                 <motion.div
                   className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                   initial={{ opacity: 0, y: 20 }}
@@ -362,7 +469,7 @@ export default function QuizTypeAnswerViewer({
                     </>
                   )}
                 </motion.div>
-              )}
+              ) : null}
             </AnimatePresence>
           </motion.div>
         </div>

@@ -111,6 +111,7 @@ export class LeaderboardManager {
       previousPositions?: Record<string, number>;
     }
   > = {};
+  private isHostParticipating: boolean = true;
 
   // Dữ liệu lưu trữ cho xếp hạng host
   private hostRankingData: {
@@ -165,7 +166,16 @@ export class LeaderboardManager {
 
     if (!latestUpdate) return;
 
-    const sanitizedParticipants = latestUpdate.map((p) => ({
+    // Lọc bỏ người dùng "Host" nếu host không tham gia
+    let filteredUpdate = latestUpdate;
+    if (!this.isHostParticipating) {
+      filteredUpdate = latestUpdate.filter((p) => p.displayName !== 'Host');
+      console.log(
+        '[LeaderboardManager] Đã loại bỏ "Host" khỏi danh sách người tham gia.'
+      );
+    }
+
+    const sanitizedParticipants = filteredUpdate.map((p) => ({
       ...p,
       displayName: p.displayName || 'Unknown',
       displayAvatar:
@@ -902,6 +912,21 @@ export class LeaderboardManager {
     };
     console.log('[LeaderboardManager] Đã xoá dữ liệu bảng xếp hạng host.');
   }
+
+  // Thêm phương thức để cài đặt chế độ tham gia của host
+  public setHostParticipating(isParticipating: boolean): void {
+    this.isHostParticipating = isParticipating;
+    console.log(
+      `[LeaderboardManager] Đã cập nhật chế độ tham gia của host: ${
+        isParticipating ? 'Có tham gia' : 'Không tham gia'
+      }`
+    );
+  }
+
+  // Thêm phương thức để kiểm tra chế độ tham gia của host
+  public isHostParticipatingMode(): boolean {
+    return this.isHostParticipating;
+  }
 }
 
 export class SessionWebSocket {
@@ -925,6 +950,7 @@ export class SessionWebSocket {
   private participantsEventCount: number = 0;
   private currentActivityId: string | null = null;
   private totalParticipantsCount: number = 0;
+  private isHostParticipating: boolean = true;
 
   constructor(sessionCode: string, sessionId: string = '') {
     this.sessionCode = sessionCode;
@@ -1121,6 +1147,21 @@ export class SessionWebSocket {
           );
 
           if (Array.isArray(participantsData)) {
+            // Kiểm tra host có tham gia hay không và ghi log thông tin
+            const hasHost = participantsData.some(
+              (p) => p.displayName === 'Host'
+            );
+            console.log(
+              `[WebSocket] Có người dùng 'Host' trong danh sách: ${
+                hasHost ? 'Có' : 'Không'
+              }`
+            );
+            console.log(
+              `[WebSocket] Chế độ tham gia của host: ${
+                this.isHostParticipating ? 'Có tham gia' : 'Không tham gia'
+              }`
+            );
+
             // Cập nhật tổng số người tham gia
             this.totalParticipantsCount = participantsData.length;
 
@@ -1133,8 +1174,14 @@ export class SessionWebSocket {
             });
           }
 
-          // Tăng bộ đếm sự kiện participants
+          // Tăng bộ đếm sự kiện participants - nhưng đảm bảo không vượt quá tổng số
           this.participantsEventCount++;
+
+          // Đảm bảo giá trị participantsEventCount không vượt quá totalParticipantsCount
+          if (this.participantsEventCount > this.totalParticipantsCount) {
+            this.participantsEventCount = this.totalParticipantsCount;
+          }
+
           console.log(
             `[WebSocket] Số lần nhận sự kiện participants: ${this.participantsEventCount}/${this.totalParticipantsCount}`
           );
@@ -1308,6 +1355,17 @@ export class SessionWebSocket {
       return;
     }
 
+    // Cập nhật trạng thái tham gia của host dựa trên tên hiển thị
+    if (participantName === 'Host') {
+      this.isHostParticipating = false;
+      LeaderboardManager.getInstance().setHostParticipating(false);
+      console.log('[SessionWebSocket] Host tham gia với vai trò chỉ quan sát');
+    } else {
+      this.isHostParticipating = true;
+      LeaderboardManager.getInstance().setHostParticipating(true);
+      console.log('[SessionWebSocket] Host tham gia với vai trò người chơi');
+    }
+
     let avatarToUse = displayAvatar;
     if (!avatarToUse) {
       const randomSeed = Math.random().toString(36).substring(2, 10);
@@ -1369,6 +1427,15 @@ export class SessionWebSocket {
 
     // Khởi tạo bảng xếp hạng host khi bắt đầu phiên
     LeaderboardManager.getInstance().initializeHostRanking();
+
+    // Cập nhật giá trị isHostParticipating từ LeaderboardManager
+    this.isHostParticipating =
+      LeaderboardManager.getInstance().isHostParticipatingMode();
+    console.log(
+      `[SessionWebSocket] Bắt đầu phiên với chế độ tham gia của host: ${
+        this.isHostParticipating ? 'Có tham gia' : 'Không tham gia'
+      }`
+    );
 
     this.client.publish({
       destination: '/server/session/start',
@@ -1549,6 +1616,10 @@ export class SessionWebSocket {
   }
 
   public getParticipantsEventCount(): number {
+    // Chỉ đọc và trả về giá trị bộ đếm hiện tại, KHÔNG reset
+    console.log(
+      `[WebSocket] Đọc bộ đếm sự kiện participants: ${this.participantsEventCount}/${this.totalParticipantsCount}`
+    );
     return this.participantsEventCount;
   }
 
@@ -1561,14 +1632,32 @@ export class SessionWebSocket {
     total: number;
     percentage: number;
   } {
-    const total = Math.max(1, this.totalParticipantsCount); // Tránh chia cho 0
+    let total = this.totalParticipantsCount;
+
+    // Nếu host không tham gia và có người dùng tên 'Host' trong danh sách, giảm tổng số đi 1
+    if (!this.isHostParticipating) {
+      // Giảm tổng số đi 1 nếu tổng số lớn hơn 0
+      // Chú ý: Chúng ta không thể kiểm tra trực tiếp xem có 'Host' trong participantsData,
+      // vì chúng ta không lưu danh sách đầy đủ người tham gia ở đây.
+      // Nhưng nếu isHostParticipating = false, chắc chắn có 1 người dùng tên 'Host'
+      if (total > 0) {
+        total--;
+        console.log(
+          `[WebSocket] Điều chỉnh tổng số người tham gia từ ${this.totalParticipantsCount} xuống ${total} do host không tham gia`
+        );
+      }
+    }
+
+    // Đảm bảo total ít nhất là 1 để tránh chia cho 0
+    total = Math.max(1, total);
     const percentage = Math.min(
       100,
       Math.round((this.participantsEventCount / total) * 100)
     );
+
     return {
       count: this.participantsEventCount,
-      total: this.totalParticipantsCount,
+      total: total,
       percentage,
     };
   }
@@ -1701,5 +1790,10 @@ export class SessionWebSocket {
   // Phương thức xoá dữ liệu bảng xếp hạng host
   public clearHostRanking(): void {
     LeaderboardManager.getInstance().clearHostRanking();
+  }
+
+  // Thêm phương thức để kiểm tra chế độ tham gia của host
+  public isHostParticipatingMode(): boolean {
+    return this.isHostParticipating;
   }
 }

@@ -236,6 +236,27 @@ export default function ParticipantActivities({
         if (!activity) {
           setNoMoreActivities(true);
         } else {
+          // Reset state khi nhận activity mới - tương tự như HostActivities
+
+          // Đặt lại bộ đếm sự kiện của người tham gia về 0 khi nhận activity mới
+          // Trước khi gọi getParticipantsEventCount(), hãy reset giá trị đếm để đảm bảo nó bắt đầu từ 0
+          sessionWs.resetParticipantsEventCount();
+
+          // Sau đó đọc giá trị - điều này đảm bảo trang hiển thị giá trị 0/x khi bắt đầu
+          const participantsCount = sessionWs.getParticipantsEventCount();
+          console.log(
+            '[ParticipantActivities] Số người đã trả lời sau khi reset:',
+            participantsCount
+          );
+
+          // Lưu activityId vào ref để có thể theo dõi thay đổi
+          currentActivityIdRef.current = activity.activityId || null;
+
+          console.log(
+            `[ParticipantActivities] Chuyển sang activity mới: ${activity.activityId}, reset bộ đếm participants events`
+          );
+
+          // Hiển thị countdown và cập nhật state
           setShowCountdown(true);
           setCurrentActivity(activity);
           setNoMoreActivities(false);
@@ -394,10 +415,16 @@ export default function ParticipantActivities({
         {(() => {
           switch (currentActivity.activityType) {
             case 'INFO_SLIDE':
-              return <InfoSlideViewer activity={currentActivity} />;
+              return (
+                <InfoSlideViewer
+                  key={currentActivity.activityId}
+                  activity={currentActivity}
+                />
+              );
             case 'QUIZ_BUTTONS':
               return (
                 <QuizButtonViewer
+                  key={currentActivity.activityId}
                   activity={currentActivity}
                   sessionCode={sessionCode}
                   sessionWebSocket={sessionWs}
