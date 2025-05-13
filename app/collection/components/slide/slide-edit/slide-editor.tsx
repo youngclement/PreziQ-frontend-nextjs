@@ -54,24 +54,24 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   const isProcessingRef = useRef(false);
   const isInitialMount = useRef(true);
 
-console.log('backgroundColor 111', backgroundColor);
+  console.log('backgroundColor 111', backgroundColor);
 
-console.log('backgroundImage', backgroundImage);
+  console.log('backgroundImage', backgroundImage);
 
-useEffect(() => {
-  if (
-    isInitialMount.current &&
-    fabricCanvas.current &&
-    backgroundColor &&
-    backgroundImage
-  ) {
-    fabricCanvas.current.backgroundImage = undefined;
-    fabricCanvas.current.backgroundColor = backgroundColor;
-    fabricCanvas.current.renderAll();
-    isInitialMount.current = false;
-    console.log('mouse');
-  }
-}, [backgroundColor, backgroundImage]);
+  useEffect(() => {
+    if (
+      isInitialMount.current &&
+      fabricCanvas.current &&
+      backgroundColor &&
+      backgroundImage
+    ) {
+      fabricCanvas.current.backgroundImage = undefined;
+      fabricCanvas.current.backgroundColor = backgroundColor;
+      fabricCanvas.current.renderAll();
+      isInitialMount.current = false;
+      console.log('mouse');
+    }
+  }, [backgroundColor, backgroundImage]);
 
   const updateSpecificElement = (updatedElement: SlideElementPayload) => {
     const canvas = fabricCanvas.current;
@@ -326,7 +326,6 @@ useEffect(() => {
 
     if (backgroundImage) {
       setBackgroundImageWithCover(canvas, backgroundImage);
-
     } else {
       canvas.backgroundColor = backgroundColor || '#fff';
       canvas.renderAll();
@@ -379,11 +378,7 @@ useEffect(() => {
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    const canvas = initCanvas(
-      canvasRef.current,
-      backgroundColor,
-      width
-    );
+    const canvas = initCanvas(canvasRef.current, backgroundColor, width);
     canvas.setDimensions({ width: width, height: height });
     canvas.setZoom(zoom);
 
@@ -395,7 +390,7 @@ useEffect(() => {
       canvas.backgroundColor = backgroundColor;
       canvas.renderAll();
     }
-    console.log("backroundImage", backgroundImage);
+    console.log('backroundImage', backgroundImage);
 
     if (fabricCanvas.current) {
       // Xóa cả hai nền trước khi thiết lập
@@ -403,10 +398,8 @@ useEffect(() => {
       fabricCanvas.current.backgroundColor = backgroundColor || '#fff';
 
       // Ưu tiên backgroundImage, nếu không có thì dùng backgroundColor
-      if (backgroundImage != '') {
-        console.log("đã vào đây")
-        if (backgroundImage) {
-          FabricImage.fromURL(backgroundImage)
+      if (backgroundImage) {
+        FabricImage.fromURL(backgroundImage)
           .then((img) => {
             if (fabricCanvas.current) {
               img.set({
@@ -422,7 +415,6 @@ useEffect(() => {
           .catch((err) => {
             console.error('Lỗi khi tải backgroundImage:', err);
           });
-        }
       } else {
         fabricCanvas.current.backgroundColor = backgroundColor || '#fff';
         fabricCanvas.current.renderAll();
@@ -664,8 +656,6 @@ useEffect(() => {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [backgroundColor, width, height, zoom, slideId, backgroundImage]);
-
-
 
   // useEffect(() => {
   //   if (!fabricCanvas.current || !slideElements) return;

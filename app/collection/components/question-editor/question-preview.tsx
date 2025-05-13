@@ -6,7 +6,10 @@ declare global {
     lastQuestionClick?: number;
     savedBackgroundColors?: Record<string, string>;
     scrollToNewestQuestion?: () => void;
-    updateActivityBackground?: (activityId: string, properties: { backgroundImage?: string; backgroundColor?: string }) => void;
+    updateActivityBackground?: (
+      activityId: string,
+      properties: { backgroundImage?: string; backgroundColor?: string }
+    ) => void;
   }
 }
 
@@ -15,12 +18,18 @@ import dynamic from 'next/dynamic';
 
 // Define dynamic components with unique names to avoid conflicts
 const DynamicLocationQuestionPlayer = dynamic(
-  () => import('../question-player/location-question-player').then(mod => mod.LocationQuestionPlayer),
+  () =>
+    import('../question-player/location-question-player').then(
+      (mod) => mod.LocationQuestionPlayer
+    ),
   { ssr: false }
 );
 
 const DynamicLocationQuestionEditor = dynamic(
-  () => import('../question-editor/location-question-editor').then(mod => mod.LocationQuestionEditor),
+  () =>
+    import('../question-editor/location-question-editor').then(
+      (mod) => mod.LocationQuestionEditor
+    ),
   { ssr: false }
 );
 
@@ -29,25 +38,53 @@ const FabricEditor = dynamic(() => import('../slide/slide-edit/slide-editor'), {
 });
 
 import {
-  Clock, Image, Zap, Pencil, ChevronDown, ArrowUp, FileText,
-  Search, Monitor, Tablet, Smartphone, GripVertical, Radio, CheckSquare, CheckCircle, XCircle, Type, MoveVertical, MapPin, Edit, Plus, Trash
-} from "lucide-react";
+  Clock,
+  Image,
+  Zap,
+  Pencil,
+  ChevronDown,
+  ArrowUp,
+  FileText,
+  Search,
+  Monitor,
+  Tablet,
+  Smartphone,
+  GripVertical,
+  Radio,
+  CheckSquare,
+  CheckCircle,
+  XCircle,
+  Type,
+  MoveVertical,
+  MapPin,
+  Edit,
+  Plus,
+  Trash,
+} from 'lucide-react';
 import {
-  Card, CardHeader, CardTitle, CardDescription, CardContent
-} from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { QuizQuestion, QuizOption, Activity } from "../types";
-import { motion, AnimatePresence } from "framer-motion";
-import React, { useEffect, useRef, useState, useCallback } from "react";
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { QuizQuestion, QuizOption, Activity } from '../types';
+import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 import { slidesApi } from '@/api-client/slides-api';
 import { storageApi } from '@/api-client/storage-api';
@@ -55,8 +92,8 @@ import { debounce } from 'lodash';
 import { SlideElementPayload } from '@/types/slideInterface';
 import { useToast } from '@/hooks/use-toast';
 import { activitiesApi, ActivityType } from '@/api-client/activities-api';
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -64,10 +101,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 
 // First, let's import the needed drag and drop components from react-beautiful-dnd
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+
+// Thêm import SlideSettings
+import SlideSettings from '../slide/sidebar/slide-settings';
 
 interface QuestionPreviewProps {
   questions: QuizQuestion[];
@@ -77,7 +117,12 @@ interface QuestionPreviewProps {
   previewMode?: boolean;
   onQuestionLocationChange?: (questionIndex: number, locationData: any) => void;
   onQuestionTextChange: (value: string, questionIndex: number) => void;
-  onOptionChange: (questionIndex: number, optionIndex: number, field: string, value: any) => void;
+  onOptionChange: (
+    questionIndex: number,
+    optionIndex: number,
+    field: string,
+    value: any
+  ) => void;
   onChangeQuestion: (index: number) => void;
   onSlideImageChange?: (value: string, index: number) => void;
   onSlideContentChange?: (value: string) => void;
@@ -86,7 +131,10 @@ interface QuestionPreviewProps {
   activity?: Activity;
   onSetActivitiesBackgrounds?: (fn: (activities: Activity[]) => void) => void;
   onUpdateActivityBackground?: (
-    fn: (activityId: string, properties: { backgroundImage?: string; backgroundColor?: string }) => void
+    fn: (
+      activityId: string,
+      properties: { backgroundImage?: string; backgroundColor?: string }
+    ) => void
   ) => void;
   onAddQuestion: (question?: QuizQuestion) => void;
   onDeleteActivity?: (activityId: string) => void;
@@ -121,7 +169,7 @@ export function QuestionPreview({
   timeLimit,
   backgroundImage,
   previewMode = true,
-  onQuestionLocationChange = () => { },
+  onQuestionLocationChange = () => {},
   onQuestionTextChange,
   onOptionChange,
   onChangeQuestion,
@@ -134,11 +182,11 @@ export function QuestionPreview({
   onUpdateActivityBackground,
   onAddQuestion,
   onDeleteActivity,
-  onAddOption = () => { },
-  onDeleteOption = () => { },
-  onReorderOptions
+  onAddOption = () => {},
+  onDeleteOption = () => {},
+  onReorderOptions,
 }: QuestionPreviewProps) {
-  const [viewMode, setViewMode] = React.useState("desktop");
+  const [viewMode, setViewMode] = React.useState('desktop');
   const [showScrollTop, setShowScrollTop] = React.useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -146,26 +194,39 @@ export function QuestionPreview({
   const { toast } = useToast();
   const [editMode, setEditMode] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
-  const [editingOptionIndex, setEditingOptionIndex] = useState<number | null>(null);
+  const [editingOptionIndex, setEditingOptionIndex] = useState<number | null>(
+    null
+  );
   const [isAddActivityOpen, setIsAddActivityOpen] = useState(false);
   // Add state for delete confirmation dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
   const [slidesData, setSlidesData] = useState<Record<string, SlideData>>({});
-  const [slidesElements, setSlidesElements] = useState<Record<string, SlideElementPayload[]>>({});
+  const [slidesElements, setSlidesElements] = useState<
+    Record<string, SlideElementPayload[]>
+  >({});
 
   // React to changes in activity props to update UI
   const [backgroundState, setBackgroundState] = React.useState({
     backgroundImage: activity?.backgroundImage || backgroundImage,
-    backgroundColor: activity?.backgroundColor || '#FFFFFF'
+    backgroundColor: activity?.backgroundColor || '#FFFFFF',
   });
 
   // Map to store activity-specific backgrounds
-  const [activityBackgrounds, setActivityBackgrounds] = React.useState<Record<string, {
-    backgroundImage?: string;
-    backgroundColor: string;
-  }>>({});
+  const [activityBackgrounds, setActivityBackgrounds] = React.useState<
+    Record<
+      string,
+      {
+        backgroundImage?: string;
+        backgroundColor: string;
+      }
+    >
+  >({});
 
+  // Thêm state mới để lưu trữ backgrounds cho từng slide
+  const [slideBackgrounds, setSlideBackgrounds] = useState<
+    Record<string, { backgroundImage: string; backgroundColor: string }>
+  >({});
 
   // Add this state to track when we need to force re-render
   const [renderKey, setRenderKey] = useState(0);
@@ -207,35 +268,23 @@ export function QuestionPreview({
           }));
         }
 
-        // Cập nhật backgroundState nếu đây là activity hiện tại
-        // if (activity?.id === currentQuestion.activity_id) {
-        //   setBackgroundState({
-        //     backgroundImage: activityData.backgroundImage || '',
-        //     backgroundColor: activityData.backgroundColor || '#FFFFFF',
-        //   });
-        // }
+        // Lưu background vào state slideBackgrounds
+        setSlideBackgrounds((prev) => ({
+          ...prev,
+          [activityId]: {
+            backgroundImage: activityData.backgroundImage || '',
+            backgroundColor: activityData.backgroundColor || '#fff',
+          },
+        }));
 
-        // Cập nhật localSlideElements nếu là slide
-        // if (
-        //   ['slide', 'info_slide'].includes(currentQuestion.question_type) &&
-        //   activityData.slide?.slideElements
-        // ) {
-        //   setLocalSlideElements((prev) => ({
-        //     ...prev,
-        //     [currentQuestion.activity_id]: activityData.slide.slideElements,
-        //   }));
-        // }
-
-        // Cập nhật question text và slide content nếu cần
-        // if (activityData.title !== currentQuestion.question_text) {
-        //   onQuestionTextChange(activityData.title, activeQuestionIndex);
-        // }
-        // if (
-        //   activityData.description !== currentQuestion.slide_content &&
-        //   onSlideContentChange
-        // ) {
-        //   onSlideContentChange(activityData.description);
-        // }
+        // Cập nhật window.savedBackgroundColors cho đồng bộ
+        if (typeof window !== 'undefined' && activityData.backgroundColor) {
+          if (!window.savedBackgroundColors) {
+            window.savedBackgroundColors = {};
+          }
+          window.savedBackgroundColors[activityId] =
+            activityData.backgroundColor;
+        }
       } catch (error) {
         console.error('Error fetching activity data:', error);
       }
@@ -246,7 +295,6 @@ export function QuestionPreview({
       }
     });
   }, [questions, slidesData]);
-  
 
   // Add this useEffect to listen for time limit update events
   useEffect(() => {
@@ -257,9 +305,11 @@ export function QuestionPreview({
 
         // First, directly update DOM elements with the time-limit-display class
         // This prevents flickering by immediately updating visible elements
-        const timeDisplayElements = document.querySelectorAll('.time-limit-display');
+        const timeDisplayElements = document.querySelectorAll(
+          '.time-limit-display'
+        );
         if (timeDisplayElements.length > 0) {
-          timeDisplayElements.forEach(el => {
+          timeDisplayElements.forEach((el) => {
             el.textContent = `${event.detail.timeLimitSeconds}s`;
           });
 
@@ -268,27 +318,40 @@ export function QuestionPreview({
         } else {
           // Fallback if we can't find the elements - update with minimal visual disruption
           requestAnimationFrame(() => {
-            setRenderKey(prev => prev + 1);
+            setRenderKey((prev) => prev + 1);
           });
         }
       }
     };
 
     // Add event listener
-    window.addEventListener('activity:timeLimit:updated', handleTimeLimitUpdate);
+    window.addEventListener(
+      'activity:timeLimit:updated',
+      handleTimeLimitUpdate
+    );
 
     // Cleanup
     return () => {
-      window.removeEventListener('activity:timeLimit:updated', handleTimeLimitUpdate);
+      window.removeEventListener(
+        'activity:timeLimit:updated',
+        handleTimeLimitUpdate
+      );
     };
   }, [activity]);
 
   // Add or update a function to update activity background in real-time
-  const updateActivityBackground = (activityId: string, properties: {
-    backgroundImage?: string;
-    backgroundColor?: string;
-  }) => {
-    console.log('QuestionPreview: Updating background for activity:', activityId, properties);
+  const updateActivityBackground = (
+    activityId: string,
+    properties: {
+      backgroundImage?: string;
+      backgroundColor?: string;
+    }
+  ) => {
+    console.log(
+      'QuestionPreview: Updating background for activity:',
+      activityId,
+      properties
+    );
 
     // Lưu vào global storage ngay lập tức để đảm bảo đồng bộ
     if (typeof window !== 'undefined' && properties.backgroundColor) {
@@ -302,56 +365,67 @@ export function QuestionPreview({
     // Cập nhật trạng thái local cho component hiện tại
     if (activity && activity.id === activityId) {
       // Cập nhật trạng thái background trước để UI hiển thị ngay lập tức
-      setBackgroundState(prev => ({
+      setBackgroundState((prev) => ({
         ...prev,
-        ...(properties.backgroundImage !== undefined ? { backgroundImage: properties.backgroundImage } : {}),
-        ...(properties.backgroundColor !== undefined ? { backgroundColor: properties.backgroundColor } : {})
+        ...(properties.backgroundImage !== undefined
+          ? { backgroundImage: properties.backgroundImage }
+          : {}),
+        ...(properties.backgroundColor !== undefined
+          ? { backgroundColor: properties.backgroundColor }
+          : {}),
       }));
     }
 
     // Cập nhật bản đồ activityBackgrounds sau đó
-    setActivityBackgrounds(prev => {
-      const current = prev[activityId] || { backgroundImage: '', backgroundColor: '#FFFFFF' };
+    setActivityBackgrounds((prev) => {
+      const current = prev[activityId] || {
+        backgroundImage: '',
+        backgroundColor: '#FFFFFF',
+      };
       const updated = {
         ...current,
-        ...properties
+        ...properties,
       };
 
       return {
         ...prev,
-        [activityId]: updated
+        [activityId]: updated,
       };
     });
   };
 
   // Update background state when activity changes
   React.useEffect(() => {
-    console.log("Activity changed, updating background state:", activity);
+    console.log('Activity changed, updating background state:', activity);
 
     if (activity) {
       // Luôn ưu tiên sử dụng màu từ global storage trước
-      const savedColor = typeof window !== 'undefined' && window.savedBackgroundColors && activity.id
-        ? window.savedBackgroundColors[activity.id]
-        : null;
+      const savedColor =
+        typeof window !== 'undefined' &&
+        window.savedBackgroundColors &&
+        activity.id
+          ? window.savedBackgroundColors[activity.id]
+          : null;
 
       // Sử dụng màu đã lưu hoặc màu từ activity
-      const backgroundColor = savedColor || activity.backgroundColor || '#FFFFFF';
+      const backgroundColor =
+        savedColor || activity.backgroundColor || '#FFFFFF';
       const backgroundImage = activity.backgroundImage || '';
 
       // Cập nhật trạng thái local
       setBackgroundState({
         backgroundImage,
-        backgroundColor
+        backgroundColor,
       });
 
       // Cập nhật vào bản đồ activities
       if (activity.id) {
-        setActivityBackgrounds(prev => ({
+        setActivityBackgrounds((prev) => ({
           ...prev,
           [activity.id]: {
             backgroundImage,
-            backgroundColor
-          }
+            backgroundColor,
+          },
         }));
       }
     }
@@ -369,11 +443,18 @@ export function QuestionPreview({
       }
 
       // Store our updateActivityBackground function globally
-      const globalUpdateActivityBackground = (activityId: string, properties: {
-        backgroundImage?: string;
-        backgroundColor?: string;
-      }) => {
-        console.log('Global updateActivityBackground called:', activityId, properties);
+      const globalUpdateActivityBackground = (
+        activityId: string,
+        properties: {
+          backgroundImage?: string;
+          backgroundColor?: string;
+        }
+      ) => {
+        console.log(
+          'Global updateActivityBackground called:',
+          activityId,
+          properties
+        );
 
         // Lưu vào global storage - đảm bảo window.savedBackgroundColors đã được khởi tạo
         if (properties.backgroundColor) {
@@ -389,8 +470,8 @@ export function QuestionPreview({
           detail: {
             activityId,
             properties,
-            sender: 'globalUpdateFn'
-          }
+            sender: 'globalUpdateFn',
+          },
         });
         window.dispatchEvent(event);
       };
@@ -399,22 +480,37 @@ export function QuestionPreview({
 
       // Lắng nghe sự kiện cập nhật từ các component khác
       const handleBackgroundUpdate = (event: any) => {
-        if (event.detail && event.detail.activityId && event.detail.properties) {
+        if (
+          event.detail &&
+          event.detail.activityId &&
+          event.detail.properties
+        ) {
           // Chỉ cập nhật nếu không phải là người gửi
           if (event.detail.sender !== 'questionPreview') {
-            updateActivityBackground(event.detail.activityId, event.detail.properties);
+            updateActivityBackground(
+              event.detail.activityId,
+              event.detail.properties
+            );
           }
         }
       };
 
-      window.addEventListener('activity:background:updated', handleBackgroundUpdate);
+      window.addEventListener(
+        'activity:background:updated',
+        handleBackgroundUpdate
+      );
 
       // Cleanup on unmount
       return () => {
-        if (window.updateActivityBackground === globalUpdateActivityBackground) {
+        if (
+          window.updateActivityBackground === globalUpdateActivityBackground
+        ) {
           delete window.updateActivityBackground;
         }
-        window.removeEventListener('activity:background:updated', handleBackgroundUpdate);
+        window.removeEventListener(
+          'activity:background:updated',
+          handleBackgroundUpdate
+        );
       };
     }
   }, []);
@@ -438,17 +534,20 @@ export function QuestionPreview({
   const setActivitiesBackgrounds = (activities: Activity[]) => {
     if (!activities || activities.length === 0) return;
 
-    const backgroundsMap: Record<string, {
-      backgroundImage?: string;
-      backgroundColor: string;
-    }> = {};
+    const backgroundsMap: Record<
+      string,
+      {
+        backgroundImage?: string;
+        backgroundColor: string;
+      }
+    > = {};
 
     // Process all activities at once and build a map
-    activities.forEach(act => {
+    activities.forEach((act) => {
       if (act.id) {
         backgroundsMap[act.id] = {
           backgroundImage: act.backgroundImage || '',
-          backgroundColor: act.backgroundColor || '#FFFFFF'
+          backgroundColor: act.backgroundColor || '#FFFFFF',
         };
       }
     });
@@ -460,7 +559,7 @@ export function QuestionPreview({
     if (activities[0]) {
       setBackgroundState({
         backgroundImage: activities[0].backgroundImage || '',
-        backgroundColor: activities[0].backgroundColor || '#FFFFFF'
+        backgroundColor: activities[0].backgroundColor || '#FFFFFF',
       });
     }
   };
@@ -478,12 +577,13 @@ export function QuestionPreview({
           const questionRect = question.getBoundingClientRect();
 
           // Calculate the scroll position needed - adjust the offset for better positioning
-          const scrollPosition = container.scrollTop + (questionRect.top - containerRect.top) - 20;
+          const scrollPosition =
+            container.scrollTop + (questionRect.top - containerRect.top) - 20;
 
           // Use smooth scrolling
           container.scrollTo({
             top: scrollPosition,
-            behavior: 'smooth'
+            behavior: 'smooth',
           });
         }
       }, 100); // Increase timeout to ensure refs are up to date
@@ -519,13 +619,19 @@ export function QuestionPreview({
             const rect = ref.getBoundingClientRect();
 
             // Skip if the element is not visible at all
-            if (rect.bottom < containerTop || rect.top > containerTop + containerHeight) {
+            if (
+              rect.bottom < containerTop ||
+              rect.top > containerTop + containerHeight
+            ) {
               return;
             }
 
             // Calculate how much of the element is visible
             const visibleTop = Math.max(rect.top, containerTop);
-            const visibleBottom = Math.min(rect.bottom, containerTop + containerHeight);
+            const visibleBottom = Math.min(
+              rect.bottom,
+              containerTop + containerHeight
+            );
             const visibleHeight = visibleBottom - visibleTop;
 
             // If this element has more visible area than our current best, update
@@ -581,24 +687,26 @@ export function QuestionPreview({
   const scrollToTop = () => {
     scrollContainerRef.current?.scrollTo({
       top: 0,
-      behavior: 'smooth'
+      behavior: 'smooth',
     });
   };
 
   // Simplified color scheme with lighter, flatter colors
   const getQuestionTypeColor = (questionType: string) => {
     const colors = {
-      "multiple_choice": "bg-blue-500 text-white",
-      "multiple_response": "bg-violet-500 text-white",
-      "true_false": "bg-emerald-500 text-white",
-      "text_answer": "bg-amber-500 text-white",
-      "reorder": "bg-pink-500 text-white",
-      "location": "bg-cyan-500 text-white",
-      "slide": "bg-indigo-500 text-white",
-      "info_slide": "bg-indigo-500 text-white"
+      multiple_choice: 'bg-blue-500 text-white',
+      multiple_response: 'bg-violet-500 text-white',
+      true_false: 'bg-emerald-500 text-white',
+      text_answer: 'bg-amber-500 text-white',
+      reorder: 'bg-pink-500 text-white',
+      location: 'bg-cyan-500 text-white',
+      slide: 'bg-indigo-500 text-white',
+      info_slide: 'bg-indigo-500 text-white',
     };
 
-    return colors[questionType as keyof typeof colors] || "bg-slate-500 text-white";
+    return (
+      colors[questionType as keyof typeof colors] || 'bg-slate-500 text-white'
+    );
   };
 
   // Get question type icon
@@ -606,45 +714,77 @@ export function QuestionPreview({
     const slideIcon = <FileText className="h-4 w-4" />;
 
     const icons = {
-      "multiple_choice": <Radio className="h-4 w-4" />,
-      "multiple_response": <CheckSquare className="h-4 w-4" />,
-      "true_false": <div className="flex"><CheckCircle className="h-4 w-4" /><XCircle className="h-4 w-4 -ml-1" /></div>,
-      "text_answer": <Type className="h-4 w-4" />,
-      "reorder": <MoveVertical className="h-4 w-4" />,
-      "location": <MapPin className="h-4 w-4" />,
-      "slide": slideIcon,
-      "info_slide": slideIcon
+      multiple_choice: <Radio className="h-4 w-4" />,
+      multiple_response: <CheckSquare className="h-4 w-4" />,
+      true_false: (
+        <div className="flex">
+          <CheckCircle className="h-4 w-4" />
+          <XCircle className="h-4 w-4 -ml-1" />
+        </div>
+      ),
+      text_answer: <Type className="h-4 w-4" />,
+      reorder: <MoveVertical className="h-4 w-4" />,
+      location: <MapPin className="h-4 w-4" />,
+      slide: slideIcon,
+      info_slide: slideIcon,
     };
 
-    return icons[questionType as keyof typeof icons] || <Zap className="h-4 w-4" />;
+    return (
+      icons[questionType as keyof typeof icons] || <Zap className="h-4 w-4" />
+    );
   };
 
   // Enhanced renderQuestionContent function with simplified styling
-  function renderQuestionContent(question: QuizQuestion, questionIndex: number, isActive: boolean, viewMode: string, backgroundImage: string) {
-    const isSlideType = question.question_type === 'slide' || question.question_type === 'info_slide';
+  function renderQuestionContent(
+    question: QuizQuestion,
+    questionIndex: number,
+    isActive: boolean,
+    viewMode: string,
+    backgroundImage: string
+  ) {
+    const isSlideType =
+      question.question_type === 'slide' ||
+      question.question_type === 'info_slide';
 
-    const slideData = question.activity_id ? slidesData[question.activity_id] : undefined;
+    const slideData = question.activity_id
+      ? slidesData[question.activity_id]
+      : undefined;
     const slideElements = question.activity_id
-  ? slidesElements[question.activity_id] || slidesData[question.activity_id]?.slide?.slideElements || []
-  : [];
+      ? slidesElements[question.activity_id] ||
+        slidesData[question.activity_id]?.slide?.slideElements ||
+        []
+      : [];
 
     // Find activity specific background for this question
     let actualBackgroundImage = ''; // Initialize with empty string instead of inheriting
     let actualBackgroundColor = '#FFFFFF'; // Safe default
 
-    // QUAN TRỌNG: Ưu tiên lấy màu từ global storage trước
-    if (question.activity_id && typeof window !== 'undefined' && window.savedBackgroundColors) {
+    // QUAN TRỌNG: Ưu tiên lấy màu từ slideBackgrounds state
+    if (question.activity_id && slideBackgrounds[question.activity_id]) {
+      actualBackgroundImage =
+        slideBackgrounds[question.activity_id].backgroundImage || '';
+      actualBackgroundColor =
+        slideBackgrounds[question.activity_id].backgroundColor || '#FFFFFF';
+    }
+    // Tiếp theo, kiểm tra global storage
+    else if (
+      question.activity_id &&
+      typeof window !== 'undefined' &&
+      window.savedBackgroundColors
+    ) {
       const savedColor = window.savedBackgroundColors[question.activity_id];
       if (savedColor) {
         actualBackgroundColor = savedColor;
       }
     }
-
     // Sau đó mới kiểm tra trong activityBackgrounds
-    if (question.activity_id && activityBackgrounds[question.activity_id]) {
+    else if (
+      question.activity_id &&
+      activityBackgrounds[question.activity_id]
+    ) {
       const actBg = activityBackgrounds[question.activity_id];
       actualBackgroundImage = actBg.backgroundImage || ''; // Use empty string if undefined
-      // Chỉ sử dụng màu từ activityBackgrounds nếu không tìm thấy trong global storage
+      // Chỉ sử dụng màu từ activityBackgrounds nếu không tìm thấy trong slideBackgrounds
       if (!actualBackgroundColor || actualBackgroundColor === '#FFFFFF') {
         actualBackgroundColor = actBg.backgroundColor;
       }
@@ -652,46 +792,40 @@ export function QuestionPreview({
     // Fallback to main activity if we have one
     else if (question.activity_id && activity?.id === question.activity_id) {
       actualBackgroundImage = activity.backgroundImage || ''; // Use empty string if undefined
-      // Chỉ sử dụng màu từ activity nếu không tìm thấy trong global storage và activityBackgrounds
+      // Chỉ sử dụng màu từ activity nếu không tìm thấy trong slideBackgrounds và activityBackgrounds
       if (!actualBackgroundColor || actualBackgroundColor === '#FFFFFF') {
         actualBackgroundColor = activity.backgroundColor || '#FFFFFF';
       }
     }
 
     // Đảm bảo lưu màu vào global storage để các component khác có thể sử dụng
-    if (question.activity_id && actualBackgroundColor && typeof window !== 'undefined') {
+    if (
+      question.activity_id &&
+      actualBackgroundColor &&
+      typeof window !== 'undefined'
+    ) {
       if (!window.savedBackgroundColors) {
         window.savedBackgroundColors = {};
       }
-      window.savedBackgroundColors[question.activity_id] = actualBackgroundColor;
+      window.savedBackgroundColors[question.activity_id] =
+        actualBackgroundColor;
     }
 
     // Check if background image is actually defined (not empty string)
-    const hasBackgroundImage = actualBackgroundImage && actualBackgroundImage.trim() !== '';
+    const hasBackgroundImage =
+      actualBackgroundImage && actualBackgroundImage.trim() !== '';
 
     console.log(`Rendering slide ${question.activity_id}:`, {
       actualBackgroundColor,
       actualBackgroundImage,
       fromGlobal: window.savedBackgroundColors?.[question.activity_id],
       fromActivityBackgrounds: activityBackgrounds[question.activity_id],
+      fromSlideBackgrounds: slideBackgrounds[question.activity_id],
     });
 
     if (isSlideType) {
-      const slideTypeText = question.question_type === 'info_slide' ? 'Info Slide' : 'Slide';
-
-      // const slideBackground = activityBackgrounds[question.activity_id] || {
-      //   backgroundImage: '',
-      //   backgroundColor: '#FFFFFF',
-      // };
-      console.log(
-        'activityBackgrounds[question.activity_id]',
-        activityBackgrounds[question.activity_id], question.activity_id
-      );
-        // console.log('Saved color:', window.savedBackgroundColors?.[question.activity_id]);
-        const slideBackground = activityBackgrounds[question.activity_id] || {
-          backgroundImage: '',
-          backgroundColor: '#FFFFFF',
-        };
+      const slideTypeText =
+        question.question_type === 'info_slide' ? 'Info Slide' : 'Slide';
 
       return (
         <div
@@ -705,12 +839,6 @@ export function QuestionPreview({
             viewMode === 'mobile' && 'max-w-sm'
           )}
           style={{
-            // backgroundImage: hasBackgroundImage
-            //   ? `url(${actualBackgroundImage})`
-            //   : 'none',
-            // backgroundColor: hasBackgroundImage
-            //   ? 'transparent'
-            //   : actualBackgroundColor,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -720,16 +848,31 @@ export function QuestionPreview({
               <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
                 {isSaving && <span className="text-blue-500">(Saving...)</span>}
               </div>
-              <motion.div
-                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-400 px-4 py-2 rounded-full shadow-md"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <FileText className="h-4 w-4 text-white" />
-                <span className="text-sm font-medium text-white">
-                  {slideTypeText} {questionIndex + 1}
-                </span>
-              </motion.div>
+              <div className="flex items-center gap-4">
+                {editMode !== null && (
+                  <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg shadow-sm p-2">
+                    <SlideSettings
+                      slideId={question.activity_id!}
+                      backgroundColor={actualBackgroundColor}
+                      backgroundImage={actualBackgroundImage}
+                      questionType={question.question_type}
+                      activeQuestionIndex={questionIndex}
+                      handleSlideBackgroundChange={handleSlideBackgroundChange}
+                      handleSlideBackgroundImageChange={handleSlideImageChange}
+                    />
+                  </div>
+                )}
+                <motion.div
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-400 px-4 py-2 rounded-full shadow-md"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <FileText className="h-4 w-4 text-white" />
+                  <span className="text-sm font-medium text-white">
+                    {slideTypeText} {questionIndex + 1}
+                  </span>
+                </motion.div>
+              </div>
             </div>
 
             <div className="flex-1 w-full">
@@ -795,9 +938,17 @@ export function QuestionPreview({
         >
           {editMode !== null ? (
             <DynamicLocationQuestionEditor
-              questionText={question.question_text || "Chọn vị trí trên bản đồ"}
-              locationData={question.location_data || { lat: 21.028511, lng: 105.804817, radius: 10 }}
-              onLocationChange={(locationData) => onQuestionLocationChange(questionIndex, locationData)}
+              questionText={question.question_text || 'Chọn vị trí trên bản đồ'}
+              locationData={
+                question.location_data || {
+                  lat: 21.028511,
+                  lng: 105.804817,
+                  radius: 10,
+                }
+              }
+              onLocationChange={(locationData) =>
+                onQuestionLocationChange(questionIndex, locationData)
+              }
               mapStyle="mapbox://styles/mapbox/streets-v12"
               use3D={false}
               useGlobe={false}
@@ -805,8 +956,10 @@ export function QuestionPreview({
           ) : (
             <DynamicLocationQuestionPlayer
               questionText={question.question_text}
-              locationData={question.location_data || { lat: 0, lng: 0, radius: 10 }}
-              onAnswer={() => { }}
+              locationData={
+                question.location_data || { lat: 0, lng: 0, radius: 10 }
+              }
+              onAnswer={() => {}}
               mapStyle="mapbox://styles/mapbox/streets-v12"
               use3D={false}
               useGlobe={false}
@@ -853,10 +1006,12 @@ export function QuestionPreview({
             {/* Simplified Status Bar */}
             <div className="absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10">
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  "h-7 w-7 rounded-full flex items-center justify-center shadow-sm",
-                  getQuestionTypeColor(question.question_type)
-                )}>
+                <div
+                  className={cn(
+                    'h-7 w-7 rounded-full flex items-center justify-center shadow-sm',
+                    getQuestionTypeColor(question.question_type)
+                  )}
+                >
                   {getQuestionTypeIcon(question.question_type)}
                 </div>
                 <div>
@@ -872,7 +1027,10 @@ export function QuestionPreview({
                 <div className="flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium">
                   <Clock className="h-3.5 w-3.5" />
                   <span className="time-limit-display">
-                    {(activity && activity.quiz?.timeLimitSeconds) || question.time_limit_seconds || timeLimit}s
+                    {(activity && activity.quiz?.timeLimitSeconds) ||
+                      question.time_limit_seconds ||
+                      timeLimit}
+                    s
                   </span>
                 </div>
               </div>
@@ -883,8 +1041,12 @@ export function QuestionPreview({
               {editMode !== null ? (
                 <div className="w-full max-w-2xl">
                   <Textarea
-                    value={question.question_text || `Question ${questionIndex + 1}`}
-                    onChange={(e) => onQuestionTextChange(e.target.value, questionIndex)}
+                    value={
+                      question.question_text || `Question ${questionIndex + 1}`
+                    }
+                    onChange={(e) =>
+                      onQuestionTextChange(e.target.value, questionIndex)
+                    }
                     className="text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
                   />
                 </div>
@@ -923,20 +1085,23 @@ export function QuestionPreview({
                     <div
                       key={optionIndex}
                       className={cn(
-                        "rounded-lg p-3 flex items-center gap-3 border transition-all duration-200 relative group",
+                        'rounded-lg p-3 flex items-center gap-3 border transition-all duration-200 relative group',
                         option.is_correct
-                          ? "bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                          ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                           : isTrue
-                            ? "bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
-                            : "bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800",
+                          ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                          : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
                         // Only show pointer cursor when edit mode is enabled
-                        editMode !== null ? "cursor-pointer hover:shadow-md" : ""
+                        editMode !== null
+                          ? 'cursor-pointer hover:shadow-md'
+                          : ''
                       )}
                       onClick={() => {
                         // Only allow selection if edit mode is enabled
                         if (editMode !== null) {
                           const question = questions[questionIndex];
-                          const isMultipleResponse = question.question_type === 'multiple_response';
+                          const isMultipleResponse =
+                            question.question_type === 'multiple_response';
                           const options = [...question.options];
 
                           // For multiple choice or true/false, set only this option as correct
@@ -944,25 +1109,27 @@ export function QuestionPreview({
                             onOptionChange(
                               questionIndex,
                               idx,
-                              "is_correct",
+                              'is_correct',
                               idx === optionIndex
                             );
                           });
 
                           toast({
-                            title: "Correct answer updated",
-                            description: "The correct answer has been updated",
-                            variant: "default",
+                            title: 'Correct answer updated',
+                            description: 'The correct answer has been updated',
+                            variant: 'default',
                           });
                         }
                       }}
                     >
-                      <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center shadow-sm",
-                        isTrue
-                          ? "bg-blue-500 text-white"
-                          : "bg-red-500 text-white"
-                      )}>
+                      <div
+                        className={cn(
+                          'w-8 h-8 rounded-full flex items-center justify-center shadow-sm',
+                          isTrue
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-red-500 text-white'
+                        )}
+                      >
                         {isTrue ? (
                           <CheckCircle className="h-4 w-4" />
                         ) : (
@@ -973,11 +1140,20 @@ export function QuestionPreview({
                         <Input
                           value={option.option_text}
                           className="flex-1"
-                          onChange={(e) => onOptionChange(questionIndex, optionIndex, "option_text", e.target.value)}
+                          onChange={(e) =>
+                            onOptionChange(
+                              questionIndex,
+                              optionIndex,
+                              'option_text',
+                              e.target.value
+                            )
+                          }
                           onClick={(e) => e.stopPropagation()}
                         />
                       ) : (
-                        <span className="text-base font-medium flex-1">{option.option_text}</span>
+                        <span className="text-base font-medium flex-1">
+                          {option.option_text}
+                        </span>
                       )}
                       {option.is_correct && (
                         <div className="bg-green-500 text-white rounded-full p-1">
@@ -1003,18 +1179,29 @@ export function QuestionPreview({
                     <div className="flex items-center">
                       <span className="font-medium mr-2">Correct answer:</span>
                       <Input
-                        value={question.correct_answer_text ||
-                          (question.options && question.options.length > 0 &&
-                            question.options.find(opt => opt.is_correct)?.option_text) || ""}
-                        onChange={(e) => saveTextAnswer(questionIndex, e.target.value)}
+                        value={
+                          question.correct_answer_text ||
+                          (question.options &&
+                            question.options.length > 0 &&
+                            question.options.find((opt) => opt.is_correct)
+                              ?.option_text) ||
+                          ''
+                        }
+                        onChange={(e) =>
+                          saveTextAnswer(questionIndex, e.target.value)
+                        }
                         className="flex-1"
                       />
                     </div>
                   ) : (
                     <>
-                      <span className="font-medium">Correct answer:</span> {question.correct_answer_text ||
-                        (question.options && question.options.length > 0 && question.options.find(opt => opt.is_correct)?.option_text) ||
-                        "Not specified"}
+                      <span className="font-medium">Correct answer:</span>{' '}
+                      {question.correct_answer_text ||
+                        (question.options &&
+                          question.options.length > 0 &&
+                          question.options.find((opt) => opt.is_correct)
+                            ?.option_text) ||
+                        'Not specified'}
                     </>
                   )}
                 </div>
@@ -1023,7 +1210,11 @@ export function QuestionPreview({
               <div className="py-3 px-4 bg-white dark:bg-black">
                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 flex items-center">
                   <MoveVertical className="h-3.5 w-3.5 mr-1.5" />
-                  <span>{editMode !== null ? "Drag items to reorder them" : "These items need to be arranged in the correct order"}</span>
+                  <span>
+                    {editMode !== null
+                      ? 'Drag items to reorder them'
+                      : 'These items need to be arranged in the correct order'}
+                  </span>
                 </div>
 
                 {/* Pastel colors for steps */}
@@ -1031,13 +1222,19 @@ export function QuestionPreview({
                   <DragDropContext
                     onDragEnd={(result) => {
                       // Skip if not dropped in a droppable or dropped in same position
-                      if (!result.destination || result.destination.index === result.source.index) {
+                      if (
+                        !result.destination ||
+                        result.destination.index === result.source.index
+                      ) {
                         return;
                       }
 
                       // Call the parent's reorderOptions function if available
                       if (onReorderOptions) {
-                        onReorderOptions(result.source.index, result.destination.index);
+                        onReorderOptions(
+                          result.source.index,
+                          result.destination.index
+                        );
                       }
                     }}
                   >
@@ -1056,18 +1253,59 @@ export function QuestionPreview({
                             .map((option, idx) => {
                               // Define a set of cute pastel colors
                               const pastelColors = [
-                                { bg: "bg-pink-100", border: "border-pink-200", text: "text-pink-800", icon: "text-pink-600" },
-                                { bg: "bg-blue-100", border: "border-blue-200", text: "text-blue-800", icon: "text-blue-600" },
-                                { bg: "bg-purple-100", border: "border-purple-200", text: "text-purple-800", icon: "text-purple-600" },
-                                { bg: "bg-green-100", border: "border-green-200", text: "text-green-800", icon: "text-green-600" },
-                                { bg: "bg-yellow-100", border: "border-yellow-200", text: "text-yellow-800", icon: "text-yellow-600" },
-                                { bg: "bg-orange-100", border: "border-orange-200", text: "text-orange-800", icon: "text-orange-600" },
-                                { bg: "bg-indigo-100", border: "border-indigo-200", text: "text-indigo-800", icon: "text-indigo-600" },
-                                { bg: "bg-red-100", border: "border-red-200", text: "text-red-800", icon: "text-red-600" },
+                                {
+                                  bg: 'bg-pink-100',
+                                  border: 'border-pink-200',
+                                  text: 'text-pink-800',
+                                  icon: 'text-pink-600',
+                                },
+                                {
+                                  bg: 'bg-blue-100',
+                                  border: 'border-blue-200',
+                                  text: 'text-blue-800',
+                                  icon: 'text-blue-600',
+                                },
+                                {
+                                  bg: 'bg-purple-100',
+                                  border: 'border-purple-200',
+                                  text: 'text-purple-800',
+                                  icon: 'text-purple-600',
+                                },
+                                {
+                                  bg: 'bg-green-100',
+                                  border: 'border-green-200',
+                                  text: 'text-green-800',
+                                  icon: 'text-green-600',
+                                },
+                                {
+                                  bg: 'bg-yellow-100',
+                                  border: 'border-yellow-200',
+                                  text: 'text-yellow-800',
+                                  icon: 'text-yellow-600',
+                                },
+                                {
+                                  bg: 'bg-orange-100',
+                                  border: 'border-orange-200',
+                                  text: 'text-orange-800',
+                                  icon: 'text-orange-600',
+                                },
+                                {
+                                  bg: 'bg-indigo-100',
+                                  border: 'border-indigo-200',
+                                  text: 'text-indigo-800',
+                                  icon: 'text-indigo-600',
+                                },
+                                {
+                                  bg: 'bg-red-100',
+                                  border: 'border-red-200',
+                                  text: 'text-red-800',
+                                  icon: 'text-red-600',
+                                },
                               ];
 
                               // Get color based on index
-                              const color = pastelColors[idx % pastelColors.length];
+                              const color =
+                                pastelColors[idx % pastelColors.length];
 
                               return (
                                 <Draggable
@@ -1081,32 +1319,56 @@ export function QuestionPreview({
                                       {...provided.draggableProps}
                                       {...provided.dragHandleProps}
                                       className={cn(
-                                        "flex items-center gap-2 relative z-10 group transition-all",
-                                        snapshot.isDragging ? "opacity-80 scale-105" : ""
+                                        'flex items-center gap-2 relative z-10 group transition-all',
+                                        snapshot.isDragging
+                                          ? 'opacity-80 scale-105'
+                                          : ''
                                       )}
                                       style={provided.draggableProps.style}
                                     >
-                                      <div className={cn(
-                                        "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border text-sm font-semibold shadow-sm",
-                                        color.bg, color.border, color.text
-                                      )}>
+                                      <div
+                                        className={cn(
+                                          'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border text-sm font-semibold shadow-sm',
+                                          color.bg,
+                                          color.border,
+                                          color.text
+                                        )}
+                                      >
                                         {idx + 1}
                                       </div>
 
-                                      <div className={cn(
-                                        "flex-1 rounded-lg p-2.5 shadow-sm border flex items-center gap-2 relative transition-all",
-                                        color.bg, color.border
-                                      )}>
+                                      <div
+                                        className={cn(
+                                          'flex-1 rounded-lg p-2.5 shadow-sm border flex items-center gap-2 relative transition-all',
+                                          color.bg,
+                                          color.border
+                                        )}
+                                      >
                                         <Input
-                                          value={option.option_text || `Step ${idx + 1}`}
-                                          onChange={(e) => onOptionChange(questionIndex, idx, "option_text", e.target.value)}
-                                          className={cn("flex-1 border-0 bg-white/50 focus:ring-1", color.text)}
+                                          value={
+                                            option.option_text ||
+                                            `Step ${idx + 1}`
+                                          }
+                                          onChange={(e) =>
+                                            onOptionChange(
+                                              questionIndex,
+                                              idx,
+                                              'option_text',
+                                              e.target.value
+                                            )
+                                          }
+                                          className={cn(
+                                            'flex-1 border-0 bg-white/50 focus:ring-1',
+                                            color.text
+                                          )}
                                         />
 
-                                        <div className={cn(
-                                          "w-6 h-6 flex-shrink-0 rounded-md flex items-center justify-center cursor-grab text-gray-700 dark:text-gray-300 bg-white/50",
-                                          color.icon
-                                        )}>
+                                        <div
+                                          className={cn(
+                                            'w-6 h-6 flex-shrink-0 rounded-md flex items-center justify-center cursor-grab text-gray-700 dark:text-gray-300 bg-white/50',
+                                            color.icon
+                                          )}
+                                        >
                                           <GripVertical className="h-3.5 w-3.5" />
                                         </div>
                                       </div>
@@ -1130,14 +1392,54 @@ export function QuestionPreview({
                       .map((option, idx) => {
                         // Define a set of cute pastel colors
                         const pastelColors = [
-                          { bg: "bg-pink-100", border: "border-pink-200", text: "text-pink-800", icon: "text-pink-600" },
-                          { bg: "bg-blue-100", border: "border-blue-200", text: "text-blue-800", icon: "text-blue-600" },
-                          { bg: "bg-purple-100", border: "border-purple-200", text: "text-purple-800", icon: "text-purple-600" },
-                          { bg: "bg-green-100", border: "border-green-200", text: "text-green-800", icon: "text-green-600" },
-                          { bg: "bg-yellow-100", border: "border-yellow-200", text: "text-yellow-800", icon: "text-yellow-600" },
-                          { bg: "bg-orange-100", border: "border-orange-200", text: "text-orange-800", icon: "text-orange-600" },
-                          { bg: "bg-indigo-100", border: "border-indigo-200", text: "text-indigo-800", icon: "text-indigo-600" },
-                          { bg: "bg-red-100", border: "border-red-200", text: "text-red-800", icon: "text-red-600" },
+                          {
+                            bg: 'bg-pink-100',
+                            border: 'border-pink-200',
+                            text: 'text-pink-800',
+                            icon: 'text-pink-600',
+                          },
+                          {
+                            bg: 'bg-blue-100',
+                            border: 'border-blue-200',
+                            text: 'text-blue-800',
+                            icon: 'text-blue-600',
+                          },
+                          {
+                            bg: 'bg-purple-100',
+                            border: 'border-purple-200',
+                            text: 'text-purple-800',
+                            icon: 'text-purple-600',
+                          },
+                          {
+                            bg: 'bg-green-100',
+                            border: 'border-green-200',
+                            text: 'text-green-800',
+                            icon: 'text-green-600',
+                          },
+                          {
+                            bg: 'bg-yellow-100',
+                            border: 'border-yellow-200',
+                            text: 'text-yellow-800',
+                            icon: 'text-yellow-600',
+                          },
+                          {
+                            bg: 'bg-orange-100',
+                            border: 'border-orange-200',
+                            text: 'text-orange-800',
+                            icon: 'text-orange-600',
+                          },
+                          {
+                            bg: 'bg-indigo-100',
+                            border: 'border-indigo-200',
+                            text: 'text-indigo-800',
+                            icon: 'text-indigo-600',
+                          },
+                          {
+                            bg: 'bg-red-100',
+                            border: 'border-red-200',
+                            text: 'text-red-800',
+                            icon: 'text-red-600',
+                          },
                         ];
 
                         // Get color based on index
@@ -1148,19 +1450,31 @@ export function QuestionPreview({
                             key={option.id || idx}
                             className="flex items-center gap-2 relative z-10 group"
                           >
-                            <div className={cn(
-                              "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border text-sm font-semibold shadow-sm",
-                              color.bg, color.border, color.text
-                            )}>
+                            <div
+                              className={cn(
+                                'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border text-sm font-semibold shadow-sm',
+                                color.bg,
+                                color.border,
+                                color.text
+                              )}
+                            >
                               {idx + 1}
                             </div>
 
-                            <div className={cn(
-                              "flex-1 rounded-lg p-2.5 shadow-sm border flex items-center gap-2 relative transition-all",
-                              color.bg, color.border
-                            )}>
+                            <div
+                              className={cn(
+                                'flex-1 rounded-lg p-2.5 shadow-sm border flex items-center gap-2 relative transition-all',
+                                color.bg,
+                                color.border
+                              )}
+                            >
                               <div className="flex-1">
-                                <p className={cn("font-medium text-sm", color.text)}>
+                                <p
+                                  className={cn(
+                                    'font-medium text-sm',
+                                    color.text
+                                  )}
+                                >
                                   {option.option_text || `Step ${idx + 1}`}
                                 </p>
                               </div>
@@ -1173,62 +1487,99 @@ export function QuestionPreview({
 
                 <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300">
                   <div className="flex items-start gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="mt-0.5"
+                    >
                       <circle cx="12" cy="12" r="10"></circle>
                       <line x1="12" y1="8" x2="12" y2="12"></line>
                       <line x1="12" y1="16" x2="12.01" y2="16"></line>
                     </svg>
-                    <span>Students must arrange the items in the correct sequence.</span>
+                    <span>
+                      Students must arrange the items in the correct sequence.
+                    </span>
                   </div>
                 </div>
               </div>
-            ) : question.options && question.options.length > 0 && ['multiple_choice', 'multiple_response'].includes(question.question_type) ? (
-              <div className={cn(
-                'p-4 bg-white dark:bg-gray-800',
-                question.options.length <= 2
-                  ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
-                  : question.options.length <= 4
+            ) : question.options &&
+              question.options.length > 0 &&
+              ['multiple_choice', 'multiple_response'].includes(
+                question.question_type
+              ) ? (
+              <div
+                className={cn(
+                  'p-4 bg-white dark:bg-gray-800',
+                  question.options.length <= 2
+                    ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
+                    : question.options.length <= 4
                     ? 'grid grid-cols-2 gap-3'
                     : 'grid grid-cols-2 gap-3 md:grid-cols-3',
-                viewMode === 'mobile' && 'grid-cols-1',
-                viewMode === 'tablet' && question.options.length > 4 && 'grid-cols-2'
-              )}>
+                  viewMode === 'mobile' && 'grid-cols-1',
+                  viewMode === 'tablet' &&
+                    question.options.length > 4 &&
+                    'grid-cols-2'
+                )}
+              >
                 {/* Direct rendering of choice options */}
                 {question.options.map((option, optionIndex) => {
-                  const optionLetter = ['A', 'B', 'C', 'D', 'E', 'F'][optionIndex];
+                  const optionLetter = ['A', 'B', 'C', 'D', 'E', 'F'][
+                    optionIndex
+                  ];
                   const optionColors = [
                     'bg-blue-500',
                     'bg-pink-500',
                     'bg-green-500',
                     'bg-orange-500',
                     'bg-purple-500',
-                    'bg-cyan-500'
+                    'bg-cyan-500',
                   ];
 
                   return (
                     <div
                       key={optionIndex}
                       className={cn(
-                        "rounded-lg border p-3 flex items-center gap-3 transition-all duration-200 relative group",
+                        'rounded-lg border p-3 flex items-center gap-3 transition-all duration-200 relative group',
                         option.is_correct
-                          ? "bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                          : "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600",
+                          ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                          : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600',
                         // Only show pointer cursor when edit mode is active
-                        editMode !== null ? "cursor-pointer hover:shadow-md" : ""
+                        editMode !== null
+                          ? 'cursor-pointer hover:shadow-md'
+                          : ''
                       )}
-                      onClick={() => editMode !== null && toggleCorrectAnswer(questionIndex, optionIndex)}
+                      onClick={() =>
+                        editMode !== null &&
+                        toggleCorrectAnswer(questionIndex, optionIndex)
+                      }
                     >
-                      <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center text-white shadow-sm",
-                        optionColors[optionIndex % optionColors.length]
-                      )}>
+                      <div
+                        className={cn(
+                          'w-8 h-8 rounded-full flex items-center justify-center text-white shadow-sm',
+                          optionColors[optionIndex % optionColors.length]
+                        )}
+                      >
                         {optionLetter}
                       </div>
 
                       {editMode !== null ? (
                         <Input
                           value={option.option_text || `Option ${optionLetter}`}
-                          onChange={(e) => onOptionChange(questionIndex, optionIndex, "option_text", e.target.value)}
+                          onChange={(e) =>
+                            onOptionChange(
+                              questionIndex,
+                              optionIndex,
+                              'option_text',
+                              e.target.value
+                            )
+                          }
                           className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200"
                           onClick={(e) => e.stopPropagation()}
                         />
@@ -1256,7 +1607,9 @@ export function QuestionPreview({
                     onClick={() => onAddOption()}
                   >
                     <Plus className="h-5 w-5 text-blue-500" />
-                    <span className="text-sm font-medium text-blue-500">Add Option</span>
+                    <span className="text-sm font-medium text-blue-500">
+                      Add Option
+                    </span>
                   </div>
                 )}
               </div>
@@ -1275,28 +1628,38 @@ export function QuestionPreview({
 
     // If we have an activity, update the activity title as well
     if (activity && questions[questionIndex].activity_id) {
-      updateActivity({
-        title: text
-      }, questions[questionIndex].activity_id);
+      updateActivity(
+        {
+          title: text,
+        },
+        questions[questionIndex].activity_id
+      );
 
       toast({
-        title: "Question updated",
-        description: "Question text has been updated successfully",
-        variant: "default",
+        title: 'Question updated',
+        description: 'Question text has been updated successfully',
+        variant: 'default',
       });
     }
   };
 
   // Function to save option text - không cần thiết lập lại editMode vì người dùng sẽ tắt nó qua toggle
-  const saveOptionText = (questionIndex: number, optionIndex: number, text: string) => {
-    if (text.trim() === questions[questionIndex].options[optionIndex].option_text) return;
+  const saveOptionText = (
+    questionIndex: number,
+    optionIndex: number,
+    text: string
+  ) => {
+    if (
+      text.trim() === questions[questionIndex].options[optionIndex].option_text
+    )
+      return;
 
-    onOptionChange(questionIndex, optionIndex, "option_text", text);
+    onOptionChange(questionIndex, optionIndex, 'option_text', text);
 
     toast({
-      title: "Option updated",
-      description: "Option text has been updated successfully",
-      variant: "default",
+      title: 'Option updated',
+      description: 'Option text has been updated successfully',
+      variant: 'default',
     });
   };
 
@@ -1316,25 +1679,20 @@ export function QuestionPreview({
       onOptionChange(
         questionIndex,
         optionIndex,
-        "is_correct",
+        'is_correct',
         !options[optionIndex].is_correct
       );
     } else {
       // For multiple choice or true/false, set only this option as correct
       options.forEach((option, idx) => {
-        onOptionChange(
-          questionIndex,
-          idx,
-          "is_correct",
-          idx === optionIndex
-        );
+        onOptionChange(questionIndex, idx, 'is_correct', idx === optionIndex);
       });
     }
 
     toast({
-      title: "Correct answer updated",
-      description: "The correct answer has been updated",
-      variant: "default",
+      title: 'Correct answer updated',
+      description: 'The correct answer has been updated',
+      variant: 'default',
     });
   };
 
@@ -1346,7 +1704,9 @@ export function QuestionPreview({
       // Nếu đang cập nhật màu nền, cập nhật UI ngay lập tức trước khi gọi API
       if (data.backgroundColor && typeof data.backgroundColor === 'string') {
         // Cập nhật UI ngay lập tức để tránh hiệu ứng nhấp nháy
-        updateActivityBackground(activityId, { backgroundColor: data.backgroundColor });
+        updateActivityBackground(activityId, {
+          backgroundColor: data.backgroundColor,
+        });
       }
 
       // Gọi API để lưu thay đổi trên server
@@ -1360,8 +1720,8 @@ export function QuestionPreview({
             detail: {
               activityId,
               properties: { backgroundColor: data.backgroundColor },
-              sender: 'questionPreview'
-            }
+              sender: 'questionPreview',
+            },
           });
           window.dispatchEvent(event);
 
@@ -1374,18 +1734,18 @@ export function QuestionPreview({
       }
 
       toast({
-        title: "Success",
-        description: "Question updated successfully",
-        variant: "default",
+        title: 'Success',
+        description: 'Question updated successfully',
+        variant: 'default',
       });
 
       return response;
     } catch (error) {
-      console.error("Error updating activity:", error);
+      console.error('Error updating activity:', error);
       toast({
-        title: "Error",
-        description: "Failed to update question",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update question',
+        variant: 'destructive',
       });
       throw error;
     } finally {
@@ -1405,22 +1765,28 @@ export function QuestionPreview({
   const saveTextAnswer = (questionIndex: number, text: string) => {
     const question = questions[questionIndex];
     // Check if the text is different from existing answer
-    const currentCorrectAnswer = question.correct_answer_text ||
-      (question.options && question.options.length > 0 && question.options.find(opt => opt.is_correct)?.option_text) || "";
+    const currentCorrectAnswer =
+      question.correct_answer_text ||
+      (question.options &&
+        question.options.length > 0 &&
+        question.options.find((opt) => opt.is_correct)?.option_text) ||
+      '';
 
     if (text.trim() === currentCorrectAnswer) return;
 
     // If there are options, update the first correct option instead of correct_answer_text
     if (question.options && question.options.length > 0) {
       // Find the first correct option, or first option if none are correct
-      const correctOptionIndex = question.options.findIndex(opt => opt.is_correct);
+      const correctOptionIndex = question.options.findIndex(
+        (opt) => opt.is_correct
+      );
       const targetIndex = correctOptionIndex >= 0 ? correctOptionIndex : 0;
 
       // Mark it as correct if not already and update the text
       if (!question.options[targetIndex].is_correct) {
-        onOptionChange(questionIndex, targetIndex, "is_correct", true);
+        onOptionChange(questionIndex, targetIndex, 'is_correct', true);
       }
-      onOptionChange(questionIndex, targetIndex, "option_text", text);
+      onOptionChange(questionIndex, targetIndex, 'option_text', text);
     } else if (onCorrectAnswerChange) {
       // Otherwise use the correct_answer_text property
       onCorrectAnswerChange(text);
@@ -1429,9 +1795,9 @@ export function QuestionPreview({
     // No toast needed for direct editing - reduces UI noise
     if (editMode === null) {
       toast({
-        title: "Text answer updated",
-        description: "The correct text answer has been updated",
-        variant: "default",
+        title: 'Text answer updated',
+        description: 'The correct text answer has been updated',
+        variant: 'default',
       });
     }
   };
@@ -1449,7 +1815,7 @@ export function QuestionPreview({
       quiz_question_id: activity.quiz.quizId,
       option_text: answer.answerText,
       is_correct: answer.isCorrect,
-      display_order: answer.orderIndex || index
+      display_order: answer.orderIndex || index,
     }));
   };
 
@@ -1463,7 +1829,8 @@ export function QuestionPreview({
       activity.quiz.quizAnswers &&
       activity.quiz.quizAnswers.length > 0 &&
       activeQuestionIndex >= 0 &&
-      (!questions[activeQuestionIndex].options || questions[activeQuestionIndex].options.length === 0)
+      (!questions[activeQuestionIndex].options ||
+        questions[activeQuestionIndex].options.length === 0)
     ) {
       // Get the options from the activity
       const options = extractOptionsFromActivity(activity);
@@ -1473,13 +1840,13 @@ export function QuestionPreview({
         onOptionChange(
           activeQuestionIndex,
           optionIndex,
-          "option_text",
+          'option_text',
           option.option_text
         );
         onOptionChange(
           activeQuestionIndex,
           optionIndex,
-          "is_correct",
+          'is_correct',
           option.is_correct
         );
       });
@@ -1495,21 +1862,38 @@ export function QuestionPreview({
         }
       }
     }
-  }, [activity, activeQuestionIndex, questions, onOptionChange, onCorrectAnswerChange]);
+  }, [
+    activity,
+    activeQuestionIndex,
+    questions,
+    onOptionChange,
+    onCorrectAnswerChange,
+  ]);
 
   // Fix the mapQuestionTypeToActivityType function to correctly map question types to activity types
-  const mapQuestionTypeToActivityType = (questionType: string): ActivityType => {
+  const mapQuestionTypeToActivityType = (
+    questionType: string
+  ): ActivityType => {
     switch (questionType) {
-      case 'multiple_choice': return 'QUIZ_BUTTONS';
-      case 'multiple_response': return 'QUIZ_CHECKBOXES';
-      case 'true_false': return 'QUIZ_TRUE_OR_FALSE';
-      case 'text_answer': return 'QUIZ_TYPE_ANSWER';
-      case 'reorder': return 'QUIZ_REORDER';
+      case 'multiple_choice':
+        return 'QUIZ_BUTTONS';
+      case 'multiple_response':
+        return 'QUIZ_CHECKBOXES';
+      case 'true_false':
+        return 'QUIZ_TRUE_OR_FALSE';
+      case 'text_answer':
+        return 'QUIZ_TYPE_ANSWER';
+      case 'reorder':
+        return 'QUIZ_REORDER';
       // Location doesn't have a specific activity type, so we'll use INFO_SLIDE as a fallback
-      case 'location': return 'INFO_SLIDE';
-      case 'slide': return 'INFO_SLIDE';
-      case 'info_slide': return 'INFO_SLIDE';
-      default: return 'INFO_SLIDE';
+      case 'location':
+        return 'INFO_SLIDE';
+      case 'slide':
+        return 'INFO_SLIDE';
+      case 'info_slide':
+        return 'INFO_SLIDE';
+      default:
+        return 'INFO_SLIDE';
     }
   };
 
@@ -1521,9 +1905,10 @@ export function QuestionPreview({
       // Get the collection ID from current activity if available
       if (!activity?.collection_id) {
         toast({
-          title: "Collection not found",
-          description: "Cannot add activity: collection information not available.",
-          variant: "destructive",
+          title: 'Collection not found',
+          description:
+            'Cannot add activity: collection information not available.',
+          variant: 'destructive',
         });
         return;
       }
@@ -1536,18 +1921,34 @@ export function QuestionPreview({
           question_text: 'New Single Choice Question',
           question_type: 'multiple_choice',
           options: [
-            { id: `opt_1_${Date.now()}`, quiz_question_id: '', option_text: 'Option A', is_correct: true, display_order: 0 },
-            { id: `opt_2_${Date.now()}`, quiz_question_id: '', option_text: 'Option B', is_correct: false, display_order: 1 },
+            {
+              id: `opt_1_${Date.now()}`,
+              quiz_question_id: '',
+              option_text: 'Option A',
+              is_correct: true,
+              display_order: 0,
+            },
+            {
+              id: `opt_2_${Date.now()}`,
+              quiz_question_id: '',
+              option_text: 'Option B',
+              is_correct: false,
+              display_order: 1,
+            },
           ],
           time_limit_seconds: 30,
           points: 1,
-          correct_answer_text: ''
+          correct_answer_text: '',
         };
       }
 
       // Step 1: Create activity with the appropriate type
-      const activityType = mapQuestionTypeToActivityType(questionData.question_type);
-      console.log(`Creating activity with type ${questionData.question_type} -> ${activityType}`);
+      const activityType = mapQuestionTypeToActivityType(
+        questionData.question_type
+      );
+      console.log(
+        `Creating activity with type ${questionData.question_type} -> ${activityType}`
+      );
 
       const activityPayload = {
         collectionId: activity.collection_id,
@@ -1555,16 +1956,18 @@ export function QuestionPreview({
         title: questionData.question_text,
         description: questionData.slide_content || '',
         isPublished: false,
-        backgroundColor: '#FFFFFF'
+        backgroundColor: '#FFFFFF',
       };
 
       // Create the activity first
-      const activityResponse = await activitiesApi.createActivity(activityPayload);
+      const activityResponse = await activitiesApi.createActivity(
+        activityPayload
+      );
       console.log('Activity created:', activityResponse);
 
       // Make sure we have a valid response with an activity ID
       if (!activityResponse.data?.data?.activityId) {
-        throw new Error("No activity ID returned from server");
+        throw new Error('No activity ID returned from server');
       }
 
       const newActivityId = activityResponse.data.data.activityId;
@@ -1580,7 +1983,7 @@ export function QuestionPreview({
         backgroundColor: '#FFFFFF',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        createdBy: ""
+        createdBy: '',
       };
 
       // Step 2: Initialize the appropriate quiz data based on question type
@@ -1590,72 +1993,87 @@ export function QuestionPreview({
         switch (questionData.question_type) {
           case 'multiple_choice':
             quizPayload = {
-              type: "CHOICE" as const,
+              type: 'CHOICE' as const,
               questionText: questionData.question_text,
               timeLimitSeconds: questionData.time_limit_seconds || 30,
-              pointType: "STANDARD" as const,
-              answers: questionData.options.map(option => ({
+              pointType: 'STANDARD' as const,
+              answers: questionData.options.map((option) => ({
                 answerText: option.option_text,
                 isCorrect: option.is_correct,
-                explanation: option.explanation || ''
-              }))
+                explanation: option.explanation || '',
+              })),
             };
             await activitiesApi.updateButtonsQuiz(newActivityId, quizPayload);
             break;
 
           case 'multiple_response':
             quizPayload = {
-              type: "CHOICE" as const,
+              type: 'CHOICE' as const,
               questionText: questionData.question_text,
               timeLimitSeconds: questionData.time_limit_seconds || 30,
-              pointType: "STANDARD" as const,
-              answers: questionData.options.map(option => ({
+              pointType: 'STANDARD' as const,
+              answers: questionData.options.map((option) => ({
                 answerText: option.option_text,
                 isCorrect: option.is_correct,
-                explanation: option.explanation || ''
-              }))
+                explanation: option.explanation || '',
+              })),
             };
-            await activitiesApi.updateCheckboxesQuiz(newActivityId, quizPayload);
+            await activitiesApi.updateCheckboxesQuiz(
+              newActivityId,
+              quizPayload
+            );
             break;
 
           case 'true_false':
             // For true/false, we find which option is marked as true
-            const trueOption = questionData.options.find(o => o.option_text.toLowerCase() === 'true');
+            const trueOption = questionData.options.find(
+              (o) => o.option_text.toLowerCase() === 'true'
+            );
             quizPayload = {
-              type: "TRUE_FALSE" as const,
+              type: 'TRUE_FALSE' as const,
               questionText: questionData.question_text,
               timeLimitSeconds: questionData.time_limit_seconds || 30,
-              pointType: "STANDARD" as const,
-              correctAnswer: trueOption?.is_correct || false
+              pointType: 'STANDARD' as const,
+              correctAnswer: trueOption?.is_correct || false,
             };
             await activitiesApi.updateTrueFalseQuiz(newActivityId, quizPayload);
             break;
 
           case 'text_answer':
             quizPayload = {
-              type: "TYPE_ANSWER" as const,
+              type: 'TYPE_ANSWER' as const,
               questionText: questionData.question_text,
               timeLimitSeconds: questionData.time_limit_seconds || 30,
-              pointType: "STANDARD" as const,
-              correctAnswer: questionData.correct_answer_text || 'Enter the correct answer here'
+              pointType: 'STANDARD' as const,
+              correctAnswer:
+                questionData.correct_answer_text ||
+                'Enter the correct answer here',
             };
-            console.log("Creating text answer quiz with payload:", quizPayload);
+            console.log('Creating text answer quiz with payload:', quizPayload);
             try {
-              const quizResponse = await activitiesApi.updateTypeAnswerQuiz(newActivityId, quizPayload);
-              console.log("Text answer quiz created successfully:", quizResponse);
+              const quizResponse = await activitiesApi.updateTypeAnswerQuiz(
+                newActivityId,
+                quizPayload
+              );
+              console.log(
+                'Text answer quiz created successfully:',
+                quizResponse
+              );
             } catch (quizError) {
-              console.error("Error creating text answer quiz:", quizError);
+              console.error('Error creating text answer quiz:', quizError);
               throw quizError; // Re-throw to trigger the error handling
             }
             break;
 
           case 'reorder':
             quizPayload = {
-              type: "REORDER" as const,
+              type: 'REORDER' as const,
               questionText: questionData.question_text,
               timeLimitSeconds: questionData.time_limit_seconds || 30,
-              pointType: "STANDARD" as const,
-              correctOrder: questionData.options.map(option => option.option_text)
+              pointType: 'STANDARD' as const,
+              correctOrder: questionData.options.map(
+                (option) => option.option_text
+              ),
             };
             await activitiesApi.updateReorderQuiz(newActivityId, quizPayload);
             break;
@@ -1666,25 +2084,31 @@ export function QuestionPreview({
             break;
 
           default:
-            console.log(`No specific initialization for question type: ${questionData.question_type}`);
+            console.log(
+              `No specific initialization for question type: ${questionData.question_type}`
+            );
         }
 
         console.log(`Quiz data initialized for ${questionData.question_type}`);
       } catch (quizError) {
-        console.error(`Error initializing quiz data for ${questionData.question_type}:`, quizError);
+        console.error(
+          `Error initializing quiz data for ${questionData.question_type}:`,
+          quizError
+        );
         // We don't throw here to avoid stopping the flow if quiz initialization fails
         // The activity is still created and can be edited by the user
         toast({
-          title: "Warning",
-          description: "Activity created but quiz data initialization failed. You may need to set up the questions manually.",
-          variant: "destructive",
+          title: 'Warning',
+          description:
+            'Activity created but quiz data initialization failed. You may need to set up the questions manually.',
+          variant: 'destructive',
         });
       }
 
       // Step 3: Update the local state with the new question
       const newQuestion = {
         ...questionData,
-        activity_id: newActivityId
+        activity_id: newActivityId,
       };
 
       // If the parent component provides onAddQuestion, call it to update state
@@ -1693,7 +2117,7 @@ export function QuestionPreview({
       }
 
       // Force a UI refresh by updating renderKey
-      setRenderKey(prevKey => prevKey + 1);
+      setRenderKey((prevKey) => prevKey + 1);
 
       // Initialize the background color for this activity in global storage
       if (typeof window !== 'undefined') {
@@ -1706,25 +2130,28 @@ export function QuestionPreview({
         // Update the activity backgrounds map
         updateActivityBackground(newActivityId, {
           backgroundColor: '#FFFFFF',
-          backgroundImage: ''
+          backgroundImage: '',
         });
       }
 
       // Handle success
       toast({
-        title: "Activity added",
-        description: `New ${questionData.question_type.replace('_', ' ')} activity created successfully.`,
-        variant: "default",
+        title: 'Activity added',
+        description: `New ${questionData.question_type.replace(
+          '_',
+          ' '
+        )} activity created successfully.`,
+        variant: 'default',
       });
 
       // Close the dialog (if it was open)
       setIsAddActivityOpen(false);
     } catch (error) {
-      console.error("Error creating activity:", error);
+      console.error('Error creating activity:', error);
       toast({
-        title: "Error",
-        description: "Failed to create new activity. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create new activity. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsSaving(false);
@@ -1747,7 +2174,9 @@ export function QuestionPreview({
 
       // Save the current scroll position
       const scrollContainer = scrollContainerRef.current;
-      const currentScrollPosition = scrollContainer ? scrollContainer.scrollTop : 0;
+      const currentScrollPosition = scrollContainer
+        ? scrollContainer.scrollTop
+        : 0;
 
       // Check if this is a collectionId rather than an activityId
       const isCollectionId = activityToDelete.includes('-');
@@ -1755,7 +2184,9 @@ export function QuestionPreview({
       // If we have a collectionId format but need activityId, try to find the corresponding activity
       let activityId = activityToDelete;
       if (isCollectionId && activity && activity.id !== activityToDelete) {
-        console.log("Detected a collectionId instead of an activityId, finding proper activity ID");
+        console.log(
+          'Detected a collectionId instead of an activityId, finding proper activity ID'
+        );
         // In this case, we'll use the activity.id which should be the correct activityId
         activityId = activity.id;
       }
@@ -1763,9 +2194,13 @@ export function QuestionPreview({
       console.log(`Deleting activity with ID: ${activityId}`);
 
       // Find the index of the question with this activity_id before we delete it
-      const questionIndex = questions.findIndex(q => q.activity_id === activityId);
+      const questionIndex = questions.findIndex(
+        (q) => q.activity_id === activityId
+      );
       if (questionIndex === -1) {
-        console.warn(`Could not find question with activity_id ${activityId} in local state`);
+        console.warn(
+          `Could not find question with activity_id ${activityId} in local state`
+        );
       }
 
       // Temporarily disable scrolling to prevent jumps
@@ -1782,7 +2217,7 @@ export function QuestionPreview({
       }
 
       // Update local state
-      setActivityBackgrounds(prev => {
+      setActivityBackgrounds((prev) => {
         const updated = { ...prev };
         delete updated[activityId];
         return updated;
@@ -1795,7 +2230,7 @@ export function QuestionPreview({
       }
 
       // Make sure the DOM updates by forcing a re-render
-      setRenderKey(prev => prev + 1);
+      setRenderKey((prev) => prev + 1);
 
       // Restore scroll position immediately and again after render
       if (scrollContainer) {
@@ -1815,17 +2250,16 @@ export function QuestionPreview({
 
       // Show success notification
       toast({
-        title: "Activity deleted",
-        description: "The activity has been successfully deleted",
-        variant: "default",
+        title: 'Activity deleted',
+        description: 'The activity has been successfully deleted',
+        variant: 'default',
       });
-
     } catch (error) {
-      console.error("Error deleting activity:", error);
+      console.error('Error deleting activity:', error);
       toast({
-        title: "Error",
-        description: "Failed to delete activity. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to delete activity. Please try again.',
+        variant: 'destructive',
       });
 
       // Re-enable scrolling in case of error
@@ -1848,7 +2282,7 @@ export function QuestionPreview({
       // Use smooth scrolling to bottom without jumping
       container.scrollTo({
         top: container.scrollHeight,
-        behavior: 'smooth'  // Use smooth scrolling instead of instant jump
+        behavior: 'smooth', // Use smooth scrolling instead of instant jump
       });
 
       // Remove the highlight effect
@@ -1869,16 +2303,120 @@ export function QuestionPreview({
     };
   }, [scrollToNewestQuestion]);
 
+  // Thêm hàm xử lý cập nhật background image
+  const handleSlideImageChange = async (url: string, index: number) => {
+    if (!questions[index]?.activity_id) return;
+
+    const activityId = questions[index].activity_id;
+
+    try {
+      // Cập nhật state trước để UI thay đổi ngay lập tức
+      setSlideBackgrounds((prev) => ({
+        ...prev,
+        [activityId]: {
+          ...(prev[activityId] || {}),
+          backgroundImage: url,
+        },
+      }));
+
+      // Gọi API để cập nhật trên server
+      if (onSlideImageChange) {
+        onSlideImageChange(url, index);
+      }
+
+      // Cập nhật activity background
+      if (activityId) {
+        await activitiesApi.updateActivity(activityId, {
+          backgroundImage: url,
+        });
+
+        // Cập nhật global state
+        updateActivityBackground(activityId, {
+          backgroundImage: url,
+        });
+
+        toast({
+          title: 'Background image updated',
+          description: 'Slide background image has been updated',
+          variant: 'default',
+        });
+      }
+    } catch (error) {
+      console.error('Error updating slide background image:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update slide background image',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Thêm hàm xử lý cập nhật background color
+  const handleSlideBackgroundChange = async (color: string, index: number) => {
+    if (!questions[index]?.activity_id) return;
+
+    const activityId = questions[index].activity_id;
+
+    try {
+      // Cập nhật state trước để UI thay đổi ngay lập tức
+      setSlideBackgrounds((prev) => ({
+        ...prev,
+        [activityId]: {
+          ...(prev[activityId] || {}),
+          backgroundColor: color,
+        },
+      }));
+
+      // Cập nhật activity background
+      if (activityId) {
+        await activitiesApi.updateActivity(activityId, {
+          backgroundColor: color,
+        });
+
+        // Cập nhật global state
+        updateActivityBackground(activityId, {
+          backgroundColor: color,
+        });
+
+        // Cập nhật global storage
+        if (typeof window !== 'undefined') {
+          if (!window.savedBackgroundColors) {
+            window.savedBackgroundColors = {};
+          }
+          window.savedBackgroundColors[activityId] = color;
+        }
+
+        toast({
+          title: 'Background color updated',
+          description: 'Slide background color has been updated',
+          variant: 'default',
+        });
+      }
+    } catch (error) {
+      console.error('Error updating slide background color:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update slide background color',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <>
-      <Card className={cn(
-        "overflow-hidden transition-all w-full h-full border-none shadow-md",
-        isQuestionListCollapsed && "max-w-full",
-        isQuestionListCollapsed ? "ml-0" : "ml-0"
-      )} key={`preview-card-${renderKey}`}>
+      <Card
+        className={cn(
+          'overflow-hidden transition-all w-full h-full border-none shadow-md',
+          isQuestionListCollapsed && 'max-w-full',
+          isQuestionListCollapsed ? 'ml-0' : 'ml-0'
+        )}
+        key={`preview-card-${renderKey}`}
+      >
         <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
           <div className="flex items-center gap-4">
-            <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">Preview</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Preview
+            </CardTitle>
             <div className="flex items-center space-x-2">
               <Switch
                 id="edit-mode"
@@ -1891,10 +2429,15 @@ export function QuestionPreview({
                   }
                 }}
               />
-              <Label htmlFor="edit-mode" className="text-xs">Edit Mode</Label>
+              <Label htmlFor="edit-mode" className="text-xs">
+                Edit Mode
+              </Label>
             </div>
             {isSaving && (
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              <Badge
+                variant="outline"
+                className="bg-blue-50 text-blue-700 border-blue-200"
+              >
                 Saving...
               </Badge>
             )}
@@ -1956,7 +2499,13 @@ export function QuestionPreview({
 
                 {/* Conditional rendering based on question_type */}
                 <div className="w-full">
-                  {renderQuestionContent(question, questionIndex, questionIndex === activeQuestionIndex, viewMode, backgroundImage)}
+                  {renderQuestionContent(
+                    question,
+                    questionIndex,
+                    questionIndex === activeQuestionIndex,
+                    viewMode,
+                    backgroundImage
+                  )}
                 </div>
               </div>
             ))}
@@ -1981,11 +2530,15 @@ export function QuestionPreview({
           <DialogHeader>
             <DialogTitle>Delete Activity</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this activity? This action cannot be undone.
+              Are you sure you want to delete this activity? This action cannot
+              be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2 mt-4">
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={confirmDeleteActivity}>
@@ -2001,16 +2554,37 @@ export function QuestionPreview({
 interface OptionItemProps {
   option: QuizOption;
   index: number;
-  questionType: "multiple_choice" | "multiple_response" | "true_false" | "text_answer" | "slide" | "info_slide" | "reorder" | "location";
+  questionType:
+    | 'multiple_choice'
+    | 'multiple_response'
+    | 'true_false'
+    | 'text_answer'
+    | 'slide'
+    | 'info_slide'
+    | 'reorder'
+    | 'location';
   questionIndex: number;
-  onOptionEdit?: (questionIndex: number, optionIndex: number, text: string) => void;
+  onOptionEdit?: (
+    questionIndex: number,
+    optionIndex: number,
+    text: string
+  ) => void;
   onToggleCorrect?: (questionIndex: number, optionIndex: number) => void;
 }
 
-function OptionItem({ option, index, questionType, questionIndex, onOptionEdit, onToggleCorrect }: OptionItemProps) {
+function OptionItem({
+  option,
+  index,
+  questionType,
+  questionIndex,
+  onOptionEdit,
+  onToggleCorrect,
+}: OptionItemProps) {
   const optionLetter = ['A', 'B', 'C', 'D', 'E', 'F'][index];
   const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(option.option_text || `Option ${optionLetter}`);
+  const [editText, setEditText] = useState(
+    option.option_text || `Option ${optionLetter}`
+  );
 
   // Look for the edit-mode checkbox in the DOM to determine if edit mode is enabled
   const [isEditMode, setIsEditMode] = useState(false);
@@ -2039,12 +2613,36 @@ function OptionItem({ option, index, questionType, questionIndex, onOptionEdit, 
   const getOptionStyle = () => {
     // Premium gradient combinations
     const styles = [
-      { bg: "bg-gradient-to-r from-pink-600 via-rose-500 to-rose-700", border: "border-pink-200 dark:border-pink-900", shadow: "shadow-pink-200/40 dark:shadow-pink-900/20" },
-      { bg: "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-700", border: "border-blue-200 dark:border-blue-900", shadow: "shadow-blue-200/40 dark:shadow-blue-900/20" },
-      { bg: "bg-gradient-to-r from-green-600 via-emerald-500 to-emerald-700", border: "border-green-200 dark:border-green-900", shadow: "shadow-green-200/40 dark:shadow-green-900/20" },
-      { bg: "bg-gradient-to-r from-amber-600 via-orange-500 to-orange-700", border: "border-amber-200 dark:border-amber-900", shadow: "shadow-amber-200/40 dark:shadow-amber-900/20" },
-      { bg: "bg-gradient-to-r from-purple-600 via-violet-500 to-violet-700", border: "border-purple-200 dark:border-purple-900", shadow: "shadow-purple-200/40 dark:shadow-purple-900/20" },
-      { bg: "bg-gradient-to-r from-cyan-600 via-sky-500 to-sky-700", border: "border-cyan-200 dark:border-cyan-900", shadow: "shadow-cyan-200/40 dark:shadow-cyan-900/20" },
+      {
+        bg: 'bg-gradient-to-r from-pink-600 via-rose-500 to-rose-700',
+        border: 'border-pink-200 dark:border-pink-900',
+        shadow: 'shadow-pink-200/40 dark:shadow-pink-900/20',
+      },
+      {
+        bg: 'bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-700',
+        border: 'border-blue-200 dark:border-blue-900',
+        shadow: 'shadow-blue-200/40 dark:shadow-blue-900/20',
+      },
+      {
+        bg: 'bg-gradient-to-r from-green-600 via-emerald-500 to-emerald-700',
+        border: 'border-green-200 dark:border-green-900',
+        shadow: 'shadow-green-200/40 dark:shadow-green-900/20',
+      },
+      {
+        bg: 'bg-gradient-to-r from-amber-600 via-orange-500 to-orange-700',
+        border: 'border-amber-200 dark:border-amber-900',
+        shadow: 'shadow-amber-200/40 dark:shadow-amber-900/20',
+      },
+      {
+        bg: 'bg-gradient-to-r from-purple-600 via-violet-500 to-violet-700',
+        border: 'border-purple-200 dark:border-purple-900',
+        shadow: 'shadow-purple-200/40 dark:shadow-purple-900/20',
+      },
+      {
+        bg: 'bg-gradient-to-r from-cyan-600 via-sky-500 to-sky-700',
+        border: 'border-cyan-200 dark:border-cyan-900',
+        shadow: 'shadow-cyan-200/40 dark:shadow-cyan-900/20',
+      },
     ];
     return styles[index % styles.length];
   };
@@ -2073,35 +2671,37 @@ function OptionItem({ option, index, questionType, questionIndex, onOptionEdit, 
   // Enhanced multiple choice and multiple response options
   const motionProps = {
     className: cn(
-      "group rounded-lg transition-all duration-300 overflow-hidden",
-      isEditMode ? "cursor-pointer hover:scale-[1.02]" : "",
-      option.is_correct === true && questionType !== 'reorder' && "shadow-lg"
+      'group rounded-lg transition-all duration-300 overflow-hidden',
+      isEditMode ? 'cursor-pointer hover:scale-[1.02]' : '',
+      option.is_correct === true && questionType !== 'reorder' && 'shadow-lg'
     ),
     whileHover: isEditMode ? { scale: 1.02 } : {},
     whileTap: isEditMode ? { scale: 0.98 } : {},
-    onClick: handleToggleCorrect
+    onClick: handleToggleCorrect,
   };
 
   return (
     <motion.div {...motionProps}>
-      <div className={cn(
-        "p-4 h-full rounded-lg border-2 flex items-center gap-4 transition-all duration-300 relative",
-        "backdrop-blur-lg shadow-xl",
-        option.is_correct === true
-          ? isEditMode
-            ? "bg-green-100 dark:bg-green-900/60 border-green-500 dark:border-green-500 ring-2 ring-green-400 dark:ring-green-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900"
-            : "bg-green-50/80 dark:bg-green-950/40 border-green-300 dark:border-green-800/80 hover:border-green-400 dark:hover:border-green-700"
-          : "bg-white/90 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600",
-        optionStyle.shadow
-      )}>
+      <div
+        className={cn(
+          'p-4 h-full rounded-lg border-2 flex items-center gap-4 transition-all duration-300 relative',
+          'backdrop-blur-lg shadow-xl',
+          option.is_correct === true
+            ? isEditMode
+              ? 'bg-green-100 dark:bg-green-900/60 border-green-500 dark:border-green-500 ring-2 ring-green-400 dark:ring-green-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
+              : 'bg-green-50/80 dark:bg-green-950/40 border-green-300 dark:border-green-800/80 hover:border-green-400 dark:hover:border-green-700'
+            : 'bg-white/90 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600',
+          optionStyle.shadow
+        )}
+      >
         {/* Decorative light effect */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_100%,rgba(255,255,255,0.1),transparent_70%)] opacity-50"></div>
 
         <div
           className={cn(
-            "relative z-10 w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-white font-medium shadow-lg border border-white/30",
+            'relative z-10 w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-white font-medium shadow-lg border border-white/30',
             option.is_correct === true && isEditMode
-              ? "bg-gradient-to-r from-green-600 via-green-500 to-emerald-600 scale-110 transition-transform"
+              ? 'bg-gradient-to-r from-green-600 via-green-500 to-emerald-600 scale-110 transition-transform'
               : optionStyle.bg
           )}
         >
@@ -2126,12 +2726,14 @@ function OptionItem({ option, index, questionType, questionIndex, onOptionEdit, 
             />
           ) : (
             <>
-              <span className={cn(
-                "text-base",
-                option.is_correct === true && isEditMode
-                  ? "text-green-800 dark:text-green-300 font-medium"
-                  : "text-gray-800 dark:text-gray-100"
-              )}>
+              <span
+                className={cn(
+                  'text-base',
+                  option.is_correct === true && isEditMode
+                    ? 'text-green-800 dark:text-green-300 font-medium'
+                    : 'text-gray-800 dark:text-gray-100'
+                )}
+              >
                 {option.option_text || `Option ${optionLetter}`}
               </span>
               <Button
@@ -2146,12 +2748,14 @@ function OptionItem({ option, index, questionType, questionIndex, onOptionEdit, 
           )}
 
           {option.is_correct === true && (
-            <div className={cn(
-              "flex-shrink-0 text-white rounded-full p-1.5 shadow-lg border border-white/30",
-              isEditMode
-                ? "bg-gradient-to-r from-green-600 to-emerald-600 scale-125 animate-pulse"
-                : "bg-gradient-to-r from-green-500 via-emerald-400 to-emerald-600"
-            )}>
+            <div
+              className={cn(
+                'flex-shrink-0 text-white rounded-full p-1.5 shadow-lg border border-white/30',
+                isEditMode
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 scale-125 animate-pulse'
+                  : 'bg-gradient-to-r from-green-500 via-emerald-400 to-emerald-600'
+              )}
+            >
               <CheckCircle className="h-4 w-4" />
             </div>
           )}

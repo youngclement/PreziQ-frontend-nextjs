@@ -58,7 +58,9 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
   handleSlideBackgroundChange = () => {},
   handleSlideBackgroundImageChange = () => {},
 }) => {
-  const [backgroundTab, setBackgroundTab] = useState<'color' | 'image'>('color');
+  const [backgroundTab, setBackgroundTab] = useState<'color' | 'image'>(
+    'color'
+  );
   const [customColor, setCustomColor] = useState(backgroundColor || '#FFFFFF');
   const { toast } = useToast();
 
@@ -103,33 +105,39 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
 
   const onBackgroundColorChange = async (color: string) => {
     setCustomColor(color);
+
+    // Sử dụng callback từ props
     handleSlideBackgroundChange(color, activeQuestionIndex);
 
+    // Vẫn giữ event cho fabric nếu cần
     window.dispatchEvent(
       new CustomEvent('fabric:set-background-color', {
         detail: { color, slideId: slideId },
       })
     );
 
+    // Cập nhật trực tiếp nếu có slideId
     if (slideId) {
-      await updateSlideBackground(slideId, color, '');
-      console.log("Mới update nè bro")
+      await updateSlideBackground(slideId, color, '' || '');
+      console.log('Background color updated');
     }
   };
 
   const onBackgroundImageChange = async (url: string) => {
+    // Sử dụng callback từ props
     handleSlideBackgroundImageChange(url, activeQuestionIndex);
-    handleSlideBackgroundChange('', activeQuestionIndex);
 
-    // window.dispatchEvent(
-    //   new CustomEvent('fabric:set-background-image', {
-    //     detail: { url, slideId: slideId },
-    //   })
-    // );
+    // Vẫn giữ event cho fabric nếu cần
+    window.dispatchEvent(
+      new CustomEvent('fabric:set-background-image', {
+        detail: { url, slideId: slideId },
+      })
+    );
 
+    // Cập nhật trực tiếp nếu có slideId
     if (slideId) {
       await updateSlideBackground(slideId, '', url);
-      console.log('Mới update nè bro');
+      console.log('Background image updated');
     }
   };
 
@@ -308,7 +316,9 @@ export default React.memo(SlideSettings, (prevProps, nextProps) => {
     prevProps.backgroundImage === nextProps.backgroundImage &&
     prevProps.questionType === nextProps.questionType &&
     prevProps.activeQuestionIndex === nextProps.activeQuestionIndex &&
-    prevProps.handleSlideBackgroundChange === nextProps.handleSlideBackgroundChange &&
-    prevProps.handleSlideBackgroundImageChange === nextProps.handleSlideBackgroundImageChange
+    prevProps.handleSlideBackgroundChange ===
+      nextProps.handleSlideBackgroundChange &&
+    prevProps.handleSlideBackgroundImageChange ===
+      nextProps.handleSlideBackgroundImageChange
   );
 });

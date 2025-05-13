@@ -1,9 +1,9 @@
 /**
  * Custom hook for managing slide operations
  */
-import { useToast } from "@/hooks/use-toast";
-import { activitiesApi } from "@/api-client";
-import { Activity, QuizQuestion } from "../components/types";
+import { useToast } from '@/hooks/use-toast';
+import { activitiesApi } from '@/api-client';
+import { Activity, QuizQuestion } from '../components/types';
 
 export function useSlideOperations(
   questions: QuizQuestion[],
@@ -37,16 +37,16 @@ export function useSlideOperations(
       });
 
       toast({
-        title: "Success",
-        description: "Slide content updated",
+        title: 'Success',
+        description: 'Slide content updated',
         duration: 2000,
       });
     } catch (error) {
-      console.error("Error updating slide content:", error);
+      console.error('Error updating slide content:', error);
       toast({
-        title: "Error",
-        description: "Failed to update slide content",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update slide content',
+        variant: 'destructive',
       });
     }
   };
@@ -74,16 +74,16 @@ export function useSlideOperations(
       });
 
       toast({
-        title: "Success",
-        description: "Slide image updated",
+        title: 'Success',
+        description: 'Slide image updated',
         duration: 2000,
       });
     } catch (error) {
-      console.error("Error updating slide image:", error);
+      console.error('Error updating slide image:', error);
       toast({
-        title: "Error",
-        description: "Failed to update slide image",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update slide image',
+        variant: 'destructive',
       });
     }
   };
@@ -96,8 +96,8 @@ export function useSlideOperations(
 
     try {
       toast({
-        title: "Saving...",
-        description: "Saving your changes",
+        title: 'Saving...',
+        description: 'Saving your changes',
       });
 
       // Most changes are already saved incrementally, but we can update the activity title, etc.
@@ -108,15 +108,15 @@ export function useSlideOperations(
       });
 
       toast({
-        title: "Success",
-        description: "All changes saved successfully",
+        title: 'Success',
+        description: 'All changes saved successfully',
       });
     } catch (error) {
-      console.error("Error saving changes:", error);
+      console.error('Error saving changes:', error);
       toast({
-        title: "Error",
-        description: "Failed to save changes",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to save changes',
+        variant: 'destructive',
       });
     }
   };
