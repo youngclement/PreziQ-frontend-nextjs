@@ -1,5 +1,5 @@
 'use client';
-
+import React from 'react';
 import { useState, useEffect } from 'react';
 import {
   Bold,
@@ -77,7 +77,7 @@ const ColorCircle = ({ color }: { color: string }) => {
   );
 };
 
-export function TextEditorToolbar(slideId: any) {
+const TextEditorToolbar = React.memo(({ slideId }: { slideId: string }) => {
   const [formatting, setFormatting] = useState({
     bold: false,
     italic: false,
@@ -549,4 +549,8 @@ export function TextEditorToolbar(slideId: any) {
       </Select>
     </div>
   );
-}
+});
+
+TextEditorToolbar.displayName = 'TextEditorToolbar';
+
+export default TextEditorToolbar;

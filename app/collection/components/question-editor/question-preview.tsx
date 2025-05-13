@@ -246,7 +246,7 @@ export function QuestionPreview({
       }
     });
   }, [questions, slidesData]);
-
+  
 
   // Add this useEffect to listen for time limit update events
   useEffect(() => {
@@ -669,11 +669,29 @@ export function QuestionPreview({
     // Check if background image is actually defined (not empty string)
     const hasBackgroundImage = actualBackgroundImage && actualBackgroundImage.trim() !== '';
 
+    console.log(`Rendering slide ${question.activity_id}:`, {
+      actualBackgroundColor,
+      actualBackgroundImage,
+      fromGlobal: window.savedBackgroundColors?.[question.activity_id],
+      fromActivityBackgrounds: activityBackgrounds[question.activity_id],
+    });
+
     if (isSlideType) {
       const slideTypeText = question.question_type === 'info_slide' ? 'Info Slide' : 'Slide';
 
-        const slideBackgroundImage = slideData?.backgroundImage;
-        const slideBackgroundColor = slideData?.backgroundColor;
+      // const slideBackground = activityBackgrounds[question.activity_id] || {
+      //   backgroundImage: '',
+      //   backgroundColor: '#FFFFFF',
+      // };
+      console.log(
+        'activityBackgrounds[question.activity_id]',
+        activityBackgrounds[question.activity_id], question.activity_id
+      );
+        // console.log('Saved color:', window.savedBackgroundColors?.[question.activity_id]);
+        const slideBackground = activityBackgrounds[question.activity_id] || {
+          backgroundImage: '',
+          backgroundColor: '#FFFFFF',
+        };
 
       return (
         <div
@@ -714,72 +732,6 @@ export function QuestionPreview({
               </motion.div>
             </div>
 
-            {/* 
-            {editMode !== null ? (
-              <div className="w-full max-w-2xl">
-                <Textarea
-                  value={question.question_text || `${slideTypeText} ${questionIndex + 1}`}
-                  onChange={(e) => onQuestionTextChange(e.target.value, questionIndex)}
-                  className="text-2xl md:text-3xl font-bold text-center text-gray-800 dark:text-white"
-                />
-              </div>
-            ) : (
-              <motion.div
-                className="w-full max-w-2xl"
-                initial={{ y: 20, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-              >
-                <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-800 dark:text-white">
-                  {question.question_text || `${slideTypeText} ${questionIndex + 1}`}
-                </h2>
-              </motion.div>
-            )}
-
-            {editMode !== null ? (
-              <div className="w-full max-w-4xl">
-                <Textarea
-                  value={question.slide_content || ""}
-                  onChange={(e) => {
-                    if (onSlideContentChange) {
-                      onSlideContentChange(e.target.value);
-                    }
-                  }}
-                  className="text-lg md:text-xl text-center text-gray-700 dark:text-gray-200 min-h-[100px]"
-                  placeholder="Enter slide content here..."
-                />
-              </div>
-            ) : (
-              <motion.div
-                className="text-lg md:text-xl text-center text-gray-700 dark:text-gray-200 max-w-4xl"
-                initial={{ y: 20, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                {question.slide_content?.split('\n').map((line, i) => (
-                  <p key={i} className="mb-3">
-                    {line}
-                  </p>
-                )) || 'Slide content goes here'}
-              </motion.div>
-            )}
-
-
-            {question.slide_image && (
-              <motion.div
-                className="mt-6 w-full flex justify-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                <img
-                  src={question.slide_image}
-                  alt="Slide image"
-                  className="max-h-96 w-auto rounded-lg object-contain shadow-md"
-                />
-              </motion.div>
-            )} */}
-
             <div className="flex-1 w-full">
               <FabricEditor
                 slideTitle={
@@ -799,56 +751,6 @@ export function QuestionPreview({
                       ...prev,
                       [question.activity_id!]: data.slideElements ?? [],
                     }));
-
-                    // Cập nhật từng slideElement qua API
-                    data.slideElements.forEach((element) => {
-                      if (element.slideElementId && question.activity_id) {
-                        slidesApi
-                          .updateSlidesElement(
-                            question.activity_id,
-                            element.slideElementId,
-                            element
-                          )
-                          .then((res) => {
-                            console.log(
-                              `Updated slide element ${element.slideElementId}:`,
-                              res.data
-                            );
-                            // Cập nhật slidesData
-                            setSlidesData((prevData) => {
-                              if (!question.activity_id) {
-                                console.error(
-                                  'question.activity_id is undefined'
-                                );
-                                return prevData;
-                              }
-                              return {
-                                ...prevData,
-                                [question.activity_id]: {
-                                  ...(prevData[question.activity_id] ?? {
-                                    activityId: question.activity_id,
-                                    slide: {
-                                      slideElements: [],
-                                    },
-                                    // Các thuộc tính khác của SlideData
-                                  }),
-                                  slide: {
-                                    ...(prevData[question.activity_id]
-                                      ?.slide ?? { slideElements: [] }),
-                                    slideElements: data.slideElements ?? [],
-                                  },
-                                },
-                              };
-                            });
-                          })
-                          .catch((error) => {
-                            console.error(
-                              `Error updating slide element ${element.slideElementId}:`,
-                              error
-                            );
-                          });
-                      }
-                    });
                   }
                 }}
                 width={
@@ -868,8 +770,8 @@ export function QuestionPreview({
                 zoom={1}
                 slideId={question.activity_id}
                 slideElements={slideElements}
-                backgroundImage={slideBackgroundImage}
-                backgroundColor={slideBackgroundColor}
+                backgroundImage={actualBackgroundImage}
+                backgroundColor={actualBackgroundColor}
               />
             </div>
           </div>

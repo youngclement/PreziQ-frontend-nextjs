@@ -73,7 +73,7 @@ const SortableActivityItem = ({
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: activity.id });
 
-  console.log('DND activity: ', activity);
+  // console.log('DND activity: ', activity);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -140,15 +140,7 @@ export function QuestionList({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const [renderKey, setRenderKey] = useState(0);
-
-  console.log('QuestionList props:', {
-    questions: questions.length,
-    activeQuestionIndex,
-    activities: activities.length,
-    expandedView,
-    isCollapsed,
-  });
-
+  
   // Scroll to the end of the activities list when a new activity is added
   React.useEffect(() => {
     if (scrollContainerRef.current && activities.length > 0) {

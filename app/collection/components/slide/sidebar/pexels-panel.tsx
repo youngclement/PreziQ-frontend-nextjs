@@ -1,6 +1,6 @@
 'use client';
 
-import type React from 'react';
+import  React from 'react';
 import { useState } from 'react';
 import PexelsSidebar from './pexels-sidebar';
 import { ImageIcon, X, Upload } from 'lucide-react';
@@ -8,12 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { storageApi } from '@/api-client/storage-api'; // Import storageApi
 
-function PexelsPanel() {
-
+const PexelsPanel = React.memo(({ slideId }: { slideId: string }) => {
   // Gửi sự kiện để thêm ảnh vào canvas
   const handleAddToCanvas = (url: string) => {
     const event = new CustomEvent('fabric:add-image', {
-      detail: { url },
+      detail: { url, slideId: slideId },
     });
     window.dispatchEvent(event);
   };
@@ -25,11 +24,11 @@ function PexelsPanel() {
 
     try {
       const response = await storageApi.uploadSingleFile(file, 'slides');
-  
-      const res = response.data as any;
-       const fileUrl = res.data.fileUrl;
 
-       handleAddToCanvas(fileUrl); // Gửi URL từ AWS S3 vào canvas
+      const res = response.data as any;
+      const fileUrl = res.data.fileUrl;
+
+      handleAddToCanvas(fileUrl); // Gửi URL từ AWS S3 vào canvas
     } catch (error) {
       console.error('Error uploading file:', error);
     }
@@ -78,6 +77,8 @@ function PexelsPanel() {
       </Tabs>
     </div>
   );
-}
+});
 
+PexelsPanel.displayName = 'PexelsPanel';
 export default PexelsPanel;
+

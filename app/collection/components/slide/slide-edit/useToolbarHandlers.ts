@@ -24,6 +24,8 @@ export const ToolbarHandlers = (
   currentTitle: string = '', // Pass current title
   currentContent: string = '' // Pass current content
 ) => {
+
+  console.log('slideId', slideId);
   const updateTextboxElement = debounce((textbox: fabric.Textbox) => {
     const slideElementId = textbox.get('slideElementId');
     if (!slideElementId) return;
@@ -191,11 +193,11 @@ export const ToolbarHandlers = (
 
   function onAddImage(e: Event) {
     const ev = e as CustomEvent<{ url: string; slideId?: string }>;
-
+    console.log('ev', ev.detail);
     if (ev.detail.slideId && ev.detail.slideId !== slideId) {
-      // console.log(
-      //   `Bỏ qua fabric:add-image vì slideId không khớp: ${ev.detail.slideId} !== ${slideId}`
-      // );
+      console.log(
+        `Bỏ qua fabric:add-image vì slideId không khớp: ${ev.detail.slideId} !== ${slideId}`
+      );
       return;
     }
     const { url } = ev.detail;
@@ -912,6 +914,8 @@ export const ToolbarHandlers = (
           const textboxJson = {
             ...textbox.toJSON(),
             fontSize: fontSizePercent,
+            scaleX: textbox.scaleX || 1,
+            scaleY: textbox.scaleY || 1,
           };
 
           if (
