@@ -2,9 +2,10 @@
 
 import { UserProfileClient } from './components/user-profile-client';
 import { Suspense } from 'react';
-import { Loader2, UserCircle } from 'lucide-react';
+import { UserCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Metadata } from 'next';
+import Loading from '@/components/common/loading';
 
 export default function ProfilePage() {
 	return (
@@ -39,18 +40,6 @@ export default function ProfilePage() {
 
 function LoadingState() {
 	return (
-		<motion.div
-			initial={{ opacity: 0 }}
-			animate={{ opacity: 1 }}
-			transition={{ duration: 0.3 }}
-			className="w-full h-96 flex items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow-lg"
-		>
-			<div className="flex flex-col items-center space-y-4">
-				<Loader2 className="h-8 w-8 animate-spin text-primary" />
-				<span className="text-gray-600 dark:text-gray-300">
-					Đang tải thông tin...
-				</span>
-			</div>
-		</motion.div>
+		<Loading />
 	);
 }

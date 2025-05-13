@@ -9,19 +9,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { useUsers } from '@/components/dashboard/users/context/users-context';
 import RolesProvider from '@/components/dashboard/roles/context/roles-context';
+import Loading from '@/components/common/loading';
 
 function UsersContent() {
   const { users, isLoading, error } = useUsers();
 
   console.log('UsersContent - Dữ liệu từ context:', users);
 
-  if (isLoading) {
-    return (
-      <div className='flex items-center justify-center h-32'>
-        <Loader2 className='w-6 h-6 animate-spin' />
-      </div>
-    );
-  }
+	if (isLoading) {
+		return <Loading />;
+	}
 
   if (error) {
     console.error('UsersContent - Error:', error);
