@@ -248,7 +248,6 @@ export function QuestionSettings({
   // Track the activity ID to detect changes
   const [prevActivityId, setPrevActivityId] = useState(activity?.id);
 
-
   useEffect(() => {
     if (activity) {
       setBackgroundColor(activity.backgroundColor || '#FFFFFF');
@@ -1883,21 +1882,12 @@ export function QuestionSettings({
                 ) : activeQuestion.question_type === 'slide' ||
                   activeQuestion.question_type === 'info_slide' ? (
                   <>
-                      <SlideToolbar slideId={activity.id} />
+                    <SlideToolbar slideId={activity.id} />
                     <div>
                       <h3 className="text-sm font-medium mb-2.5 mt-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                         <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
                         Background Settings
                       </h3>
-                      <SlideSettings
-                        slideId={activity.id}
-                        backgroundColor={backgroundColor}
-                        backgroundImage={backgroundImage}
-                        questionType={activeQuestion.question_type}
-                        activeQuestionIndex={activeQuestionIndex}
-                        handleSlideBackgroundChange={handleBackgroundColorChange}
-                        handleSlideBackgroundImageChange={handleSlideImageChange}                       
-                      />
                     </div>
                   </>
                 ) : activeQuestion.question_type === 'reorder' ? (
@@ -1939,7 +1929,21 @@ export function QuestionSettings({
 
           <TabsContent value="design" className="mt-0 space-y-5">
             {/* Design tab: Background, colors, etc */}
-            <BackgroundSettings />
+
+            {activeQuestion.question_type === 'slide' ||
+            activeQuestion.question_type === 'info_slide' ? (
+              <SlideSettings
+                slideId={activity.id}
+                backgroundColor={backgroundColor}
+                backgroundImage={backgroundImage}
+                questionType={activeQuestion.question_type}
+                activeQuestionIndex={activeQuestionIndex}
+                handleSlideBackgroundChange={handleBackgroundColorChange}
+                handleSlideBackgroundImageChange={handleSlideImageChange}
+              />
+            ) : (
+              <BackgroundSettings />
+            )}
           </TabsContent>
 
           <TabsContent value="meta" className="mt-0">

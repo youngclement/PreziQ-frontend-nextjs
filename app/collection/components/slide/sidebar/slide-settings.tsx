@@ -105,39 +105,33 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
 
   const onBackgroundColorChange = async (color: string) => {
     setCustomColor(color);
-
-    // Sử dụng callback từ props
     handleSlideBackgroundChange(color, activeQuestionIndex);
 
-    // Vẫn giữ event cho fabric nếu cần
     window.dispatchEvent(
       new CustomEvent('fabric:set-background-color', {
         detail: { color, slideId: slideId },
       })
     );
 
-    // Cập nhật trực tiếp nếu có slideId
     if (slideId) {
-      await updateSlideBackground(slideId, color, '' || '');
-      console.log('Background color updated');
+      await updateSlideBackground(slideId, color, '');
+      console.log('Mới update nè bro');
     }
   };
 
   const onBackgroundImageChange = async (url: string) => {
-    // Sử dụng callback từ props
     handleSlideBackgroundImageChange(url, activeQuestionIndex);
+    handleSlideBackgroundChange('', activeQuestionIndex);
 
-    // Vẫn giữ event cho fabric nếu cần
     window.dispatchEvent(
       new CustomEvent('fabric:set-background-image', {
         detail: { url, slideId: slideId },
       })
     );
 
-    // Cập nhật trực tiếp nếu có slideId
     if (slideId) {
       await updateSlideBackground(slideId, '', url);
-      console.log('Background image updated');
+      console.log('Mới update nè bro');
     }
   };
 

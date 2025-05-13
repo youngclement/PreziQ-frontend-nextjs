@@ -4,7 +4,7 @@
 import { useToast } from '@/hooks/use-toast';
 import { activitiesApi } from '@/api-client';
 import { Activity, QuizQuestion } from '../components/types';
-
+import { slideBackgroundManager } from '@/utils/slideBackgroundManager'; 
 export function useSlideOperations(
   questions: QuizQuestion[],
   setQuestions: (questions: QuizQuestion[]) => void,
@@ -67,25 +67,20 @@ export function useSlideOperations(
 
     // For now, API doesn't fully support separate slide image updates
     // We'll implement this when the API supports it
-    try {
-      // Update the activity with the new image URL
-      await activitiesApi.updateActivity(activity.id, {
-        backgroundImage: value,
-      });
+    slideBackgroundManager.set(activity.id, {
+      backgroundImage: value,
+      backgroundColor: '',
+    });
 
-      toast({
-        title: 'Success',
-        description: 'Slide image updated',
-        duration: 2000,
-      });
-    } catch (error) {
-      console.error('Error updating slide image:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update slide image',
-        variant: 'destructive',
-      });
-    }
+    // 3. (OPTIONAL) emit event nếu bạn có listener khác
+    window.dispatchEvent(
+      new CustomEvent('activity:background:updated', {
+        detail: {
+          activityId: activity.id,
+          properties: { backgroundImage: value },
+        },
+      })
+    );
   };
 
   /**

@@ -105,9 +105,7 @@ import {
 
 // First, let's import the needed drag and drop components from react-beautiful-dnd
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-
-// Thêm import SlideSettings
-import SlideSettings from '../slide/sidebar/slide-settings';
+import { slideBackgroundManager } from '@/utils/slideBackgroundManager';
 
 interface QuestionPreviewProps {
   questions: QuizQuestion[];
@@ -212,6 +210,10 @@ export function QuestionPreview({
     backgroundColor: activity?.backgroundColor || '#FFFFFF',
   });
 
+  const [slidesBackgrounds, setSlidesBackgrounds] = useState<
+    Record<string, { backgroundImage: string; backgroundColor: string }>
+  >({});
+
   // Map to store activity-specific backgrounds
   const [activityBackgrounds, setActivityBackgrounds] = React.useState<
     Record<
@@ -223,7 +225,6 @@ export function QuestionPreview({
     >
   >({});
 
-  // Thêm state mới để lưu trữ backgrounds cho từng slide
   const [slideBackgrounds, setSlideBackgrounds] = useState<
     Record<string, { backgroundImage: string; backgroundColor: string }>
   >({});
@@ -266,25 +267,38 @@ export function QuestionPreview({
             ...prev,
             [activityId]: activityData.slide.slideElements,
           }));
+          
+          // Cập nhật slidesBackgrounds
+          setSlidesBackgrounds((prev) => ({
+            ...prev,
+            [activityId]: {
+              backgroundImage: activityData.backgroundImage || '',
+              backgroundColor: activityData.backgroundColor || '#fff',
+            },
+          }));
         }
 
-        // Lưu background vào state slideBackgrounds
-        setSlideBackgrounds((prev) => ({
-          ...prev,
-          [activityId]: {
-            backgroundImage: activityData.backgroundImage || '',
-            backgroundColor: activityData.backgroundColor || '#fff',
-          },
-        }));
+        // Cập nhật localSlideElements nếu là slide
+        // if (
+        //   ['slide', 'info_slide'].includes(currentQuestion.question_type) &&
+        //   activityData.slide?.slideElements
+        // ) {
+        //   setLocalSlideElements((prev) => ({
+        //     ...prev,
+        //     [currentQuestion.activity_id]: activityData.slide.slideElements,
+        //   }));
+        // }
 
-        // Cập nhật window.savedBackgroundColors cho đồng bộ
-        if (typeof window !== 'undefined' && activityData.backgroundColor) {
-          if (!window.savedBackgroundColors) {
-            window.savedBackgroundColors = {};
-          }
-          window.savedBackgroundColors[activityId] =
-            activityData.backgroundColor;
-        }
+        // Cập nhật question text và slide content nếu cần
+        // if (activityData.title !== currentQuestion.question_text) {
+        //   onQuestionTextChange(activityData.title, activeQuestionIndex);
+        // }
+        // if (
+        //   activityData.description !== currentQuestion.slide_content &&
+        //   onSlideContentChange
+        // ) {
+        //   onSlideContentChange(activityData.description);
+        // }
       } catch (error) {
         console.error('Error fetching activity data:', error);
       }
@@ -756,17 +770,22 @@ export function QuestionPreview({
       : [];
 
     // Find activity specific background for this question
-    let actualBackgroundImage = ''; // Initialize with empty string instead of inheriting
+    let actualBackgroundImage = ''; // Initialize with empty string
     let actualBackgroundColor = '#FFFFFF'; // Safe default
 
-    // QUAN TRỌNG: Ưu tiên lấy màu từ slideBackgrounds state
-    if (question.activity_id && slideBackgrounds[question.activity_id]) {
-      actualBackgroundImage =
-        slideBackgrounds[question.activity_id].backgroundImage || '';
-      actualBackgroundColor =
-        slideBackgrounds[question.activity_id].backgroundColor || '#FFFFFF';
+    // Thứ tự ưu tiên sử dụng background:
+    // 1. Từ slidesBackgrounds (state đặc thù cho slide)
+    // 2. Từ global storage
+    // 3. Từ activityBackgrounds
+    // 4. Từ activity hiện tại
+    
+    // 1. Ưu tiên lấy từ slidesBackgrounds trước nếu đây là slide
+    if (isSlideType && question.activity_id && slidesBackgrounds[question.activity_id]) {
+      const slideBg = slidesBackgrounds[question.activity_id];
+      actualBackgroundImage = slideBg.backgroundImage;
+      actualBackgroundColor = slideBg.backgroundColor;
     }
-    // Tiếp theo, kiểm tra global storage
+    // 2. QUAN TRỌNG: Tiếp theo lấy màu từ global storage
     else if (
       question.activity_id &&
       typeof window !== 'undefined' &&
@@ -776,29 +795,26 @@ export function QuestionPreview({
       if (savedColor) {
         actualBackgroundColor = savedColor;
       }
+      
+      // Sau đó mới kiểm tra trong activityBackgrounds để lấy backgroundImage
+      if (question.activity_id && activityBackgrounds[question.activity_id]) {
+        const actBg = activityBackgrounds[question.activity_id];
+        actualBackgroundImage = actBg.backgroundImage || ''; 
+      }
     }
-    // Sau đó mới kiểm tra trong activityBackgrounds
-    else if (
-      question.activity_id &&
-      activityBackgrounds[question.activity_id]
-    ) {
+    // 3. Sau đó mới kiểm tra trong activityBackgrounds
+    else if (question.activity_id && activityBackgrounds[question.activity_id]) {
       const actBg = activityBackgrounds[question.activity_id];
-      actualBackgroundImage = actBg.backgroundImage || ''; // Use empty string if undefined
-      // Chỉ sử dụng màu từ activityBackgrounds nếu không tìm thấy trong slideBackgrounds
-      if (!actualBackgroundColor || actualBackgroundColor === '#FFFFFF') {
-        actualBackgroundColor = actBg.backgroundColor;
-      }
+      actualBackgroundImage = actBg.backgroundImage || '';
+      actualBackgroundColor = actBg.backgroundColor;
     }
-    // Fallback to main activity if we have one
+    // 4. Fallback to main activity if we have one
     else if (question.activity_id && activity?.id === question.activity_id) {
-      actualBackgroundImage = activity.backgroundImage || ''; // Use empty string if undefined
-      // Chỉ sử dụng màu từ activity nếu không tìm thấy trong slideBackgrounds và activityBackgrounds
-      if (!actualBackgroundColor || actualBackgroundColor === '#FFFFFF') {
-        actualBackgroundColor = activity.backgroundColor || '#FFFFFF';
-      }
+      actualBackgroundImage = activity.backgroundImage || '';
+      actualBackgroundColor = activity.backgroundColor || '#FFFFFF';
     }
 
-    // Đảm bảo lưu màu vào global storage để các component khác có thể sử dụng
+    // Đảm bảo lưu màu vào global storage
     if (
       question.activity_id &&
       actualBackgroundColor &&
@@ -820,13 +836,19 @@ export function QuestionPreview({
       actualBackgroundImage,
       fromGlobal: window.savedBackgroundColors?.[question.activity_id],
       fromActivityBackgrounds: activityBackgrounds[question.activity_id],
-      fromSlideBackgrounds: slideBackgrounds[question.activity_id],
+      fromSlidesBackgrounds: slidesBackgrounds[question.activity_id],
     });
 
     if (isSlideType) {
       const slideTypeText =
         question.question_type === 'info_slide' ? 'Info Slide' : 'Slide';
 
+      console.log(
+        'activityBackgrounds[question.activity_id]',
+        activityBackgrounds[question.activity_id],
+        question.activity_id
+      );
+      
       return (
         <div
           className={cn(
@@ -848,31 +870,16 @@ export function QuestionPreview({
               <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
                 {isSaving && <span className="text-blue-500">(Saving...)</span>}
               </div>
-              <div className="flex items-center gap-4">
-                {editMode !== null && (
-                  <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg shadow-sm p-2">
-                    <SlideSettings
-                      slideId={question.activity_id!}
-                      backgroundColor={actualBackgroundColor}
-                      backgroundImage={actualBackgroundImage}
-                      questionType={question.question_type}
-                      activeQuestionIndex={questionIndex}
-                      handleSlideBackgroundChange={handleSlideBackgroundChange}
-                      handleSlideBackgroundImageChange={handleSlideImageChange}
-                    />
-                  </div>
-                )}
-                <motion.div
-                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-400 px-4 py-2 rounded-full shadow-md"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <FileText className="h-4 w-4 text-white" />
-                  <span className="text-sm font-medium text-white">
-                    {slideTypeText} {questionIndex + 1}
-                  </span>
-                </motion.div>
-              </div>
+              <motion.div
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-400 px-4 py-2 rounded-full shadow-md"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <FileText className="h-4 w-4 text-white" />
+                <span className="text-sm font-medium text-white">
+                  {slideTypeText} {questionIndex + 1}
+                </span>
+              </motion.div>
             </div>
 
             <div className="flex-1 w-full">
@@ -1701,6 +1708,25 @@ export function QuestionPreview({
     try {
       setIsSaving(true);
 
+      // Nếu đang cập nhật màu nền hoặc hình nền và đây là slide
+      const currentQuestion = questions[activeQuestionIndex];
+      const isSlide = currentQuestion && ['slide', 'info_slide'].includes(currentQuestion.question_type);
+      
+      if (isSlide && (data.backgroundColor || data.backgroundImage)) {
+        // Cập nhật slidesBackgrounds trước
+        setSlidesBackgrounds((prev) => ({
+          ...prev,
+          [activityId]: {
+            backgroundImage: data.backgroundImage !== undefined 
+              ? data.backgroundImage 
+              : prev[activityId]?.backgroundImage || '',
+            backgroundColor: data.backgroundColor !== undefined 
+              ? data.backgroundColor 
+              : prev[activityId]?.backgroundColor || '#FFFFFF',
+          },
+        }));
+      }
+
       // Nếu đang cập nhật màu nền, cập nhật UI ngay lập tức trước khi gọi API
       if (data.backgroundColor && typeof data.backgroundColor === 'string') {
         // Cập nhật UI ngay lập tức để tránh hiệu ứng nhấp nháy
@@ -1715,6 +1741,11 @@ export function QuestionPreview({
       // Sau khi API trả về thành công, đảm bảo UI được cập nhật chính xác
       if (data.backgroundColor && typeof data.backgroundColor === 'string') {
         // Đảm bảo tất cả các component khác đều biết về thay đổi này
+        slideBackgroundManager.set(activityId, {
+          backgroundColor: data.backgroundColor,
+          backgroundImage: '', 
+        });
+        
         if (typeof window !== 'undefined') {
           const event = new CustomEvent('activity:background:updated', {
             detail: {
@@ -1731,6 +1762,13 @@ export function QuestionPreview({
           }
           window.savedBackgroundColors[activityId] = data.backgroundColor;
         }
+      }
+
+      if (data.backgroundImage && typeof data.backgroundImage === 'string') {
+        slideBackgroundManager.set(activityId, {
+          backgroundImage: data.backgroundImage,
+          backgroundColor: '', // clear màu khi có ảnh mới
+        });
       }
 
       toast({
@@ -2303,100 +2341,72 @@ export function QuestionPreview({
     };
   }, [scrollToNewestQuestion]);
 
-  // Thêm hàm xử lý cập nhật background image
-  const handleSlideImageChange = async (url: string, index: number) => {
-    if (!questions[index]?.activity_id) return;
-
-    const activityId = questions[index].activity_id;
-
-    try {
-      // Cập nhật state trước để UI thay đổi ngay lập tức
-      setSlideBackgrounds((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] || {}),
-          backgroundImage: url,
-        },
-      }));
-
-      // Gọi API để cập nhật trên server
-      if (onSlideImageChange) {
-        onSlideImageChange(url, index);
-      }
-
-      // Cập nhật activity background
-      if (activityId) {
-        await activitiesApi.updateActivity(activityId, {
-          backgroundImage: url,
-        });
-
-        // Cập nhật global state
-        updateActivityBackground(activityId, {
-          backgroundImage: url,
-        });
-
-        toast({
-          title: 'Background image updated',
-          description: 'Slide background image has been updated',
-          variant: 'default',
-        });
-      }
-    } catch (error) {
-      console.error('Error updating slide background image:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update slide background image',
-        variant: 'destructive',
-      });
+  // Sử dụng handleSlideImageChange từ use-slide-operations.ts
+  // Thêm hàm mới để cập nhật background cho slide
+  const updateSlideBackground = async (
+    activityId: string,
+    properties: {
+      backgroundImage?: string;
+      backgroundColor?: string;
     }
-  };
+  ) => {
+    if (!activityId) return;
+    
+    // Chỉ xử lý cho các slide
+    const currentQuestion = questions[activeQuestionIndex];
+    if (!currentQuestion || !['slide', 'info_slide'].includes(currentQuestion.question_type)) return;
+    
+    console.log('Updating slide background:', activityId, properties);
 
-  // Thêm hàm xử lý cập nhật background color
-  const handleSlideBackgroundChange = async (color: string, index: number) => {
-    if (!questions[index]?.activity_id) return;
-
-    const activityId = questions[index].activity_id;
+    // Cập nhật local state slidesBackgrounds
+    setSlidesBackgrounds((prev) => ({
+      ...prev,
+      [activityId]: {
+        backgroundImage: properties.backgroundImage !== undefined 
+          ? properties.backgroundImage 
+          : (prev[activityId]?.backgroundImage || ''),
+        backgroundColor: properties.backgroundColor !== undefined 
+          ? properties.backgroundColor 
+          : (prev[activityId]?.backgroundColor || '#FFFFFF'),
+      },
+    }));
 
     try {
-      // Cập nhật state trước để UI thay đổi ngay lập tức
-      setSlideBackgrounds((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] || {}),
-          backgroundColor: color,
-        },
-      }));
-
-      // Cập nhật activity background
-      if (activityId) {
+      // Cập nhật trong activityBackgrounds để đảm bảo đồng bộ
+      updateActivityBackground(activityId, properties);
+      
+      // Xử lý cập nhật background theo yêu cầu
+      if (properties.backgroundColor !== undefined) {
+        // Nếu cập nhật backgroundColor, đặt backgroundImage là rỗng
         await activitiesApi.updateActivity(activityId, {
-          backgroundColor: color,
+          backgroundColor: properties.backgroundColor,
+          backgroundImage: '',
         });
-
-        // Cập nhật global state
-        updateActivityBackground(activityId, {
-          backgroundColor: color,
-        });
-
-        // Cập nhật global storage
-        if (typeof window !== 'undefined') {
-          if (!window.savedBackgroundColors) {
-            window.savedBackgroundColors = {};
-          }
-          window.savedBackgroundColors[activityId] = color;
+      } else if (properties.backgroundImage !== undefined) {
+        // Nếu cập nhật backgroundImage, đặt backgroundColor là rỗng
+        if (onSlideImageChange) {
+          onSlideImageChange(properties.backgroundImage, activeQuestionIndex);
         }
-
-        toast({
-          title: 'Background color updated',
-          description: 'Slide background color has been updated',
-          variant: 'default',
+        
+        await activitiesApi.updateActivity(activityId, {
+          backgroundColor: '',
+          backgroundImage: properties.backgroundImage,
         });
       }
+      
+      toast({
+        title: 'Success',
+        description: 'Slide background updated',
+        duration: 2000,
+      });
+
+      // Force re-render bằng cách cập nhật renderKey
+      setRenderKey((prev) => prev + 1);
     } catch (error) {
-      console.error('Error updating slide background color:', error);
+      console.error('Error updating slide background:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update slide background color',
+        description: 'Failed to update slide background',
         variant: 'destructive',
       });
     }
