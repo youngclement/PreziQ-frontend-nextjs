@@ -66,11 +66,11 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
   useEffect(() => {
     if (backgroundColor && backgroundColor !== customColor) {
       setCustomColor(backgroundColor);
-      window.dispatchEvent(
-        new CustomEvent('fabric:set-background-color', {
-          detail: { color: backgroundColor, slideId },
-        })
-      );
+      // window.dispatchEvent(
+      //   new CustomEvent('fabric:set-background-color', {
+      //     detail: { color: backgroundColor, slideId },
+      //   })
+      // );
     }
   }, [backgroundColor, customColor]);
 
@@ -121,11 +121,11 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
     handleSlideBackgroundImageChange(url, activeQuestionIndex);
     handleSlideBackgroundChange('', activeQuestionIndex);
 
-    window.dispatchEvent(
-      new CustomEvent('fabric:set-background-image', {
-        detail: { url, slideId: slideId },
-      })
-    );
+    // window.dispatchEvent(
+    //   new CustomEvent('fabric:set-background-image', {
+    //     detail: { url, slideId: slideId },
+    //   })
+    // );
 
     if (slideId) {
       await updateSlideBackground(slideId, '', url);

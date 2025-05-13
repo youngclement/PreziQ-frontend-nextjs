@@ -12,17 +12,17 @@ export const useFabricCanvas = () => {
       height: 460,
     });
 
-    if (background) {
-          FabricImage.fromURL(background).then((img) => {
-            img.set({
-              scaleX: canvas.getWidth() / img.width,
-              scaleY: canvas.getHeight() / img.height,
-              originX: 'left',
-              originY: 'top',
-            });
-            canvas.backgroundImage = img;
-          });
-        }
+    // if (background) {
+    //       FabricImage.fromURL(background).then((img) => {
+    //         img.set({
+    //           scaleX: canvas.getWidth() / img.width,
+    //           scaleY: canvas.getHeight() / img.height,
+    //           originX: 'left',
+    //           originY: 'top',
+    //         });
+    //         canvas.backgroundImage = img;
+    //       });
+    //     }
 
     fabricCanvas.current = canvas;
     return canvas;

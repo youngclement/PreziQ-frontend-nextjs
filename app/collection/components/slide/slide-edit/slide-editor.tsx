@@ -19,8 +19,8 @@ export interface FabricEditorProps {
   slideTitle: string;
   slideContent: string;
   onUpdate: (data: {
-    title: string;
-    content: string;
+    title?: string;
+    content?: string;
     slideElements?: SlideElementPayload[];
   }) => void;
   backgroundColor?: string;
@@ -52,8 +52,26 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const isProcessingRef = useRef(false);
+  const isInitialMount = useRef(true);
 
 console.log('backgroundColor 111', backgroundColor);
+
+console.log('backgroundImage', backgroundImage);
+
+useEffect(() => {
+  if (
+    isInitialMount.current &&
+    fabricCanvas.current &&
+    backgroundColor &&
+    backgroundImage
+  ) {
+    fabricCanvas.current.backgroundImage = undefined;
+    fabricCanvas.current.backgroundColor = backgroundColor;
+    fabricCanvas.current.renderAll();
+    isInitialMount.current = false;
+    console.log('mouse');
+  }
+}, [backgroundColor, backgroundImage]);
 
   const updateSpecificElement = (updatedElement: SlideElementPayload) => {
     const canvas = fabricCanvas.current;

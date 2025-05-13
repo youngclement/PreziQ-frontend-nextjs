@@ -955,12 +955,12 @@ export function QuestionSettings({
   const updateActivity = async (data: any) => {
     if (!activity?.id) return;
 
-    // if (activity.activity_type_id === 'INFO_SLIDE') {
-    //   console.log(
-    //     'Bỏ qua gọi API cho INFO_SLIDE, sẽ được xử lý bởi SlideSettings'
-    //   );
-    //   return;
-    // }
+    if (activity.activity_type_id === 'INFO_SLIDE') {
+      console.log(
+        'Bỏ qua gọi API cho INFO_SLIDE, sẽ được xử lý bởi SlideSettings'
+      );
+      return;
+    }
 
     setIsSaving(true);
 

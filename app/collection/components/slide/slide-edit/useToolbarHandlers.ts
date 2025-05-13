@@ -19,12 +19,15 @@ export const ToolbarHandlers = (
   title: fabric.Textbox,
   content: fabric.Textbox,
   slideId: string,
-  onUpdate?: (data: { slideElements: SlideElementPayload[] }) => void,
+  onUpdate?: (data: {
+    title?: string;
+    content?: string;
+    slideElements: SlideElementPayload[];
+  }) => void,
   initialSlideElements: SlideElementPayload[] = [],
   currentTitle: string = '', // Pass current title
   currentContent: string = '' // Pass current content
 ) => {
-
   console.log('slideId', slideId);
   const updateTextboxElement = debounce((textbox: fabric.Textbox) => {
     const slideElementId = textbox.get('slideElementId');
@@ -1013,8 +1016,9 @@ export const ToolbarHandlers = (
   let textboxAddTimeout: NodeJS.Timeout | null = null;
 
   const debouncedAddTextbox = (e: CustomEvent<{ slideId?: string }>) => {
-    console.log('eeeeeeeeeeeeee: ', e.detail.slideId);
-    if (e.detail.slideId.slideId && e.detail.slideId.slideId !== slideId) {
+    const eventSlideId = e.detail.slideId;
+    console.log('eventSlideId: ', eventSlideId);
+    if (eventSlideId && eventSlideId !== slideId) {
       console.log(
         `Bỏ qua fabric:add-textbox vì slideId không khớp: ${e.detail.slideId} !== ${slideId}`
       );
