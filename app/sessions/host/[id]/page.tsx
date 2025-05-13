@@ -182,18 +182,29 @@ export default function HostSessionPage() {
     sessionWsRef.current = sessionWs;
 
     sessionWs.onParticipantsUpdateHandler((updatedParticipants) => {
-      const participantsData = updatedParticipants.map((p: any) => ({
+      // Đảm bảo updatedParticipants luôn là một mảng, ngay cả khi rỗng
+      const participantsArray = Array.isArray(updatedParticipants)
+        ? updatedParticipants
+        : [];
+
+      const participantsData = participantsArray.map((p: any) => ({
         guestName: p.displayName || 'Unknown',
         guestAvatar:
           p.displayAvatar || 'https://api.dicebear.com/9.x/pixel-art/svg',
         userId: p.user?.userId || null,
       }));
+
+      console.log(
+        `Đã nhận cập nhật participants: ${participantsData.length} người tham gia`
+      );
+
+      // Cập nhật state bất kể mảng rỗng hay không
       setParticipants(participantsData);
 
       // Kiểm tra xem host đã join chưa nếu chọn tham gia
       if (
         willParticipate &&
-        updatedParticipants.some((p) => p.displayName === participantName)
+        participantsArray.some((p) => p.displayName === participantName)
       ) {
         setHasJoined(true);
       }
@@ -228,9 +239,7 @@ export default function HostSessionPage() {
         setError('Failed to connect to session');
       });
 
-    return () => {
-      // Không làm gì ở đây để giữ ws sống
-    };
+    return () => {};
   }, [
     sessionCode,
     sessionId,
@@ -951,7 +960,7 @@ export default function HostSessionPage() {
               whileHover={{ scale: 1.05 }}
               transition={{ type: 'spring', stiffness: 400 }}
             >
-              <span >PIN code:</span>
+              <span>PIN code:</span>
               <motion.div
                 animate={{
                   rotate: [0, 10, -10, 0],

@@ -1638,9 +1638,6 @@ export class SessionWebSocket {
 
   public getParticipantsEventCount(): number {
     // Chỉ đọc và trả về giá trị bộ đếm hiện tại, KHÔNG reset
-    console.log(
-      `[WebSocket] Đọc bộ đếm sự kiện participants: ${this.participantsEventCount}/${this.totalParticipantsCount}`
-    );
     return this.participantsEventCount;
   }
 
