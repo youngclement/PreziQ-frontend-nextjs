@@ -315,18 +315,6 @@ export default function HostActivities({
           `[SLIDE] Đặt lại trạng thái canShowRanking = false cho activity mới: ${activity.activityId}`
         );
 
-        // Nếu activity mới là INFO_SLIDE, tắt countdown vì không cần đếm ngược cho slides
-        if (activity.activityType === 'INFO_SLIDE') {
-          console.log(
-            `[SLIDE] Nhận activity mới là slide: ${activity.activityId}, tắt countdown`
-          );
-          setShowCountdown(false);
-        } else {
-          console.log(
-            `[SLIDE] Nhận activity mới KHÔNG phải là slide: ${activity.activityId}, loại: ${activity.activityType}`
-          );
-        }
-
         // Cập nhật số đếm trên UI dựa trên giá trị từ WebSocket
         const participantCount = sessionWs.getParticipantsEventCount();
         console.log(
@@ -339,10 +327,30 @@ export default function HostActivities({
           `[SLIDE] Chuyển sang activity mới: ${activity.activityId}, loại: ${activity.activityType}, reset bộ đếm participants events`
         );
 
+        // Đặt trạng thái về showing_current khi nhận activity mới
+        setActivityTransitionState('showing_current');
+        console.log(
+          `[SLIDE] Đặt trạng thái về showing_current khi nhận activity mới`
+        );
+
+        // Kiểm tra nếu activity mới không phải là INFO_SLIDE, bật countdown
+        // Điều này đảm bảo countdown được hiển thị khi chuyển từ slide sang quiz
+        if (activity.activityType !== 'INFO_SLIDE') {
+          console.log(
+            `[SLIDE] Nhận activity mới KHÔNG phải là slide: ${activity.activityId}, loại: ${activity.activityType}, bật countdown`
+          );
+          setShowCountdown(true);
+        } else {
+          console.log(
+            `[SLIDE] Nhận activity mới là slide: ${activity.activityId}, tắt countdown`
+          );
+          setShowCountdown(false);
+        }
+
         setCurrentActivity(activity);
         setNoMoreActivities(false);
         console.log(
-          `[SLIDE] Đã cập nhật state với activity mới: ${activity.activityId}, activityTransitionState = ${activityTransitionState}`
+          `[SLIDE] Đã cập nhật state với activity mới: ${activity.activityId}, activityTransitionState = showing_current`
         );
       }
     });
@@ -490,24 +498,27 @@ export default function HostActivities({
       return;
     }
 
-    // Xử lý trường hợp đặc biệt: nếu đang ở trạng thái transitioning_to_next và activity hiện tại là slide
-    // Vẫn cho phép gọi proceedToNextActivity để chuyển sang activity tiếp theo
+    // Xử lý trường hợp đặc biệt: nếu đang ở trạng thái transitioning_to_next
+    // Trả về trạng thái showing_current để có thể tiếp tục hoạt động bình thường
     if (activityTransitionState === 'transitioning_to_next') {
       console.log(
-        `[SLIDE] Phát hiện trạng thái đặc biệt: transitioning_to_next với activity hiện tại ${currentActivity?.activityId}`
+        `[SLIDE] Phát hiện kẹt ở trạng thái transitioning_to_next, đặt lại trạng thái về showing_current`
       );
 
+      // Đặt lại trạng thái về showing_current để tránh bị kẹt
+      setActivityTransitionState('showing_current');
+
+      // Nếu activity hiện tại là INFO_SLIDE, chuyển thẳng sang tiếp theo
       if (isInfoSlideActivity(currentActivity?.activityType)) {
         console.log(
-          `[SLIDE] Cho phép chuyển tiếp từ slide sang activity tiếp theo mặc dù đang ở trạng thái transitioning_to_next`
+          `[SLIDE] Chuyển thẳng sang activity tiếp theo vì đây là slide: ${currentActivity?.activityId}`
         );
-        proceedToNextActivity();
-        return;
-      } else {
-        console.log(
-          `[SLIDE] Đang ở trạng thái transitioning_to_next với non-slide activity, đợi hoàn thành`
-        );
+        // Đặt timeout ngắn để đảm bảo trạng thái đã được cập nhật
+        setTimeout(() => {
+          proceedToNextActivity();
+        }, 50);
       }
+      return;
     }
   };
 
@@ -559,6 +570,9 @@ export default function HostActivities({
       console.error(`[SLIDE] Lỗi khi chuyển đến hoạt động tiếp theo:`, err);
       setError('Không thể chuyển hoạt động');
       console.error('Error moving to SLIDE:', err);
+
+      // Đặt lại trạng thái về showing_current khi có lỗi để tránh bị kẹt
+      setActivityTransitionState('showing_current');
     } finally {
       console.log(
         `[SLIDE] Kết thúc quá trình chuyển đổi activity, đặt isLoading = false`
@@ -582,6 +596,7 @@ export default function HostActivities({
       `[SLIDE] Countdown hoàn thành, ẩn countdown và đặt trạng thái showing_current`
     );
     setShowCountdown(false);
+    // Đảm bảo trạng thái luôn được cập nhật khi countdown hoàn thành
     setActivityTransitionState('showing_current');
   };
 
