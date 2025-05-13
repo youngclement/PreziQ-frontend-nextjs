@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
@@ -52,6 +52,7 @@ interface QuizActivityProps {
   sessionCode?: string;
   onAnswerSubmit?: (selectedAnswers: string[]) => void;
   sessionWebSocket?: SessionWebSocket;
+  isParticipating?: boolean;
 }
 
 export default function QuizCheckboxViewer({
@@ -60,6 +61,7 @@ export default function QuizCheckboxViewer({
   sessionCode,
   onAnswerSubmit,
   sessionWebSocket,
+  isParticipating = true,
 }: QuizActivityProps) {
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
   const [timeLeft, setTimeLeft] = useState(
@@ -83,16 +85,79 @@ export default function QuizCheckboxViewer({
     setError(null);
   }, [activity.activityId]);
 
-  useEffect(() => {
-    if (timeLeft > 0 && !isSubmitted) {
-      const timer = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(timer);
-    } else if (timeLeft === 0 && !isSubmitted) {
-      handleSubmit();
+  // Xử lý submit đáp án dùng useCallback
+  const handleSubmit = useCallback(async () => {
+    if (isSubmitting || isSubmitted || selectedAnswers.length === 0) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      if (onAnswerSubmit) {
+        onAnswerSubmit(selectedAnswers);
+      }
+
+      if (sessionWebSocket) {
+        if (!sessionCode && !sessionId) {
+          console.warn('[QuizCheckbox] Thiếu cả sessionCode và sessionId');
+          setError('Không thể xác định phiên. Vui lòng thử lại.');
+          return;
+        }
+
+        const payload = {
+          sessionCode: sessionCode,
+          activityId: activity.activityId,
+          answerContent: selectedAnswers.join(','),
+        };
+
+        console.log('[QuizCheckbox] Gửi câu trả lời:', payload);
+        await sessionWebSocket.submitActivity(payload);
+        console.log('[QuizCheckbox] Đã gửi câu trả lời thành công');
+      } else {
+        console.warn('[QuizCheckbox] Không có kết nối WebSocket');
+      }
+
+      setIsSubmitted(true);
+      setShowResults(isQuizEnded);
+    } catch (err) {
+      console.error('[QuizCheckbox] Lỗi khi gửi câu trả lời:', err);
+      setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [timeLeft, isSubmitted]);
+  }, [
+    isSubmitting,
+    isSubmitted,
+    selectedAnswers,
+    onAnswerSubmit,
+    sessionWebSocket,
+    sessionCode,
+    sessionId,
+    activity.activityId,
+    isQuizEnded,
+  ]);
+
+  // Cải thiện logic đếm ngược thời gian và tự động submit
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      // Khi hết thời gian, đánh dấu quiz kết thúc
+      setIsQuizEnded(true);
+
+      // Tự động submit câu trả lời nếu đã chọn nhưng chưa gửi
+      if (selectedAnswers.length > 0 && !isSubmitted && !isSubmitting) {
+        console.log('[QuizCheckbox] Tự động gửi đáp án khi hết thời gian');
+        handleSubmit();
+      }
+
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, selectedAnswers, isSubmitted, isSubmitting, handleSubmit]);
 
   useEffect(() => {
     if (
@@ -150,53 +215,6 @@ export default function QuizCheckboxViewer({
         return [...prev, answerId];
       }
     });
-  };
-
-  const handleSubmit = async () => {
-    if (
-      isSubmitting ||
-      isSubmitted ||
-      selectedAnswers.length === 0 ||
-      isQuizEnded
-    )
-      return;
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      if (onAnswerSubmit) {
-        onAnswerSubmit(selectedAnswers);
-      }
-
-      if (sessionWebSocket) {
-        if (!sessionCode && !sessionId) {
-          console.warn('[QuizCheckbox] Thiếu cả sessionCode và sessionId');
-          setError('Không thể xác định phiên. Vui lòng thử lại.');
-          return;
-        }
-
-        const payload = {
-          sessionCode: sessionCode,
-          activityId: activity.activityId,
-          answerContent: selectedAnswers.join(','),
-        };
-
-        console.log('[QuizCheckbox] Gửi câu trả lời:', payload);
-        await sessionWebSocket.submitActivity(payload);
-        console.log('[QuizCheckbox] Đã gửi câu trả lời thành công');
-      } else {
-        console.warn('[QuizCheckbox] Không có kết nối WebSocket');
-      }
-
-      setIsSubmitted(true);
-      setShowResults(isQuizEnded);
-    } catch (err) {
-      console.error('[QuizCheckbox] Lỗi khi gửi câu trả lời:', err);
-      setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const formatTime = (seconds: number) => {
@@ -533,20 +551,22 @@ export default function QuizCheckboxViewer({
                             disabled={isSubmitted}
                           />
 
-                          {isQuizEnded && isCorrect && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              transition={{
-                                type: 'spring',
-                                stiffness: 300,
-                                damping: 20,
-                              }}
-                              className='flex-shrink-0 bg-[#aef359] text-[#0e1c26] rounded-full p-1.5 shadow-lg'
-                            >
-                              <CheckCircle className='h-4 w-4' />
-                            </motion.div>
-                          )}
+                          {/* Hiển thị biểu tượng đáp án đúng khi quiz kết thúc hoặc host hiển thị đáp án */}
+                          {(isQuizEnded || activity.hostShowAnswer) &&
+                            answer.isCorrect && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{
+                                  type: 'spring',
+                                  stiffness: 300,
+                                  damping: 20,
+                                }}
+                                className='flex-shrink-0 bg-[#aef359] text-[#0e1c26] rounded-full p-1.5 shadow-lg'
+                              >
+                                <CheckCircle className='h-4 w-4' />
+                              </motion.div>
+                            )}
                         </div>
                       </div>
                     </div>
@@ -556,25 +576,30 @@ export default function QuizCheckboxViewer({
           </motion.div>
 
           {/* Submit Button */}
-          {!isSubmitted && !isQuizEnded && !activity.hostShowAnswer && (
+          {selectedAnswers.length > 0 && !isSubmitted && isParticipating && (
             <motion.div
-              className='mt-6'
-              initial={{ opacity: 0, y: 20 }}
+              className='mt-6 w-full'
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.2 }}
             >
               <Button
-                className={`w-full py-5 text-lg font-semibold rounded-xl flex items-center justify-center gap-2 ${
-                  selectedAnswers.length === 0 || isSubmitting
-                    ? 'bg-[#0e2838]/50 text-white/50 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-[#0e1c26] hover:from-[#9ee348] hover:to-[#d3e87c] hover:shadow-lg hover:shadow-[#aef359]/20'
-                }`}
-                disabled={selectedAnswers.length === 0 || isSubmitting}
+                className='w-full px-8 py-6 text-lg font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                disabled={isSubmitting || timeLeft <= 0}
                 onClick={handleSubmit}
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className='h-5 w-5 animate-spin' />
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 1,
+                        ease: 'linear',
+                      }}
+                    >
+                      <Loader2 className='h-5 w-5' />
+                    </motion.div>
                     <span>Đang gửi...</span>
                   </>
                 ) : (
@@ -606,28 +631,11 @@ export default function QuizCheckboxViewer({
             </motion.div>
           )}
 
-          {/* Show Time Expired Message when quiz has ended but not submitted */}
-          {isQuizEnded && !isSubmitted && (
-            <motion.div
-              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className='flex items-center gap-2 mb-2 text-amber-400'>
-                <Clock className='h-5 w-5' />
-                <span className='font-semibold'>Hết thời gian!</span>
-              </div>
-              <p className='text-white/70'>
-                Thời gian trả lời đã hết hoặc tất cả người tham gia đã trả lời.
-                Bạn không thể nộp câu trả lời nữa.
-              </p>
-            </motion.div>
-          )}
-
           {/* Results */}
           <AnimatePresence>
-            {(isSubmitted && isQuizEnded) || activity.hostShowAnswer ? (
+            {(isSubmitted && isQuizEnded) ||
+            activity.hostShowAnswer ||
+            isQuizEnded ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
@@ -640,6 +648,22 @@ export default function QuizCheckboxViewer({
                       <CheckCircle className='h-5 w-5' />
                       <span className='font-semibold'>Đáp án chính xác:</span>
                     </div>
+                    <div className='space-y-2'>
+                      {activity.quiz.quizAnswers
+                        .filter((answer) => answer.isCorrect)
+                        .map((answer, idx) => (
+                          <div
+                            key={idx}
+                            className='flex items-center gap-2 text-white/80'
+                          >
+                            <div className='h-2 w-2 rounded-full bg-[#aef359]'></div>
+                            <p>{answer.answerText}</p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ) : isQuizEnded && !isSubmitted ? (
+                  <div>
                     <div className='space-y-2'>
                       {activity.quiz.quizAnswers
                         .filter((answer) => answer.isCorrect)

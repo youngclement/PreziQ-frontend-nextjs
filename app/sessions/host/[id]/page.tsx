@@ -830,7 +830,7 @@ export default function HostSessionPage() {
         ))}
       </div>
 
-      {/* Container chính với độ trong suốt cao hơn */}
+      {/* Container chính */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -951,7 +951,7 @@ export default function HostSessionPage() {
               whileHover={{ scale: 1.05 }}
               transition={{ type: 'spring', stiffness: 400 }}
             >
-              <span>PIN code:</span>
+              <span >PIN code:</span>
               <motion.div
                 animate={{
                   rotate: [0, 10, -10, 0],
@@ -995,7 +995,7 @@ export default function HostSessionPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className='relative text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
+                    className='relative mb-4 pb-4 text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
                     style={{ letterSpacing: '0.05em' }}
                   >
                     {sessionCode ? formatSessionCode(sessionCode) : 'XXXXXX'}
@@ -1006,10 +1006,10 @@ export default function HostSessionPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className='relative text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
+                    className='relative mb-4 pb-4 text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
                     style={{ letterSpacing: '0.05em' }}
                   >
-                    ⬤⬤⬤⬤⬤⬤
+                    XXXXXX
                   </motion.h1>
                 )}
               </AnimatePresence>

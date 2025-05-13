@@ -15,6 +15,7 @@ import {
   ArrowRight,
   AlertCircle,
   Users,
+  Loader2,
 } from 'lucide-react';
 
 interface QuizAnswer {
@@ -49,6 +50,7 @@ interface QuizActivityProps {
   sessionCode?: string;
   onAnswerSubmit?: (answerId: string) => void;
   sessionWebSocket?: SessionWebSocket;
+  isParticipating?: boolean;
 }
 
 const QuizButtonViewer: React.FC<QuizActivityProps> = ({
@@ -57,6 +59,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
   sessionCode,
   onAnswerSubmit,
   sessionWebSocket,
+  isParticipating = true,
 }) => {
   // Thêm ref để lưu activityId trước đó
   const prevActivityIdRef = useRef<string | null>(null);
@@ -64,7 +67,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
   const lastResponseUpdateRef = useRef<number>(0);
 
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState<number>(
+  const [timeLeft, setTimeLeft] = useState<number>(
     activity.quiz.timeLimitSeconds
   );
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -86,6 +89,12 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
   // Thêm state để theo dõi khi nào quiz đã kết thúc
   const [isQuizEnded, setIsQuizEnded] = useState(false);
 
+  // Thêm state để kiểm tra xem câu trả lời có đúng không
+  const [isCorrect, setIsCorrect] = useState(false);
+
+  // Thêm state để kiểm tra xem có đang submit hay không
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Thiết lập activityId hiện tại khi component mount
   useEffect(() => {
     if (activity?.activityId) {
@@ -96,10 +105,10 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
   // Thêm useEffect để kiểm tra khi nào quiz kết thúc
   useEffect(() => {
     // Quiz kết thúc khi hết thời gian hoặc tất cả đã trả lời
-    if (timeRemaining <= 0 || responseRatio.percentage >= 100) {
+    if (timeLeft <= 0 || responseRatio.percentage >= 100) {
       setIsQuizEnded(true);
     }
-  }, [timeRemaining, responseRatio.percentage]);
+  }, [timeLeft, responseRatio.percentage]);
 
   // Thêm useEffect để phát hiện thay đổi activity và reset state
   useEffect(() => {
@@ -114,11 +123,13 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
 
       // Reset các state về giá trị ban đầu
       setSelectedAnswerId(null);
-      setTimeRemaining(activity.quiz.timeLimitSeconds);
+      setTimeLeft(activity.quiz.timeLimitSeconds);
       setIsSubmitted(false);
       setSubmitError(null);
       setHasRecentUpdate(false);
       setIsQuizEnded(false);
+      setIsCorrect(false);
+      setIsSubmitting(false);
 
       // Khởi tạo giá trị ban đầu cho responseRatio từ WebSocket
       if (sessionWebSocket) {
@@ -142,52 +153,6 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
       prevActivityIdRef.current = currentActivityId;
     }
   }, [activity, sessionWebSocket]);
-
-  // // Thêm useEffect để lắng nghe sự kiện next activity từ WebSocket
-  // useEffect(() => {
-  //   if (!sessionWebSocket) return;
-
-  //   console.log('[QuizButtonViewer] Đăng ký lắng nghe sự kiện chuyển activity');
-
-  //   // Đăng ký lắng nghe sự kiện chuyển activity
-  //   const unsubscribe = sessionWebSocket.onNextActivityHandler(
-  //     (newActivity) => {
-  //       if (newActivity && newActivity.activityId !== activity.activityId) {
-  //         console.log(
-  //           '[QuizButtonViewer] Nhận thông báo activity mới từ WebSocket:',
-  //           newActivity.activityId
-  //         );
-
-  //         // Set trực tiếp hasRecentUpdate để đảm bảo reset UI
-  //         setHasRecentUpdate(false);
-
-  //         // Nếu không có key trong component cha, chúng ta vẫn cần reset mọi thứ ở đây
-  //         if (prevActivityIdRef.current === newActivity.activityId) {
-  //           console.log(
-  //             '[QuizButtonViewer] Dường như không có thay đổi component, reset thủ công'
-  //           );
-
-  //           // Reset các state về giá trị ban đầu
-  //           setSelectedAnswerId(null);
-  //           setIsSubmitted(false);
-  //           setSubmitError(null);
-
-  //           // Reset thời gian nếu có
-  //           if (newActivity.quiz?.timeLimitSeconds) {
-  //             setTimeRemaining(newActivity.quiz.timeLimitSeconds);
-  //           }
-  //         }
-  //       }
-  //     }
-  //   );
-
-  //   return () => {
-  //     console.log(
-  //       '[QuizButtonViewer] Hủy đăng ký lắng nghe sự kiện chuyển activity'
-  //     );
-  //     // Ở đây không cần thực sự unsubscribe vì WebSocket sẽ tự xử lý
-  //   };
-  // }, [sessionWebSocket, activity.activityId]);
 
   // Thêm useEffect để cập nhật số người đã trả lời
   useEffect(() => {
@@ -259,28 +224,36 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
     };
   }, [sessionWebSocket, activity.activityId, isQuizEnded, responseRatio]);
 
+  // Đếm ngược thời gian
   useEffect(() => {
-    if (timeRemaining <= 0) {
+    if (timeLeft <= 0) {
       // Khi hết thời gian, đánh dấu quiz kết thúc
       setIsQuizEnded(true);
+
+      // Tự động submit câu trả lời nếu đã chọn nhưng chưa gửi
+      if (selectedAnswerId && !isSubmitted && !isSubmitting) {
+        console.log('[QuizButtonViewer] Tự động gửi đáp án khi hết thời gian');
+        handleSubmit();
+      }
+
       return;
     }
 
     const timer = setInterval(() => {
-      setTimeRemaining((prev) => Math.max(0, prev - 1));
+      setTimeLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemaining]); // Chỉ phụ thuộc vào timeRemaining
+  }, [timeLeft, selectedAnswerId, isSubmitted, isSubmitting]); // Cập nhật dependencies
 
   // Thêm useEffect để cảnh báo khi sắp hết thời gian
   useEffect(() => {
     // Hiển thị cảnh báo khi còn ít thời gian (10 giây)
-    if (timeRemaining === 10) {
+    if (timeLeft === 10) {
       console.log('[QuizButtonViewer] Sắp hết thời gian!');
       // Thêm logic cảnh báo khác nếu cần
     }
-  }, [timeRemaining]);
+  }, [timeLeft]);
 
   const handleSelectAnswer = (answerId: string) => {
     if (isSubmitted || isQuizEnded) return; // Không cho phép chọn nếu đã nộp hoặc hết giờ
@@ -288,37 +261,39 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!selectedAnswerId || isSubmitted || isQuizEnded) return; // Không cho phép nộp nếu hết giờ
-    setIsSubmitted(true);
-    setSubmitError(null);
+    if (!selectedAnswerId || isSubmitted || isSubmitting) return;
 
-    if (onAnswerSubmit) {
-      onAnswerSubmit(selectedAnswerId);
-    }
+    setIsSubmitting(true);
 
-    if (sessionWebSocket) {
-      try {
-        if (!sessionCode && !sessionId) {
-          console.warn('Thiếu cả sessionCode và sessionId');
-          setSubmitError('Không thể xác định phiên. Vui lòng thử lại.');
-          return;
-        }
-
-        const payload = {
+    try {
+      if (sessionWebSocket && sessionCode && activity) {
+        await sessionWebSocket.submitActivity({
           sessionCode: sessionCode,
           activityId: activity.activityId,
           answerContent: selectedAnswerId,
-        };
+        });
 
-        await sessionWebSocket.submitActivity(payload);
+        console.log('[QuizButtonViewer] Đã gửi câu trả lời:', selectedAnswerId);
+        setIsSubmitted(true);
 
-        console.log('Đã gửi câu trả lời:', payload);
-      } catch (error) {
-        console.error('Lỗi khi gửi câu trả lời:', error);
-        setSubmitError('Không thể gửi câu trả lời. Vui lòng thử lại.');
+        // Kiểm tra xem câu trả lời có đúng không
+        const correctAnswer = activity.quiz.quizAnswers.find(
+          (a) => a.isCorrect
+        );
+
+        if (correctAnswer) {
+          setIsCorrect(selectedAnswerId === correctAnswer.quizAnswerId);
+        }
+
+        if (onAnswerSubmit) {
+          onAnswerSubmit(selectedAnswerId);
+        }
       }
-    } else {
-      console.warn('Không có kết nối WebSocket');
+    } catch (error) {
+      console.error('[QuizButtonViewer] Lỗi khi gửi đáp án:', error);
+      setSubmitError('Không thể gửi câu trả lời. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -332,7 +307,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
 
   const progressPercentage = Math.max(
     0,
-    Math.min(100, (timeRemaining / activity.quiz.timeLimitSeconds) * 100)
+    Math.min(100, (timeLeft / activity.quiz.timeLimitSeconds) * 100)
   );
 
   // Thêm các hàm helper từ question-preview
@@ -480,10 +455,10 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
               <motion.div
                 className='flex items-center gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
                 animate={{
-                  opacity: timeRemaining < 10 ? [0.7, 1] : 1,
-                  scale: timeRemaining < 10 ? [1, 1.05, 1] : 1,
+                  opacity: timeLeft < 10 ? [0.7, 1] : 1,
+                  scale: timeLeft < 10 ? [1, 1.05, 1] : 1,
                   backgroundColor:
-                    timeRemaining < 10
+                    timeLeft < 10
                       ? [
                           'rgba(14, 40, 56, 0.8)',
                           'rgba(220, 38, 38, 0.3)',
@@ -492,22 +467,20 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                       : undefined,
                 }}
                 transition={{
-                  duration: timeRemaining < 10 ? 0.5 : 0,
-                  repeat: timeRemaining < 10 ? Infinity : 0,
+                  duration: timeLeft < 10 ? 0.5 : 0,
+                  repeat: timeLeft < 10 ? Infinity : 0,
                   repeatType: 'reverse',
                 }}
               >
                 <Clock
                   className={`h-3.5 w-3.5 ${
-                    timeRemaining < 10 ? 'text-red-400' : 'text-[#aef359]'
+                    timeLeft < 10 ? 'text-red-400' : 'text-[#aef359]'
                   }`}
                 />
                 <span
-                  className={
-                    timeRemaining < 10 ? 'text-red-300' : 'text-white/90'
-                  }
+                  className={timeLeft < 10 ? 'text-red-300' : 'text-white/90'}
                 >
-                  {formatTime(timeRemaining)}
+                  {formatTime(timeLeft)}
                 </span>
               </motion.div>
             </div>
@@ -619,21 +592,22 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                           {answer.answerText}
                         </span>
 
-                        {/* Chỉ hiển thị biểu tượng đáp án đúng khi quiz kết thúc */}
-                        {isQuizEnded && isCorrect && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{
-                              type: 'spring',
-                              stiffness: 300,
-                              damping: 20,
-                            }}
-                            className='flex-shrink-0 bg-[#aef359] text-[#0e1c26] rounded-full p-1.5 shadow-lg'
-                          >
-                            <CheckCircle className='h-4 w-4' />
-                          </motion.div>
-                        )}
+                        {/* Hiển thị biểu tượng đáp án đúng khi quiz kết thúc hoặc host hiển thị đáp án */}
+                        {(isQuizEnded || activity.hostShowAnswer) &&
+                          answer.isCorrect && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{
+                                type: 'spring',
+                                stiffness: 300,
+                                damping: 20,
+                              }}
+                              className='flex-shrink-0 bg-[#aef359] text-[#0e1c26] rounded-full p-1.5 shadow-lg'
+                            >
+                              <CheckCircle className='h-4 w-4' />
+                            </motion.div>
+                          )}
                       </div>
                     </div>
                   </motion.div>
@@ -642,26 +616,40 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
           </motion.div>
 
           {/* Submit Button */}
-          {!isSubmitted && !isQuizEnded && !activity.hostShowAnswer && (
+          {selectedAnswerId && !isSubmitted && isParticipating && (
             <motion.div
-              className='mt-6'
-              initial={{ opacity: 0, y: 20 }}
+              className='mt-6 w-full'
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.2 }}
             >
               <Button
-                className={`w-full py-5 text-lg font-semibold rounded-xl ${
-                  !selectedAnswerId
-                    ? 'bg-[#0e2838]/50 text-white/50 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-[#0e1c26] hover:from-[#9ee348] hover:to-[#d3e87c] hover:shadow-lg hover:shadow-[#aef359]/20'
-                }`}
-                disabled={!selectedAnswerId}
+                className='w-full px-8 py-6 text-lg font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                disabled={isSubmitting || timeLeft <= 0}
                 onClick={handleSubmit}
               >
-                <span className='flex items-center gap-2'>
-                  Gửi câu trả lời
-                  <ArrowRight className='h-5 w-5' />
-                </span>
+                {isSubmitting ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 1,
+                        ease: 'linear',
+                      }}
+                    >
+                      <Loader2 className='h-5 w-5' />
+                    </motion.div>
+                    <span>Đang gửi...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className='flex items-center gap-2'>
+                      Gửi câu trả lời
+                    </span>
+                    <ArrowRight className='h-5 w-5' />
+                  </>
+                )}
               </Button>
             </motion.div>
           )}
@@ -685,7 +673,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
             </motion.div>
           )}
 
-          {/* Show Time Expired Message when quiz has ended but not submitted */}
+          {/* Show Time Expired Message when quiz has ended but not submitted
           {isQuizEnded && !isSubmitted && (
             <motion.div
               className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
@@ -702,7 +690,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                 Bạn không thể nộp câu trả lời nữa.
               </p>
             </motion.div>
-          )}
+          )} */}
 
           {/* Error Message */}
           <AnimatePresence>
@@ -747,9 +735,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
 
                 {isSubmitted && isQuizEnded && (
                   <div className='flex items-center gap-2 mb-2'>
-                    {activity.quiz.quizAnswers.find(
-                      (a) => a.quizAnswerId === selectedAnswerId
-                    )?.isCorrect ? (
+                    {isCorrect ? (
                       <div className='flex items-center gap-2 text-[#aef359]'>
                         <CheckCircle className='h-5 w-5' />
                         <span className='font-semibold'>Chính xác!</span>

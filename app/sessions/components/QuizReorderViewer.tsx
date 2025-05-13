@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,13 +38,15 @@ interface QuizReorderViewerProps {
   };
   sessionId: string;
   sessionWebSocket: SessionWebSocket;
+  isParticipating?: boolean;
 }
 
-export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
+export const QuizReorderViewer = ({
   activity,
   sessionId,
   sessionWebSocket,
-}) => {
+  isParticipating = true,
+}: QuizReorderViewerProps) => {
   const [items, setItems] = useState<Item[]>([]);
   const [timeLeft, setTimeLeft] = useState(activity.quiz.timeLimitSeconds);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -54,6 +56,7 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
   const [answeredCount, setAnsweredCount] = useState(0);
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [isQuizEnded, setIsQuizEnded] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   // Đáp án đúng
   const correctOrder = useMemo(() => {
@@ -86,8 +89,25 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
       (answeredCount > 0 && answeredCount >= totalParticipants)
     ) {
       setIsQuizEnded(true);
+
+      // Nếu đã submit rồi và quiz vừa mới kết thúc, hiển thị kết quả
+      if (isSubmitted && !isQuizEnded) {
+        // Đã submit và vừa kết thúc, hiển thị kết quả
+        const userOrder = items.map((i) => i.id);
+        const correct =
+          JSON.stringify(userOrder) === JSON.stringify(correctOrder);
+        setIsCorrect(correct);
+      }
     }
-  }, [timeLeft, answeredCount, totalParticipants]);
+  }, [
+    timeLeft,
+    answeredCount,
+    totalParticipants,
+    isSubmitted,
+    isQuizEnded,
+    items,
+    correctOrder,
+  ]);
 
   // Cập nhật participants từ WebSocket
   useEffect(() => {
@@ -126,7 +146,8 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
     };
   }, [sessionWebSocket]);
 
-  const handleSubmit = async () => {
+  // Chuyển handleSubmit thành useCallback
+  const handleSubmit = useCallback(async () => {
     if (isSubmitting || isAnswered || isQuizEnded) return;
     setIsSubmitting(true);
     setError(null);
@@ -144,12 +165,44 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
         JSON.stringify(userOrder) === JSON.stringify(correctOrder);
       setIsCorrect(correct);
       setIsAnswered(true);
+      setIsSubmitted(true);
     } catch (e) {
       setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [
+    isSubmitting,
+    isAnswered,
+    isQuizEnded,
+    items,
+    sessionWebSocket,
+    sessionId,
+    activity.activityId,
+    correctOrder,
+  ]);
+
+  // Cải thiện logic đếm ngược và tự động submit khi hết thời gian
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      // Khi hết thời gian, đánh dấu quiz kết thúc
+      setIsQuizEnded(true);
+
+      // Tự động submit câu trả lời nếu đã sắp xếp nhưng chưa gửi
+      if (items.length > 0 && !isSubmitted && !isSubmitting) {
+        console.log('[QuizReorderViewer] Tự động gửi đáp án khi hết thời gian');
+        handleSubmit();
+      }
+
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, items, isSubmitted, isSubmitting, handleSubmit]);
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -313,119 +366,6 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {isAnswered && isQuizEnded && isCorrect !== null && (
-              <motion.div
-                className='mb-4 md:mb-6 p-3 md:p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              >
-                <div className='flex items-center gap-2 mb-2 md:mb-3'>
-                  {isCorrect ? (
-                    <div className='flex items-center gap-2 text-[#aef359]'>
-                      <CheckCircle className='h-4 w-4 md:h-5 md:w-5' />
-                      <span className='text-sm md:text-base font-semibold'>
-                        Thứ tự đã đúng!
-                      </span>
-                    </div>
-                  ) : (
-                    <div className='flex items-center gap-2 text-red-400'>
-                      <XCircle className='h-4 w-4 md:h-5 md:w-5' />
-                      <span className='text-sm md:text-base font-semibold'>
-                        Thứ tự chưa đúng
-                      </span>
-                    </div>
-                  )}
-                </div>
-                {!isCorrect && (
-                  <div className='mt-2 md:mt-3'>
-                    <p className='text-xs md:text-sm text-white/70 mb-2 md:mb-3'>
-                      Thứ tự đúng là:
-                    </p>
-                    <div className='mt-1 md:mt-2 space-y-1 md:space-y-2'>
-                      {correctOrder.map((id, idx) => {
-                        const answer = activity.quiz.quizAnswers.find(
-                          (a) => a.quizAnswerId === id
-                        )!;
-                        return (
-                          <motion.div
-                            key={id}
-                            className='p-2 md:p-3 bg-gradient-to-r from-[#0f2231]/80 to-[#102942]/80 backdrop-blur-sm rounded-xl border border-[#aef359]/20 shadow-md relative overflow-hidden'
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.1 }}
-                          >
-                            <div className='absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#aef359]/30 to-transparent' />
-                            <div className='flex items-center gap-2'>
-                              <div className='h-5 w-5 md:h-6 md:w-6 rounded-full bg-[#aef359]/20 flex items-center justify-center'>
-                                <span className='text-[10px] md:text-xs text-[#aef359]'>
-                                  {idx + 1}
-                                </span>
-                              </div>
-                              <span className='text-sm md:text-base text-white/90'>
-                                {answer.answerText}
-                              </span>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Hiển thị đáp án khi host yêu cầu */}
-          <AnimatePresence>
-            {activity.hostShowAnswer && !isAnswered && (
-              <motion.div
-                className='mb-4 md:mb-6 p-3 md:p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              >
-                <div className='flex items-center gap-2 mb-2 md:mb-3'>
-                  <div className='flex items-center gap-2 text-[#aef359]'>
-                    <CheckCircle className='h-4 w-4 md:h-5 md:w-5' />
-                    <span className='text-sm md:text-base font-semibold'>
-                      Thứ tự đúng:
-                    </span>
-                  </div>
-                </div>
-                <div className='mt-1 md:mt-2 space-y-1 md:space-y-2'>
-                  {correctOrder.map((id, idx) => {
-                    const answer = activity.quiz.quizAnswers.find(
-                      (a) => a.quizAnswerId === id
-                    )!;
-                    return (
-                      <motion.div
-                        key={id}
-                        className='p-2 md:p-3 bg-gradient-to-r from-[#0f2231]/80 to-[#102942]/80 backdrop-blur-sm rounded-xl border border-[#aef359]/20 shadow-md relative overflow-hidden'
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                      >
-                        <div className='absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#aef359]/30 to-transparent' />
-                        <div className='flex items-center gap-2'>
-                          <div className='h-5 w-5 md:h-6 md:w-6 rounded-full bg-[#aef359]/20 flex items-center justify-center'>
-                            <span className='text-[10px] md:text-xs text-[#aef359]'>
-                              {idx + 1}
-                            </span>
-                          </div>
-                          <span className='text-sm md:text-base text-white/90'>
-                            {answer.answerText}
-                          </span>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* Thông báo đã gửi câu trả lời khi submit nhưng chưa kết thúc quiz */}
           {isAnswered && !isQuizEnded && (
             <motion.div
@@ -445,24 +385,105 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
             </motion.div>
           )}
 
-          {/* Show Time Expired Message when quiz has ended but not submitted */}
-          {isQuizEnded && !isAnswered && (
-            <motion.div
-              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className='flex items-center gap-2 mb-2 text-amber-400'>
-                <Clock className='h-5 w-5' />
-                <span className='font-semibold'>Hết thời gian!</span>
-              </div>
-              <p className='text-white/70'>
-                Thời gian trả lời đã hết hoặc tất cả người tham gia đã trả lời.
-                Bạn không thể nộp câu trả lời nữa.
-              </p>
-            </motion.div>
-          )}
+          {/* Results */}
+          <AnimatePresence>
+            {(isSubmitted && isQuizEnded) ||
+            activity.hostShowAnswer ||
+            isQuizEnded ? (
+              <motion.div
+                className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              >
+                {activity.hostShowAnswer && !isSubmitted ? (
+                  <div>
+                    <div className='flex items-center gap-2 mb-3 text-[#aef359]'>
+                      <CheckCircle className='h-5 w-5' />
+                      <span className='font-semibold'>Đáp án chính xác:</span>
+                    </div>
+                    <div className='space-y-2'>
+                      {correctOrder.map((id, idx) => {
+                        const answer = activity.quiz.quizAnswers.find(
+                          (a) => a.quizAnswerId === id
+                        );
+                        return (
+                          <div
+                            key={idx}
+                            className='flex items-start gap-2 text-white/80'
+                          >
+                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#aef359]'></div>
+                            <p>{answer?.answerText || ''}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : isQuizEnded && !isSubmitted ? (
+                  <div>
+                    <div className='mt-3'>
+                      <p className='font-medium text-white/90 mb-2'>
+                        Thứ tự đúng:
+                      </p>
+                      {correctOrder.map((id, idx) => {
+                        const answer = activity.quiz.quizAnswers.find(
+                          (a) => a.quizAnswerId === id
+                        );
+                        return (
+                          <div
+                            key={idx}
+                            className='flex items-start gap-2 text-white/80'
+                          >
+                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#aef359]'></div>
+                            <p>{answer?.answerText || ''}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className='flex items-center gap-2 mb-3'>
+                      <div className='flex items-center gap-2'>
+                        {isCorrect ? (
+                          <CheckCircle className='h-5 w-5 text-[#aef359]' />
+                        ) : (
+                          <XCircle className='h-5 w-5 text-red-400' />
+                        )}
+                        <span
+                          className={`font-semibold ${
+                            isCorrect ? 'text-[#aef359]' : 'text-red-400'
+                          }`}
+                        >
+                          {isCorrect ? 'Đúng' : 'Sai'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className='space-y-2'>
+                      <p className='font-medium text-white/90 mb-2'>
+                        Thứ tự đúng:
+                      </p>
+                      {correctOrder.map((id, idx) => {
+                        const answer = activity.quiz.quizAnswers.find(
+                          (a) => a.quizAnswerId === id
+                        );
+                        return (
+                          <div
+                            key={idx}
+                            className='flex items-start gap-2 text-white/80'
+                          >
+                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#aef359]'></div>
+                            <p>{answer?.answerText || ''}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
           <motion.div
             className='space-y-3 md:space-y-4'
@@ -479,45 +500,42 @@ export const QuizReorderViewer: React.FC<QuizReorderViewerProps> = ({
               />
             </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <Button
-                onClick={handleSubmit}
-                disabled={
-                  isSubmitting ||
-                  isAnswered ||
-                  isQuizEnded ||
-                  activity.hostShowAnswer
-                }
-                className={`w-full py-3 md:py-5 text-base md:text-lg font-semibold rounded-xl flex items-center justify-center gap-2 ${
-                  isSubmitting ||
-                  isAnswered ||
-                  isQuizEnded ||
-                  activity.hostShowAnswer
-                    ? 'bg-[#0e2838]/50 text-white/50 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-[#0e1c26] hover:from-[#9ee348] hover:to-[#d3e87c] hover:shadow-lg hover:shadow-[#aef359]/20'
-                }`}
+            {/* Submit Button */}
+            {!isSubmitted && isParticipating && (
+              <motion.div
+                className='mt-6 w-full'
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className='h-4 w-4 md:h-5 md:w-5 animate-spin' />
-                    <span>Đang gửi...</span>
-                  </>
-                ) : isAnswered ? (
-                  'Đã gửi câu trả lời'
-                ) : isQuizEnded ? (
-                  'Hết thời gian'
-                ) : (
-                  <>
-                    <span>Gửi câu trả lời</span>
-                    <ArrowRight className='h-4 w-4 md:h-5 md:w-5' />
-                  </>
-                )}
-              </Button>
-            </motion.div>
+                <Button
+                  className='w-full px-8 py-6 text-lg font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                  disabled={isSubmitting || timeLeft <= 0}
+                  onClick={handleSubmit}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1,
+                          ease: 'linear',
+                        }}
+                      >
+                        <Loader2 className='h-5 w-5' />
+                      </motion.div>
+                      <span>Đang gửi...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Gửi câu trả lời</span>
+                      <ArrowRight className='h-5 w-5' />
+                    </>
+                  )}
+                </Button>
+              </motion.div>
+            )}
           </motion.div>
         </div>
       </Card>

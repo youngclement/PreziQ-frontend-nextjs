@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -37,12 +37,14 @@ interface QuizTypeAnswerViewerProps {
   };
   sessionId: string;
   sessionWebSocket: SessionWebSocket;
+  isParticipating?: boolean;
 }
 
 export default function QuizTypeAnswerViewer({
   activity,
   sessionId,
   sessionWebSocket,
+  isParticipating = true,
 }: QuizTypeAnswerViewerProps) {
   const [answer, setAnswer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,16 +56,71 @@ export default function QuizTypeAnswerViewer({
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [isQuizEnded, setIsQuizEnded] = useState(false);
 
-  useEffect(() => {
-    if (timeLeft > 0 && !isAnswered) {
-      const timer = setInterval(() => {
-        setTimeLeft((prev) => Math.max(0, prev - 1));
-      }, 1000);
-      return () => clearInterval(timer);
+  const handleSubmit = useCallback(async () => {
+    if (!answer.trim() || isSubmitting || isAnswered || isQuizEnded) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await sessionWebSocket.submitActivity({
+        sessionId,
+        activityId: activity.activityId,
+        answerContent: answer.trim(),
+      });
+      setIsAnswered(true);
+
+      // Kiểm tra câu trả lời
+      const correctAnswer = activity.quiz.quizAnswers.find((a) => a.isCorrect);
+      if (correctAnswer) {
+        const isAnswerCorrect =
+          answer.trim().toLowerCase() ===
+          correctAnswer.answerText.toLowerCase();
+        setIsCorrect(isAnswerCorrect);
+      }
+    } catch (err) {
+      setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
+      console.error('Error submitting answer:', err);
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [timeLeft, isAnswered]);
+  }, [
+    answer,
+    isSubmitting,
+    isAnswered,
+    isQuizEnded,
+    sessionWebSocket,
+    sessionId,
+    activity.activityId,
+    activity.quiz.quizAnswers,
+  ]);
 
   useEffect(() => {
+    if (timeLeft <= 0) {
+      // Khi hết thời gian, đánh dấu quiz kết thúc
+      setIsQuizEnded(true);
+
+      // Tự động submit câu trả lời nếu đã nhập nhưng chưa gửi
+      if (answer.trim() && !isAnswered && !isSubmitting) {
+        console.log(
+          '[QuizTypeAnswerViewer] Tự động gửi đáp án khi hết thời gian'
+        );
+        handleSubmit();
+      }
+
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, answer, isAnswered, isSubmitting, handleSubmit]);
+
+  // Thêm useEffect mới để kiểm tra khi nào quiz kết thúc
+  useEffect(() => {
+    // Quiz kết thúc khi hết thời gian hoặc tất cả đã trả lời
     if (
       timeLeft <= 0 ||
       (answeredCount > 0 && answeredCount >= totalParticipants)
@@ -107,36 +164,6 @@ export default function QuizTypeAnswerViewer({
       clearInterval(intervalId);
     };
   }, [sessionWebSocket]);
-
-  const handleSubmit = async () => {
-    if (!answer.trim() || isSubmitting || isAnswered || isQuizEnded) return;
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      await sessionWebSocket.submitActivity({
-        sessionId,
-        activityId: activity.activityId,
-        answerContent: answer.trim(),
-      });
-      setIsAnswered(true);
-
-      // Kiểm tra câu trả lời
-      const correctAnswer = activity.quiz.quizAnswers.find((a) => a.isCorrect);
-      if (correctAnswer) {
-        const isAnswerCorrect =
-          answer.trim().toLowerCase() ===
-          correctAnswer.answerText.toLowerCase();
-        setIsCorrect(isAnswerCorrect);
-      }
-    } catch (err) {
-      setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
-      console.error('Error submitting answer:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -342,24 +369,30 @@ export default function QuizTypeAnswerViewer({
             </div>
 
             {/* Submit Button */}
-            {!isAnswered && !isQuizEnded && !activity.hostShowAnswer && (
+            {answer.trim() && !isAnswered && isParticipating && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                className='mt-6 w-full'
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
+                transition={{ delay: 0.2 }}
               >
                 <Button
+                  className='w-full px-8 py-6 text-lg font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                  disabled={isSubmitting || timeLeft <= 0}
                   onClick={handleSubmit}
-                  disabled={!answer.trim() || isSubmitting}
-                  className={`w-full py-5 text-lg font-semibold rounded-xl flex items-center justify-center gap-2 ${
-                    !answer.trim() || isSubmitting
-                      ? 'bg-[#0e2838]/50 text-white/50 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-[#0e1c26] hover:from-[#9ee348] hover:to-[#d3e87c] hover:shadow-lg hover:shadow-[#aef359]/20'
-                  }`}
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className='h-5 w-5 animate-spin' />
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1,
+                          ease: 'linear',
+                        }}
+                      >
+                        <Loader2 className='h-5 w-5' />
+                      </motion.div>
                       <span>Đang gửi...</span>
                     </>
                   ) : (
@@ -391,28 +424,11 @@ export default function QuizTypeAnswerViewer({
               </motion.div>
             )}
 
-            {/* Show Time Expired Message when quiz has ended but not submitted */}
-            {isQuizEnded && !isAnswered && (
-              <motion.div
-                className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className='flex items-center gap-2 mb-2 text-amber-400'>
-                  <Clock className='h-5 w-5' />
-                  <span className='font-semibold'>Hết thời gian!</span>
-                </div>
-                <p className='text-white/70'>
-                  Thời gian trả lời đã hết hoặc tất cả người tham gia đã trả
-                  lời. Bạn không thể nộp câu trả lời nữa.
-                </p>
-              </motion.div>
-            )}
-
             {/* Results */}
             <AnimatePresence>
-              {(isAnswered && isQuizEnded) || activity.hostShowAnswer ? (
+              {(isQuizEnded && isAnswered) ||
+              activity.hostShowAnswer ||
+              isQuizEnded ? (
                 <motion.div
                   className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                   initial={{ opacity: 0, y: 20 }}
@@ -423,46 +439,81 @@ export default function QuizTypeAnswerViewer({
                     <div>
                       <div className='flex items-center gap-2 mb-3 text-[#aef359]'>
                         <CheckCircle className='h-5 w-5' />
-                        <span className='font-semibold'>Đáp án đúng:</span>
+                        <span className='font-semibold'>Đáp án chính xác:</span>
                       </div>
-                      <div className='flex items-center gap-2 text-white/80'>
-                        <div className='h-2 w-2 rounded-full bg-[#aef359]'></div>
-                        <p>
-                          {
-                            activity.quiz.quizAnswers.find((a) => a.isCorrect)
-                              ?.answerText
-                          }
-                        </p>
+                      <div className='space-y-2'>
+                        {activity.quiz.quizAnswers
+                          .filter((answer) => answer.isCorrect)
+                          .map((answer, idx) => (
+                            <div
+                              key={idx}
+                              className='flex items-center gap-2 text-white/80'
+                            >
+                              <div className='h-2 w-2 rounded-full bg-[#aef359]'></div>
+                              <p className='font-medium text-[#aef359]'>
+                                {answer.answerText}
+                              </p>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  ) : isQuizEnded && !isAnswered ? (
+                    <div>
+                      <div className='flex items-center gap-2 mb-3 text-[#aef359]'>
+                        <CheckCircle className='h-5 w-5' />
+                        <span className='font-semibold'>Đáp án chính xác:</span>
+                      </div>
+                      <div className='space-y-2'>
+                        {activity.quiz.quizAnswers
+                          .filter((answer) => answer.isCorrect)
+                          .map((answer, idx) => (
+                            <div
+                              key={idx}
+                              className='flex items-center gap-2 text-white/80'
+                            >
+                              <div className='h-2 w-2 rounded-full bg-[#aef359]'></div>
+                              <p className='font-medium text-[#aef359]'>
+                                {answer.answerText}
+                              </p>
+                            </div>
+                          ))}
                       </div>
                     </div>
                   ) : (
                     <>
                       <div className='flex items-center gap-2 mb-3'>
-                        {isCorrect ? (
-                          <div className='flex items-center gap-2 text-[#aef359]'>
-                            <CheckCircle className='h-5 w-5' />
-                            <span className='font-semibold'>
-                              Câu trả lời đúng!
-                            </span>
-                          </div>
-                        ) : (
-                          <div className='flex items-center gap-2 text-red-400'>
-                            <XCircle className='h-5 w-5' />
-                            <span className='font-semibold'>
-                              Câu trả lời chưa đúng
-                            </span>
-                          </div>
-                        )}
+                        <div className='flex items-center gap-2'>
+                          {isCorrect ? (
+                            <CheckCircle className='h-5 w-5 text-[#aef359]' />
+                          ) : (
+                            <XCircle className='h-5 w-5 text-red-400' />
+                          )}
+                          <span
+                            className={`font-semibold ${
+                              isCorrect ? 'text-[#aef359]' : 'text-red-400'
+                            }`}
+                          >
+                            {isCorrect ? 'Đúng' : 'Sai'}
+                          </span>
+                        </div>
                       </div>
-                      <p className='text-white/70'>
-                        Đáp án đúng là:{' '}
-                        <span className='font-medium text-[#aef359]'>
-                          {
-                            activity.quiz.quizAnswers.find((a) => a.isCorrect)
-                              ?.answerText
-                          }
-                        </span>
-                      </p>
+                      <div className='space-y-2'>
+                        <div className='flex items-start gap-2'>
+                          <p className='font-medium text-white/70'>
+                            Bạn đã trả lời:{' '}
+                          </p>
+                          <p className='font-medium text-white/90'>{answer}</p>
+                        </div>
+                        <div className='flex items-start gap-2'>
+                          <p className='font-medium text-white/70'>
+                            Đáp án đúng:{' '}
+                          </p>
+                          <p className='font-medium text-[#aef359]'>
+                            {activity.quiz.quizAnswers.find((a) => a.isCorrect)
+                              ?.answerText || ''}
+                          </p>
+                        </div>
+                      </div>
                     </>
                   )}
                 </motion.div>

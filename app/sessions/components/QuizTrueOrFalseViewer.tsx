@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -37,12 +37,14 @@ interface QuizTrueOrFalseViewerProps {
   };
   sessionId: string;
   sessionWebSocket: SessionWebSocket;
+  isParticipating?: boolean;
 }
 
 export default function QuizTrueOrFalseViewer({
   activity,
   sessionId,
   sessionWebSocket,
+  isParticipating = true,
 }: QuizTrueOrFalseViewerProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,14 +56,67 @@ export default function QuizTrueOrFalseViewer({
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [isQuizEnded, setIsQuizEnded] = useState(false);
 
-  useEffect(() => {
-    if (timeLeft > 0 && !isAnswered) {
-      const timer = setInterval(() => {
-        setTimeLeft((prev) => Math.max(0, prev - 1));
-      }, 1000);
-      return () => clearInterval(timer);
+  // Chuyển handleSubmit thành useCallback để có thể sử dụng trong dependency array
+  const handleSubmit = useCallback(async () => {
+    if (!selectedAnswer || isAnswered || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await sessionWebSocket.submitActivity({
+        sessionId,
+        activityId: activity.activityId,
+        answerContent: selectedAnswer,
+      });
+
+      // Kiểm tra câu trả lời
+      const correctAnswer = activity.quiz.quizAnswers.find((a) => a.isCorrect);
+      if (correctAnswer) {
+        const isAnswerCorrect = selectedAnswer === correctAnswer.quizAnswerId;
+        setIsCorrect(isAnswerCorrect);
+      }
+
+      setIsAnswered(true);
+      console.log('[QuizTrueOrFalseViewer] Đã gửi câu trả lời thành công');
+    } catch (err) {
+      setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
+      console.error('[QuizTrueOrFalseViewer] Lỗi khi gửi câu trả lời:', err);
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [timeLeft, isAnswered]);
+  }, [
+    selectedAnswer,
+    isAnswered,
+    isSubmitting,
+    sessionWebSocket,
+    sessionId,
+    activity.activityId,
+  ]);
+
+  // Đếm ngược thời gian và tự động submit khi hết thời gian
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      // Khi hết thời gian, đánh dấu quiz kết thúc
+      setIsQuizEnded(true);
+
+      // Tự động submit câu trả lời nếu đã chọn nhưng chưa gửi
+      if (selectedAnswer !== null && !isAnswered && !isSubmitting) {
+        console.log(
+          '[QuizTrueOrFalseViewer] Tự động gửi đáp án khi hết thời gian'
+        );
+        handleSubmit();
+      }
+
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, selectedAnswer, isAnswered, isSubmitting, handleSubmit]);
 
   useEffect(() => {
     if (
@@ -107,35 +162,6 @@ export default function QuizTrueOrFalseViewer({
       clearInterval(intervalId);
     };
   }, [sessionWebSocket]);
-
-  const handleSubmit = async () => {
-    if (!selectedAnswer || isAnswered || isQuizEnded) return;
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      await sessionWebSocket.submitActivity({
-        sessionId,
-        activityId: activity.activityId,
-        answerContent: selectedAnswer,
-      });
-
-      // Kiểm tra câu trả lời
-      const correctAnswer = activity.quiz.quizAnswers.find((a) => a.isCorrect);
-      if (correctAnswer) {
-        const isAnswerCorrect = selectedAnswer === correctAnswer.quizAnswerId;
-        setIsCorrect(isAnswerCorrect);
-      }
-
-      setIsAnswered(true);
-    } catch (err) {
-      setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
-      console.error('Error submitting answer:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -417,20 +443,22 @@ export default function QuizTrueOrFalseViewer({
                         {optionStyle.text}
                       </span>
 
-                      {isQuizEnded && isCorrect && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{
-                            type: 'spring',
-                            stiffness: 300,
-                            damping: 20,
-                          }}
-                          className='flex-shrink-0 bg-[#aef359] text-[#0e1c26] rounded-full p-1.5 shadow-lg'
-                        >
-                          <CheckCircle className='h-5 w-5' />
-                        </motion.div>
-                      )}
+                      {/* Hiển thị biểu tượng đáp án đúng khi quiz kết thúc hoặc host hiển thị đáp án */}
+                      {(isQuizEnded || activity.hostShowAnswer) &&
+                        answer.isCorrect && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{
+                              type: 'spring',
+                              stiffness: 300,
+                              damping: 20,
+                            }}
+                            className='flex-shrink-0 bg-[#aef359] text-[#0e1c26] rounded-full p-1.5 shadow-lg'
+                          >
+                            <CheckCircle className='h-5 w-5' />
+                          </motion.div>
+                        )}
                     </div>
                   </div>
                 </motion.div>
@@ -439,24 +467,30 @@ export default function QuizTrueOrFalseViewer({
           </motion.div>
 
           {/* Submit Button */}
-          {!isAnswered && !isQuizEnded && !activity.hostShowAnswer && (
+          {selectedAnswer !== null && !isAnswered && isParticipating && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              className='mt-6 w-full'
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.2 }}
             >
               <Button
-                className={`w-full py-5 text-lg font-semibold rounded-xl flex items-center justify-center gap-2 ${
-                  !selectedAnswer || isSubmitting
-                    ? 'bg-[#0e2838]/50 text-white/50 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-[#0e1c26] hover:from-[#9ee348] hover:to-[#d3e87c] hover:shadow-lg hover:shadow-[#aef359]/20'
-                }`}
-                disabled={!selectedAnswer || isSubmitting}
+                className='w-full px-8 py-6 text-lg font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                disabled={isSubmitting || timeLeft <= 0}
                 onClick={handleSubmit}
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className='h-5 w-5 animate-spin' />
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 1,
+                        ease: 'linear',
+                      }}
+                    >
+                      <Loader2 className='h-5 w-5' />
+                    </motion.div>
                     <span>Đang gửi...</span>
                   </>
                 ) : (
@@ -488,7 +522,7 @@ export default function QuizTrueOrFalseViewer({
             </motion.div>
           )}
 
-          {/* Show Time Expired Message when quiz has ended but not submitted */}
+          {/* Show Time Expired Message when quiz has ended but not submitted
           {isQuizEnded && !isAnswered && (
             <motion.div
               className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
@@ -505,18 +539,21 @@ export default function QuizTrueOrFalseViewer({
                 Bạn không thể nộp câu trả lời nữa.
               </p>
             </motion.div>
-          )}
+          )} */}
 
           {/* Results */}
           <AnimatePresence>
-            {(isAnswered && isQuizEnded) || activity.hostShowAnswer ? (
+            {(isAnswered && isQuizEnded) ||
+            isQuizEnded ||
+            activity.hostShowAnswer ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               >
-                {activity.hostShowAnswer && !isAnswered ? (
+                {/* Khi host yêu cầu hiển thị đáp án hoặc quiz đã kết thúc nhưng người dùng chưa trả lời */}
+                {(activity.hostShowAnswer || isQuizEnded) && !isAnswered ? (
                   <div>
                     <div className='flex items-center gap-2 mb-3 text-[#aef359]'>
                       <CheckCircle className='h-5 w-5' />
@@ -532,8 +569,8 @@ export default function QuizTrueOrFalseViewer({
                       </p>
                     </div>
                   </div>
-                ) : (
-                  <>
+                ) : isAnswered && isQuizEnded ? (
+                  <div>
                     <div className='flex items-center gap-2 mb-3'>
                       {isCorrect ? (
                         <div className='flex items-center gap-2 text-[#aef359]'>
@@ -553,13 +590,15 @@ export default function QuizTrueOrFalseViewer({
                     </div>
                     <p className='text-white/70'>
                       Đáp án đúng là:{' '}
-                      {
-                        activity.quiz.quizAnswers.find((a) => a.isCorrect)
-                          ?.answerText
-                      }
+                      <span className='font-medium text-[#aef359]'>
+                        {
+                          activity.quiz.quizAnswers.find((a) => a.isCorrect)
+                            ?.answerText
+                        }
+                      </span>
                     </p>
-                  </>
-                )}
+                  </div>
+                ) : null}
               </motion.div>
             ) : null}
           </AnimatePresence>

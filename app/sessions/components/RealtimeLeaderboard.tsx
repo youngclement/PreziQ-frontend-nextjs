@@ -193,8 +193,8 @@ export default function RealtimeLeaderboard({
   };
 
   return (
-    <Card className='bg-[#0e1c26]/80 backdrop-blur-md shadow-xl border border-white/5 text-white'>
-      <div className='p-4'>
+    <Card className='bg-[#0e1c26]/80 backdrop-blur-md shadow-xl border border-white/5 text-white h-full'>
+      <div className='p-4 h-full flex flex-col'>
         <div className='flex items-center justify-between mb-4'>
           <h3 className='text-lg font-semibold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text flex items-center gap-2'>
             <TrendingUp className='w-5 h-5 text-[#aef359]' />
@@ -214,7 +214,7 @@ export default function RealtimeLeaderboard({
           </motion.span>
         </div>
 
-        <div className='space-y-2 relative'>
+        <div className='space-y-2 relative flex-grow overflow-auto'>
           {participants.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -227,7 +227,7 @@ export default function RealtimeLeaderboard({
               </p>
             </motion.div>
           ) : (
-            <div className='max-h-[60vh] overflow-y-auto pr-2 py-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20'>
+            <div className='max-h-[calc(100%-50px)] overflow-y-auto pr-2 py-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20'>
               <AnimatePresence initial={false}>
                 {participants.map((participant) => {
                   const rankChange = getRankChange(
@@ -252,14 +252,14 @@ export default function RealtimeLeaderboard({
                         damping: 30,
                         mass: 1,
                       }}
-                      className={`flex items-center p-3 rounded-lg mb-2 backdrop-blur-sm ${
+                      className={`flex items-center p-2 rounded-lg mb-2 backdrop-blur-sm ${
                         isCurrentUser
                           ? 'bg-[#aef359]/10 border border-[#aef359]/30'
                           : 'bg-[#0e2838]/50 border border-white/5 hover:bg-[#0e2838]/70'
                       }`}
                     >
                       {/* Thứ hạng */}
-                      <div className='w-8 text-center font-bold'>
+                      <div className='w-6 text-center font-bold'>
                         <div
                           className={`inline-flex items-center justify-center`}
                         >
@@ -294,17 +294,17 @@ export default function RealtimeLeaderboard({
                             />
                           )}
 
-                          <Avatar className='h-8 w-8 rounded-full border border-white/20'>
+                          <Avatar className='h-7 w-7 rounded-full border border-white/20'>
                             <AvatarImage src={participant.displayAvatar} />
-                            <AvatarFallback className='bg-[#0e2838] text-[#aef359]'>
-                              {participant.displayName.substring(0, 2)}
+                            <AvatarFallback className='bg-[#0e2838] text-[#aef359] text-xs'>
+                              {participant.displayName.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
                         </motion.div>
 
                         <div className='flex-1 min-w-0'>
                           <div className='flex items-center'>
-                            <p className='font-medium text-sm truncate text-white/90'>
+                            <p className='font-medium text-xs truncate text-white/90'>
                               {participant.displayName}
                             </p>
                             {isRankUp && (
@@ -334,9 +334,9 @@ export default function RealtimeLeaderboard({
                         key={`score-${participant.displayName}-${participant.realtimeScore}`}
                         initial={{ scale: 1.5 }}
                         animate={{ scale: 1 }}
-                        className='min-w-[50px] text-right'
+                        className='min-w-[40px] text-right'
                       >
-                        <div className='font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text'>
+                        <div className='font-bold text-sm bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text'>
                           {participant.realtimeScore}
                         </div>
                       </motion.div>

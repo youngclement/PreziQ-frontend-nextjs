@@ -79,7 +79,7 @@ export default function HostActivities({
   const [showCountdown, setShowCountdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFullscreenMode, setIsFullscreenMode] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [participantsEventCount, setParticipantsEventCount] = useState(0);
   const lastActivityIdRef = useRef<string | null>(null);
 
@@ -708,6 +708,7 @@ export default function HostActivities({
             activity={currentActivity}
             sessionCode={sessionCode}
             sessionWebSocket={sessionWs}
+            isParticipating={isParticipating}
           />
         );
       case 'QUIZ_CHECKBOXES':
@@ -717,6 +718,7 @@ export default function HostActivities({
             activity={currentActivity}
             sessionId={sessionId}
             sessionWebSocket={sessionWs}
+            isParticipating={isParticipating}
           />
         );
       case 'QUIZ_TYPE_ANSWER':
@@ -726,6 +728,7 @@ export default function HostActivities({
             activity={currentActivity}
             sessionId={sessionId}
             sessionWebSocket={sessionWs}
+            isParticipating={isParticipating}
           />
         );
       case 'QUIZ_REORDER':
@@ -735,6 +738,7 @@ export default function HostActivities({
             activity={currentActivity}
             sessionId={sessionId}
             sessionWebSocket={sessionWs}
+            isParticipating={isParticipating}
           />
         );
       case 'QUIZ_TRUE_OR_FALSE':
@@ -744,6 +748,7 @@ export default function HostActivities({
             activity={currentActivity}
             sessionId={sessionId}
             sessionWebSocket={sessionWs}
+            isParticipating={isParticipating}
           />
         );
       default:
@@ -764,7 +769,7 @@ export default function HostActivities({
           {/* Overlay trong suốt để ngăn tương tác nhưng không che nội dung */}
           <div className='absolute inset-0 z-10 pointer-events-auto'></div>
 
-          {/* Nút hiển thị đáp án cho host không tham gia */}
+          {/* Nút hiển thị đáp án cho host không tham gia
           {isQuizActivity(currentActivity?.activityType) && (
             <div className='absolute top-4 right-4 z-20'>
               <Button
@@ -781,7 +786,7 @@ export default function HostActivities({
                 Hiển thị đáp án
               </Button>
             </div>
-          )}
+          )} */}
 
           {/* Hiển thị nội dung activity bình thường nhưng vô hiệu hóa tương tác */}
           <div className='pointer-events-none'>{renderRegularActivity()}</div>
@@ -1240,9 +1245,9 @@ export default function HostActivities({
         <div className='relative flex' ref={quizContainerRef}>
           {/* Main quiz content - adjusts width based on sidebar */}
           <div
-            className={`flex-grow transition-all duration-300 ease-in-out ${
-              isSidebarCollapsed ? 'w-full' : 'w-2/3 md:w-3/4'
-            }`}
+            className={`flex-grow transition-all duration-300 ease-in-out 
+              ${isSidebarCollapsed ? 'w-full' : 'md:w-3/4 lg:w-4/5 w-full'}
+            `}
           >
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1359,17 +1364,22 @@ export default function HostActivities({
 
           {/* Leaderboard sidebar */}
           <motion.div
-            className={`fixed right-0 top-0 bottom-0 bg-[#0e1c26]/95 backdrop-blur-md z-40 shadow-xl border-l border-white/10
-              overflow-hidden ${
-                isFullscreenMode ? 'top-0 h-full' : 'top-[73px]'
-              }`}
+            className={`backdrop-blur-md shadow-xl border-l border-white/10 
+              overflow-hidden flex-shrink-0 transition-all duration-300 ease-in-out
+              ${isFullscreenMode ? 'h-screen' : ''}
+              ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}
+              md:static md:bg-[#0e1c26]/95 md:h-full
+              ${
+                !isSidebarCollapsed && !isFullscreenMode
+                  ? 'fixed inset-y-0 right-0 z-50 bg-[#0e1c26]/95 max-w-[90vw] md:max-w-none md:relative md:z-10 md:w-1/4 lg:w-1/5'
+                  : ''
+              }
+            `}
             initial={false}
             animate={{
               width: isSidebarCollapsed ? '0' : 'min(85vw, 350px)',
               opacity: isSidebarCollapsed ? 0 : 1,
-              x: isSidebarCollapsed ? '100%' : '0%',
             }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           >
             <div className='p-4 h-full flex flex-col'>
               <div className='mb-4 flex items-center justify-between'>

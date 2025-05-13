@@ -415,34 +415,7 @@ export default function HostRankingChange({
           <h2 className='text-xl md:text-2xl font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text'>
             Bảng xếp hạng {hasPreviousData ? 'sau hoạt động' : 'hiện tại'}
           </h2>
-          <div className='flex items-center gap-2'>
-            {/* Debug Button - Chỉ hiển thị trong môi trường phát triển */}
-            <Button
-              onClick={toggleDebugMode}
-              size='sm'
-              variant='ghost'
-              className='text-xs rounded-full p-2 hover:bg-white/10'
-            >
-              <span
-                className={`px-1 py-0.5 rounded ${
-                  debugMode
-                    ? 'bg-green-500/20 text-green-300'
-                    : 'bg-gray-500/20 text-gray-300'
-                }`}
-              >
-                Debug
-              </span>
-            </Button>
-            <Button
-              onClick={handleRefreshData}
-              size='sm'
-              variant='ghost'
-              className='text-xs rounded-full p-2 hover:bg-white/10'
-            >
-              <span className='px-1 py-0.5 rounded bg-blue-500/20 text-blue-300'>
-                Tải lại
-              </span>
-            </Button>
+          <div className='flex items-center gap-2'>         
             <Button
               onClick={onClose}
               variant='ghost'

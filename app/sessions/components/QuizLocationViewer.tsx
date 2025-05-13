@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -63,6 +63,7 @@ interface QuizActivityProps {
   sessionCode?: string;
   onAnswerSubmit?: (locationData: LocationData) => void;
   sessionWebSocket?: SessionWebSocket;
+  isParticipating?: boolean;
 }
 
 export default function QuizLocationViewer({
@@ -71,6 +72,7 @@ export default function QuizLocationViewer({
   sessionCode,
   onAnswerSubmit,
   sessionWebSocket,
+  isParticipating = true,
 }: QuizActivityProps) {
   const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(
     null
@@ -96,16 +98,88 @@ export default function QuizLocationViewer({
     setError(null);
   }, [activity.activityId]);
 
-  useEffect(() => {
-    if (timeLeft > 0 && !isSubmitted) {
-      const timer = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(timer);
-    } else if (timeLeft === 0 && !isSubmitted) {
-      handleSubmit();
+  // Chuyển handleSubmit thành useCallback
+  const handleSubmit = useCallback(async () => {
+    if (isSubmitting || isSubmitted || !selectedLocation || isQuizEnded) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      if (onAnswerSubmit) {
+        onAnswerSubmit(selectedLocation);
+      }
+
+      if (sessionWebSocket) {
+        if (!sessionCode && !sessionId) {
+          console.warn('[QuizLocation] Thiếu cả sessionCode và sessionId');
+          setError('Không thể xác định phiên. Vui lòng thử lại.');
+          return;
+        }
+
+        const payload = {
+          sessionCode: sessionCode,
+          activityId: activity.activityId,
+          type: 'LOCATION',
+          locationAnswers: [
+            {
+              latitude: selectedLocation.lat,
+              longitude: selectedLocation.lng,
+              radius: selectedLocation.radius,
+            },
+          ],
+        };
+
+        console.log('[QuizLocation] Gửi câu trả lời:', payload);
+        await sessionWebSocket.submitActivity(payload);
+        console.log('[QuizLocation] Đã gửi câu trả lời thành công');
+      } else {
+        console.warn('[QuizLocation] Không có kết nối WebSocket');
+      }
+
+      setIsSubmitted(true);
+      setShowResults(isQuizEnded);
+    } catch (err) {
+      console.error('[QuizLocation] Lỗi khi gửi câu trả lời:', err);
+      setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [timeLeft, isSubmitted]);
+  }, [
+    isSubmitting,
+    isSubmitted,
+    selectedLocation,
+    isQuizEnded,
+    onAnswerSubmit,
+    sessionWebSocket,
+    sessionCode,
+    sessionId,
+    activity.activityId,
+  ]);
+
+  // Cải thiện logic đếm ngược và tự động submit
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      // Khi hết thời gian, đánh dấu quiz kết thúc
+      setIsQuizEnded(true);
+
+      // Tự động submit câu trả lời nếu đã chọn nhưng chưa gửi
+      if (selectedLocation && !isSubmitted && !isSubmitting) {
+        console.log(
+          '[QuizLocationViewer] Tự động gửi đáp án khi hết thời gian'
+        );
+        handleSubmit();
+      }
+
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, selectedLocation, isSubmitted, isSubmitting, handleSubmit]);
 
   useEffect(() => {
     if (
@@ -158,54 +232,6 @@ export default function QuizLocationViewer({
     const location = activity.quiz.quizAnswers[0]?.locationData;
     if (location) {
       setSelectedLocation(location);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (isSubmitting || isSubmitted || !selectedLocation || isQuizEnded) return;
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      if (onAnswerSubmit) {
-        onAnswerSubmit(selectedLocation);
-      }
-
-      if (sessionWebSocket) {
-        if (!sessionCode && !sessionId) {
-          console.warn('[QuizLocation] Thiếu cả sessionCode và sessionId');
-          setError('Không thể xác định phiên. Vui lòng thử lại.');
-          return;
-        }
-
-        const payload = {
-          sessionCode: sessionCode,
-          activityId: activity.activityId,
-          type: 'LOCATION',
-          locationAnswers: [
-            {
-              latitude: selectedLocation.lat,
-              longitude: selectedLocation.lng,
-              radius: selectedLocation.radius,
-            },
-          ],
-        };
-
-        console.log('[QuizLocation] Gửi câu trả lời:', payload);
-        await sessionWebSocket.submitActivity(payload);
-        console.log('[QuizLocation] Đã gửi câu trả lời thành công');
-      } else {
-        console.warn('[QuizLocation] Không có kết nối WebSocket');
-      }
-
-      setIsSubmitted(true);
-      setShowResults(isQuizEnded);
-    } catch (err) {
-      console.error('[QuizLocation] Lỗi khi gửi câu trả lời:', err);
-      setError('Không thể gửi câu trả lời. Vui lòng thử lại.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -455,36 +481,44 @@ export default function QuizLocationViewer({
           </motion.div>
 
           {/* Submit Button */}
-          {!isSubmitted && !isQuizEnded && !activity.hostShowAnswer && (
-            <motion.div
-              className='mt-6'
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <Button
-                className={`w-full py-5 text-lg font-semibold rounded-xl flex items-center justify-center gap-2 ${
-                  !selectedLocation || isSubmitting
-                    ? 'bg-[#0e2838]/50 text-white/50 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-[#0e1c26] hover:from-[#9ee348] hover:to-[#d3e87c] hover:shadow-lg hover:shadow-[#aef359]/20'
-                }`}
-                disabled={!selectedLocation || isSubmitting}
-                onClick={handleSubmit}
+          {!isSubmitted &&
+            !isQuizEnded &&
+            isParticipating &&
+            selectedLocation && (
+              <motion.div
+                className='mt-6 w-full'
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className='h-5 w-5 animate-spin' />
-                    <span>Đang gửi...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Gửi câu trả lời</span>
-                    <ArrowRight className='h-5 w-5' />
-                  </>
-                )}
-              </Button>
-            </motion.div>
-          )}
+                <Button
+                  className='w-full px-8 py-6 text-lg font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                  disabled={isSubmitting || timeLeft <= 0}
+                  onClick={handleSubmit}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1,
+                          ease: 'linear',
+                        }}
+                      >
+                        <Loader2 className='h-5 w-5' />
+                      </motion.div>
+                      <span>Đang gửi...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Gửi câu trả lời</span>
+                      <ArrowRight className='h-5 w-5' />
+                    </>
+                  )}
+                </Button>
+              </motion.div>
+            )}
 
           {/* Thông báo đã gửi câu trả lời khi submit nhưng chưa kết thúc quiz */}
           {isSubmitted && !showResults && !isQuizEnded && (
@@ -505,7 +539,7 @@ export default function QuizLocationViewer({
             </motion.div>
           )}
 
-          {/* Show Time Expired Message when quiz has ended but not submitted */}
+          {/* Show Time Expired Message when quiz has ended but not submitted
           {isQuizEnded && !isSubmitted && (
             <motion.div
               className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
@@ -522,11 +556,13 @@ export default function QuizLocationViewer({
                 Bạn không thể nộp câu trả lời nữa.
               </p>
             </motion.div>
-          )}
+          )} */}
 
           {/* Results */}
           <AnimatePresence>
-            {(isSubmitted && isQuizEnded) || activity.hostShowAnswer ? (
+            {(isSubmitted && isQuizEnded) ||
+            activity.hostShowAnswer ||
+            isQuizEnded ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
@@ -537,46 +573,59 @@ export default function QuizLocationViewer({
                   <div>
                     <div className='flex items-center gap-2 mb-3 text-[#aef359]'>
                       <CheckCircle className='h-5 w-5' />
+                      <span className='font-semibold'>Đáp án chính xác:</span>
+                    </div>
+                    <div className='space-y-2'>
+                      {activity.quiz.quizAnswers
+                        .filter((answer) => answer.isCorrect)
+                        .map((answer, idx) => (
+                          <div
+                            key={idx}
+                            className='flex items-center gap-2 text-white/80'
+                          >
+                            <div className='h-2 w-2 rounded-full bg-[#aef359]'></div>
+                            <p>{answer.answerText}</p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ) : isQuizEnded && !isSubmitted ? (
+                  <div>
+                    <div className='flex items-center gap-2 mb-3 text-[#aef359]'>
+                      <CheckCircle className='h-5 w-5' />
                       <span className='font-semibold'>Vị trí chính xác:</span>
                     </div>
-                    {activity.quiz.quizAnswers[0]?.locationData && (
-                      <p className='text-white/70'>
-                        Tọa độ đúng:{' '}
-                        {activity.quiz.quizAnswers[0].locationData.lat.toFixed(
-                          6
-                        )}
-                        ,{' '}
-                        {activity.quiz.quizAnswers[0].locationData.lng.toFixed(
-                          6
-                        )}{' '}
-                        (bán kính{' '}
-                        {activity.quiz.quizAnswers[0].locationData.radius} km)
-                      </p>
-                    )}
+                    <p className='text-white/70 mb-3'>
+                      Đây là vị trí đúng được hiển thị trên bản đồ.
+                    </p>
                   </div>
                 ) : (
                   <>
                     <div className='flex items-center gap-2 mb-3'>
-                      <div className='flex items-center gap-2 text-[#aef359]'>
-                        <CheckCircle className='h-5 w-5' />
-                        <span className='font-semibold'>
-                          Điểm số: {calculateScore()}%
-                        </span>
-                      </div>
+                      <CheckCircle className='h-5 w-5 text-[#aef359]' />
+                      <span className='font-semibold text-[#aef359]'>
+                        Đã gửi câu trả lời
+                      </span>
                     </div>
-                    {selectedLocation &&
-                      activity.quiz.quizAnswers[0]?.locationData && (
+                    {selectedLocation && (
+                      <div className='space-y-2'>
                         <p className='text-white/70'>
-                          Khoảng cách từ vị trí bạn chọn đến vị trí đúng là{' '}
-                          {getDistanceFromLatLonInKm(
-                            selectedLocation.lat,
-                            selectedLocation.lng,
-                            activity.quiz.quizAnswers[0].locationData.lat,
-                            activity.quiz.quizAnswers[0].locationData.lng
-                          ).toFixed(2)}{' '}
-                          km.
+                          {calculateScore() < 50
+                            ? 'Vị trí được chọn khá xa so với vị trí đúng.'
+                            : calculateScore() < 80
+                            ? 'Vị trí được chọn khá gần với vị trí đúng.'
+                            : 'Bạn đã chọn đúng vị trí!'}
                         </p>
-                      )}
+                        <div className='mt-2'>
+                          <p className='font-medium text-white/90'>
+                            Điểm số:{' '}
+                            <span className='text-[#aef359]'>
+                              {calculateScore()}%
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </motion.div>
