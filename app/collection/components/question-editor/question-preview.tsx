@@ -106,6 +106,9 @@ import {
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { slideBackgroundManager } from '@/utils/slideBackgroundManager';
 
+// Import the useToast hook at the top of the file
+import { useToast } from "@/hooks/use-toast";
+
 interface QuestionPreviewProps {
   questions: QuizQuestion[];
   activeQuestionIndex: number;
@@ -166,7 +169,7 @@ export function QuestionPreview({
   timeLimit,
   backgroundImage,
   previewMode = true,
-  onQuestionLocationChange = () => {},
+  onQuestionLocationChange = () => { },
   onQuestionTextChange,
   onOptionChange,
   onChangeQuestion,
@@ -179,8 +182,8 @@ export function QuestionPreview({
   onUpdateActivityBackground,
   onAddQuestion,
   onDeleteActivity,
-  onAddOption = () => {},
-  onDeleteOption = () => {},
+  onAddOption = () => { },
+  onDeleteOption = () => { },
   onReorderOptions,
 }: QuestionPreviewProps) {
   const [viewMode, setViewMode] = React.useState('desktop');
@@ -230,6 +233,9 @@ export function QuestionPreview({
   // Add this state to track when we need to force re-render
   const [renderKey, setRenderKey] = useState(0);
 
+  // Add toast hook
+  const { toast } = useToast();
+
   useEffect(() => {
     const fetchActivityData = async (
       activityId: string,
@@ -265,7 +271,7 @@ export function QuestionPreview({
             ...prev,
             [activityId]: activityData.slide.slideElements,
           }));
-          
+
           // Cập nhật slidesBackgrounds
           setSlidesBackgrounds((prev) => ({
             ...prev,
@@ -387,25 +393,26 @@ export function QuestionPreview({
           : {}),
       }));
     }
-    
-    // Cập nhật bản đồ activityBackgrounds sau đó
-    if (activity?.activity_type_id != 'INFO_SLIDE') {  
-      setActivityBackgrounds((prev) => {
-      const current = prev[activityId] || {
-        backgroundImage: '',
-        backgroundColor: '#FFFFFF',
-      };
-      const updated = {
-        ...current,
-        ...properties,
-      };
 
-      return {
-        ...prev,
-        [activityId]: updated,
-      };
-    });}
-    
+    // Cập nhật bản đồ activityBackgrounds sau đó
+    if (activity?.activity_type_id != 'INFO_SLIDE') {
+      setActivityBackgrounds((prev) => {
+        const current = prev[activityId] || {
+          backgroundImage: '',
+          backgroundColor: '#FFFFFF',
+        };
+        const updated = {
+          ...current,
+          ...properties,
+        };
+
+        return {
+          ...prev,
+          [activityId]: updated,
+        };
+      });
+    }
+
   };
 
   // Update background state when activity changes
@@ -416,8 +423,8 @@ export function QuestionPreview({
       // Luôn ưu tiên sử dụng màu từ global storage trước
       const savedColor =
         typeof window !== 'undefined' &&
-        window.savedBackgroundColors &&
-        activity.id
+          window.savedBackgroundColors &&
+          activity.id
           ? window.savedBackgroundColors[activity.id]
           : null;
 
@@ -748,157 +755,8 @@ export function QuestionPreview({
     );
   };
 
-  // const handleUpdate = async (data: {
-  //   slideId?: string;
-  //   title?: string;
-  //   content?: string;
-  //   addElement?: SlideElementPayload;
-  //   updateElement?: { slideElementId: string; payload: SlideElementPayload };
-  // }) => {
-  //   const currentQuestion = questions[activeQuestionIndex];
-  //   if (!currentQuestion) {
-  //     console.error(
-  //       'No question found at activeQuestionIndex:',
-  //       activeQuestionIndex
-  //     );
-  //     return;
-  //   }
-
-  //   if (data.slideId && data.slideId !== currentQuestion.activity_id) {
-  //     console.log(
-  //       `Bỏ qua cập nhật vì slideId không khớp: ${data.slideId} !== ${currentQuestion.activity_id}`
-  //     );
-  //     return;
-  //   }
-
-  //   try {
-  //     // Xử lý title
-  //     if (data.title) {
-  //       onQuestionTextChange(data.title, activeQuestionIndex);
-  //     }
-
-  //     // Xử lý content
-  //     if (data.content && onSlideContentChange) {
-  //       onSlideContentChange(data.content);
-  //     }
-
-  //     // Xử lý thêm phần tử mới
-  //     if (data.addElement && currentQuestion.activity_id) {
-  //       // Optimistic update
-  //       const tempElement: SlideElementPayload = {
-  //         slideElementId: `temp-${Date.now()}`, // ID tạm thời
-  //         ...data.addElement,
-  //       };
-  //       setSlidesElements((prev) => {
-  //         const currentElements = prev[currentQuestion.activity_id!] || [];
-  //         return {
-  //           ...prev,
-  //           [currentQuestion.activity_id!]: [...currentElements, tempElement],
-  //         };
-  //       });
-
-  //       try {
-  //         const res = await slidesApi.addSlidesElement(
-  //           currentQuestion.activity_id,
-  //           data.addElement
-  //         );
-  //         const newElement: SlideElementPayload = {
-  //           slideElementId: res.data.data.slideElementId,
-  //           ...data.addElement,
-  //         };
-  //         // Cập nhật lại với ID chính thức
-  //         setSlidesElements((prev) => {
-  //           const currentElements = prev[currentQuestion.activity_id!] || [];
-  //           return {
-  //             ...prev,
-  //             [currentQuestion.activity_id!]: currentElements.map((el) =>
-  //               el.slideElementId === tempElement.slideElementId
-  //                 ? newElement
-  //                 : el
-  //             ),
-  //           };
-  //         });
-  //         console.log('Added element:', newElement);
-  //       } catch (err) {
-  //         console.error('Lỗi khi thêm phần tử:', err);
-  //         // Rollback
-  //         setSlidesElements((prev) => {
-  //           const currentElements = prev[currentQuestion.activity_id!] || [];
-  //           return {
-  //             ...prev,
-  //             [currentQuestion.activity_id!]: currentElements.filter(
-  //               (el) => el.slideElementId !== tempElement.slideElementId
-  //             ),
-  //           };
-  //         });
-  //       }
-  //     }
-
-  //     // Xử lý cập nhật phần tử
-  //     if (data.updateElement && currentQuestion.activity_id) {
-  //       const { slideElementId, payload } = data.updateElement;
-  //       // Optimistic update
-  //       setSlidesElements((prev) => {
-  //         const currentElements = prev[currentQuestion.activity_id!] || [];
-  //         const updatedElements = currentElements.map((element) =>
-  //           element.slideElementId === slideElementId
-  //             ? { ...element, ...payload }
-  //             : element
-  //         );
-  //         return {
-  //           ...prev,
-  //           [currentQuestion.activity_id!]: updatedElements,
-  //         };
-  //       });
-
-  //       try {
-  //         const res = await slidesApi.updateSlidesElement(
-  //           currentQuestion.activity_id,
-  //           slideElementId,
-  //           payload
-  //         );
-  //         const updatedElement: SlideElementPayload = {
-  //           slideElementId,
-  //           ...res.data.data,
-  //         };
-  //         // Cập nhật lại với dữ liệu từ server
-  //         setSlidesElements((prev) => {
-  //           const currentElements = prev[currentQuestion.activity_id!] || [];
-  //           const updatedElements = currentElements.map((element) =>
-  //             element.slideElementId === slideElementId
-  //               ? updatedElement
-  //               : element
-  //           );
-  //           return {
-  //             ...prev,
-  //             [currentQuestion.activity_id!]: updatedElements,
-  //           };
-  //         });
-  //         console.log('Updated element:', updatedElement);
-  //       } catch (err) {
-  //         console.error('Lỗi khi cập nhật phần tử:', err);
-  //         // Rollback (khôi phục trạng thái trước đó)
-  //         setSlidesElements((prev) => {
-  //           const currentElements = prev[currentQuestion.activity_id!] || [];
-  //           const updatedElements = currentElements.map((element) =>
-  //             element.slideElementId === slideElementId
-  //               ? element // Khôi phục phần tử cũ
-  //               : element
-  //           );
-  //           return {
-  //             ...prev,
-  //             [currentQuestion.activity_id!]: updatedElements,
-  //           };
-  //         });
-  //       }
-  //     }
-  //   } catch (err) {
-  //     console.error('Lỗi khi xử lý onUpdate:', err);
-  //   }
-  // };
-
   // Enhanced renderQuestionContent function with simplified styling
-  
+
   function renderQuestionContent(
     question: QuizQuestion,
     questionIndex: number,
@@ -915,8 +773,8 @@ export function QuestionPreview({
       : undefined;
     const slideElements = question.activity_id
       ? slidesElements[question.activity_id] ||
-        slidesData[question.activity_id]?.slide?.slideElements ||
-        []
+      slidesData[question.activity_id]?.slide?.slideElements ||
+      []
       : [];
 
     // Find activity specific background for this question
@@ -928,7 +786,7 @@ export function QuestionPreview({
     // 2. Từ global storage
     // 3. Từ activityBackgrounds
     // 4. Từ activity hiện tại
-    
+
     // 1. Ưu tiên lấy từ slidesBackgrounds trước nếu đây là slide
     if (isSlideType && question.activity_id && slidesBackgrounds[question.activity_id]) {
       const slideBg = slidesBackgrounds[question.activity_id];
@@ -945,11 +803,11 @@ export function QuestionPreview({
       if (savedColor) {
         actualBackgroundColor = savedColor;
       }
-      
+
       // Sau đó mới kiểm tra trong activityBackgrounds để lấy backgroundImage
       if (question.activity_id && activityBackgrounds[question.activity_id]) {
         const actBg = activityBackgrounds[question.activity_id];
-        actualBackgroundImage = actBg.backgroundImage || ''; 
+        actualBackgroundImage = actBg.backgroundImage || '';
       }
     }
     // 3. Sau đó mới kiểm tra trong activityBackgrounds
@@ -998,7 +856,7 @@ export function QuestionPreview({
       //   activityBackgrounds[question.activity_id],
       //   question.activity_id
       // );
-      
+
       return (
         <div
           className={cn(
@@ -1077,13 +935,13 @@ export function QuestionPreview({
                     ? viewMode === 'mobile'
                       ? 300
                       : viewMode === 'tablet'
-                      ? 650
-                      : 812
+                        ? 650
+                        : 812
                     : viewMode === 'mobile'
-                    ? 300
-                    : viewMode === 'tablet'
-                    ? 650
-                    : 812
+                      ? 300
+                      : viewMode === 'tablet'
+                        ? 650
+                        : 812
                 }
                 height={460}
                 zoom={1}
@@ -1326,8 +1184,8 @@ export function QuestionPreview({
                         option.is_correct
                           ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                           : isTrue
-                          ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                          : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                            ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                            : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
                         // Only show pointer cursor when edit mode is enabled
                         editMode !== null
                           ? 'cursor-pointer hover:shadow-md'
@@ -1755,12 +1613,12 @@ export function QuestionPreview({
                   question.options.length <= 2
                     ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
                     : question.options.length <= 4
-                    ? 'grid grid-cols-2 gap-3'
-                    : 'grid grid-cols-2 gap-3 md:grid-cols-3',
+                      ? 'grid grid-cols-2 gap-3'
+                      : 'grid grid-cols-2 gap-3 md:grid-cols-3',
                   viewMode === 'mobile' && 'grid-cols-1',
                   viewMode === 'tablet' &&
-                    question.options.length > 4 &&
-                    'grid-cols-2'
+                  question.options.length > 4 &&
+                  'grid-cols-2'
                 )}
               >
                 {/* Direct rendering of choice options */}
@@ -1933,17 +1791,17 @@ export function QuestionPreview({
       // Nếu đang cập nhật màu nền hoặc hình nền và đây là slide
       const currentQuestion = questions[activeQuestionIndex];
       const isSlide = currentQuestion && ['slide', 'info_slide'].includes(currentQuestion.question_type);
-      
+
       if (isSlide && (data.backgroundColor || data.backgroundImage)) {
         // Cập nhật slidesBackgrounds trước
         setSlidesBackgrounds((prev) => ({
           ...prev,
           [activityId]: {
-            backgroundImage: data.backgroundImage !== undefined 
-              ? data.backgroundImage 
+            backgroundImage: data.backgroundImage !== undefined
+              ? data.backgroundImage
               : prev[activityId]?.backgroundImage || '',
-            backgroundColor: data.backgroundColor !== undefined 
-              ? data.backgroundColor 
+            backgroundColor: data.backgroundColor !== undefined
+              ? data.backgroundColor
               : prev[activityId]?.backgroundColor || '#FFFFFF',
           },
         }));
@@ -1965,9 +1823,9 @@ export function QuestionPreview({
         // Đảm bảo tất cả các component khác đều biết về thay đổi này
         slideBackgroundManager.set(activityId, {
           backgroundColor: data.backgroundColor,
-          backgroundImage: '', 
+          backgroundImage: '',
         });
-        
+
         if (typeof window !== 'undefined') {
           const event = new CustomEvent('activity:background:updated', {
             detail: {
@@ -2342,7 +2200,7 @@ export function QuestionPreview({
               questionText: questionData.question_text,
               timeLimitSeconds: questionData.time_limit_seconds || 30,
               pointType: "STANDARD" as const,
-              locationAnswers: questionData.location_data?.quizLocationAnswers || [{
+              locationAnswers: (questionData.location_data as any)?.quizLocationAnswers || [{
                 longitude: 105.804817, // Default longitude (Hanoi)
                 latitude: 21.028511,   // Default latitude (Hanoi) 
                 radius: 10             // Default radius in km
@@ -2572,22 +2430,22 @@ export function QuestionPreview({
     }
   ) => {
     if (!activityId) return;
-    
+
     // Chỉ xử lý cho các slide
     const currentQuestion = questions[activeQuestionIndex];
     if (!currentQuestion || !['slide', 'info_slide'].includes(currentQuestion.question_type)) return;
-    
+
     console.log('Updating slide background:', activityId, properties);
 
     // Cập nhật local state slidesBackgrounds
     setSlidesBackgrounds((prev) => ({
       ...prev,
       [activityId]: {
-        backgroundImage: properties.backgroundImage !== undefined 
-          ? properties.backgroundImage 
+        backgroundImage: properties.backgroundImage !== undefined
+          ? properties.backgroundImage
           : (prev[activityId]?.backgroundImage || ''),
-        backgroundColor: properties.backgroundColor !== undefined 
-          ? properties.backgroundColor 
+        backgroundColor: properties.backgroundColor !== undefined
+          ? properties.backgroundColor
           : (prev[activityId]?.backgroundColor || '#FFFFFF'),
       },
     }));
@@ -2595,7 +2453,7 @@ export function QuestionPreview({
     try {
       // Cập nhật trong activityBackgrounds để đảm bảo đồng bộ
       updateActivityBackground(activityId, properties);
-      
+
       // Xử lý cập nhật background theo yêu cầu
       if (properties.backgroundColor !== undefined) {
         // Nếu cập nhật backgroundColor, đặt backgroundImage là rỗng
@@ -2608,13 +2466,13 @@ export function QuestionPreview({
         if (onSlideImageChange) {
           onSlideImageChange(properties.backgroundImage, activeQuestionIndex);
         }
-        
+
         await activitiesApi.updateActivity(activityId, {
           backgroundColor: '',
           backgroundImage: properties.backgroundImage,
         });
       }
-      
+
       toast({
         title: 'Success',
         description: 'Slide background updated',
@@ -2630,6 +2488,8 @@ export function QuestionPreview({
         description: 'Failed to update slide background',
         variant: 'destructive',
       });
+    }
+  };
 
   // Add or update the handleQuestionLocationChange function:
 
@@ -2646,6 +2506,9 @@ export function QuestionPreview({
         ...updatedQuestions[questionIndex],
         location_data: {
           ...updatedQuestions[questionIndex].location_data,
+          lat: updatedQuestions[questionIndex].location_data?.lat || 0,
+          lng: updatedQuestions[questionIndex].location_data?.lng || 0,
+          radius: updatedQuestions[questionIndex].location_data?.radius || 20,
           quizLocationAnswers: locationData
         }
       };
@@ -2671,74 +2534,13 @@ export function QuestionPreview({
   };
 
   return (
-
-    <>
-      <Card
-        className={cn(
-          'overflow-hidden transition-all w-full h-full border-none shadow-md',
-          isQuestionListCollapsed && 'max-w-full',
-          isQuestionListCollapsed ? 'ml-0' : 'ml-0'
-        )}
-        key={`preview-card-${renderKey}`}
-      >
-        <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
-          <div className="flex items-center gap-4">
-            <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Preview
-            </CardTitle>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="edit-mode"
-                checked={editMode !== null}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    setEditMode('global_edit_mode');
-                  } else {
-                    setEditMode(null);
-                  }
-                }}
-              />
-              <Label htmlFor="edit-mode" className="text-xs">
-                Edit Mode
-              </Label>
-            </div>
-            {isSaving && (
-              <Badge
-                variant="outline"
-                className="bg-blue-50 text-blue-700 border-blue-200"
-              >
-                Saving...
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Tabs value={viewMode} onValueChange={setViewMode} className="h-8">
-              <TabsList className="h-8 py-1">
-                <TabsTrigger
-                  value="mobile"
-                  className="h-6 w-8 px-1.5 data-[state=active]:bg-gray-200 dark:data-[state=active]:bg-gray-800"
-                >
-                  <Smartphone className="h-3 w-3" />
-                </TabsTrigger>
-                <TabsTrigger
-                  value="tablet"
-                  className="h-6 w-8 px-1.5 data-[state=active]:bg-gray-200 dark:data-[state=active]:bg-gray-800"
-                >
-                  <Tablet className="h-3 w-3" />
-                </TabsTrigger>
-                <TabsTrigger
-                  value="desktop"
-                  className="h-6 w-8 px-1.5 data-[state=active]:bg-gray-200 dark:data-[state=active]:bg-gray-800"
-                >
-                  <Monitor className="h-3 w-3" />
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-    <Card className={cn(
-      "overflow-hidden transition-all w-full h-full border-none shadow-md",
-      isQuestionListCollapsed && "max-w-full"
-    )} key={`preview-card-${renderKey}`}>
+    <Card
+      className={cn(
+        "overflow-hidden transition-all w-full h-full border-none shadow-md",
+        isQuestionListCollapsed && "max-w-full"
+      )}
+      key={`preview-card-${renderKey}`}
+    >
       <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
         <div className="flex items-center gap-4">
           <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">Preview</CardTitle>
@@ -2755,7 +2557,6 @@ export function QuestionPreview({
               }}
             />
             <Label htmlFor="edit-mode" className="text-xs">Edit Mode</Label>
-
           </div>
           {isSaving && (
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
@@ -2770,7 +2571,6 @@ export function QuestionPreview({
                 value="mobile"
                 className="h-6 w-8 px-1.5 data-[state=active]:bg-gray-200 dark:data-[state=active]:bg-gray-800"
               >
-
                 <Smartphone className="h-3 w-3" />
               </TabsTrigger>
               <TabsTrigger
@@ -2817,7 +2617,6 @@ export function QuestionPreview({
                     Delete
                   </Button>
                 )}
-
               </div>
 
               {/* Conditional rendering based on question_type */}
@@ -2871,14 +2670,14 @@ interface OptionItemProps {
   option: QuizOption;
   index: number;
   questionType:
-    | 'multiple_choice'
-    | 'multiple_response'
-    | 'true_false'
-    | 'text_answer'
-    | 'slide'
-    | 'info_slide'
-    | 'reorder'
-    | 'location';
+  | 'multiple_choice'
+  | 'multiple_response'
+  | 'true_false'
+  | 'text_answer'
+  | 'slide'
+  | 'info_slide'
+  | 'reorder'
+  | 'location';
   questionIndex: number;
   onOptionEdit?: (
     questionIndex: number,

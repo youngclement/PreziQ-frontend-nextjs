@@ -238,7 +238,9 @@ export function useQuestionOperations(
           questionText: existingQuestion.question_text || "Location question",
           timeLimitSeconds: existingQuestion.time_limit_seconds || 30,
           pointType:
-            locationData.pointType || existingQuestion.point_type || "STANDARD",
+            locationData.pointType ||
+            existingQuestion.location_data?.pointType ||
+            "STANDARD",
           locationAnswers,
         })
         .then((response) => {
@@ -248,7 +250,12 @@ export function useQuestionOperations(
           if (response && response.data && response.data.quizLocationAnswers) {
             // Extract the updated location data from the API response
             const apiUpdatedLocations = response.data.quizLocationAnswers.map(
-              (loc) => ({
+              (loc: {
+                quizLocationAnswerId: string;
+                longitude: number;
+                latitude: number;
+                radius: number;
+              }) => ({
                 quizLocationAnswerId: loc.quizLocationAnswerId,
                 longitude: loc.longitude,
                 latitude: loc.latitude,
@@ -838,10 +845,11 @@ export function useQuestionOperations(
         setActiveQuestionIndex(updatedQuestions.length - 1);
 
         // Update API with the location data
-        await CollectionService.updateLocationQuiz(newActivityData.activityId, {
+        await activitiesApi.updateLocationQuiz(newActivityData.activityId, {
+          type: "LOCATION",
           questionText: "Where is this location?",
           timeLimitSeconds: 60,
-          pointType: pointType,
+          pointType: pointType as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS",
           locationAnswers: [
             {
               longitude: defaultLocationData.lng,

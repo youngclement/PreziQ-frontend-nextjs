@@ -42,6 +42,10 @@ import { clearScrollTimers } from "../utils/question-helpers";
 import { questionTypeLabels, questionTypeIcons } from "../utils/question-type-mapping";
 import { CollectionService } from "../services/collection-service";
 
+// Update the imports to explicitly cast the components as React.FC
+const QuestionPreviewComponent = QuestionPreview as React.FC<any>;
+const QuestionSettingsComponent = QuestionSettings as React.FC<any>;
+
 export default function QuestionsPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -541,7 +545,7 @@ export default function QuestionsPageContent() {
                         {/* Question Preview - scrollable */}
                         <div className="col-span-12 md:col-span-8 overflow-auto h-full pb-1">
                             {questions[activeQuestionIndex] && (
-                                <QuestionPreview
+                                <QuestionPreviewComponent
                                     questions={questions}
                                     activeQuestionIndex={activeQuestionIndex}
                                     timeLimit={timeLimit}
@@ -559,7 +563,7 @@ export default function QuestionsPageContent() {
                                     onUpdateActivityBackground={handleUpdateActivityBackground}
                                     onAddOption={handleAddOption}
                                     onDeleteOption={handleDeleteOption}
-                                    onDeleteActivity={(activityId) => {
+                                    onDeleteActivity={(activityId: string) => {
                                         // Lưu vị trí cuộn hiện tại của tất cả các container có scroll
                                         const scrollPositions: Record<string, number> = {};
                                         document.querySelectorAll('.overflow-auto').forEach((container, index) => {
@@ -640,7 +644,7 @@ export default function QuestionsPageContent() {
 
                         {/* Question Settings - scrollable */}
                         <div className="col-span-12 md:col-span-4 overflow-auto h-full pb-1">
-                            <QuestionSettings
+                            <QuestionSettingsComponent
                                 activeQuestion={questions[activeQuestionIndex]}
                                 activeQuestionIndex={activeQuestionIndex}
                                 activeTab={activeTab}
@@ -649,11 +653,11 @@ export default function QuestionsPageContent() {
                                 questionTypeIcons={questionTypeIcons}
                                 questionTypeLabels={questionTypeLabels}
                                 onTabChange={setActiveTab}
-                                onQuestionTypeChange={(value) => {
+                                onQuestionTypeChange={(value: string) => {
                                     handleQuestionTypeChange(value as any);
                                 }}
                                 onTimeLimitChange={handleSetTimeLimit}
-                                onBackgroundImageChange={(value) => handleBackgroundImageChange(value)}
+                                onBackgroundImageChange={(value: string) => handleBackgroundImageChange(value)}
                                 onClearBackground={() => handleBackgroundImageChange('')}
                                 onAddOption={handleAddOption}
                                 onOptionChange={handleCentralizedOptionChange}

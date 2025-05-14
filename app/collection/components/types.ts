@@ -47,6 +47,12 @@ export interface QuizQuestion {
     radius: number;
     hint?: string;
     pointType?: string;
+    quizLocationAnswers?: Array<{
+      quizLocationAnswerId?: string;
+      longitude: number;
+      latitude: number;
+      radius: number;
+    }>;
   };
 }
 

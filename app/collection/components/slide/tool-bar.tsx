@@ -173,20 +173,7 @@ export const FabricToolbar: React.FC<ToolbarProps> = ({
               </div>
             )}
 
-            {/* Panel content */}
-            {displayedTab === 'text' && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium mb-2">Text Options</h3>
-                <TextEditorToolbar  />
-              </div>
-            )}
 
-            {displayedTab === 'images' && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium mb-2">Image Options</h3>
-                <PexelsPanel />
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>

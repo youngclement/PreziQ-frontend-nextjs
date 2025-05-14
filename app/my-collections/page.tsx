@@ -232,10 +232,9 @@ export default function MyCollectionsPage() {
 
                 {/* Filters Section */}
                 <CollectionFilters
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    viewMode={viewMode}
-                    onViewModeChange={setViewMode}
+                    topics={[]}
+                    selectedTopic=""
+                    onTopicChange={(topic) => console.log("Topic selected:", topic)}
                 />
 
                 {/* Loading state */}
@@ -283,33 +282,25 @@ export default function MyCollectionsPage() {
                         <>
                             {viewMode === 'grid' ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {filteredCollections.map((collection, i) => (
+                                    {filteredCollections.map((collection) => (
                                         <CollectionGridItem
                                             key={collection.id}
                                             collection={collection}
-                                            index={i}
                                             activities={getCollectionActivities(collection.id)}
                                             onEdit={handleEditCollection}
-                                            onDelete={handleDeleteCollection}
                                             onView={handleViewActivities}
-                                            onPreview={handlePreviewCollection}
-                                            collectionVariants={collectionVariants}
                                         />
                                     ))}
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    {filteredCollections.map((collection, i) => (
+                                    {filteredCollections.map((collection) => (
                                         <CollectionListItem
                                             key={collection.id}
                                             collection={collection}
-                                            index={i}
                                             activities={getCollectionActivities(collection.id)}
                                             onEdit={handleEditCollection}
-                                            onDelete={handleDeleteCollection}
                                             onView={handleViewActivities}
-                                            onPreview={handlePreviewCollection}
-                                            collectionVariants={collectionVariants}
                                         />
                                     ))}
                                 </div>
