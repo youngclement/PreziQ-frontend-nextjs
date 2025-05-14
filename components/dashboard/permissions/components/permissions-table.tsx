@@ -29,6 +29,7 @@ import { IconGripVertical } from '@tabler/icons-react';
 import { SortableTreeItem } from './sortable-tree';
 import { toast } from 'react-toastify';
 import { permissionsApi } from '@/api-client';
+import Loading from '@/components/common/loading';
 
 // Component cho mỗi permission item có thể kéo thả
 function SortablePermissionItem({
@@ -231,11 +232,7 @@ export function PermissionsTable() {
   const columns = createColumns(expandedModules, handleDelete);
 
   if (isLoading) {
-    return (
-      <div className='flex items-center justify-center py-4'>
-        <Loader2 className='h-6 w-6 animate-spin' />
-      </div>
-    );
+    return <Loading />;
   }
 
   return (

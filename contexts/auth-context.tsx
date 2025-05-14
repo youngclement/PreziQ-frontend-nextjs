@@ -4,7 +4,7 @@ import { authApi } from '@/api-client/auth-api';
 import Cookies from 'js-cookie';
 import { User } from '@/models/auth';
 import { AxiosError } from 'axios';
-
+import Loading from '@/components/common/loading';
 interface AuthContextType {
   isLoggedIn: boolean;
   user: User | null;
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Don't render until we've initialized
   if (isInitializing) {
-    return <>Loading...</>; // Or a proper loading indicator
+    return <Loading />; 
   }
 
   return (

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Loader2 } from 'lucide-react';
+import Loading from '@/components/common/loading';
 
 export default function ProfileLayout({
 	children,
@@ -31,10 +32,7 @@ export default function ProfileLayout({
 
 	if (loading) {
 		return (
-			<div className="min-h-screen flex items-center justify-center">
-				<Loader2 className="h-8 w-8 animate-spin text-primary" />
-				<span className="ml-2">Đang xác thực...</span>
-			</div>
+			<Loading />
 		);
 	}
 
