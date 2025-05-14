@@ -81,6 +81,7 @@ const SortableActivityItem = ({
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: activity.id });
 
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -168,7 +169,18 @@ export function QuestionList({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const addButtonRef = useRef<HTMLDivElement>(null);
   const [renderKey, setRenderKey] = useState(0);
+
+  
+  // Scroll to the end of the activities list when a new activity is added
+  React.useEffect(() => {
+    if (scrollContainerRef.current && activities.length > 0) {
+      // Scroll to the end when activities length changes
+      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+    }
+  }, [activities.length]);
+
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+
 
   // Setup sensors for dnd-kit
   const sensors = useSensors(

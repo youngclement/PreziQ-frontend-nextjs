@@ -142,7 +142,7 @@ axiosClient.interceptors.response.use(
       }
     }
 
-    // Xử lý thông báo lỗi
+
     let errorMessage = error.message;
     if (error.response?.data && typeof error.response.data === 'object') {
       const data = error.response.data as Record<string, any>;
@@ -158,6 +158,7 @@ axiosClient.interceptors.response.use(
         variant: 'destructive',
       });
     }
+
 
     return Promise.reject(error);
   }

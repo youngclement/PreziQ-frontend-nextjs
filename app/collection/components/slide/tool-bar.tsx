@@ -3,14 +3,9 @@
 import type React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Plus,
-  ImagePlus,
-  Trash2,
-  ChevronRight,
-} from 'lucide-react';
-import PexelsPanel from './sidebar/pexels-penel';
-import { TextEditorToolbar } from './sidebar/text-editor-toolbar';
+import { Plus, ImagePlus, Trash2, ChevronRight } from 'lucide-react';
+import PexelsPanel from './sidebar/pexels-panel';
+import TextEditorToolbar from './sidebar/text-editor-toolbar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -182,7 +177,7 @@ export const FabricToolbar: React.FC<ToolbarProps> = ({
             {displayedTab === 'text' && (
               <div className="space-y-2">
                 <h3 className="text-sm font-medium mb-2">Text Options</h3>
-                <TextEditorToolbar />
+                <TextEditorToolbar  />
               </div>
             )}
 

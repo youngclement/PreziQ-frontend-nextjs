@@ -30,6 +30,7 @@ export interface UpdateAchievementPayload {
 export interface AchievementsResponse {
   data: {
     data: {
+
       content: Achievement[];
     };
   };
@@ -56,6 +57,7 @@ export interface MyAchievementsResponse {
       instance: string;
     };
   };
+
 }
 
 export const achievementsApi = {
@@ -76,6 +78,7 @@ export const achievementsApi = {
       });
   },
 
+
   // Get my achievements
   getMyAchievements(): Promise<MyAchievementsResponse['data']['data']> {
     return axiosClient
@@ -84,6 +87,7 @@ export const achievementsApi = {
         return response.data.data;
       });
   },
+
 
   // Get achievement by ID
   getAchievementById(id: string): Promise<Achievement> {
