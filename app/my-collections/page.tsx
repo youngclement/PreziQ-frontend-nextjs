@@ -142,7 +142,7 @@ export default function MyCollectionsPage() {
     };
 
     const handleEditCollection = (id: string) => {
-        router.push(`/collection/edit/${id}`);
+        router.push(`/collection?collectionId=${id}`);
     };
 
     const handleViewActivities = (id: string) => {

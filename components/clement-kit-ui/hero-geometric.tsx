@@ -1,16 +1,22 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Inter } from 'next/font/google';
+import { Inter, Dancing_Script } from 'next/font/google';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { TypingAnimation } from '@/components/magicui/typing-animation';
 
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+});
+
+const dancingScript = Dancing_Script({
+  subsets: ['latin'],
+  weight: ['700'],
+  variable: '--font-dancing-script',
 });
 
 function ElegantShape({
@@ -107,7 +113,7 @@ export default function HeroGeometric({
 }: {
   badge?: string;
   title1?: string;
-  title2?: string;
+  title2?: ReactNode;
   description?: string;
 }) {
   const fadeUpVariants = {
@@ -262,7 +268,7 @@ export default function HeroGeometric({
                 {title1}
               </TypingAnimation>
 
-              <TypingAnimation
+              <div
                 className={cn(
                   'block mt-2 bg-clip-text text-transparent',
                   isDark
@@ -271,11 +277,9 @@ export default function HeroGeometric({
                   inter.className,
                   'text-4xl sm:text-6xl md:text-7xl leading-tight'
                 )}
-                delay={1500} // Start after the first text finishes
-                duration={70}
               >
                 {title2}
-              </TypingAnimation>
+              </div>
             </h1>
           </motion.div>
 
