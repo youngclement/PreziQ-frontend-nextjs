@@ -4,9 +4,27 @@ import { Check, Trophy, Award, Sparkles, Clock } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { achievements } from './data';
+import Image from 'next/image';
 
-const AchievementsList = () => {
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  iconUrl?: string;
+  unlocked: boolean;
+  progress: number;
+  date?: string;
+  points: number;
+  type: string;
+  color: string;
+  icon: any;
+}
+
+interface AchievementsListProps {
+  achievements: Achievement[];
+}
+
+const AchievementsList = ({ achievements }: AchievementsListProps) => {
   const [currentTab, setCurrentTab] = useState('all');
   const [achievementType, setAchievementType] = useState('all');
 
@@ -30,7 +48,7 @@ const AchievementsList = () => {
     },
   };
 
-  // Lọc thành tựu theo tab và loại
+  // Filter achievements based on tab and type
   const filteredAchievements = achievements
     .filter((a) => {
       if (currentTab === 'all') return true;
@@ -181,7 +199,20 @@ const AchievementsList = () => {
                       }}
                     />
                   )}
-                  <achievement.icon className='w-7 h-7 relative z-10' />
+
+                  {achievement.iconUrl ? (
+                    <div className='relative w-10 h-10 overflow-hidden z-10'>
+                      <img
+                        src={achievement.iconUrl}
+                        alt={achievement.name}
+                        className='object-cover w-full h-full'
+                      />
+                    </div>
+                  ) : achievement.icon ? (
+                    <achievement.icon className='w-7 h-7 relative z-10' />
+                  ) : (
+                    <Trophy className='w-7 h-7 relative z-10' />
+                  )}
 
                   {/* Background animation */}
                   {achievement.unlocked && (
@@ -249,35 +280,33 @@ const AchievementsList = () => {
                   transition={{
                     delay: 0.8 + index * 0.1,
                     type: 'spring',
+                    stiffness: 200,
                   }}
                 >
-                  <div className='absolute inset-0 bg-primary/10 rounded-full blur-xl' />
-                  <Award className='w-8 h-8 text-primary absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2' />
+                  <div className='w-full h-full relative'>
+                    <div className='absolute inset-0 bg-yellow-500 opacity-80 blur-xl rounded-full'></div>
+                    <Award className='absolute inset-0 w-10 h-10 m-auto text-yellow-200' />
+                  </div>
                 </motion.div>
               )}
             </motion.div>
           ))}
         </motion.div>
       ) : (
-        <div className='py-10 text-center'>
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className='inline-flex flex-col items-center'
-          >
-            <div className='rounded-full bg-muted/30 p-8 mb-4 border'>
-              <Sparkles className='w-12 h-12 text-muted-foreground' />
-            </div>
-            <h3 className='text-lg font-semibold mb-2'>
-              No achievements found
-            </h3>
-            <p className='text-muted-foreground max-w-md'>
-              Try changing the filter or continue using PreziQ to unlock more
-              achievements
-            </p>
-          </motion.div>
-        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className='text-center py-10'
+        >
+          <div className='inline-flex items-center justify-center p-4 bg-muted/50 rounded-full mb-4'>
+            <Trophy className='w-6 h-6 text-muted-foreground' />
+          </div>
+          <h3 className='text-lg font-medium mb-2'>No achievements found</h3>
+          <p className='text-muted-foreground max-w-md mx-auto'>
+            There are no achievements matching your current filters. Try
+            changing your filter settings.
+          </p>
+        </motion.div>
       )}
     </motion.div>
   );

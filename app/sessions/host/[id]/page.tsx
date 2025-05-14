@@ -182,18 +182,29 @@ export default function HostSessionPage() {
     sessionWsRef.current = sessionWs;
 
     sessionWs.onParticipantsUpdateHandler((updatedParticipants) => {
-      const participantsData = updatedParticipants.map((p: any) => ({
+      // Đảm bảo updatedParticipants luôn là một mảng, ngay cả khi rỗng
+      const participantsArray = Array.isArray(updatedParticipants)
+        ? updatedParticipants
+        : [];
+
+      const participantsData = participantsArray.map((p: any) => ({
         guestName: p.displayName || 'Unknown',
         guestAvatar:
           p.displayAvatar || 'https://api.dicebear.com/9.x/pixel-art/svg',
         userId: p.user?.userId || null,
       }));
+
+      console.log(
+        `Đã nhận cập nhật participants: ${participantsData.length} người tham gia`
+      );
+
+      // Cập nhật state bất kể mảng rỗng hay không
       setParticipants(participantsData);
 
       // Kiểm tra xem host đã join chưa nếu chọn tham gia
       if (
         willParticipate &&
-        updatedParticipants.some((p) => p.displayName === participantName)
+        participantsArray.some((p) => p.displayName === participantName)
       ) {
         setHasJoined(true);
       }
@@ -228,9 +239,7 @@ export default function HostSessionPage() {
         setError('Failed to connect to session');
       });
 
-    return () => {
-      // Không làm gì ở đây để giữ ws sống
-    };
+    return () => {};
   }, [
     sessionCode,
     sessionId,
@@ -830,7 +839,7 @@ export default function HostSessionPage() {
         ))}
       </div>
 
-      {/* Container chính với độ trong suốt cao hơn */}
+      {/* Container chính */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -995,7 +1004,7 @@ export default function HostSessionPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className='relative text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
+                    className='relative mb-4 pb-4 text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
                     style={{ letterSpacing: '0.05em' }}
                   >
                     {sessionCode ? formatSessionCode(sessionCode) : 'XXXXXX'}
@@ -1006,10 +1015,10 @@ export default function HostSessionPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className='relative text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
+                    className='relative mb-4 pb-4 text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
                     style={{ letterSpacing: '0.05em' }}
                   >
-                    ⬤⬤⬤⬤⬤⬤
+                    XXXXXX
                   </motion.h1>
                 )}
               </AnimatePresence>

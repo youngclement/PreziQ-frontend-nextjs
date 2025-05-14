@@ -6,10 +6,10 @@ import { UserEmailForm } from './user-email-form';
 import { UserPasswordForm } from './user-password-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Loader2, User, Mail, Lock } from 'lucide-react';
+import { User, Mail, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { authApi } from '@/api-client';
-
+import Loading from '@/components/common/loading';
 interface UserProfile {
 	id: string;
 	email: string;
@@ -71,19 +71,7 @@ export function UserProfileClient() {
 
 	if (loading) {
 		return (
-			<motion.div
-				initial={{ opacity: 0 }}
-				animate={{ opacity: 1 }}
-				transition={{ duration: 0.3 }}
-				className="w-full h-96 flex items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow-lg"
-			>
-				<div className="flex flex-col items-center space-y-4">
-					<Loader2 className="h-8 w-8 animate-spin text-primary" />
-					<span className="text-gray-600 dark:text-gray-300">
-						Đang tải thông tin...
-					</span>
-				</div>
-			</motion.div>
+			<Loading />
 		);
 	}
 
