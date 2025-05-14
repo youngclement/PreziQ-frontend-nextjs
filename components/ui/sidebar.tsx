@@ -182,6 +182,31 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+    const sidebarRef = React.useRef<HTMLDivElement>(null);
+
+    // Xử lý focus khi sidebar đóng/mở
+    React.useEffect(() => {
+      const sidebar = sidebarRef.current;
+      if (!sidebar) return;
+
+      // Khi sidebar đóng, chuyển focus ra khỏi các phần tử bên trong
+      if (state === 'collapsed' && !isMobile) {
+        const focusableElements = sidebar.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+
+        focusableElements.forEach((el) => {
+          (el as HTMLElement).setAttribute('tabindex', '-1');
+        });
+      } else {
+        // Khi sidebar mở, cho phép focus vào các phần tử bên trong
+        const focusableElements = sidebar.querySelectorAll('[tabindex="-1"]');
+
+        focusableElements.forEach((el) => {
+          (el as HTMLElement).removeAttribute('tabindex');
+        });
+      }
+    }, [state, isMobile]);
 
     if (collapsible === 'none') {
       return (
@@ -243,6 +268,7 @@ const Sidebar = React.forwardRef<
           )}
         />
         <div
+          ref={sidebarRef}
           className={cn(
             'fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex',
             side === 'left'
