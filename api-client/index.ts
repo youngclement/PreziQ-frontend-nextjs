@@ -8,4 +8,5 @@ export * from "./users-api";
 export * from "./user-update-api";
 export * from "./activities-api";
 export * from "./sessions-api";
+export * from './achievements-api';
 

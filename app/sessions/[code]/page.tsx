@@ -30,6 +30,7 @@ import ParticipantActivities from '../components/ParticipantActivities';
 import { authApi } from '@/api-client/auth-api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import Loading from '@/components/common/loading';
 
 interface UserAccount {
   userId: string;
@@ -438,6 +439,11 @@ const SessionJoinPage = () => {
     }
   };
 
+  // Hiển thị loading nếu đang tải dữ liệu tài khoản
+  if (isLoadingAccount) {
+    return <Loading />;
+  }
+
   // Nếu phiên đã bắt đầu và người dùng đã tham gia, hiển thị hoạt động tương ứng
   if (isSessionStarted && hasJoined && sessionWsRef.current) {
     return (
@@ -589,10 +595,7 @@ const SessionJoinPage = () => {
             </div>
 
             {isConnecting ? (
-              <div className='flex items-center justify-center space-x-2 my-8'>
-                <Loader2 className='h-6 w-6 animate-spin text-blue-400' />
-                <p className='text-white/80'>{connectionStatus}</p>
-              </div>
+              <Loading />
             ) : (
               <form onSubmit={handleJoinSession} className='space-y-6'>
                 <div className='space-y-2'>

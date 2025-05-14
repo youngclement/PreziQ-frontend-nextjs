@@ -1,56 +1,83 @@
-import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState } from 'react';
+import Image from 'next/image';
+
+// Define mapping for topic icons (These will be placeholders until you add real icons)
+const topicIcons: Record<string, string> = {
+	"Start": "/images/icons/navigation/placeholder.svg",
+	"Art & Literature": "/images/icons/navigation/placeholder.svg",
+	"Entertainment": "/images/icons/navigation/placeholder.svg",
+	"Geography": "/images/icons/navigation/placeholder.svg",
+	"History": "/images/icons/navigation/placeholder.svg",
+	"Languages": "/images/icons/navigation/placeholder.svg",
+	"Science & Nature": "/images/icons/navigation/placeholder.svg",
+	"Sports": "/images/icons/navigation/placeholder.svg",
+	"Trivia": "/images/icons/navigation/placeholder.svg",
+};
+
+// Get a generic icon for topics without a specific icon
+const getTopicIcon = (topic: string): string => {
+	if (topicIcons[topic]) return topicIcons[topic];
+
+	// Return a generic icon for topics without a specific icon
+	return "/images/icons/navigation/placeholder.svg";
+};
 
 interface CollectionFiltersProps {
-	searchQuery: string;
-	onSearchChange: (value: string) => void;
-	viewMode: string;
-	onViewModeChange: (value: string) => void;
+	topics?: string[];
+	selectedTopic?: string;
+	onTopicChange?: (topic: string) => void;
 }
 
 export function CollectionFilters({
-	searchQuery,
-	onSearchChange,
-	viewMode,
-	onViewModeChange,
+	topics = [],
+	selectedTopic,
+	onTopicChange,
 }: CollectionFiltersProps) {
+	// Add "All Topics" as the first item in our list
+	const allTopics = ["All Topics", ...topics];
+
 	return (
-		<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-			<div className="relative w-full sm:w-80">
-				<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-				<Input
-					placeholder="Search collections..."
-					className="pl-10 border-zinc-300 dark:border-zinc-700 h-11 rounded-none"
-					value={searchQuery}
-					onChange={(e) => onSearchChange(e.target.value)}
-				/>
+		<div className="w-full overflow-x-auto pb-4">
+			<div className="md:flex-row md:space-y-0 flex flex-col justify-between w-full space-y-2 font-sans text-base text-left text-black">
+				{allTopics.map((topic) => (
+					<a
+						key={topic}
+						onClick={(e) => {
+							e.preventDefault();
+							onTopicChange?.(topic === "All Topics" ? "" : topic);
+						}}
+						className="whitespace-nowrap group font-roboto md:flex-col md:space-x-0 flex flex-row items-center space-x-3 cursor-pointer"
+						href="#"
+					>
+						<div className="relative md:w-9 md:h-9 w-5 h-5 flex items-center justify-center">
+							{topic !== "All Topics" ? (
+								<img
+									src={getTopicIcon(topic)}
+									alt={topic}
+									className="md:w-9 md:h-9 w-5 h-5"
+									draggable="false"
+								/>
+							) : (
+								<div className="md:w-9 md:h-9 w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center">
+									<span className="text-xs font-bold">All</span>
+								</div>
+							)}
+						</div>
+
+						<div
+							className={`pb-1 md:text-xs text-base font-bold leading-snug transition-opacity group-hover:opacity-100 ${(selectedTopic === topic) || (topic === "All Topics" && selectedTopic === "") ? "opacity-100" : "opacity-60"
+								}`}
+						>
+							{topic}
+						</div>
+
+						<div
+							className={`w-full group-hover:opacity-100 transition-opacity h-1 bg-black rounded-full hidden md:block ${(selectedTopic === topic) || (topic === "All Topics" && selectedTopic === "") ? "opacity-100" : "opacity-0"
+								}`}
+						></div>
+					</a>
+				))}
 			</div>
-			<Tabs
-				value={viewMode}
-				onValueChange={onViewModeChange}
-				className="w-auto"
-			>
-				<TabsList className="grid w-[180px] grid-cols-2 rounded-none p-0.5 bg-zinc-100 dark:bg-zinc-800">
-					<TabsTrigger value="grid" className="flex items-center rounded-none">
-						<div className="grid grid-cols-2 gap-0.5 mr-2">
-							<div className="w-2 h-2 bg-current"></div>
-							<div className="w-2 h-2 bg-current"></div>
-							<div className="w-2 h-2 bg-current"></div>
-							<div className="w-2 h-2 bg-current"></div>
-						</div>
-						Grid
-					</TabsTrigger>
-					<TabsTrigger value="list" className="flex items-center rounded-none">
-						<div className="flex flex-col gap-0.5 mr-2">
-							<div className="w-4 h-1 bg-current"></div>
-							<div className="w-4 h-1 bg-current"></div>
-							<div className="w-4 h-1 bg-current"></div>
-						</div>
-						List
-					</TabsTrigger>
-				</TabsList>
-			</Tabs>
 		</div>
 	);
 }

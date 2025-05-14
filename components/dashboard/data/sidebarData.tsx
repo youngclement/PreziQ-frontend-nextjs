@@ -21,6 +21,7 @@ import {
   ListTodo,
   TicketPercent,
   DollarSign,
+  Award,
 } from 'lucide-react';
 import { AudioWaveform, Command, GalleryVerticalEnd } from 'lucide-react';
 import { NavItem, NavGroup } from '@/components/dashboard/layout/NavGroup';
@@ -99,6 +100,11 @@ export const sidebarData: SidebarData = {
           title: 'Người dùng',
           url: '/dashboard/users',
           icon: Users,
+        },
+        {
+          title: 'Thành tựu',
+          url: '/dashboard/achievements',
+          icon: Award,
         },
       ],
     },

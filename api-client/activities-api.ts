@@ -7,7 +7,8 @@ export type ActivityType =
   | "QUIZ_TRUE_OR_FALSE"
   | "QUIZ_TYPE_ANSWER"
   | "QUIZ_REORDER"
-  | "INFO_SLIDE";
+  | "INFO_SLIDE"
+  | "QUIZ_LOCATION";
 
 export interface ActivityTypeInfo {
   key: ActivityType;
@@ -86,12 +87,25 @@ export interface ReorderQuizPayload {
   correctOrder: string[];
 }
 
+export interface LocationQuizPayload {
+  type: "LOCATION";
+  questionText: string;
+  timeLimitSeconds: number;
+  pointType: "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS";
+  locationAnswers: {
+    longitude: number;
+    latitude: number;
+    radius: number;
+  }[];
+}
+
 export type QuizPayload =
   | ButtonsQuizPayload
   | CheckboxesQuizPayload
   | TypeAnswerQuizPayload
   | TrueFalseQuizPayload
-  | ReorderQuizPayload;
+  | ReorderQuizPayload
+  | LocationQuizPayload;
 
 export interface ActivityResponse {
   success: boolean;
@@ -230,5 +244,31 @@ export const activitiesApi = {
    */
   updateReorderQuiz(activityId: string, payload: ReorderQuizPayload) {
     return axiosClient.put(`/activities/${activityId}/quiz`, payload);
+  },
+
+  getActivityById(activityId: string) {
+    return axiosClient.get(`/activities/${activityId}`);
+  },
+
+  /**
+   * Update a location quiz
+   * @param activityId ID of the activity
+   * @param payload Quiz data
+   * @returns Promise with API results
+   */
+  updateLocationQuiz(activityId: string, payload: LocationQuizPayload) {
+    return axiosClient.put(`/activities/${activityId}/quiz`, payload);
+  },
+
+  /**
+   * Reorder activities in a collection
+   * @param collectionId ID of the collection
+   * @param orderedActivityIds Array of activity IDs in the new order
+   * @returns Promise with API results
+   */
+  reorderActivities(collectionId: string, orderedActivityIds: string[]) {
+    return axiosClient.put(`/collections/${collectionId}/activities/reorder`, {
+      orderedActivityIds,
+    });
   },
 };

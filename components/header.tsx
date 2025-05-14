@@ -35,28 +35,28 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   {
-    title: 'features',
+    title: 'Features',
     href: '#',
     children: [
-      { title: 'aiPresentationBuilder', href: '#' },
-      { title: 'designTemplates', href: '#' },
-      { title: 'realtimeCollaboration', href: '#' },
+      { title: 'AI Presentation Builder', href: '#' },
+      { title: 'Design Templates', href: '#' },
+      { title: 'Real-time Collaboration', href: '#' },
     ],
   },
   {
-    title: 'useCase',
+    title: 'Use Cases',
     href: '#',
     children: [
-      { title: 'marketingTeams', href: '#' },
-      { title: 'salesProfessionals', href: '#' },
-      { title: 'education', href: '#' },
+      { title: 'Marketing Teams', href: '#' },
+      { title: 'Sales Professionals', href: '#' },
+      { title: 'Education', href: '#' },
     ],
   },
-  { title: 'pricing', href: '/membership' },
-  { title: 'achievements', href: '/achievements' },
-  { title: 'testimonials', href: '#testimonials' },
-  { title: 'faq', href: '#faq' },
-  { title: 'blog', href: '/blog' },
+  { title: 'Pricing', href: '/membership' },
+  { title: 'Achievements', href: '/achievements' },
+  { title: 'Testimonials', href: '#testimonials' },
+  { title: 'FAQ', href: '#faq' },
+  { title: 'Blog', href: '/blog' },
 ];
 
 const MobileNav = ({ isTransparent }: { isTransparent: boolean }) => {
@@ -85,7 +85,7 @@ const MobileNav = ({ isTransparent }: { isTransparent: boolean }) => {
             <div key={item.title}>
               {item.children ? (
                 <>
-                  <div className='font-medium mb-2'>{t(item.title)}</div>
+                  <div className='font-medium mb-2'>{item.title}</div>
                   <div className='pl-4 flex flex-col gap-2'>
                     {item.children.map((child) => (
                       <Link
@@ -93,7 +93,7 @@ const MobileNav = ({ isTransparent }: { isTransparent: boolean }) => {
                         href={child.href}
                         className='text-sm text-muted-foreground hover:text-foreground transition-colors'
                       >
-                        {t(child.title)}
+                        {child.title}
                       </Link>
                     ))}
                   </div>
@@ -103,7 +103,7 @@ const MobileNav = ({ isTransparent }: { isTransparent: boolean }) => {
                   href={item.href}
                   className='font-medium hover:text-highlight transition-colors'
                 >
-                  {t(item.title)}
+                  {item.title}
                 </Link>
               )}
             </div>
@@ -220,6 +220,8 @@ const Header = () => {
 
   // Use different styling based on if we're on home page and if we've scrolled
   const isTransparent = isHomePage && !scroll;
+  // Only apply white text in dark mode when transparent
+  const textColorClass = isTransparent && theme === 'dark' ? 'text-white' : '';
 
   return (
     <div className={cn(
@@ -237,19 +239,19 @@ const Header = () => {
       >
         <div className='flex h-14 items-center justify-between'>
           <div className='flex items-center gap-4'>
-            <Logo className={isTransparent ? 'text-white' : ''} />
-            <DesktopNav isTransparent={isTransparent} />
+            <Logo className={textColorClass} />
+            <DesktopNav isTransparent={isTransparent && theme === 'dark'} />
           </div>
 
           <div className='flex items-center gap-3'>
-            <LanguageToggle className={isTransparent ? 'text-white hover:bg-transparent' : ''} />
+            <LanguageToggle className={isTransparent && theme === 'dark' ? 'text-white hover:bg-transparent' : ''} />
             <Button
               variant='ghost'
               size='icon'
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className={cn(
                 'rounded-full h-9 w-9 flex items-center justify-center',
-                isTransparent ? 'text-white hover:bg-transparent' : 'hover:bg-muted'
+                isTransparent && theme === 'dark' ? 'text-white hover:bg-transparent' : 'hover:bg-muted'
               )}
               aria-label='Toggle theme'
             >
@@ -266,14 +268,14 @@ const Header = () => {
               <div className='hidden sm:block'>
                 <Link href='/auth/login'>
                   <InteractiveHoverButton
-                    className={isTransparent ? 'text-white border-white/20 bg-transparent hover:bg-white/5' : ''}
+                    className={isTransparent && theme === 'dark' ? 'text-white border-white/20 bg-transparent hover:bg-white/5' : ''}
                   >
                     {t('signIn')}
                   </InteractiveHoverButton>
                 </Link>
               </div>
             )}
-            <MobileNav isTransparent={isTransparent} />
+            <MobileNav isTransparent={isTransparent && theme === 'dark'} />
           </div>
         </div>
       </header>

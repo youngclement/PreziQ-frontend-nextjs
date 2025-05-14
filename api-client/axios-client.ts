@@ -1,13 +1,13 @@
-import axios, { AxiosError } from "axios";
-import { toast } from "@/hooks/use-toast";
-import { authApi } from "./auth-api";
-import Cookies from "js-cookie";
+import axios, { AxiosError } from 'axios';
+import { toast } from '@/hooks/use-toast';
+import { authApi } from './auth-api';
+import Cookies from 'js-cookie';
 
 let axiosClient = axios.create({
-  baseURL: "https://preziq.duckdns.org/api/v1",
+  baseURL: 'https://preziq.duckdns.org/api/v1',
 
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
   withCredentials: true,
 });
@@ -17,24 +17,24 @@ axiosClient.defaults.timeout = 1000 * 60 * 10;
 axiosClient.defaults.withCredentials = true;
 
 // Add a function to check if we're in a browser environment
-const isBrowser = () => typeof window !== "undefined";
+const isBrowser = () => typeof window !== 'undefined';
 
 // Interceptor cho request
 axiosClient.interceptors.request.use((config) => {
-  if (!config?.url?.includes("/auth/refresh")) {
+  if (!config?.url?.includes('/auth/refresh')) {
     // Only try to access localStorage in browser environment
     if (isBrowser()) {
       // Ưu tiên token từ localStorage trước
-      let token = localStorage.getItem("accessToken");
+      let token = localStorage.getItem('accessToken');
 
       // Nếu không có trong localStorage, thử lấy từ cookies
       if (!token) {
-        const cookieToken = Cookies.get("accessToken");
+        const cookieToken = Cookies.get('accessToken');
         token = cookieToken || null;
       }
 
       if (token) {
-        config.headers["Authorization"] = `Bearer ${token}`;
+        config.headers['Authorization'] = `Bearer ${token}`;
       }
     }
   }
@@ -82,33 +82,33 @@ axiosClient.interceptors.response.use(
                   response?.data?.accessToken;
                 if (newAccessToken) {
                   if (isBrowser()) {
-                    localStorage.setItem("accessToken", newAccessToken);
+                    localStorage.setItem('accessToken', newAccessToken);
                     localStorage.setItem(
-                      "tokenCreatedAt",
+                      'tokenCreatedAt',
                       Date.now().toString()
                     );
 
                     // Lưu token mới vào cookie
-                    Cookies.set("accessToken", newAccessToken, {
+                    Cookies.set('accessToken', newAccessToken, {
                       expires: 7, // 7 ngày
-                      path: "/",
-                      secure: process.env.NODE_ENV === "production",
-                      sameSite: "lax",
+                      path: '/',
+                      secure: process.env.NODE_ENV === 'production',
+                      sameSite: 'lax',
                     });
                   }
                   resolve(newAccessToken);
                 } else {
-                  reject("Không nhận được access token từ API refresh");
+                  reject('Không nhận được access token từ API refresh');
                 }
               })
               .catch((refreshError) => {
                 if (isBrowser()) {
-                  localStorage.removeItem("accessToken");
-                  localStorage.removeItem("tokenCreatedAt");
-                  localStorage.removeItem("userInfo");
+                  localStorage.removeItem('accessToken');
+                  localStorage.removeItem('tokenCreatedAt');
+                  localStorage.removeItem('userInfo');
 
                   // Xóa cookie token
-                  Cookies.remove("accessToken", { path: "/" });
+                  Cookies.remove('accessToken', { path: '/' });
 
                   // window.location.href = "/login"; // Chuyển hướng về trang đăng nhập
                 }
@@ -122,7 +122,7 @@ axiosClient.interceptors.response.use(
 
         try {
           const newToken = await refreshTokenPromise;
-          originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
+          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
           return axiosClient(originalRequest);
         } catch (error) {
           throw error;
@@ -130,35 +130,35 @@ axiosClient.interceptors.response.use(
       } else {
         // If token can't be refreshed and it's 401 error, redirect to login
         if (isBrowser()) {
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("tokenCreatedAt");
-          localStorage.removeItem("userInfo");
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('tokenCreatedAt');
+          localStorage.removeItem('userInfo');
 
           // Xóa cookie token
-          Cookies.remove("accessToken", { path: "/" });
+          Cookies.remove('accessToken', { path: '/' });
 
           // window.location.href = "/login";
         }
       }
     }
 
-    // Xử lý thông báo lỗi
+
     let errorMessage = error.message;
-    if (error.response?.data && typeof error.response.data === "object") {
+    if (error.response?.data && typeof error.response.data === 'object') {
       const data = error.response.data as Record<string, any>;
       if (data.errors && Array.isArray(data.errors)) {
-        errorMessage = data.errors.map((err: any) => err.message).join("; ");
+        errorMessage = data.errors.map((err: any) => err.message).join('; ');
       } else if (data.message) {
         errorMessage = data.message;
       }
     }
-
-    if (error.response?.status !== 410) {
+    if (error.response?.status !== 410 && errorMessage !== 'Token is missing') {
       toast({
         title: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
+
 
     return Promise.reject(error);
   }

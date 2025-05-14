@@ -33,9 +33,10 @@ export interface Item {
 interface SortableListProps {
   items: Item[];
   onChange: (newItems: Item[]) => void;
+  disabled?: boolean;
 }
 
-function SortableItem({ id, text }: Item) {
+function SortableItem({ id, text, disabled }: Item & { disabled?: boolean }) {
   const {
     attributes,
     listeners,
@@ -45,6 +46,7 @@ function SortableItem({ id, text }: Item) {
     isDragging,
   } = useSortable({
     id,
+    disabled,
     transition: {
       duration: 200,
       easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
@@ -59,13 +61,21 @@ function SortableItem({ id, text }: Item) {
         transition,
         zIndex: isDragging ? 10 : 1,
       }}
-      className={`flex items-center p-3 mb-2 bg-gradient-to-r from-[#0e2838]/90 to-[#0f2231]/90 text-white rounded cursor-move border touch-none ${
-        isDragging ? 'border-[#aef359]/60 shadow-lg' : 'border-white/10'
+      className={`flex items-center p-3 mb-2 bg-gradient-to-r from-[#0e2838]/90 to-[#0f2231]/90 text-white rounded ${
+        !disabled ? 'cursor-move' : 'cursor-not-allowed'
+      } border touch-none ${
+        isDragging
+          ? 'border-[#aef359]/60 shadow-lg'
+          : disabled
+          ? 'border-white/5 opacity-80'
+          : 'border-white/10'
       }`}
       {...attributes}
       {...listeners}
     >
-      <GripVertical className='mr-2 text-[#aef359]' />
+      <GripVertical
+        className={`mr-2 ${disabled ? 'text-gray-500' : 'text-[#aef359]'}`}
+      />
       <span className='flex-1'>{text}</span>
       {isDragging && (
         <div className='absolute inset-0 rounded bg-[#aef359]/5 border border-[#aef359]/20'></div>
@@ -77,6 +87,7 @@ function SortableItem({ id, text }: Item) {
 export const SortableList: React.FC<SortableListProps> = ({
   items,
   onChange,
+  disabled = false,
 }) => {
   const isMobile = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -127,7 +138,12 @@ export const SortableList: React.FC<SortableListProps> = ({
         strategy={verticalListSortingStrategy}
       >
         {items.map((i) => (
-          <SortableItem key={i.id} id={i.id} text={i.text} />
+          <SortableItem
+            key={i.id}
+            id={i.id}
+            text={i.text}
+            disabled={disabled}
+          />
         ))}
       </SortableContext>
     </DndContext>

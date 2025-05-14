@@ -57,9 +57,14 @@ export default function ParticipantActivities({
   const [noMoreActivities, setNoMoreActivities] = useState(false);
   const lastScoreUpdateTimeRef = useRef(Date.now());
   const [isFullscreenMode, setIsFullscreenMode] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
 
   const quizContainerRef = useRef<HTMLDivElement>(null);
+
+  // Hàm kiểm tra loại activity là info slide hay không
+  const isInfoSlideActivity = (activityType?: string): boolean => {
+    return activityType === 'INFO_SLIDE';
+  };
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -236,7 +241,33 @@ export default function ParticipantActivities({
         if (!activity) {
           setNoMoreActivities(true);
         } else {
-          setShowCountdown(true);
+          // Reset state khi nhận activity mới - tương tự như HostActivities
+
+          // Đặt lại bộ đếm sự kiện của người tham gia về 0 khi nhận activity mới
+          // Trước khi gọi getParticipantsEventCount(), hãy reset giá trị đếm để đảm bảo nó bắt đầu từ 0
+          sessionWs.resetParticipantsEventCount();
+
+          // Sau đó đọc giá trị - điều này đảm bảo trang hiển thị giá trị 0/x khi bắt đầu
+          const participantsCount = sessionWs.getParticipantsEventCount();
+          console.log(
+            '[ParticipantActivities] Số người đã trả lời sau khi reset:',
+            participantsCount
+          );
+
+          // Lưu activityId vào ref để có thể theo dõi thay đổi
+          currentActivityIdRef.current = activity.activityId || null;
+
+          console.log(
+            `[ParticipantActivities] Chuyển sang activity mới: ${activity.activityId}, reset bộ đếm participants events`
+          );
+
+          // Hiển thị countdown chỉ khi activity không phải là INFO_SLIDE
+          if (!isInfoSlideActivity(activity.activityType)) {
+            setShowCountdown(true);
+          } else {
+            setShowCountdown(false);
+          }
+
           setCurrentActivity(activity);
           setNoMoreActivities(false);
         }
@@ -394,10 +425,16 @@ export default function ParticipantActivities({
         {(() => {
           switch (currentActivity.activityType) {
             case 'INFO_SLIDE':
-              return <InfoSlideViewer activity={currentActivity} />;
+              return (
+                <InfoSlideViewer
+                  key={currentActivity.activityId}
+                  activity={currentActivity}
+                />
+              );
             case 'QUIZ_BUTTONS':
               return (
                 <QuizButtonViewer
+                  key={currentActivity.activityId}
                   activity={currentActivity}
                   sessionCode={sessionCode}
                   sessionWebSocket={sessionWs}
@@ -729,17 +766,9 @@ export default function ParticipantActivities({
           </motion.div>
         )}
 
-        {/* Hiển thị kết quả khi phiên kết thúc */}
-        {renderSessionSummary()}
-
         {/* Main layout with sidebar */}
-        <div className='relative flex' ref={quizContainerRef}>
-          {/* Main quiz content - adjusts width based on sidebar */}
-          <div
-            className={`flex-grow transition-all duration-300 ease-in-out ${
-              isSidebarCollapsed ? 'w-full' : 'w-2/3 md:w-3/4'
-            }`}
-          >
+        <div className='relative' ref={quizContainerRef}>
+          <div className='w-full'>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -797,54 +826,20 @@ export default function ParticipantActivities({
             </motion.div>
           </div>
 
-          {/* Sidebar toggle button positioned on the boundary */}
-          <div className='fixed right-0 top-1/2 transform -translate-y-1/2 z-50'>
-            <motion.button
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`p-3 rounded-l-xl ${
-                isSidebarCollapsed
-                  ? 'bg-[#aef359] text-[#0e1c26]'
-                  : 'bg-[#0e2838] text-[#aef359]'
-              } shadow-lg border border-r-0 border-[#aef359]/30 flex items-center justify-center`}
-              title={
-                isSidebarCollapsed ? 'Hiện bảng xếp hạng' : 'Ẩn bảng xếp hạng'
-              }
-            >
-              {isSidebarCollapsed ? (
-                <Users className='h-5 w-5' />
-              ) : (
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  width='20'
-                  height='20'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                >
-                  <polyline points='15 18 9 12 15 6'></polyline>
-                </svg>
-              )}
-            </motion.button>
-          </div>
-
-          {/* Leaderboard sidebar */}
+          {/* Leaderboard sidebar - fixed trên mobile */}
           <motion.div
-            className={`fixed right-0 top-0 bottom-0 bg-[#0e1c26]/95 backdrop-blur-md z-40 shadow-xl border-l border-white/10
-              overflow-hidden ${
-                isFullscreenMode ? 'top-0 h-full' : 'top-[73px]'
-              }`}
+            className={`backdrop-blur-md shadow-xl border-l border-white/10 
+              overflow-hidden transition-all duration-300 ease-in-out
+              ${isFullscreenMode ? 'h-screen' : 'h-full'}
+              fixed inset-y-0 right-0 z-50 bg-[#0e1c26]/95 max-w-[90vw]
+              md:absolute md:bottom-0 md:top-0 md:z-20 md:max-w-[350px]
+            `}
             initial={false}
             animate={{
               width: isSidebarCollapsed ? '0' : 'min(85vw, 350px)',
               opacity: isSidebarCollapsed ? 0 : 1,
-              x: isSidebarCollapsed ? '100%' : '0%',
+              pointerEvents: isSidebarCollapsed ? 'none' : 'auto',
             }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           >
             <div className='p-4 h-full flex flex-col'>
               <div className='mb-4 flex items-center justify-between'>
@@ -909,6 +904,44 @@ export default function ParticipantActivities({
             </p>
           </motion.div>
         )}
+
+        {/* Sidebar toggle button positioned on the boundary */}
+        <div className='fixed right-0 top-1/2 transform -translate-y-1/2 z-50'>
+          <motion.button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className={`p-3 rounded-l-xl ${
+              isSidebarCollapsed
+                ? 'bg-[#aef359] text-[#0e1c26]'
+                : 'bg-[#0e2838] text-[#aef359]'
+            } shadow-lg border border-r-0 border-[#aef359]/30 flex items-center justify-center`}
+            title={
+              isSidebarCollapsed ? 'Hiện bảng xếp hạng' : 'Ẩn bảng xếp hạng'
+            }
+          >
+            {isSidebarCollapsed ? (
+              <Users className='h-5 w-5' />
+            ) : (
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='20'
+                height='20'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'
+              >
+                <polyline points='15 18 9 12 15 6'></polyline>
+              </svg>
+            )}
+          </motion.button>
+        </div>
+
+        {/* Hiển thị kết quả khi phiên kết thúc */}
+        {renderSessionSummary()}
       </div>
 
       {/* Add custom scrollbar style */}

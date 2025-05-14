@@ -46,6 +46,13 @@ export interface QuizQuestion {
     lng: number;
     radius: number;
     hint?: string;
+    pointType?: string;
+    quizLocationAnswers?: Array<{
+      quizLocationAnswerId?: string;
+      longitude: number;
+      latitude: number;
+      radius: number;
+    }>;
   };
 }
 
@@ -64,8 +71,8 @@ export interface Activity {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
-  quiz?: any; 
-  slide?: any// The original quiz data from the API
+  quiz?: any;
+  slide?: any; // The original quiz data from the API
 }
 
 export interface Collection {

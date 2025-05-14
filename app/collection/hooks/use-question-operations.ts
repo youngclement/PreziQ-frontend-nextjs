@@ -2,11 +2,11 @@
  * Custom hook for question operations
  */
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
 import { activitiesApi } from "@/api-client";
 import { Activity, QuizQuestion } from "../components/types";
 import { createEmptyQuestion } from "../utils/question-helpers";
 import { mapQuestionTypeToActivityType } from "../utils/question-type-mapping";
+import { CollectionService } from "../services/collection-service";
 
 // Define activity type constants instead of using enum
 export const ACTIVITY_TYPES = {
@@ -17,6 +17,7 @@ export const ACTIVITY_TYPES = {
   QUIZ_REORDER: "QUIZ_REORDER",
   INFO_SLIDE: "INFO_SLIDE",
   INFO_SLIDE_INTERACTIVE: "INFO_SLIDE_INTERACTIVE",
+  QUIZ_LOCATION: "QUIZ_LOCATION",
 } as const;
 
 export function useQuestionOperations(
@@ -31,7 +32,6 @@ export function useQuestionOperations(
   setActivity: (activity: Activity | null) => void,
   refreshCollectionData: () => Promise<void>
 ) {
-  const { toast } = useToast();
   const [timeLimit, setTimeLimit] = useState(30); // seconds
 
   /**
@@ -125,21 +125,13 @@ export function useQuestionOperations(
           ],
         });
 
-        toast({
-          title: "Success",
-          description: "New question added successfully",
-        });
+        console.log("New question added successfully");
 
         // Remove the call to refreshCollectionData to prevent page reload
         // This is not needed since we've already updated our local state
       }
     } catch (error) {
       console.error("Error adding question:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add new question",
-        variant: "destructive",
-      });
     }
   };
 
@@ -148,11 +140,9 @@ export function useQuestionOperations(
    */
   const handleDeleteQuestion = async (index: number) => {
     if (!activity || questions.length <= 1) {
-      toast({
-        title: "Cannot delete question",
-        description: "Activities must have at least one question",
-        variant: "destructive",
-      });
+      console.log(
+        "Cannot delete question: Activities must have at least one question"
+      );
       return;
     }
 
@@ -180,10 +170,7 @@ export function useQuestionOperations(
         setActiveQuestionIndex(index - 1);
       }
 
-      toast({
-        title: "Success",
-        description: "Question deleted successfully",
-      });
+      console.log("Question deleted successfully");
 
       // Use immediate async function to ensure state updates before refresh
       (async () => {
@@ -194,13 +181,9 @@ export function useQuestionOperations(
       })();
     } catch (error) {
       console.error("Error deleting question:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete question",
-        variant: "destructive",
-      });
     }
   };
+
   // Add to the hook's return value
   const handleQuestionLocationChange = (
     questionIndex: number,
@@ -208,28 +191,94 @@ export function useQuestionOperations(
   ) => {
     if (questionIndex < 0 || questionIndex >= questions.length) return;
 
+    // Get existing question and check if anything has actually changed
+    const existingQuestion = questions[questionIndex];
+    const existingLocationData = existingQuestion.location_data;
+
+    // Skip update if it's the same data (prevents updates when just scrolling)
+    const isSameData =
+      JSON.stringify(existingLocationData) === JSON.stringify(locationData);
+    if (isSameData) {
+      console.log("Skipping location update - no changes detected");
+      return;
+    }
+
+    // Prepare API payload format for location answers
+    const locationAnswers = Array.isArray(locationData)
+      ? locationData.map((location) => ({
+          longitude: location.longitude,
+          latitude: location.latitude,
+          radius: location.radius || 10,
+        }))
+      : [
+          {
+            longitude: locationData.lng || locationData.longitude || 0,
+            latitude: locationData.lat || locationData.latitude || 0,
+            radius: locationData.radius || 10,
+          },
+        ];
+
+    // Update the UI immediately with the new location data
     const updatedQuestions = [...questions];
     updatedQuestions[questionIndex] = {
       ...updatedQuestions[questionIndex],
       location_data: locationData,
     };
-
     setQuestions(updatedQuestions);
 
-    // Debounce update to API
-    if (window.updateQuestionTimer) {
-      clearTimeout(window.updateQuestionTimer);
-    }
+    // Get the activity ID from the question
+    const questionActivityId = existingQuestion.activity_id || activity?.id;
 
-    window.updateQuestionTimer = setTimeout(async () => {
-      try {
-        // Send to API when implemented
-        console.log("Updating question location data:", locationData);
-        // In a real implementation, you would call your API here
-      } catch (error) {
-        console.error("Error updating question location:", error);
-      }
-    }, 1000);
+    // Only call API if we have an activity ID
+    if (questionActivityId) {
+      console.log("Updating location quiz with:", locationAnswers);
+      activitiesApi
+        .updateLocationQuiz(questionActivityId, {
+          type: "LOCATION",
+          questionText: existingQuestion.question_text || "Location question",
+          timeLimitSeconds: existingQuestion.time_limit_seconds || 30,
+          pointType:
+            locationData.pointType ||
+            existingQuestion.location_data?.pointType ||
+            "STANDARD",
+          locationAnswers,
+        })
+        .then((response) => {
+          console.log("Location quiz updated successfully:", response);
+
+          // If we received a response with updated location data from API
+          if (response && response.data && response.data.quizLocationAnswers) {
+            // Extract the updated location data from the API response
+            const apiUpdatedLocations = response.data.quizLocationAnswers.map(
+              (loc: {
+                quizLocationAnswerId: string;
+                longitude: number;
+                latitude: number;
+                radius: number;
+              }) => ({
+                quizLocationAnswerId: loc.quizLocationAnswerId,
+                longitude: loc.longitude,
+                latitude: loc.latitude,
+                radius: loc.radius,
+              })
+            );
+
+            // Dispatch event to notify components of API updates
+            if (typeof window !== "undefined") {
+              const event = new CustomEvent("location:answers:updated", {
+                detail: {
+                  locationAnswers: apiUpdatedLocations,
+                  questionIndex,
+                },
+              });
+              window.dispatchEvent(event);
+            }
+          }
+        })
+        .catch((error) => {
+          console.error("Error updating location quiz:", error);
+        });
+    }
   };
 
   // Add handleQuestionLocationChange to the return object
@@ -243,20 +292,12 @@ export function useQuestionOperations(
       // Update local state
       setActivities(activities.filter((a) => a.id !== activityId));
 
-      toast({
-        title: "Success",
-        description: "Activity deleted successfully",
-      });
+      console.log("Activity deleted successfully");
 
       // Refresh collection data
       refreshCollectionData();
     } catch (error) {
       console.error("Error deleting activity:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete activity",
-        variant: "destructive",
-      });
     }
   };
 
@@ -499,17 +540,9 @@ export function useQuestionOperations(
 
       setQuestions(updatedQuestions);
 
-      toast({
-        title: "Success",
-        description: "Question type updated successfully",
-      });
+      console.log("Question type updated successfully");
     } catch (error) {
       console.error("Error updating question type:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update question type",
-        variant: "destructive",
-      });
     }
   };
 
@@ -617,11 +650,6 @@ export function useQuestionOperations(
       }
     } catch (error) {
       console.error("Error updating question text:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update question text",
-        variant: "destructive",
-      });
     }
   };
 
@@ -728,6 +756,119 @@ export function useQuestionOperations(
     }
   };
 
+  /**
+   * Add a new location question to the collection
+   */
+  const handleAddLocationQuestion = async (pointType: string = "STANDARD") => {
+    try {
+      // Find highest orderIndex to determine new activity's position
+      const highestOrderIndex = activities.reduce((max, act) => {
+        const orderIndex =
+          typeof act.orderIndex === "number" ? act.orderIndex : 0;
+        return Math.max(max, orderIndex);
+      }, -1);
+
+      console.log(
+        "Adding new location activity with orderIndex:",
+        highestOrderIndex + 1
+      );
+
+      // Create a new location activity in the collection
+      const payload = {
+        collectionId: collectionId,
+        activityType: ACTIVITY_TYPES.QUIZ_LOCATION,
+        title: "New Location Quiz",
+        description: "Find the location on the map",
+        isPublished: true,
+        backgroundColor: "#FFFFFF",
+        orderIndex: highestOrderIndex + 1,
+      };
+
+      // Create the activity first
+      const response = await CollectionService.createLocationQuizActivity(
+        payload
+      );
+
+      if (response && response.data && response.data.data) {
+        console.log("Created location activity:", response.data);
+
+        // Get the new activity data
+        const newActivityData = response.data.data;
+
+        // Add the new activity to our local state
+        const newActivity: Activity = {
+          id: newActivityData.activityId,
+          title: newActivityData.title,
+          collection_id: collectionId,
+          description: newActivityData.description,
+          is_published: newActivityData.isPublished,
+          activity_type_id: newActivityData.activityType,
+          backgroundColor: newActivityData.backgroundColor || "#FFFFFF",
+          orderIndex: newActivityData.orderIndex || highestOrderIndex + 1,
+          createdAt: newActivityData.createdAt,
+          updatedAt: newActivityData.createdAt,
+          createdBy: newActivityData.createdBy || "",
+        };
+
+        // Update activities array
+        const updatedActivities = [...activities, newActivity];
+        setActivities(updatedActivities);
+
+        // Create a default location in the center of the map
+        const defaultLocationData = {
+          lat: 21.0285, // Default latitude (Hanoi)
+          lng: 105.8048, // Default longitude
+          radius: 10, // Default radius in km
+          hint: "Find this location on the map",
+          pointType: pointType, // Add pointType
+        };
+
+        // Create a new question for this activity
+        const newQuestion: QuizQuestion = {
+          id: newActivityData.activityId,
+          activity_id: newActivityData.activityId,
+          question_text: "Where is this location?",
+          question_type: "location",
+          correct_answer_text: "",
+          options: [],
+          location_data: defaultLocationData,
+        };
+
+        // Add the new question at the end of the questions array
+        const updatedQuestions = [...questions, newQuestion];
+        setQuestions(updatedQuestions);
+
+        // Set this as current activity
+        setActivity(newActivity);
+
+        // Set the active question index to the new question
+        setActiveQuestionIndex(updatedQuestions.length - 1);
+
+        // Update API with the location data
+        await activitiesApi.updateLocationQuiz(newActivityData.activityId, {
+          type: "LOCATION",
+          questionText: "Where is this location?",
+          timeLimitSeconds: 60,
+          pointType: pointType as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS",
+          locationAnswers: [
+            {
+              longitude: defaultLocationData.lng,
+              latitude: defaultLocationData.lat,
+              radius: defaultLocationData.radius,
+            },
+          ],
+        });
+
+        console.log(
+          "New location question added successfully with pointType:",
+          pointType
+        );
+      }
+    } catch (error) {
+      console.error("Error adding location question:", error);
+    }
+  };
+
   return {
     timeLimit,
     setTimeLimit,
@@ -738,5 +879,6 @@ export function useQuestionOperations(
     handleQuestionLocationChange,
     handleQuestionTextChange,
     handleTimeLimitChange,
+    handleAddLocationQuestion,
   };
 }

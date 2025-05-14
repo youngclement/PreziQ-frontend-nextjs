@@ -18,7 +18,7 @@ import { EmptyCollections } from '../collections/components/empty-collections';
 import { CollectionGridItem } from '../collections/components/collection-grid-item';
 import { CollectionListItem } from '../collections/components/collection-list-item';
 import { CollectionPreviewDialog } from '../collections/components/collection-preview-dialog';
-
+import Loading from '@/components/common/loading';
 export default function MyCollectionsPage() {
     const router = useRouter();
     const { toast } = useToast();
@@ -142,7 +142,7 @@ export default function MyCollectionsPage() {
     };
 
     const handleEditCollection = (id: string) => {
-        router.push(`/collection/edit/${id}`);
+        router.push(`/collection?collectionId=${id}`);
     };
 
     const handleViewActivities = (id: string) => {
@@ -232,17 +232,14 @@ export default function MyCollectionsPage() {
 
                 {/* Filters Section */}
                 <CollectionFilters
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    viewMode={viewMode}
-                    onViewModeChange={setViewMode}
+                    topics={[]}
+                    selectedTopic=""
+                    onTopicChange={(topic) => console.log("Topic selected:", topic)}
                 />
 
                 {/* Loading state */}
                 {isLoading && (
-                    <div className="flex items-center justify-center py-32">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-                    </div>
+                    <Loading />
                 )}
 
                 {/* Error state */}
@@ -285,33 +282,25 @@ export default function MyCollectionsPage() {
                         <>
                             {viewMode === 'grid' ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {filteredCollections.map((collection, i) => (
+                                    {filteredCollections.map((collection) => (
                                         <CollectionGridItem
                                             key={collection.id}
                                             collection={collection}
-                                            index={i}
                                             activities={getCollectionActivities(collection.id)}
                                             onEdit={handleEditCollection}
-                                            onDelete={handleDeleteCollection}
                                             onView={handleViewActivities}
-                                            onPreview={handlePreviewCollection}
-                                            collectionVariants={collectionVariants}
                                         />
                                     ))}
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    {filteredCollections.map((collection, i) => (
+                                    {filteredCollections.map((collection) => (
                                         <CollectionListItem
                                             key={collection.id}
                                             collection={collection}
-                                            index={i}
                                             activities={getCollectionActivities(collection.id)}
                                             onEdit={handleEditCollection}
-                                            onDelete={handleDeleteCollection}
                                             onView={handleViewActivities}
-                                            onPreview={handlePreviewCollection}
-                                            collectionVariants={collectionVariants}
                                         />
                                     ))}
                                 </div>

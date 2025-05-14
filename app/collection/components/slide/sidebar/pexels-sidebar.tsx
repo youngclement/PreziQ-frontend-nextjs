@@ -48,7 +48,7 @@ export default function PexelsSidebar() {
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
-    if (value.length > 2) fetchImages(value);
+    if (value.length >= 1) fetchImages(value);
   };
 
   const handleAddToCanvas = (url: string) => {
