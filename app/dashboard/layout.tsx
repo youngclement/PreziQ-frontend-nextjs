@@ -9,6 +9,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Loading from '@/components/common/loading';
 
 export default function DashboardLayout({
   children,
@@ -44,9 +45,7 @@ export default function DashboardLayout({
   // Show loading state initially
   if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-      </div>
+      <Loading />
     );
   }
 

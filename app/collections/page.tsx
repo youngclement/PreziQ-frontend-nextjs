@@ -20,6 +20,7 @@ import { CollectionGridItem } from './components/collection-grid-item';
 import { CollectionListItem } from './components/collection-list-item';
 import { CollectionPreviewDialog } from './components/collection-preview-dialog';
 import { Button } from '@/components/ui/button';
+import Loading from '@/components/common/loading';
 
 export default function PublishedCollectionsPage() {
   const router = useRouter();
@@ -538,9 +539,7 @@ export default function PublishedCollectionsPage() {
         </div>
         {/* Loading state */}
         {isLoading && (
-          <div className="flex items-center justify-center py-32">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-          </div>
+          <Loading />
         )}
 
         {/* Error state */}

@@ -5,8 +5,22 @@ import { Badge } from '@/components/ui/badge';
 import { levels } from './data';
 import { cn } from '@/lib/utils';
 
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  iconUrl?: string;
+  unlocked: boolean;
+  progress: number;
+  date?: string;
+  points: number;
+  type: string;
+  color: string;
+  icon: any;
+}
+
 interface UserStatsProps {
-  achievements: any[];
+  achievements: Achievement[];
 }
 
 const UserStats = ({ achievements }: UserStatsProps) => {
@@ -248,50 +262,47 @@ const UserStats = ({ achievements }: UserStatsProps) => {
               transition={{ delay: 0.2 + index * 0.1 }}
               whileHover={{
                 y: -5,
-                boxShadow:
-                  currentLevel && level.level <= currentLevel.level
-                    ? '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
-                    : 'none',
-                transition: { duration: 0.2 },
+                transition: { type: 'spring', stiffness: 300 },
               }}
             >
-              {currentLevel && level.level <= currentLevel.level && (
-                <motion.div
-                  className='absolute top-1 right-1 w-4 h-4 text-primary'
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{
-                    delay: 0.5 + index * 0.1,
-                    type: 'spring',
-                  }}
+              <div className='relative mb-1'>
+                <div
+                  className={cn(
+                    'w-10 h-10 mx-auto rounded-full flex items-center justify-center mb-3',
+                    currentLevel && level.level <= currentLevel.level
+                      ? level.color
+                      : 'bg-muted',
+                    'text-white'
+                  )}
                 >
-                  <svg
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    xmlns='http://www.w3.org/2000/svg'
-                  >
-                    <path
-                      d='M20.1005 6.10046C20.5205 6.52046 20.5205 7.22046 20.1005 7.63046L10.2205 17.5105C9.80047 17.9305 9.10047 17.9305 8.69047 17.5105L3.90047 12.7305C3.48047 12.3105 3.48047 11.6105 3.90047 11.2005C4.32047 10.7805 5.02047 10.7805 5.43047 11.2005L9.40047 15.1705L18.5605 6.10046C18.9805 5.68046 19.6805 5.68046 20.1005 6.10046Z'
-                      fill='currentColor'
-                    />
-                  </svg>
-                </motion.div>
-              )}
-
-              <div className='text-lg font-bold mb-1'>{level.level}</div>
-              <div className='text-xs font-medium'>{level.name}</div>
-              <div className='text-xs text-muted-foreground mt-2 font-mono'>
-                {level.points.toLocaleString()} points
+                  <span className='text-xs font-bold'>{level.level}</span>
+                </div>
+                {currentLevel && level.level === currentLevel.level && (
+                  <div className='absolute top-0 right-0 w-4 h-4 bg-yellow-400 rounded-full -mt-1 -mr-1 border-2 border-white dark:border-slate-800 flex items-center justify-center'>
+                    <span className='text-[8px] text-white font-bold'>✓</span>
+                  </div>
+                )}
               </div>
-
-              {currentLevel && level.level === currentLevel.level && (
-                <motion.div
-                  className='absolute bottom-0 left-0 right-0 h-1 bg-primary'
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ delay: 0.7, duration: 0.5 }}
-                />
-              )}
+              <h4
+                className={cn(
+                  'text-xs font-medium',
+                  currentLevel && level.level <= currentLevel.level
+                    ? ''
+                    : 'text-muted-foreground'
+                )}
+              >
+                {level.name}
+              </h4>
+              <p
+                className={cn(
+                  'text-[10px] font-mono mt-1',
+                  currentLevel && level.level <= currentLevel.level
+                    ? 'text-primary'
+                    : 'text-muted-foreground'
+                )}
+              >
+                {level.points} pts
+              </p>
             </motion.div>
           ))}
         </div>

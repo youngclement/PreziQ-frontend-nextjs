@@ -8,18 +8,14 @@ import { RolesTable } from '@/components/dashboard/roles/components/roles-table'
 import RolesProvider from '@/components/dashboard/roles/context/roles-context';
 import { useRoles } from '@/components/dashboard/roles/context/roles-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
 import { PermissionsProvider } from '@/components/dashboard/permissions/context/permissions-context';
+import Loading from '@/components/common/loading';
 
 function RolesContent() {
 	const { roles, isLoading, error } = useRoles();
 
 	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center h-32">
-				<Loader2 className="w-6 h-6 animate-spin" />
-			</div>
-		);
+		return <Loading />;
 	}
 
 	if (error) {
