@@ -7,6 +7,7 @@ interface CreateCollectionPayload {
   coverImage?: string;
   isPublished?: boolean;
   defaultBackgroundMusic?: string;
+  topic: string;
 }
 
 interface UpdateCollectionPayload {
@@ -15,6 +16,7 @@ interface UpdateCollectionPayload {
   coverImage?: string;
   isPublished?: boolean;
   defaultBackgroundMusic?: string;
+  topic?: string;
 }
 
 interface GetCollectionsParams {
@@ -24,6 +26,11 @@ interface GetCollectionsParams {
   isPublished?: boolean;
   owner?: string;
   sort?: string;
+}
+
+interface GetGroupedCollectionsByTopicParams {
+  page?: number;
+  size?: number;
 }
 
 export const collectionsApi = {
@@ -101,5 +108,24 @@ export const collectionsApi = {
    */
   deleteCollection(id: string) {
     return axiosClient.delete(`/collections/${id}`);
+  },
+
+  /**
+   * Lấy danh sách các topics của collection
+   * @returns Promise với kết quả từ API
+   */
+  getCollectionTopics() {
+    return axiosClient.get("/collections/topics");
+  },
+
+  /**
+   * Lấy danh sách collections được nhóm theo topic
+   * @param params Các tham số phân trang
+   * @returns Promise với kết quả từ API
+   */
+  getGroupedCollectionsByTopic(
+    params: GetGroupedCollectionsByTopicParams = { page: 1, size: 10 }
+  ) {
+    return axiosClient.get("/collections/grouped/topics", { params });
   },
 };
