@@ -248,7 +248,7 @@ export function QuestionPreview({
       try {
         const response = await activitiesApi.getActivityById(activityId);
         const activityData = response.data.data;
-        console.log('activityData', activityData);
+        // console.log('activityData', activityData);
 
         // Lưu dữ liệu slide riêng cho từng activityId
         setSlidesData((prev) => ({
@@ -315,7 +315,7 @@ export function QuestionPreview({
     const handleTimeLimitUpdate = (event: any) => {
       // Check if this update is for our current activity
       if (activity && event.detail && event.detail.activityId === activity.id) {
-        console.log('Time limit updated, refreshing UI');
+        // console.log('Time limit updated, refreshing UI');
 
         // First, directly update DOM elements with the time-limit-display class
         // This prevents flickering by immediately updating visible elements
@@ -389,9 +389,10 @@ export function QuestionPreview({
           : {}),
       }));
     }
-
+    
     // Cập nhật bản đồ activityBackgrounds sau đó
-    setActivityBackgrounds((prev) => {
+    if (activity?.activity_type_id != 'INFO_SLIDE') {  
+      setActivityBackgrounds((prev) => {
       const current = prev[activityId] || {
         backgroundImage: '',
         backgroundColor: '#FFFFFF',
@@ -405,12 +406,13 @@ export function QuestionPreview({
         ...prev,
         [activityId]: updated,
       };
-    });
+    });}
+    
   };
 
   // Update background state when activity changes
   React.useEffect(() => {
-    console.log('Activity changed, updating background state:', activity);
+    // console.log('Activity changed, updating background state:', activity);
 
     if (activity) {
       // Luôn ưu tiên sử dụng màu từ global storage trước
@@ -748,7 +750,157 @@ export function QuestionPreview({
     );
   };
 
+  // const handleUpdate = async (data: {
+  //   slideId?: string;
+  //   title?: string;
+  //   content?: string;
+  //   addElement?: SlideElementPayload;
+  //   updateElement?: { slideElementId: string; payload: SlideElementPayload };
+  // }) => {
+  //   const currentQuestion = questions[activeQuestionIndex];
+  //   if (!currentQuestion) {
+  //     console.error(
+  //       'No question found at activeQuestionIndex:',
+  //       activeQuestionIndex
+  //     );
+  //     return;
+  //   }
+
+  //   if (data.slideId && data.slideId !== currentQuestion.activity_id) {
+  //     console.log(
+  //       `Bỏ qua cập nhật vì slideId không khớp: ${data.slideId} !== ${currentQuestion.activity_id}`
+  //     );
+  //     return;
+  //   }
+
+  //   try {
+  //     // Xử lý title
+  //     if (data.title) {
+  //       onQuestionTextChange(data.title, activeQuestionIndex);
+  //     }
+
+  //     // Xử lý content
+  //     if (data.content && onSlideContentChange) {
+  //       onSlideContentChange(data.content);
+  //     }
+
+  //     // Xử lý thêm phần tử mới
+  //     if (data.addElement && currentQuestion.activity_id) {
+  //       // Optimistic update
+  //       const tempElement: SlideElementPayload = {
+  //         slideElementId: `temp-${Date.now()}`, // ID tạm thời
+  //         ...data.addElement,
+  //       };
+  //       setSlidesElements((prev) => {
+  //         const currentElements = prev[currentQuestion.activity_id!] || [];
+  //         return {
+  //           ...prev,
+  //           [currentQuestion.activity_id!]: [...currentElements, tempElement],
+  //         };
+  //       });
+
+  //       try {
+  //         const res = await slidesApi.addSlidesElement(
+  //           currentQuestion.activity_id,
+  //           data.addElement
+  //         );
+  //         const newElement: SlideElementPayload = {
+  //           slideElementId: res.data.data.slideElementId,
+  //           ...data.addElement,
+  //         };
+  //         // Cập nhật lại với ID chính thức
+  //         setSlidesElements((prev) => {
+  //           const currentElements = prev[currentQuestion.activity_id!] || [];
+  //           return {
+  //             ...prev,
+  //             [currentQuestion.activity_id!]: currentElements.map((el) =>
+  //               el.slideElementId === tempElement.slideElementId
+  //                 ? newElement
+  //                 : el
+  //             ),
+  //           };
+  //         });
+  //         console.log('Added element:', newElement);
+  //       } catch (err) {
+  //         console.error('Lỗi khi thêm phần tử:', err);
+  //         // Rollback
+  //         setSlidesElements((prev) => {
+  //           const currentElements = prev[currentQuestion.activity_id!] || [];
+  //           return {
+  //             ...prev,
+  //             [currentQuestion.activity_id!]: currentElements.filter(
+  //               (el) => el.slideElementId !== tempElement.slideElementId
+  //             ),
+  //           };
+  //         });
+  //       }
+  //     }
+
+  //     // Xử lý cập nhật phần tử
+  //     if (data.updateElement && currentQuestion.activity_id) {
+  //       const { slideElementId, payload } = data.updateElement;
+  //       // Optimistic update
+  //       setSlidesElements((prev) => {
+  //         const currentElements = prev[currentQuestion.activity_id!] || [];
+  //         const updatedElements = currentElements.map((element) =>
+  //           element.slideElementId === slideElementId
+  //             ? { ...element, ...payload }
+  //             : element
+  //         );
+  //         return {
+  //           ...prev,
+  //           [currentQuestion.activity_id!]: updatedElements,
+  //         };
+  //       });
+
+  //       try {
+  //         const res = await slidesApi.updateSlidesElement(
+  //           currentQuestion.activity_id,
+  //           slideElementId,
+  //           payload
+  //         );
+  //         const updatedElement: SlideElementPayload = {
+  //           slideElementId,
+  //           ...res.data.data,
+  //         };
+  //         // Cập nhật lại với dữ liệu từ server
+  //         setSlidesElements((prev) => {
+  //           const currentElements = prev[currentQuestion.activity_id!] || [];
+  //           const updatedElements = currentElements.map((element) =>
+  //             element.slideElementId === slideElementId
+  //               ? updatedElement
+  //               : element
+  //           );
+  //           return {
+  //             ...prev,
+  //             [currentQuestion.activity_id!]: updatedElements,
+  //           };
+  //         });
+  //         console.log('Updated element:', updatedElement);
+  //       } catch (err) {
+  //         console.error('Lỗi khi cập nhật phần tử:', err);
+  //         // Rollback (khôi phục trạng thái trước đó)
+  //         setSlidesElements((prev) => {
+  //           const currentElements = prev[currentQuestion.activity_id!] || [];
+  //           const updatedElements = currentElements.map((element) =>
+  //             element.slideElementId === slideElementId
+  //               ? element // Khôi phục phần tử cũ
+  //               : element
+  //           );
+  //           return {
+  //             ...prev,
+  //             [currentQuestion.activity_id!]: updatedElements,
+  //           };
+  //         });
+  //       }
+  //     }
+  //   } catch (err) {
+  //     console.error('Lỗi khi xử lý onUpdate:', err);
+  //   }
+  // };
+
   // Enhanced renderQuestionContent function with simplified styling
+  
   function renderQuestionContent(
     question: QuizQuestion,
     questionIndex: number,
@@ -831,23 +983,23 @@ export function QuestionPreview({
     const hasBackgroundImage =
       actualBackgroundImage && actualBackgroundImage.trim() !== '';
 
-    console.log(`Rendering slide ${question.activity_id}:`, {
-      actualBackgroundColor,
-      actualBackgroundImage,
-      fromGlobal: window.savedBackgroundColors?.[question.activity_id],
-      fromActivityBackgrounds: activityBackgrounds[question.activity_id],
-      fromSlidesBackgrounds: slidesBackgrounds[question.activity_id],
-    });
+    // console.log(`Rendering slide ${question.activity_id}:`, {
+    //   actualBackgroundColor,
+    //   actualBackgroundImage,
+    //   fromGlobal: window.savedBackgroundColors?.[question.activity_id],
+    //   fromActivityBackgrounds: activityBackgrounds[question.activity_id],
+    //   fromSlidesBackgrounds: slidesBackgrounds[question.activity_id],
+    // });
 
     if (isSlideType) {
       const slideTypeText =
         question.question_type === 'info_slide' ? 'Info Slide' : 'Slide';
 
-      console.log(
-        'activityBackgrounds[question.activity_id]',
-        activityBackgrounds[question.activity_id],
-        question.activity_id
-      );
+      // console.log(
+      //   'activityBackgrounds[question.activity_id]',
+      //   activityBackgrounds[question.activity_id],
+      //   question.activity_id
+      // );
       
       return (
         <div
@@ -897,10 +1049,29 @@ export function QuestionPreview({
                     onSlideContentChange(data.content);
                   }
                   if (data.slideElements && question.activity_id) {
-                    setSlidesElements((prev) => ({
-                      ...prev,
-                      [question.activity_id!]: data.slideElements ?? [],
-                    }));
+                    setSlidesElements((prev) => {
+                      const id = question.activity_id!;
+                      const oldList = prev[id] || [];
+                      const incoming = data.slideElements ?? [];
+
+                      // ghép và loại bỏ trùng
+                      const merged = [...oldList];
+                      incoming.forEach((el) => {
+                        if (
+                          !merged.find(
+                            (x) => x.slideElementId === el.slideElementId
+                          )
+                        ) {
+                          merged.push(el);
+                        }
+                      });
+
+                      return {
+                        ...prev,
+                        [id]: merged,
+                      };
+                    });
+                    console.log('data nhậnnnn: ', data.slideElements);
                   }
                 }}
                 width={

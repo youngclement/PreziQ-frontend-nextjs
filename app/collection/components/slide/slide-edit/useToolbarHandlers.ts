@@ -16,8 +16,6 @@ type StyleObj = Partial<{
 
 export const ToolbarHandlers = (
   canvas: fabric.Canvas,
-  title: fabric.Textbox,
-  content: fabric.Textbox,
   slideId: string,
   onUpdate?: (data: {
     title?: string;
@@ -247,11 +245,17 @@ export const ToolbarHandlers = (
               ...payload,
             };
 
+            const updatedSlideElements = [...initialSlideElements, newElement];
+
             if (onUpdate) {
               onUpdate({
-                slideElements: [...initialSlideElements, newElement],
+                slideElements: updatedSlideElements,
               });
             }
+
+            console.log('Data đã gửi:', {
+              slideElements: updatedSlideElements,
+            });
           })
           .catch((err) => {
             console.error('Lỗi khi tạo image element:', err);
@@ -431,9 +435,9 @@ export const ToolbarHandlers = (
   };
 
   const clearCanvas = () => {
-    canvas.getObjects().forEach((obj) => {
-      if (obj !== title && obj !== content) canvas.remove(obj);
-    });
+    // canvas.getObjects().forEach((obj) => {
+    //   if (obj !== title && obj !== content) canvas.remove(obj);
+    // });
     canvas.renderAll();
   };
 
