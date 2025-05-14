@@ -71,7 +71,7 @@ const SortableActivityItem = ({
   activity,
   index,
   isActive,
-  onSelect
+  onSelect,
 }: {
   activity: Activity;
   index: number;
@@ -81,7 +81,6 @@ const SortableActivityItem = ({
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: activity.id });
 
-
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -90,7 +89,11 @@ const SortableActivityItem = ({
   // Get background color for activity
   const getBackgroundColor = () => {
     // Use savedBackgroundColors from window if available
-    if (typeof window !== 'undefined' && window.savedBackgroundColors && window.savedBackgroundColors[activity.id]) {
+    if (
+      typeof window !== 'undefined' &&
+      window.savedBackgroundColors &&
+      window.savedBackgroundColors[activity.id]
+    ) {
       return window.savedBackgroundColors[activity.id];
     }
 
@@ -100,7 +103,10 @@ const SortableActivityItem = ({
   // Tách riêng sự kiện click để chọn activity và sự kiện kéo thả
   const handleActivityClick = (e: React.MouseEvent) => {
     // Nếu đang thực hiện kéo thả, không trigger click
-    if (e.target === e.currentTarget || !(e.target as HTMLElement).classList.contains('grip-handle')) {
+    if (
+      e.target === e.currentTarget ||
+      !(e.target as HTMLElement).classList.contains('grip-handle')
+    ) {
       onSelect();
     }
   };
@@ -110,7 +116,9 @@ const SortableActivityItem = ({
       ref={setNodeRef}
       style={{
         ...style,
-        backgroundImage: activity.backgroundImage ? `url(${activity.backgroundImage})` : undefined,
+        backgroundImage: activity.backgroundImage
+          ? `url(${activity.backgroundImage})`
+          : undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundColor: getBackgroundColor(),
@@ -124,18 +132,18 @@ const SortableActivityItem = ({
           : 'border-transparent hover:border-gray-300'
       )}
     >
-      <div className="absolute top-1 left-1 bg-black/40 text-white text-[8px] px-1 py-0.5 rounded-full z-10">
+      <div className='absolute top-1 left-1 bg-black/40 text-white text-[8px] px-1 py-0.5 rounded-full z-10'>
         {index + 1}
       </div>
       <div
-        className="absolute top-1 right-1 cursor-grab opacity-70 hover:opacity-100 grip-handle"
+        className='absolute top-1 right-1 cursor-grab opacity-70 hover:opacity-100 grip-handle'
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="h-3 w-3 text-white drop-shadow-md grip-handle" />
+        <GripVertical className='h-3 w-3 text-white drop-shadow-md grip-handle' />
       </div>
-      <div className="p-2 h-full bg-black/30 flex flex-col justify-end">
-        <h3 className="text-[9px] font-medium line-clamp-2 text-white drop-shadow-sm">
+      <div className='p-2 h-full bg-black/30 flex flex-col justify-end'>
+        <h3 className='text-[9px] font-medium line-clamp-2 text-white drop-shadow-sm'>
           {activity.title || `Activity ${index + 1}`}
         </h3>
       </div>
@@ -170,17 +178,14 @@ export function QuestionList({
   const addButtonRef = useRef<HTMLDivElement>(null);
   const [renderKey, setRenderKey] = useState(0);
 
-  
   // Scroll to the end of the activities list when a new activity is added
   React.useEffect(() => {
     if (scrollContainerRef.current && activities.length > 0) {
       // Scroll to the end when activities length changes
-      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+      scrollContainerRef.current.scrollLeft =
+        scrollContainerRef.current.scrollWidth;
     }
   }, [activities.length]);
-
-  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
-
 
   // Setup sensors for dnd-kit
   const sensors = useSensors(
@@ -190,29 +195,10 @@ export function QuestionList({
     })
   );
 
-  // Add effect to handle clicks outside the menu
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        addButtonRef.current &&
-        !addButtonRef.current.contains(event.target as Node) &&
-        isAddMenuOpen
-      ) {
-        setIsAddMenuOpen(false);
-      }
-    };
-
-    // Add event listener
-    document.addEventListener('mousedown', handleClickOutside);
-
-    // Clean up
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isAddMenuOpen]);
-
   // Map question type to activity type for API calls
-  const mapQuestionTypeToActivityType = (questionType: string): ActivityType => {
+  const mapQuestionTypeToActivityType = (
+    questionType: string
+  ): ActivityType => {
     switch (questionType) {
       case 'multiple_choice':
         return 'QUIZ_BUTTONS';
@@ -241,40 +227,52 @@ export function QuestionList({
         return;
       }
 
-      setIsAddMenuOpen(false);
-
       // Step 1: Create activity with the appropriate type
       const activityPayload = {
         collectionId: collectionId,
         activityType: 'QUIZ_BUTTONS' as ActivityType,
-        title: "New Question",
-        description: "This is a new question",
+        title: 'New Question',
+        description: 'This is a new question',
         isPublished: true,
-        backgroundColor: '#FFFFFF'
+        backgroundColor: '#FFFFFF',
       };
 
       // Create the activity first
-      const activityResponse = await activitiesApi.createActivity(activityPayload);
+      const activityResponse = await activitiesApi.createActivity(
+        activityPayload
+      );
 
       // Make sure we have a valid response with an activity ID
       if (!activityResponse.data?.data?.activityId) {
-        throw new Error("No activity ID returned from server");
+        throw new Error('No activity ID returned from server');
       }
 
       const newActivityId = activityResponse.data.data.activityId;
 
       // Step 2: Initialize the quiz data (multiple choice)
       const quizPayload = {
-        type: "CHOICE" as const,
-        questionText: "Default question",
+        type: 'CHOICE' as const,
+        questionText: 'Default question',
         timeLimitSeconds: 30,
-        pointType: "STANDARD" as const,
+        pointType: 'STANDARD' as const,
         answers: [
-          { answerText: "Option 1", isCorrect: true, explanation: "Correct" },
-          { answerText: "Option 2", isCorrect: false, explanation: "Incorrect" },
-          { answerText: "Option 3", isCorrect: false, explanation: "Incorrect" },
-          { answerText: "Option 4", isCorrect: false, explanation: "Incorrect" },
-        ]
+          { answerText: 'Option 1', isCorrect: true, explanation: 'Correct' },
+          {
+            answerText: 'Option 2',
+            isCorrect: false,
+            explanation: 'Incorrect',
+          },
+          {
+            answerText: 'Option 3',
+            isCorrect: false,
+            explanation: 'Incorrect',
+          },
+          {
+            answerText: 'Option 4',
+            isCorrect: false,
+            explanation: 'Incorrect',
+          },
+        ],
       };
 
       await activitiesApi.updateButtonsQuiz(newActivityId, quizPayload);
@@ -283,17 +281,17 @@ export function QuestionList({
       const questionData = {
         id: newActivityId,
         activity_id: newActivityId,
-        question_text: "Default question",
-        question_type: 'multiple_choice' as "multiple_choice",
+        question_text: 'Default question',
+        question_type: 'multiple_choice' as 'multiple_choice',
         options: [
-          { option_text: "Option 1", is_correct: true, display_order: 0 },
-          { option_text: "Option 2", is_correct: false, display_order: 1 },
-          { option_text: "Option 3", is_correct: false, display_order: 2 },
-          { option_text: "Option 4", is_correct: false, display_order: 3 }
+          { option_text: 'Option 1', is_correct: true, display_order: 0 },
+          { option_text: 'Option 2', is_correct: false, display_order: 1 },
+          { option_text: 'Option 3', is_correct: false, display_order: 2 },
+          { option_text: 'Option 4', is_correct: false, display_order: 3 },
         ],
         time_limit_seconds: 30,
         points: 1,
-        correct_answer_text: ''
+        correct_answer_text: '',
       };
 
       // Step 4: Update local state via the callback
@@ -312,11 +310,12 @@ export function QuestionList({
       // Scroll to the end after a short delay to ensure the new question is rendered
       setTimeout(() => {
         if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+          scrollContainerRef.current.scrollLeft =
+            scrollContainerRef.current.scrollWidth;
         }
       }, 100);
     } catch (error) {
-      console.error("Error adding question:", error);
+      console.error('Error adding question:', error);
     }
   };
 
@@ -327,41 +326,41 @@ export function QuestionList({
         return;
       }
 
-      setIsAddMenuOpen(false);
-
       // Step 1: Create activity with INFO_SLIDE type (since QUIZ_LOCATION is not in ActivityType)
       const activityPayload = {
         collectionId: collectionId,
         activityType: 'INFO_SLIDE' as ActivityType,
-        title: "Where is this location?",
-        description: "Find this location on the map",
+        title: 'Where is this location?',
+        description: 'Find this location on the map',
         isPublished: true,
-        backgroundColor: '#FFFFFF'
+        backgroundColor: '#FFFFFF',
       };
 
       // Create the activity first
-      const activityResponse = await activitiesApi.createActivity(activityPayload);
+      const activityResponse = await activitiesApi.createActivity(
+        activityPayload
+      );
 
       // Make sure we have a valid response with an activity ID
       if (!activityResponse.data?.data?.activityId) {
-        throw new Error("No activity ID returned from server");
+        throw new Error('No activity ID returned from server');
       }
 
       const newActivityId = activityResponse.data.data.activityId;
 
       // Step 2: Initialize the location quiz data
       const locationPayload = {
-        type: "LOCATION" as const,
-        questionText: "Where is this location?",
+        type: 'LOCATION' as const,
+        questionText: 'Where is this location?',
         timeLimitSeconds: 60,
-        pointType: "STANDARD" as const,
+        pointType: 'STANDARD' as const,
         locationAnswers: [
           {
             longitude: 105.8048, // Default to Hanoi
             latitude: 21.0285,
-            radius: 20
-          }
-        ]
+            radius: 20,
+          },
+        ],
       };
 
       await activitiesApi.updateLocationQuiz(newActivityId, locationPayload);
@@ -370,8 +369,8 @@ export function QuestionList({
       const locationData = {
         id: newActivityId,
         activity_id: newActivityId,
-        question_text: "Where is this location?",
-        question_type: 'location' as "location",
+        question_text: 'Where is this location?',
+        question_type: 'location' as 'location',
         options: [],
         time_limit_seconds: 60,
         points: 1,
@@ -380,14 +379,17 @@ export function QuestionList({
           lat: 21.0285,
           lng: 105.8048,
           radius: 20,
-          hint: "Find this location on the map",
-          pointType: "STANDARD"
-        }
+          hint: 'Find this location on the map',
+          pointType: 'STANDARD',
+        },
       };
 
       // Step 4: Update local state via the callback
-      if (onAddLocationQuestion && typeof onAddLocationQuestion === 'function') {
-        onAddLocationQuestion("STANDARD");
+      if (
+        onAddLocationQuestion &&
+        typeof onAddLocationQuestion === 'function'
+      ) {
+        onAddLocationQuestion('STANDARD');
       } else if (typeof onAddQuestion === 'function') {
         onAddQuestion(locationData);
       }
@@ -403,11 +405,12 @@ export function QuestionList({
       // Scroll to the end after a short delay
       setTimeout(() => {
         if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+          scrollContainerRef.current.scrollLeft =
+            scrollContainerRef.current.scrollWidth;
         }
       }, 100);
     } catch (error) {
-      console.error("Error adding location question:", error);
+      console.error('Error adding location question:', error);
     }
   };
 
@@ -427,13 +430,15 @@ export function QuestionList({
       const newActivities = arrayMove([...activities], oldIndex, newIndex);
 
       // Lấy danh sách ID sau khi sắp xếp
-      const orderedActivityIds = newActivities.map(activity => activity.id);
+      const orderedActivityIds = newActivities.map((activity) => activity.id);
 
       // Tạo lại danh sách questions mới theo thứ tự activities mới
-      const newQuestions = orderedActivityIds.map(activityId => {
-        // Tìm question tương ứng với activity này
-        return questions.find(q => q.activity_id === activityId);
-      }).filter(q => q !== undefined) as QuizQuestion[];
+      const newQuestions = orderedActivityIds
+        .map((activityId) => {
+          // Tìm question tương ứng với activity này
+          return questions.find((q) => q.activity_id === activityId);
+        })
+        .filter((q) => q !== undefined) as QuizQuestion[];
 
       if (onReorderActivities) {
         // Gọi callback để component cha cập nhật UI trước khi API call hoàn thành
@@ -444,7 +449,10 @@ export function QuestionList({
         if (collectionId) {
           try {
             // Gọi API với đầy đủ danh sách ID
-            await activitiesApi.reorderActivities(collectionId, orderedActivityIds);
+            await activitiesApi.reorderActivities(
+              collectionId,
+              orderedActivityIds
+            );
           } catch (error) {
             console.error('Error reordering activities:', error);
           }
@@ -479,13 +487,13 @@ export function QuestionList({
 
   // Question type icons
   const questionTypeIcons = {
-    slide: <FileText className="h-3.5 w-3.5" />,
-    info_slide: <FileText className="h-3.5 w-3.5" />,
+    slide: <FileText className='h-3.5 w-3.5' />,
+    info_slide: <FileText className='h-3.5 w-3.5' />,
   };
 
   // Filter questions to show only slides
   const slideQuestions = questions.filter(
-    q => q.question_type === 'slide' || q.question_type === 'info_slide'
+    (q) => q.question_type === 'slide' || q.question_type === 'info_slide'
   );
 
   // Mouse events for drag-to-scroll
@@ -512,12 +520,18 @@ export function QuestionList({
   // Thêm hàm để lấy màu nền từ nhiều nguồn
   const getActivityBackgroundColor = (activityId: string) => {
     // Ưu tiên lấy màu từ global storage
-    if (typeof window !== 'undefined' && window.savedBackgroundColors && window.savedBackgroundColors[activityId]) {
+    if (
+      typeof window !== 'undefined' &&
+      window.savedBackgroundColors &&
+      window.savedBackgroundColors[activityId]
+    ) {
       return window.savedBackgroundColors[activityId];
     }
 
     // Nếu không tìm thấy, lấy từ danh sách activities
-    const activityBgColor = activities.find(a => a.id === activityId)?.backgroundColor;
+    const activityBgColor = activities.find(
+      (a) => a.id === activityId
+    )?.backgroundColor;
     if (activityBgColor) {
       return activityBgColor;
     }
@@ -529,19 +543,30 @@ export function QuestionList({
   // Thêm sự kiện listener để cập nhật UI khi có thay đổi màu nền
   useEffect(() => {
     const handleBackgroundUpdate = (event: any) => {
-      if (event.detail && event.detail.activityId && event.detail.properties && event.detail.properties.backgroundColor) {
+      if (
+        event.detail &&
+        event.detail.activityId &&
+        event.detail.properties &&
+        event.detail.properties.backgroundColor
+      ) {
         // Khi có sự kiện cập nhật màu, force re-render component
-        setRenderKey(prev => prev + 1);
+        setRenderKey((prev) => prev + 1);
       }
     };
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('activity:background:updated', handleBackgroundUpdate);
+      window.addEventListener(
+        'activity:background:updated',
+        handleBackgroundUpdate
+      );
     }
 
     return () => {
       if (typeof window !== 'undefined') {
-        window.removeEventListener('activity:background:updated', handleBackgroundUpdate);
+        window.removeEventListener(
+          'activity:background:updated',
+          handleBackgroundUpdate
+        );
       }
     };
   }, []);
@@ -549,65 +574,110 @@ export function QuestionList({
   // Thêm hàm để xử lý khi activity được chọn
   const handleActivitySelect = (activityId: string) => {
     // Tìm index của question thuộc activity này
-    const questionIndex = questions.findIndex(q => q.activity_id === activityId);
+    const questionIndex = questions.findIndex(
+      (q) => q.activity_id === activityId
+    );
     if (questionIndex !== -1) {
       // Gọi hàm onQuestionSelect với index tìm được
       handleQuestionClick(questionIndex);
     }
   };
 
+  // Thay đổi: Đơn giản hóa handleAddActivity để gọi trực tiếp onAddQuestion
+  const handleAddActivity = () => {
+    if (typeof onAddQuestion === 'function') {
+      onAddQuestion();
+
+      // Cuộn đến cuối danh sách sau khi thêm thành công
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollLeft =
+            scrollContainerRef.current.scrollWidth;
+        }
+      }, 100);
+    }
+  };
+
   return (
     <div
       className={cn(
-        "w-full transition-all duration-300 ease-in-out relative border-t border-gray-100 dark:border-gray-800",
+        'w-full transition-all duration-300 ease-in-out relative border-t border-gray-100 dark:border-gray-800',
         isFullyCollapsed
-          ? "h-1 bg-white/95 dark:bg-gray-950/95"
-          : "bg-white dark:bg-gray-950"
+          ? 'h-1 bg-white/95 dark:bg-gray-950/95'
+          : 'bg-white dark:bg-gray-950'
       )}
     >
       {/* Nút mũi tên luôn hiển thị ở viền trên của question-list */}
       <Button
-        size="sm"
-        variant="secondary"
+        size='sm'
+        variant='secondary'
         onClick={() => handleFullCollapseToggle(!isFullyCollapsed)}
         className={cn(
-          "absolute left-1/2 -translate-x-1/2 z-50 shadow-md rounded-full flex items-center justify-center hover:scale-110 transition-all duration-300",
+          'absolute left-1/2 -translate-x-1/2 z-50 shadow-md rounded-full flex items-center justify-center hover:scale-110 transition-all duration-300',
           isFullyCollapsed
-            ? "h-10 w-10 -top-5 bg-white dark:bg-black border-2 border-gray-300 dark:border-gray-600"
-            : "h-7 w-7 -top-3.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600"
+            ? 'h-10 w-10 -top-5 bg-white dark:bg-black border-2 border-gray-300 dark:border-gray-600'
+            : 'h-7 w-7 -top-3.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600'
         )}
-        title={isFullyCollapsed ? "Expand panel" : "Collapse panel"}
+        title={isFullyCollapsed ? 'Expand panel' : 'Collapse panel'}
       >
-        {isFullyCollapsed ?
-          <svg width="18" height="14" viewBox="0 0 18 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary dark:text-primary">
-            <path d="M1 8L9 2L17 8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg> :
-          <svg width="18" height="14" viewBox="0 0 18 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary dark:text-primary">
-            <path d="M1 2L9 8L17 2" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>}
+        {isFullyCollapsed ? (
+          <svg
+            width='18'
+            height='14'
+            viewBox='0 0 18 14'
+            fill='none'
+            xmlns='http://www.w3.org/2000/svg'
+            className='text-primary dark:text-primary'
+          >
+            <path
+              d='M1 8L9 2L17 8'
+              stroke='currentColor'
+              strokeWidth='3'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            />
+          </svg>
+        ) : (
+          <svg
+            width='18'
+            height='14'
+            viewBox='0 0 18 14'
+            fill='none'
+            xmlns='http://www.w3.org/2000/svg'
+            className='text-primary dark:text-primary'
+          >
+            <path
+              d='M1 2L9 8L17 2'
+              stroke='currentColor'
+              strokeWidth='3'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            />
+          </svg>
+        )}
       </Button>
 
-      <div className={cn(
-        "flex items-center justify-between px-2 py-1",
-        isFullyCollapsed ? "hidden" : ""
-      )}>
-        <div className="w-5"></div> {/* Placeholder to maintain layout */}
-        <h3 className="text-xs font-medium text-gray-500">Module Collection</h3>
+      <div
+        className={cn(
+          'flex items-center justify-between px-2 py-1',
+          isFullyCollapsed ? 'hidden' : ''
+        )}
+      >
+        <div className='w-5'></div> {/* Placeholder to maintain layout */}
+        <h3 className='text-xs font-medium text-gray-500'>Module Collection</h3>
         <Button
-          size="sm"
-          variant="ghost"
+          size='sm'
+          variant='ghost'
           onClick={() => handleCollapseToggle(!isCollapsed)}
-          className="h-5 w-5 p-0 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-          title={isCollapsed ? "Show slides" : "Hide slides"}
-        >
-
-        </Button>
+          className='h-5 w-5 p-0 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-800'
+          title={isCollapsed ? 'Show slides' : 'Hide slides'}
+        ></Button>
       </div>
 
       <div
         className={cn(
-          "transition-all duration-300 ease-in-out overflow-hidden",
-          isFullyCollapsed ? "max-h-0 opacity-0" : "max-h-[120px] opacity-100"
+          'transition-all duration-300 ease-in-out overflow-hidden',
+          isFullyCollapsed ? 'max-h-0 opacity-0' : 'max-h-[120px] opacity-100'
         )}
       >
         {!isFullyCollapsed && (
@@ -623,7 +693,7 @@ export function QuestionList({
               >
                 <div
                   ref={scrollContainerRef}
-                  className="flex overflow-x-auto overflow-y-hidden gap-2 py-1 flex-nowrap cursor-grab"
+                  className='flex overflow-x-auto overflow-y-hidden gap-2 py-1 flex-nowrap cursor-grab'
                   style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
@@ -647,47 +717,17 @@ export function QuestionList({
                       onSelect={() => handleActivitySelect(activity.id)}
                     />
                   ))}
-                  <div className="relative">
+                  <div className='relative'>
                     <div
                       ref={addButtonRef}
-                      className="flex-shrink-0 cursor-pointer transition-all w-[100px] h-[70px] rounded-md overflow-hidden shadow-sm border border-dashed border-gray-300 dark:border-gray-700 hover:border-primary dark:hover:border-primary flex flex-col items-center justify-center"
-                      onClick={() => {
-                        setIsAddMenuOpen(!isAddMenuOpen);
-                      }}
+                      className='flex-shrink-0 cursor-pointer transition-all w-[100px] h-[70px] rounded-md overflow-hidden shadow-sm border border-dashed border-gray-300 dark:border-gray-700 hover:border-primary dark:hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800 flex flex-col items-center justify-center gap-1'
+                      onClick={handleAddActivity}
                     >
-                      <Plus className="h-4 w-4 text-gray-400 dark:text-gray-500 mb-1" />
-                      <p className="text-[10px] font-medium">Add Activity</p>
+                      <Plus className='h-5 w-5 text-primary' />
+                      <p className='text-xs font-medium text-primary'>
+                        Add Activity
+                      </p>
                     </div>
-
-                    {/* Add Activity dropdown menu */}
-                    {isAddMenuOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-[180px] bg-white dark:bg-gray-900 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                        <div className="py-1">
-                          <button
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleAddQuestion();
-                            }}
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            <span>Standard Quiz</span>
-                          </button>
-                          <button
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleAddLocationQuestion();
-                            }}
-                          >
-                            <MapPin className="h-4 w-4 mr-2" />
-                            <span>Location Quiz</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </SortableContext>
