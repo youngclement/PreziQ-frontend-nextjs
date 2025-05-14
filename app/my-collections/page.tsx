@@ -18,7 +18,7 @@ import { EmptyCollections } from '../collections/components/empty-collections';
 import { CollectionGridItem } from '../collections/components/collection-grid-item';
 import { CollectionListItem } from '../collections/components/collection-list-item';
 import { CollectionPreviewDialog } from '../collections/components/collection-preview-dialog';
-
+import Loading from '@/components/common/loading';
 export default function MyCollectionsPage() {
     const router = useRouter();
     const { toast } = useToast();
@@ -142,7 +142,7 @@ export default function MyCollectionsPage() {
     };
 
     const handleEditCollection = (id: string) => {
-        router.push(`/collection/edit/${id}`);
+        router.push(`/collection?collectionId=${id}`);
     };
 
     const handleViewActivities = (id: string) => {
@@ -240,9 +240,7 @@ export default function MyCollectionsPage() {
 
                 {/* Loading state */}
                 {isLoading && (
-                    <div className="flex items-center justify-center py-32">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-                    </div>
+                    <Loading />
                 )}
 
                 {/* Error state */}

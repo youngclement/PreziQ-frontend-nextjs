@@ -7,16 +7,13 @@ import { Loader2 } from 'lucide-react';
 import { usePermissions } from '@/components/dashboard/permissions/context/permissions-context';
 import { PermissionsTable } from '@/components/dashboard/permissions/components/permissions-table';
 import { PermissionsDialogs } from '@/components/dashboard/permissions/components/permissions-dialogs';
+import Loading from '@/components/common/loading';
 
 function PermissionsContent() {
 	const { permissions, isLoading, error } = usePermissions();
 
 	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center h-32">
-				<Loader2 className="w-6 h-6 animate-spin" />
-			</div>
-		);
+		return <Loading />;
 	}
 
 	if (error) {

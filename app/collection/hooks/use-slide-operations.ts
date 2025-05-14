@@ -1,10 +1,14 @@
 /**
  * Custom hook for managing slide operations
  */
+
 import { useToast } from '@/hooks/use-toast';
 import { activitiesApi } from '@/api-client';
 import { Activity, QuizQuestion } from '../components/types';
 import { slideBackgroundManager } from '@/utils/slideBackgroundManager'; 
+
+
+
 export function useSlideOperations(
   questions: QuizQuestion[],
   setQuestions: (questions: QuizQuestion[]) => void,
@@ -12,8 +16,6 @@ export function useSlideOperations(
   activity: Activity | null,
   timeLimit: number
 ) {
-  const { toast } = useToast();
-
   /**
    * Handle slide content change for info slides
    */
@@ -36,18 +38,11 @@ export function useSlideOperations(
         description: value,
       });
 
-      toast({
-        title: 'Success',
-        description: 'Slide content updated',
-        duration: 2000,
-      });
+
+      console.log("Slide content updated");
     } catch (error) {
-      console.error('Error updating slide content:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update slide content',
-        variant: 'destructive',
-      });
+      console.error("Error updating slide content:", error);
+
     }
   };
 
@@ -72,6 +67,7 @@ export function useSlideOperations(
       backgroundColor: '',
     });
 
+
     // 3. (OPTIONAL) emit event nếu bạn có listener khác
     window.dispatchEvent(
       new CustomEvent('activity:background:updated', {
@@ -81,6 +77,7 @@ export function useSlideOperations(
         },
       })
     );
+
   };
 
   /**
@@ -90,10 +87,9 @@ export function useSlideOperations(
     if (!activity) return;
 
     try {
-      toast({
-        title: 'Saving...',
-        description: 'Saving your changes',
-      });
+
+      console.log("Saving your changes");
+
 
       // Most changes are already saved incrementally, but we can update the activity title, etc.
       await activitiesApi.updateActivity(activity.id, {
@@ -102,17 +98,12 @@ export function useSlideOperations(
         isPublished: activity.is_published,
       });
 
-      toast({
-        title: 'Success',
-        description: 'All changes saved successfully',
-      });
+
+
+      console.log("All changes saved successfully");
     } catch (error) {
-      console.error('Error saving changes:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save changes',
-        variant: 'destructive',
-      });
+      console.error("Error saving changes:", error);
+
     }
   };
 

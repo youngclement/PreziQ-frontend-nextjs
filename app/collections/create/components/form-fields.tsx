@@ -11,13 +11,43 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Control } from 'react-hook-form';
-import { CollectionFormValues } from '../types';
+import { CollectionFormValues, TopicType } from '../types';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue
+} from '@/components/ui/select';
 
 interface FormFieldsProps {
 	control: Control<CollectionFormValues>;
 }
 
 export function FormFields({ control }: FormFieldsProps) {
+	const topics: TopicType[] = [
+		"ART",
+		"SCIENCE",
+		"TECHNOLOGY",
+		"HISTORY",
+		"LITERATURE",
+		"ENTERTAINMENT",
+		"SPORTS",
+		"GEOGRAPHY",
+		"HEALTH",
+		"EDUCATION",
+		"NATURE",
+		"CULTURE",
+		"BUSINESS",
+		"PHILOSOPHY",
+		"FOOD",
+		"TRIVIA"
+	];
+
+	const getTopicLabel = (topic: TopicType): string => {
+		return topic.charAt(0) + topic.slice(1).toLowerCase();
+	};
+
 	return (
 		<div className="space-y-6">
 			<FormField
@@ -26,7 +56,7 @@ export function FormFields({ control }: FormFieldsProps) {
 				render={({ field }) => (
 					<FormItem>
 						<FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
-							Tiêu đề
+							Tiêu đề <span className="text-red-500">*</span>
 						</FormLabel>
 						<FormControl>
 							<Input
@@ -43,13 +73,71 @@ export function FormFields({ control }: FormFieldsProps) {
 				)}
 			/>
 
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<FormField
+					control={control}
+					name="topic"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+								Chủ đề <span className="text-red-500">*</span>
+							</FormLabel>
+							<Select
+								onValueChange={field.onChange}
+								defaultValue={field.value}
+							>
+								<FormControl>
+									<SelectTrigger className="border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 rounded-md">
+										<SelectValue placeholder="Chọn chủ đề" />
+									</SelectTrigger>
+								</FormControl>
+								<SelectContent>
+									{topics.map((topic) => (
+										<SelectItem key={topic} value={topic}>
+											{getTopicLabel(topic)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<FormDescription className="text-xs text-gray-500 dark:text-gray-400">
+								Chọn chủ đề phù hợp với nội dung
+							</FormDescription>
+							<FormMessage className="text-xs" />
+						</FormItem>
+					)}
+				/>
+
+				<FormField
+					control={control}
+					name="defaultBackgroundMusic"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+								Nhạc nền
+							</FormLabel>
+							<FormControl>
+								<Input
+									placeholder="Nhập tên file nhạc (ví dụ: technology.mp3)"
+									className="border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 rounded-md"
+									{...field}
+								/>
+							</FormControl>
+							<FormDescription className="text-xs text-gray-500 dark:text-gray-400">
+								Nhạc nền khi trình chiếu
+							</FormDescription>
+							<FormMessage className="text-xs" />
+						</FormItem>
+					)}
+				/>
+			</div>
+
 			<FormField
 				control={control}
 				name="description"
 				render={({ field }) => (
 					<FormItem>
 						<FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
-							Mô tả
+							Mô tả <span className="text-red-500">*</span>
 						</FormLabel>
 						<FormControl>
 							<Textarea
@@ -101,7 +189,9 @@ export function FormFields({ control }: FormFieldsProps) {
 				<ul className="text-xs text-gray-600 dark:text-gray-300 space-y-1 ml-6 list-disc">
 					<li>Chọn tiêu đề gây ấn tượng</li>
 					<li>Viết mô tả rõ ràng và hấp dẫn</li>
+					<li>Chọn chủ đề phù hợp với nội dung của bạn</li>
 					<li>Sử dụng hình ảnh chất lượng cao, liên quan</li>
+					<li>Khi tạo collection, sẽ tự động tạo một hoạt động quiz mặc định</li>
 					<li>Chỉ công khai khi đã sẵn sàng</li>
 				</ul>
 			</div>

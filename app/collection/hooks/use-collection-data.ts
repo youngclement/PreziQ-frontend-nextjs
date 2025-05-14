@@ -125,7 +125,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                 // Handle slides and info slides
                 if (questionType === "slide" || questionType === "info_slide") {
                   // For slide types, use specific slide data or defaults
-                  console.log("actttttttt:   ", act)
+                  console.log("actttttttt:   ", act);
                   if (act.quiz) {
                     question.question_text = act.quiz.title || "Slide";
                     question.slide_content = act.quiz.content || "";
@@ -133,6 +133,48 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                   } else {
                     question.question_text = act.title || "Slide";
                     question.slide_content = "Add content here...";
+                  }
+                  return question;
+                }
+
+                // Handle location questions
+                if (act.activity_type_id === "QUIZ_LOCATION") {
+                  if (
+                    act.quiz &&
+                    act.quiz.quizLocationAnswers &&
+                    Array.isArray(act.quiz.quizLocationAnswers) &&
+                    act.quiz.quizLocationAnswers.length > 0
+                  ) {
+                    const locationAnswer = act.quiz.quizLocationAnswers[0]; // Use first location point
+                    question.question_text =
+                      act.quiz.questionText ||
+                      act.title ||
+                      "Where is this location?";
+                    question.question_type = "location";
+                    question.location_data = {
+                      lat: locationAnswer.latitude,
+                      lng: locationAnswer.longitude,
+                      radius: locationAnswer.radius || 10,
+                      hint: act.quiz.hint || "",
+                      pointType: act.quiz.pointType || "STANDARD",
+                    };
+                    console.log(
+                      "Found location question with data:",
+                      question.location_data
+                    );
+                  } else {
+                    // Create default location data if not present
+                    question.question_text =
+                      act.title || "Where is this location?";
+                    question.question_type = "location";
+                    question.location_data = {
+                      lat: 21.0285, // Default to Hanoi
+                      lng: 105.8048,
+                      radius: 10,
+                      hint: "",
+                      pointType: "STANDARD",
+                    };
+                    console.log("Created default location question data");
                   }
                   return question;
                 }
@@ -175,70 +217,32 @@ export function useCollectionData(collectionId: string, activityId?: string) {
               }
             );
 
-            // Thêm một quiz location cứng vào đầu danh sách
-            const mockLocationQuiz: QuizQuestion = {
-              id: "location-quiz-mock-001",
-              activity_id: "location-activity-mock-001",
-              question_text: "Định vị Paris trên bản đồ",
-              question_type: "location",
-              correct_answer_text: "",
-              options: [],
-              location_data: {
-                lat: 48.856614,
-                lng: 2.352222,
-                radius: 20,
-                hint: "Thành phố này được biết đến với tên gọi 'Thành phố Ánh sáng' và là nơi có Tháp Eiffel",
-              },
-            };
+            // Set questions from the API data
+            setQuestions(allQuestions);
 
-            // Thêm vào đầu mảng questions
-            const questionsWithMockLocation = [
-              mockLocationQuiz,
-              ...allQuestions,
-            ];
-
-            // Set sorted questions with mock location quiz at the start
-            setQuestions(questionsWithMockLocation);
-
-            // Đặt active question là location quiz mặc định
-            setActiveQuestionIndex(0);
-
-            // Tạo một activity giả cho location quiz
-            const mockLocationActivity: Activity = {
-              id: "location-activity-mock-001",
-              title: "Quiz Định vị Địa lý",
-              collection_id: collectionId,
-              description: "Kiểm tra kiến thức về vị trí địa lý",
-              is_published: true,
-              activity_type_id: "QUIZ_TYPE_LOCATION",
-              orderIndex: -1, // Đảm bảo nó luôn ở đầu danh sách
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              createdBy: "system",
-            };
-
-            // Thêm activity giả vào đầu mảng activities
-            const activitiesWithMockLocation = [
-              mockLocationActivity,
-              ...mappedActivities,
-            ];
-            setActivities(activitiesWithMockLocation);
-
-            // Set activity ban đầu là location quiz
-            setActivity(mockLocationActivity);
-
-            // If we have an activity ID in params, select that activity
-            if (activityId) {
-              const targetActivity = activitiesWithMockLocation.find(
-                (a: { id: string }) => a.id === activityId
-              );
-              if (targetActivity) {
-                setActivity(targetActivity);
-                const targetIndex = questionsWithMockLocation.findIndex(
-                  (q: { activity_id: string }) =>
-                    q.activity_id === targetActivity.id
+            // Find index of the first question if we have questions
+            if (allQuestions.length > 0) {
+              // If we have an activity ID in params, select that activity
+              if (activityId) {
+                const targetActivity = mappedActivities.find(
+                  (a: { id: string }) => a.id === activityId
                 );
-                setActiveQuestionIndex(targetIndex >= 0 ? targetIndex : 0);
+                if (targetActivity) {
+                  setActivity(targetActivity);
+                  const targetIndex = allQuestions.findIndex(
+                    (q: { activity_id: string }) =>
+                      q.activity_id === targetActivity.id
+                  );
+                  setActiveQuestionIndex(targetIndex >= 0 ? targetIndex : 0);
+                } else {
+                  // If no matching activity, select first
+                  setActivity(mappedActivities[0]);
+                  setActiveQuestionIndex(0);
+                }
+              } else {
+                // No specific activity in URL, use first
+                setActivity(mappedActivities[0]);
+                setActiveQuestionIndex(0);
               }
             }
           } else {

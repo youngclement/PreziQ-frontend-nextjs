@@ -22,11 +22,12 @@ import {
   XCircle,
   CheckSquare,
   CheckCircle,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 import { QuizQuestion, Activity } from '../types';
 import {
   DndContext,
@@ -35,15 +36,19 @@ import {
   useSensors,
   PointerSensor,
   DragEndEvent,
+  KeyboardSensor,
 } from '@dnd-kit/core';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   horizontalListSortingStrategy,
   useSortable,
+  arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import axios from 'axios';
+import { activitiesApi } from '@/api-client/activities-api';
+import { ActivityType } from '@/api-client/activities-api';
 
 // Interface for props
 interface QuestionListProps {
@@ -58,6 +63,7 @@ interface QuestionListProps {
   collectionId?: string;
   activities?: Activity[];
   onReorderActivities?: (newOrder: string[]) => void;
+  onAddLocationQuestion?: (pointType?: string) => void;
 }
 
 // Sortable Activity Item
@@ -65,51 +71,73 @@ const SortableActivityItem = ({
   activity,
   index,
   isActive,
+  onSelect
 }: {
   activity: Activity;
   index: number;
   isActive: boolean;
+  onSelect: () => void;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: activity.id });
 
-  // console.log('DND activity: ', activity);
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
+  // Get background color for activity
+  const getBackgroundColor = () => {
+    // Use savedBackgroundColors from window if available
+    if (typeof window !== 'undefined' && window.savedBackgroundColors && window.savedBackgroundColors[activity.id]) {
+      return window.savedBackgroundColors[activity.id];
+    }
+
+    return activity.backgroundColor || '#FFFFFF';
+  };
+
+  // Tách riêng sự kiện click để chọn activity và sự kiện kéo thả
+  const handleActivityClick = (e: React.MouseEvent) => {
+    // Nếu đang thực hiện kéo thả, không trigger click
+    if (e.target === e.currentTarget || !(e.target as HTMLElement).classList.contains('grip-handle')) {
+      onSelect();
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
+      style={{
+        ...style,
+        backgroundImage: activity.backgroundImage ? `url(${activity.backgroundImage})` : undefined,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundColor: getBackgroundColor(),
+      }}
+      onClick={handleActivityClick}
       className={cn(
-        'flex-shrink-0 h-8 px-2 flex items-center gap-1 rounded-md cursor-pointer transition-all border',
+        'flex-shrink-0 cursor-pointer transition-all hover:shadow-md',
+        'w-[100px] h-[70px] rounded-md overflow-hidden shadow-sm border relative',
         isActive
-          ? 'bg-primary text-primary-foreground border-primary'
-          : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
+          ? 'border-primary ring-1 ring-primary scale-[1.02]'
+          : 'border-transparent hover:border-gray-300'
       )}
     >
-      <div className="flex items-center">
-        <div
-          className={cn(
-            'w-4 h-4 rounded-full flex items-center justify-center mr-1 flex-shrink-0 text-[10px] font-medium',
-            isActive
-              ? 'bg-white text-primary'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-          )}
-        >
-          {index + 1}
-        </div>
-        <span className="text-[10px] whitespace-nowrap max-w-[120px] truncate">
-          {activity.title || `Activity ${index + 1}`}
-        </span>
+      <div className="absolute top-1 left-1 bg-black/40 text-white text-[8px] px-1 py-0.5 rounded-full z-10">
+        {index + 1}
       </div>
-      <div className="cursor-grab opacity-50 hover:opacity-100">
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      <div
+        className="absolute top-1 right-1 cursor-grab opacity-70 hover:opacity-100 grip-handle"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-3 w-3 text-white drop-shadow-md grip-handle" />
+      </div>
+      <div className="p-2 h-full bg-black/30 flex flex-col justify-end">
+        <h3 className="text-[9px] font-medium line-clamp-2 text-white drop-shadow-sm">
+          {activity.title || `Activity ${index + 1}`}
+        </h3>
       </div>
     </div>
   );
@@ -127,8 +155,8 @@ export function QuestionList({
   collectionId,
   activities = [],
   onReorderActivities,
+  onAddLocationQuestion,
 }: QuestionListProps) {
-  const [expandedView, setExpandedView] = useState(false);
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
   const isCollapsed =
     externalIsCollapsed !== undefined
@@ -137,9 +165,11 @@ export function QuestionList({
   const [hoveredQuestion, setHoveredQuestion] = useState<number | null>(null);
   const [hoveredActivity, setHoveredActivity] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isFullyCollapsed, setIsFullyCollapsed] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const addButtonRef = useRef<HTMLDivElement>(null);
   const [renderKey, setRenderKey] = useState(0);
+
   
   // Scroll to the end of the activities list when a new activity is added
   React.useEffect(() => {
@@ -149,55 +179,275 @@ export function QuestionList({
     }
   }, [activities.length]);
 
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+
+
   // Setup sensors for dnd-kit
   const sensors = useSensors(
     useSensor(PointerSensor),
-    //useSensor(sortableKeyboardCoordinates)
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   );
 
-  // Handle add question with scrolling to new question
-  const handleAddQuestion = () => {
-    // Call the parent component's add question function
-    onAddQuestion();
-
-    // Scroll to the end after a short delay to ensure the new question is rendered
-    setTimeout(() => {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+  // Add effect to handle clicks outside the menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        addButtonRef.current &&
+        !addButtonRef.current.contains(event.target as Node) &&
+        isAddMenuOpen
+      ) {
+        setIsAddMenuOpen(false);
       }
-    }, 100);
+    };
+
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside);
+
+    // Clean up
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAddMenuOpen]);
+
+  // Map question type to activity type for API calls
+  const mapQuestionTypeToActivityType = (questionType: string): ActivityType => {
+    switch (questionType) {
+      case 'multiple_choice':
+        return 'QUIZ_BUTTONS';
+      case 'multiple_response':
+        return 'QUIZ_CHECKBOXES';
+      case 'true_false':
+        return 'QUIZ_TRUE_OR_FALSE';
+      case 'text_answer':
+        return 'QUIZ_TYPE_ANSWER';
+      case 'reorder':
+        return 'QUIZ_REORDER';
+      case 'slide':
+      case 'info_slide':
+        return 'INFO_SLIDE';
+      case 'location':
+        return 'QUIZ_LOCATION';
+      default:
+        return 'QUIZ_BUTTONS';
+    }
+  };
+
+  // Handle add question with scrolling to new question
+  const handleAddQuestion = async () => {
+    try {
+      if (!collectionId) {
+        return;
+      }
+
+      setIsAddMenuOpen(false);
+
+      // Step 1: Create activity with the appropriate type
+      const activityPayload = {
+        collectionId: collectionId,
+        activityType: 'QUIZ_BUTTONS' as ActivityType,
+        title: "New Question",
+        description: "This is a new question",
+        isPublished: true,
+        backgroundColor: '#FFFFFF'
+      };
+
+      // Create the activity first
+      const activityResponse = await activitiesApi.createActivity(activityPayload);
+
+      // Make sure we have a valid response with an activity ID
+      if (!activityResponse.data?.data?.activityId) {
+        throw new Error("No activity ID returned from server");
+      }
+
+      const newActivityId = activityResponse.data.data.activityId;
+
+      // Step 2: Initialize the quiz data (multiple choice)
+      const quizPayload = {
+        type: "CHOICE" as const,
+        questionText: "Default question",
+        timeLimitSeconds: 30,
+        pointType: "STANDARD" as const,
+        answers: [
+          { answerText: "Option 1", isCorrect: true, explanation: "Correct" },
+          { answerText: "Option 2", isCorrect: false, explanation: "Incorrect" },
+          { answerText: "Option 3", isCorrect: false, explanation: "Incorrect" },
+          { answerText: "Option 4", isCorrect: false, explanation: "Incorrect" },
+        ]
+      };
+
+      await activitiesApi.updateButtonsQuiz(newActivityId, quizPayload);
+
+      // Step 3: Create question data for the local state
+      const questionData = {
+        id: newActivityId,
+        activity_id: newActivityId,
+        question_text: "Default question",
+        question_type: 'multiple_choice' as "multiple_choice",
+        options: [
+          { option_text: "Option 1", is_correct: true, display_order: 0 },
+          { option_text: "Option 2", is_correct: false, display_order: 1 },
+          { option_text: "Option 3", is_correct: false, display_order: 2 },
+          { option_text: "Option 4", is_correct: false, display_order: 3 }
+        ],
+        time_limit_seconds: 30,
+        points: 1,
+        correct_answer_text: ''
+      };
+
+      // Step 4: Update local state via the callback
+      if (typeof onAddQuestion === 'function') {
+        onAddQuestion(questionData);
+      }
+
+      // Initialize the background color in global storage
+      if (typeof window !== 'undefined') {
+        if (!window.savedBackgroundColors) {
+          window.savedBackgroundColors = {};
+        }
+        window.savedBackgroundColors[newActivityId] = '#FFFFFF';
+      }
+
+      // Scroll to the end after a short delay to ensure the new question is rendered
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Error adding question:", error);
+    }
+  };
+
+  // Add a specialized function for adding location quizzes
+  const handleAddLocationQuestion = async () => {
+    try {
+      if (!collectionId) {
+        return;
+      }
+
+      setIsAddMenuOpen(false);
+
+      // Step 1: Create activity with INFO_SLIDE type (since QUIZ_LOCATION is not in ActivityType)
+      const activityPayload = {
+        collectionId: collectionId,
+        activityType: 'INFO_SLIDE' as ActivityType,
+        title: "Where is this location?",
+        description: "Find this location on the map",
+        isPublished: true,
+        backgroundColor: '#FFFFFF'
+      };
+
+      // Create the activity first
+      const activityResponse = await activitiesApi.createActivity(activityPayload);
+
+      // Make sure we have a valid response with an activity ID
+      if (!activityResponse.data?.data?.activityId) {
+        throw new Error("No activity ID returned from server");
+      }
+
+      const newActivityId = activityResponse.data.data.activityId;
+
+      // Step 2: Initialize the location quiz data
+      const locationPayload = {
+        type: "LOCATION" as const,
+        questionText: "Where is this location?",
+        timeLimitSeconds: 60,
+        pointType: "STANDARD" as const,
+        locationAnswers: [
+          {
+            longitude: 105.8048, // Default to Hanoi
+            latitude: 21.0285,
+            radius: 20
+          }
+        ]
+      };
+
+      await activitiesApi.updateLocationQuiz(newActivityId, locationPayload);
+
+      // Step 3: Create question data for the local state
+      const locationData = {
+        id: newActivityId,
+        activity_id: newActivityId,
+        question_text: "Where is this location?",
+        question_type: 'location' as "location",
+        options: [],
+        time_limit_seconds: 60,
+        points: 1,
+        correct_answer_text: '',
+        location_data: {
+          lat: 21.0285,
+          lng: 105.8048,
+          radius: 20,
+          hint: "Find this location on the map",
+          pointType: "STANDARD"
+        }
+      };
+
+      // Step 4: Update local state via the callback
+      if (onAddLocationQuestion && typeof onAddLocationQuestion === 'function') {
+        onAddLocationQuestion("STANDARD");
+      } else if (typeof onAddQuestion === 'function') {
+        onAddQuestion(locationData);
+      }
+
+      // Initialize the background color in global storage
+      if (typeof window !== 'undefined') {
+        if (!window.savedBackgroundColors) {
+          window.savedBackgroundColors = {};
+        }
+        window.savedBackgroundColors[newActivityId] = '#FFFFFF';
+      }
+
+      // Scroll to the end after a short delay
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Error adding location question:", error);
+    }
   };
 
   // Handle drag end for activities
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (active.id !== over?.id) {
+    if (active.id !== over?.id && over?.id) {
       const oldIndex = activities.findIndex(
         (activity) => activity.id === active.id
       );
       const newIndex = activities.findIndex(
-        (activity) => activity.id === over?.id
+        (activity) => activity.id === over.id
       );
 
-      // Reorder activities locally
-      const newActivities = [...activities];
-      const [reorderedActivity] = newActivities.splice(oldIndex, 1);
-      newActivities.splice(newIndex, 0, reorderedActivity);
+      // Reorder activities locally - cập nhật UI ngay lập tức
+      const newActivities = arrayMove([...activities], oldIndex, newIndex);
 
-      // Update the order
-      const orderedActivityIds = newActivities.map(
-        (activity) => activity.id
-      );
-      if (onReorderActivities && collectionId) {
-        try {
-          // Call API to update the order
-          await axios.put(`/collections/${collectionId}/activities/reorder`, {
-            orderedActivityIds,
-          });
-          onReorderActivities(orderedActivityIds);
-        } catch (error) {
-          console.error('Error reordering activities:', error);
+      // Lấy danh sách ID sau khi sắp xếp
+      const orderedActivityIds = newActivities.map(activity => activity.id);
+
+      // Tạo lại danh sách questions mới theo thứ tự activities mới
+      const newQuestions = orderedActivityIds.map(activityId => {
+        // Tìm question tương ứng với activity này
+        return questions.find(q => q.activity_id === activityId);
+      }).filter(q => q !== undefined) as QuizQuestion[];
+
+      if (onReorderActivities) {
+        // Gọi callback để component cha cập nhật UI trước khi API call hoàn thành
+        // Truyền danh sách questions đã sắp xếp lại để cập nhật UI
+        onReorderActivities(orderedActivityIds);
+
+        // Call API to update the order if collectionId is available
+        if (collectionId) {
+          try {
+            // Gọi API với đầy đủ danh sách ID
+            await activitiesApi.reorderActivities(collectionId, orderedActivityIds);
+          } catch (error) {
+            console.error('Error reordering activities:', error);
+          }
         }
       }
     }
@@ -212,6 +462,15 @@ export function QuestionList({
     }
   };
 
+  // Thêm hàm xử lý khi đóng/mở hoàn toàn
+  const handleFullCollapseToggle = (collapsed: boolean) => {
+    setIsFullyCollapsed(collapsed);
+    // Cũng thông báo cho component cha biết về trạng thái mới
+    if (onCollapseToggle) {
+      onCollapseToggle(collapsed);
+    }
+  };
+
   // Handle question click
   const handleQuestionClick = (index: number) => {
     window.lastQuestionClick = Date.now();
@@ -220,15 +479,14 @@ export function QuestionList({
 
   // Question type icons
   const questionTypeIcons = {
-    multiple_choice: <CheckCircle className="h-3.5 w-3.5" />,
-    multiple_response: <CheckSquare className="h-3.5 w-3.5" />,
-    true_false: <XCircle className="h-3.5 w-3.5" />,
-    text_answer: <AlignLeft className="h-3.5 w-3.5" />,
     slide: <FileText className="h-3.5 w-3.5" />,
     info_slide: <FileText className="h-3.5 w-3.5" />,
-    reorder: <MoveVertical className="h-3.5 w-3.5" />,
-    location: <MapPin className="h-3.5 w-3.5" />,
   };
+
+  // Filter questions to show only slides
+  const slideQuestions = questions.filter(
+    q => q.question_type === 'slide' || q.question_type === 'info_slide'
+  );
 
   // Mouse events for drag-to-scroll
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -288,192 +546,72 @@ export function QuestionList({
     };
   }, []);
 
+  // Thêm hàm để xử lý khi activity được chọn
+  const handleActivitySelect = (activityId: string) => {
+    // Tìm index của question thuộc activity này
+    const questionIndex = questions.findIndex(q => q.activity_id === activityId);
+    if (questionIndex !== -1) {
+      // Gọi hàm onQuestionSelect với index tìm được
+      handleQuestionClick(questionIndex);
+    }
+  };
+
   return (
-    <Card
+    <div
       className={cn(
-        'overflow-hidden border-none shadow-md transition-all duration-300 w-full h-full',
-        isCollapsed ? 'max-h-20' : ''
+        "w-full transition-all duration-300 ease-in-out relative border-t border-gray-100 dark:border-gray-800",
+        isFullyCollapsed
+          ? "h-1 bg-white/95 dark:bg-gray-950/95"
+          : "bg-white dark:bg-gray-950"
       )}
     >
-      <CardHeader
+      {/* Nút mũi tên luôn hiển thị ở viền trên của question-list */}
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={() => handleFullCollapseToggle(!isFullyCollapsed)}
         className={cn(
-          'p-1 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800',
-          isCollapsed && 'p-0.5'
+          "absolute left-1/2 -translate-x-1/2 z-50 shadow-md rounded-full flex items-center justify-center hover:scale-110 transition-all duration-300",
+          isFullyCollapsed
+            ? "h-10 w-10 -top-5 bg-white dark:bg-black border-2 border-gray-300 dark:border-gray-600"
+            : "h-7 w-7 -top-3.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600"
+        )}
+        title={isFullyCollapsed ? "Expand panel" : "Collapse panel"}
+      >
+        {isFullyCollapsed ?
+          <svg width="18" height="14" viewBox="0 0 18 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary dark:text-primary">
+            <path d="M1 8L9 2L17 8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg> :
+          <svg width="18" height="14" viewBox="0 0 18 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary dark:text-primary">
+            <path d="M1 2L9 8L17 2" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>}
+      </Button>
+
+      <div className={cn(
+        "flex items-center justify-between px-2 py-1",
+        isFullyCollapsed ? "hidden" : ""
+      )}>
+        <div className="w-5"></div> {/* Placeholder to maintain layout */}
+        <h3 className="text-xs font-medium text-gray-500">Module Collection</h3>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => handleCollapseToggle(!isCollapsed)}
+          className="h-5 w-5 p-0 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+          title={isCollapsed ? "Show slides" : "Hide slides"}
+        >
+
+        </Button>
+      </div>
+
+      <div
+        className={cn(
+          "transition-all duration-300 ease-in-out overflow-hidden",
+          isFullyCollapsed ? "max-h-0 opacity-0" : "max-h-[120px] opacity-100"
         )}
       >
-        <div className="flex justify-between items-center h-6">
-          {!isCollapsed ? (
-            <>
-              <div className="bg-white dark:bg-black px-1.5 py-0.5 rounded-md shadow-sm border border-gray-200 dark:border-gray-900">
-                <span className="font-medium text-[10px] text-gray-900 dark:text-white">
-                  Q ({questions.length})
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="bg-white dark:bg-black rounded-md shadow-sm border border-gray-200 dark:border-gray-900 p-0.5 flex">
-                  <Button
-                    variant={expandedView ? 'default' : 'ghost'}
-                    size="sm"
-                    className={cn(
-                      'h-5 w-5 p-0 flex items-center justify-center',
-                      expandedView
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-transparent text-gray-700 dark:text-gray-300'
-                    )}
-                    onClick={() => setExpandedView(true)}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <rect x="3" y="3" width="7" height="7" />
-                      <rect x="14" y="3" width="7" height="7" />
-                      <rect x="14" y="14" width="7" height="7" />
-                      <rect x="3" y="14" width="7" height="7" />
-                    </svg>
-                  </Button>
-                  <Button
-                    variant={!expandedView ? 'default' : 'ghost'}
-                    size="sm"
-                    className={cn(
-                      'h-5 w-5 p-0 flex items-center justify-center',
-                      !expandedView
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-transparent text-gray-700 dark:text-gray-300'
-                    )}
-                    onClick={() => setExpandedView(false)}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <line x1="8" y1="6" x2="21" y2="6" />
-                      <line x1="8" y1="12" x2="21" y2="12" />
-                      <line x1="8" y1="18" x2="21" y2="18" />
-                      <line x1="3" y1="6" x2="3.01" y2="6" />
-                      <line x1="3" y1="12" x2="3.01" y2="12" />
-                      <line x1="3" y1="18" x2="3.01" y2="18" />
-                    </svg>
-                  </Button>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleCollapseToggle(true)}
-                  className="h-5 w-5 p-0 rounded-md bg-white dark:bg-black hover:bg-gray-100 dark:hover:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-900"
-                  title="Collapse sidebar"
-                >
-                  <ChevronLeft className="h-3 w-3 text-gray-700 dark:text-gray-300" />
-                </Button>
-              </div>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => handleCollapseToggle(false)}
-              className="h-5 w-5 p-0 mx-auto rounded-md bg-white dark:bg-black hover:bg-gray-100 dark:hover:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-900"
-              title="Expand sidebar"
-            >
-              <ChevronRight className="h-3 w-3 text-gray-700 dark:text-gray-300" />
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      {!isCollapsed ? (
-        <CardContent
-          className="p-2 overflow-hidden bg-white dark:bg-black"
-          style={{ height: 'calc(100% - 30px)' }}
-        >
-          {expandedView ? (
-            <div
-              ref={scrollContainerRef}
-              className="flex flex-row gap-3 flex-nowrap overflow-x-auto overflow-y-hidden py-1 pb-2 h-full cursor-grab"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-            >
-              <style jsx global>{`
-                div::-webkit-scrollbar {
-                  display: none;
-                }
-              `}</style>
-              {questions.map((question, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    'flex-shrink-0 cursor-pointer transition-all hover:shadow-md',
-                    'w-[120px] h-[80px] rounded-md overflow-hidden shadow-sm border',
-                    index === activeQuestionIndex
-                      ? 'border-primary ring-1 ring-primary scale-[1.02]'
-                      : 'border-transparent hover:border-gray-300'
-                  )}
-                  onClick={() => handleQuestionClick(index)}
-                >
-                  <div className="relative h-full">
-                    <div className="absolute top-1 left-1 bg-black/40 text-white text-[8px] px-1 py-0.5 rounded-full z-10">
-                      {index + 1}
-                    </div>
-                    <div className="absolute top-1 right-1 bg-white/90 dark:bg-gray-800/90 text-[8px] px-1 py-0.5 rounded-sm z-10 flex items-center shadow-sm">
-                      {
-                        questionTypeIcons[
-                        question.question_type as keyof typeof questionTypeIcons
-                        ]
-                      }
-                      <span className="ml-0.5 capitalize">
-                        {question.question_type.replace(/_/g, ' ')}
-                      </span>
-                    </div>
-                    <div
-                      className="w-full h-full flex flex-col"
-                      style={{
-                        backgroundImage: activities.find(
-                          (a) => a.id === question.activity_id
-                        )?.backgroundImage
-                          ? `url(${activities.find(
-                            (a) => a.id === question.activity_id
-                          )?.backgroundImage
-                          })`
-                          : undefined,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundColor: getActivityBackgroundColor(question.activity_id),
-                      }}
-                    >
-                      <div className="p-2 h-full bg-black/20">
-                        <h3 className="text-[10px] font-medium line-clamp-2 mb-1 text-white drop-shadow-sm">
-                          {question.question_text || `Question ${index + 1}`}
-                        </h3>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <div
-                className="flex-shrink-0 cursor-pointer transition-all w-[120px] h-[80.px] rounded-md overflow-hidden shadow-sm border border-dashed border-gray-300 dark:border-gray-700 hover:border-primary dark:hover:border-primary flex flex-col items-center justify-center"
-                onClick={handleAddQuestion}
-              >
-                <Plus className="h-5 w-5 text-gray-400 dark:text-gray-500 mb-1" />
-                <p className="text-xs font-medium">Add Question</p>
-              </div>
-            </div>
-          ) : (
+        {!isFullyCollapsed && (
+          <>
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -485,7 +623,7 @@ export function QuestionList({
               >
                 <div
                   ref={scrollContainerRef}
-                  className="flex overflow-x-auto overflow-y-hidden gap-2 py-1 pl-0 pr-2 flex-nowrap h-full cursor-grab"
+                  className="flex overflow-x-auto overflow-y-hidden gap-2 py-1 flex-nowrap cursor-grab"
                   style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
@@ -506,88 +644,57 @@ export function QuestionList({
                         questions[activeQuestionIndex]?.activity_id ===
                         activity.id
                       }
+                      onSelect={() => handleActivitySelect(activity.id)}
                     />
                   ))}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddQuestion}
-                    className="flex-shrink-0 h-8 rounded-md px-2 text-xs"
-                    ref={addButtonRef}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    <span>Add</span>
-                  </Button>
+                  <div className="relative">
+                    <div
+                      ref={addButtonRef}
+                      className="flex-shrink-0 cursor-pointer transition-all w-[100px] h-[70px] rounded-md overflow-hidden shadow-sm border border-dashed border-gray-300 dark:border-gray-700 hover:border-primary dark:hover:border-primary flex flex-col items-center justify-center"
+                      onClick={() => {
+                        setIsAddMenuOpen(!isAddMenuOpen);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 text-gray-400 dark:text-gray-500 mb-1" />
+                      <p className="text-[10px] font-medium">Add Activity</p>
+                    </div>
+
+                    {/* Add Activity dropdown menu */}
+                    {isAddMenuOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-[180px] bg-white dark:bg-gray-900 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                        <div className="py-1">
+                          <button
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleAddQuestion();
+                            }}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            <span>Standard Quiz</span>
+                          </button>
+                          <button
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleAddLocationQuestion();
+                            }}
+                          >
+                            <MapPin className="h-4 w-4 mr-2" />
+                            <span>Location Quiz</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </SortableContext>
             </DndContext>
-          )}
-        </CardContent>
-      ) : (
-        <div
-          ref={scrollContainerRef}
-          className="p-1 overflow-x-auto flex items-center h-12 bg-white dark:bg-black cursor-grab"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          <style jsx global>{`
-            div::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
-          <div className="flex items-center gap-1 flex-nowrap overflow-x-auto">
-            {questions.map((question, index) => (
-              <div
-                key={index}
-                className={cn(
-                  'h-8 w-8 rounded-lg flex-shrink-0 flex items-center justify-center text-[10px] cursor-pointer transition-all duration-200 relative border',
-                  index === activeQuestionIndex
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80 border-transparent'
-                )}
-                onClick={() => handleQuestionClick(index)}
-                onMouseEnter={() => setHoveredQuestion(index)}
-                onMouseLeave={() => setHoveredQuestion(null)}
-              >
-                {index + 1}
-                {hoveredQuestion === index && (
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white dark:bg-gray-800 shadow-md rounded-md p-2 text-xs z-50 w-48">
-                    <div className="max-w-full overflow-hidden">
-                      <p className="font-medium truncate">
-                        {question.question_text || `Question ${index + 1}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground capitalize">
-                        {question.question_type.replace(/_/g, ' ')}
-                      </p>
-                    </div>
-                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rotate-45 w-2 h-2 bg-white dark:bg-gray-800"></div>
-                  </div>
-                )}
-                <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center text-[6px] border border-gray-200 dark:border-gray-600">
-                  {
-                    questionTypeIcons[
-                    question.question_type as keyof typeof questionTypeIcons
-                    ]
-                  }
-                </div>
-              </div>
-            ))}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-lg flex-shrink-0"
-              onClick={handleAddQuestion}
-              title="Add new question"
-              ref={addButtonRef}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-    </Card>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

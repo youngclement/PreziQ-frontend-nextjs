@@ -9,10 +9,16 @@ declare global {
       properties: { backgroundImage?: string; backgroundColor?: string }
     ) => void;
     savedBackgroundColors?: Record<string, string>;
+    locationUpdateTimer?: ReturnType<typeof setTimeout>;
+    lastLocationUpdate?: {
+      timestamp: number;
+      activityId: string;
+      locationData: any[];
+    };
   }
 }
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   CheckCircle,
   XCircle,
@@ -34,7 +40,13 @@ import {
   Palette,
   AlertCircle,
   Check,
-  ChevronsUpDown,
+
+  Trash,
+  Loader2,
+  RefreshCw,
+  PlusCircle,
+  PaintBucket
+
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -68,8 +80,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+
 import {
   Command,
   CommandEmpty,
@@ -82,9 +96,16 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+
 } from '@/components/ui/popover';
 import { SlideSettings } from '../slide/sidebar/slide-settings';
 import SlideToolbar from '../slide/sidebar/slide-toolbar';
+
+import { quizQuestionsApi } from '@/api-client/quiz-questions-api';
+import { ImagePicker } from '../image-picker/image-picker';
+import { useToast } from "@/hooks/use-toast";
+
+
 /**
  * Component that allows editing settings for a quiz question/activity.
  *
@@ -232,21 +253,20 @@ export function QuestionSettings({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [invalidImageUrl, setInvalidImageUrl] = useState(false);
-  const [backgroundColor, setBackgroundColor] = useState(
-    activity?.backgroundColor || '#FFFFFF'
-  );
-  const [customBackgroundMusic, setCustomBackgroundMusic] = useState(
-    activity?.customBackgroundMusic || ''
-  );
-  const [title, setTitle] = useState(activity?.title || '');
-  const [description, setDescription] = useState(activity?.description || '');
-  const [isPublished, setIsPublished] = useState(
-    activity?.is_published || false
-  );
+
+  const [backgroundColor, setBackgroundColor] = useState(activity?.backgroundColor || "#FFFFFF");
+  const [customBackgroundMusic, setCustomBackgroundMusic] = useState(activity?.customBackgroundMusic || "");
+  const [title, setTitle] = useState(activity?.title || "");
+  const [description, setDescription] = useState(activity?.description || "");
+  const [isPublished, setIsPublished] = useState(activity?.is_published || false);
+  const [pointType, setPointType] = useState(activity?.quiz?.pointType || "STANDARD");
   const { toast } = useToast();
+
 
   // Track the activity ID to detect changes
   const [prevActivityId, setPrevActivityId] = useState(activity?.id);
+
+  const { toast } = useToast();
 
   useEffect(() => {
     if (activity) {
@@ -255,6 +275,7 @@ export function QuestionSettings({
       setTitle(activity.title || '');
       setDescription(activity.description || '');
       setIsPublished(activity.is_published || false);
+      setPointType(activity.quiz?.pointType || "STANDARD");
 
       // Check if we've switched to a different activity
       if (activity.id !== prevActivityId) {
@@ -267,6 +288,28 @@ export function QuestionSettings({
       }
     }
   }, [activity, backgroundImage, onBackgroundImageChange, prevActivityId]);
+
+  // Add listener for activity:updated event
+  useEffect(() => {
+    const handleActivityUpdated = (event: CustomEvent) => {
+      if (event.detail && event.detail.activity && activity && event.detail.activity.activityId === activity.id) {
+        // Update local background image if it changed
+        if (event.detail.activity.backgroundImage !== backgroundImage) {
+          onBackgroundImageChange(event.detail.activity.backgroundImage || "");
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('activity:updated', handleActivityUpdated as EventListener);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('activity:updated', handleActivityUpdated as EventListener);
+      }
+    };
+  }, [activity, backgroundImage, onBackgroundImageChange]);
 
   // Update state when activeQuestion changes
   React.useEffect(() => {
@@ -307,11 +350,13 @@ export function QuestionSettings({
         });
       } catch (error) {
         console.error('Error updating text answer quiz:', error);
+
         toast({
           title: 'Error saving answer',
           description: 'Could not save the correct answer. Please try again.',
           variant: 'destructive',
         });
+
       }
     }
   };
@@ -610,70 +655,103 @@ export function QuestionSettings({
             case 'multiple_choice':
               activitiesApi.updateButtonsQuiz(activity.id, {
                 ...quizPayload,
-                type: 'CHOICE',
-                questionText:
-                  activity.quiz?.questionText || activeQuestion.question_text,
-                pointType: 'STANDARD',
-                answers:
-                  activity.quiz?.quizAnswers ||
-                  activeQuestion.options?.map((opt) => ({
-                    answerText: opt.option_text,
-                    isCorrect: opt.is_correct,
-                    explanation: opt.explanation || '',
-                  })) ||
-                  [],
+
+                type: "CHOICE",
+                questionText: activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: activity.quiz?.pointType || pointType,
+                answers: activity.quiz?.quizAnswers || activeQuestion.options?.map(opt => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || ''
+                })) || []
+
               });
               break;
             case 'multiple_response':
               activitiesApi.updateCheckboxesQuiz(activity.id, {
                 ...quizPayload,
-                type: 'CHOICE',
-                questionText:
-                  activity.quiz?.questionText || activeQuestion.question_text,
-                pointType: 'STANDARD',
-                answers:
-                  activity.quiz?.quizAnswers ||
-                  activeQuestion.options?.map((opt) => ({
-                    answerText: opt.option_text,
-                    isCorrect: opt.is_correct,
-                    explanation: opt.explanation || '',
-                  })) ||
-                  [],
+
+                type: "CHOICE",
+                questionText: activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: activity.quiz?.pointType || pointType,
+                answers: activity.quiz?.quizAnswers || activeQuestion.options?.map(opt => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || ''
+                })) || []
+
               });
               break;
             case 'true_false':
               activitiesApi.updateTrueFalseQuiz(activity.id, {
                 ...quizPayload,
-                type: 'TRUE_FALSE',
-                questionText:
-                  activity.quiz?.questionText || activeQuestion.question_text,
-                pointType: 'STANDARD',
-                correctAnswer:
-                  activeQuestion.options
-                    ?.find((o) => o.is_correct)
-                    ?.option_text.toLowerCase() === 'true',
+
+                type: "TRUE_FALSE",
+                questionText: activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: activity.quiz?.pointType || pointType,
+                correctAnswer: activeQuestion.options?.find(o => o.is_correct)?.option_text.toLowerCase() === 'true'
+
               });
               break;
             case 'text_answer':
               activitiesApi.updateTypeAnswerQuiz(activity.id, {
                 ...quizPayload,
-                type: 'TYPE_ANSWER',
-                questionText:
-                  activity.quiz?.questionText || activeQuestion.question_text,
-                pointType: 'STANDARD',
-                correctAnswer: activeQuestion.correct_answer_text || '',
+
+                type: "TYPE_ANSWER",
+                questionText: activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: activity.quiz?.pointType || pointType,
+                correctAnswer: activeQuestion.correct_answer_text || ''
+
               });
               break;
             case 'reorder':
               activitiesApi.updateReorderQuiz(activity.id, {
                 ...quizPayload,
-                type: 'REORDER',
-                questionText:
-                  activity.quiz?.questionText || activeQuestion.question_text,
-                pointType: 'STANDARD',
-                correctOrder:
-                  activeQuestion.options?.map((o) => o.option_text) || [],
+
+                type: "REORDER",
+                questionText: activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: activity.quiz?.pointType || pointType,
+                correctOrder: activeQuestion.options?.map(o => o.option_text) || []
+
               });
+              break;
+            case 'location':
+              // Get the current location data and point type
+              const locationData = activeQuestion.location_data || {};
+              const pointType = locationData.pointType || "STANDARD";
+
+              // Use the correct field name for location answers
+              const locationAnswers = activity?.quiz?.quizLocationAnswers ||
+                locationData.quizLocationAnswers ||
+                locationData.locationAnswers ||
+                [{
+                  quizLocationAnswerId: "",
+                  longitude: locationData.lng || 0,
+                  latitude: locationData.lat || 0,
+                  radius: locationData.radius || 20
+                }];
+
+              // For location quizzes, use the activitiesApi
+              if (onQuestionLocationChange) {
+                // Update local state with the new time limit
+                const updatedLocationData = {
+                  ...locationData,
+                  timeLimitSeconds: value
+                };
+
+                // Update via API
+                activitiesApi.updateLocationQuiz(activity.id, {
+                  type: "LOCATION",
+                  questionText: activeQuestion.question_text,
+                  timeLimitSeconds: value,
+                  pointType: pointType,
+                  locationAnswers: locationAnswers.map(answer => ({
+                    longitude: answer.longitude,
+                    latitude: answer.latitude,
+                    radius: answer.radius
+                  }))
+                });
+              }
               break;
             default:
               // For slide types or any other type, just update the activity directly
@@ -739,9 +817,11 @@ export function QuestionSettings({
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
       toast({
-        title: 'Invalid format',
-        description: 'Please select an image in PNG or JPG format.',
-        variant: 'destructive',
+
+        title: "Unsupported file type",
+        description: "Please upload JPEG or PNG images only.",
+        variant: "destructive"
+
       });
       return;
     }
@@ -749,9 +829,11 @@ export function QuestionSettings({
     // Check file size (between 1KB and 5MB)
     if (file.size < 1024 || file.size > 5 * 1024 * 1024) {
       toast({
-        title: 'Invalid file size',
-        description: 'Image must be between 1KB and 5MB.',
-        variant: 'destructive',
+
+        title: "Invalid file size",
+        description: "File size should be between 1KB and 5MB.",
+        variant: "destructive"
+
       });
       return;
     }
@@ -779,54 +861,62 @@ export function QuestionSettings({
 
       console.log('File upload response:', response);
 
-      if (response?.data) {
-        // Get the correct fileUrl from the response structure
-        let fileUrl = '';
 
-        // Handle different response structures
-        const responseData = response.data as Record<string, any>;
-        if (responseData && typeof responseData === 'object') {
-          if (
-            'fileUrl' in responseData &&
-            typeof responseData.fileUrl === 'string'
-          ) {
-            fileUrl = responseData.fileUrl;
-          } else if (
-            'data' in responseData &&
-            responseData.data &&
-            typeof responseData.data === 'object' &&
-            'fileUrl' in responseData.data
-          ) {
-            fileUrl = responseData.data.fileUrl as string;
+      // Axios returns the full response with a 'data' property that contains the API response
+      // The API response itself has a 'data' property that contains the file information
+      if (response && response.data && response.data.data && response.data.data.fileUrl) {
+        const fileUrl = response.data.data.fileUrl;
+
+        // Update local state
+        setInvalidImageUrl(false);
+        onBackgroundImageChange(fileUrl);
+
+        // Update background in the UI immediately
+        if (typeof window !== 'undefined' && window.updateActivityBackground && activity) {
+          window.updateActivityBackground(activity.id, { backgroundImage: fileUrl });
+
+        }
+
+        // Update in API
+        const result = await updateActivity({ backgroundImage: fileUrl });
+
+        // Force UI update after API response
+        // This ensures the new image shows up in the UI
+        if (result && result.data) {
+          const updatedActivity = result.data;
+
+          // Dispatch event to notify other components
+          if (typeof window !== 'undefined') {
+            const event = new CustomEvent('activity:updated', {
+              detail: { activity: updatedActivity }
+            });
+            window.dispatchEvent(event);
           }
-        }
 
-        if (fileUrl) {
-          // Update image URL in local state
-          onBackgroundImageChange(fileUrl);
-
-          // Update in API
-          await updateActivity({ backgroundImage: fileUrl });
-
+          // Show success notification
           toast({
-            title: 'Upload complete',
-            description: 'Background image has been updated successfully.',
-          });
-        } else {
-          console.error('Invalid response structure:', response);
-          toast({
-            title: 'Upload error',
-            description: 'Received invalid response from server.',
-            variant: 'destructive',
+
+            title: "Image uploaded successfully",
+            variant: "default"
+
           });
         }
+      } else {
+        console.error('Invalid response structure:', response);
+        toast({
+          title: "Upload failed",
+          description: "Could not process the uploaded image",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Error uploading image:', error);
       toast({
-        title: 'Upload error',
-        description: 'Could not upload the image. Please try again.',
-        variant: 'destructive',
+
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "An error occurred during upload",
+        variant: "destructive"
+
       });
     } finally {
       setIsUploading(false);
@@ -852,21 +942,25 @@ export function QuestionSettings({
     // Check file type
     const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg'];
     if (!allowedTypes.includes(file.type)) {
+
       toast({
         title: 'Invalid format',
         description: 'Please select an audio file in MP3, WAV or OGG format.',
         variant: 'destructive',
       });
+
       return;
     }
 
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
+
       toast({
         title: 'Invalid file size',
         description: 'Audio file must be smaller than 10MB.',
         variant: 'destructive',
       });
+
       return;
     }
 
@@ -893,53 +987,29 @@ export function QuestionSettings({
 
       console.log('Audio file upload response:', response);
 
-      if (response?.data) {
-        // Get the correct fileUrl from the response structure
-        let fileUrl = '';
 
-        // Handle different response structures
-        const responseData = response.data as Record<string, any>;
-        if (responseData && typeof responseData === 'object') {
-          if (
-            'fileUrl' in responseData &&
-            typeof responseData.fileUrl === 'string'
-          ) {
-            fileUrl = responseData.fileUrl;
-          } else if (
-            'data' in responseData &&
-            responseData.data &&
-            typeof responseData.data === 'object' &&
-            'fileUrl' in responseData.data
-          ) {
-            fileUrl = responseData.data.fileUrl as string;
-          }
-        }
+      // Correctly access the fileUrl from the API response structure
+      if (response && response.data && response.data.data && response.data.data.fileUrl) {
+        const fileUrl = response.data.data.fileUrl;
+        setCustomBackgroundMusic(fileUrl);
+        await updateActivity({ customBackgroundMusic: fileUrl });
 
-        if (fileUrl) {
-          // Update audio URL in state and API
-          setCustomBackgroundMusic(fileUrl);
-          await updateActivity({ customBackgroundMusic: fileUrl });
-
-          toast({
-            title: 'Upload complete',
-            description: 'Background music has been updated successfully.',
-          });
-        } else {
-          console.error('Invalid response structure:', response);
-          toast({
-            title: 'Upload error',
-            description: 'Received invalid response from server.',
-            variant: 'destructive',
-          });
-        }
+        // Show success notification
+        toast({
+          title: "Audio uploaded successfully",
+          variant: "default"
+        });
+      } else {
+        console.error('Invalid response structure:', response);
+        toast({
+          title: "Audio upload failed",
+          description: "Could not process the uploaded audio",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Error uploading audio file:', error);
-      toast({
-        title: 'Upload error',
-        description: 'Could not upload the audio file. Please try again.',
-        variant: 'destructive',
-      });
+
     } finally {
       setIsUploadingAudio(false);
       setUploadAudioProgress(0);
@@ -962,14 +1032,23 @@ export function QuestionSettings({
     }
 
     setIsSaving(true);
+    try {
+      // Dispatch an event before making the API call for immediate UI feedback
+      const event = new CustomEvent("activity:updated", {
+        detail: {
+          activityId: activity.id,
+          data: data
+        }
+      });
+      window.dispatchEvent(event);
 
-    // Lưu trước màu mới vào global storage
-    if (data.backgroundColor && typeof window !== 'undefined') {
-      if (!window.savedBackgroundColors) {
-        window.savedBackgroundColors = {};
+      // Handle background changes separately through global method if available
+      if (typeof window !== 'undefined' && window.updateActivityBackground && data.backgroundColor) {
+        window.updateActivityBackground(activity.id, {
+          backgroundColor: data.backgroundColor
+        });
       }
-      window.savedBackgroundColors[activity.id] = data.backgroundColor;
-    }
+
 
     try {
       // Ensure we're sending the correct API payload shape
@@ -999,47 +1078,116 @@ export function QuestionSettings({
             : activity.customBackgroundMusic,
       };
 
-      // Only send fields that are actually changing
-      const finalPayload = Object.keys(data).reduce((acc, key) => {
-        acc[key] = payload[key];
-        return acc;
-      }, {} as any);
+      // Special handling for time limit to trigger immediate DOM updates
+      if (data.timeLimitSeconds) {
+        // Create and dispatch a custom event with the necessary details
+        const timeLimitEvent = new CustomEvent('activity:timeLimit:updated', {
+          detail: {
+            activityId: activity.id,
+            timeLimitSeconds: data.timeLimitSeconds
+          }
+        });
+        window.dispatchEvent(timeLimitEvent);
+      }
 
-      console.log('Updating activity with payload:', finalPayload);
-      await activitiesApi.updateActivity(activity.id, finalPayload);
 
-      // Sau khi API thành công, phát sự kiện để đảm bảo UI được cập nhật đồng bộ
-      if (data.backgroundColor && typeof window !== 'undefined') {
-        // Đảm bảo lưu màu mới vào global storage
-        if (!window.savedBackgroundColors) {
-          window.savedBackgroundColors = {};
+      // Handle location quiz updates
+      if (data.locationAnswers) {
+        // Update lastLocationUpdate timestamp to prevent race conditions
+        if (typeof window !== 'undefined') {
+          window.lastLocationUpdate = {
+            timestamp: Date.now(),
+            activityId: activity.id,
+            locationData: [...data.locationAnswers]
+          };
         }
-        window.savedBackgroundColors[activity.id] = data.backgroundColor;
 
-        // Phát sự kiện để thông báo cho tất cả các component
+        // Include required fields if they're missing
+        const locationPayload = {
+          type: "LOCATION",
+          questionText: activity.quiz?.questionText || activeQuestion.question_text,
+          timeLimitSeconds: data.timeLimitSeconds || activity.quiz?.timeLimitSeconds || timeLimit,
+          pointType: data.pointType || activity.quiz?.pointType || "STANDARD",
+          locationAnswers: data.locationAnswers
+        };
+
+        console.log("Updating location quiz with payload:", locationPayload);
+        const response = await activitiesApi.updateLocationQuiz(activity.id, locationPayload);
+        console.log("Location quiz updated:", response);
+
+        // Update local state to reflect the changes - use deep cloning to avoid reference issues
+        const updatedLocationAnswers = data.locationAnswers.map((ans: any, idx: number) => ({
+          ...ans,
+          quizLocationAnswerId: ans.quizLocationAnswerId || `temp-id-${idx}`
+        }));
+
+        // Update local refs to prevent override from other components
+        if (locationDataRef && locationDataRef.current) {
+          locationDataRef.current = JSON.parse(JSON.stringify(updatedLocationAnswers));
+        }
+
+
         const event = new CustomEvent('activity:background:updated', {
           detail: {
             activityId: activity.id,
             properties: { backgroundColor: data.backgroundColor },
             sender: 'questionSettings_api',
           },
+
+        if (previousAnswersRef && previousAnswersRef.current) {
+          previousAnswersRef.current = JSON.parse(JSON.stringify(updatedLocationAnswers));
+        }
+
+        // Update local state if using it
+        if (typeof setLocationData === 'function') {
+          setLocationData(JSON.parse(JSON.stringify(updatedLocationAnswers)));
+        }
+
+        // Force parent component update through callback
+        if (onQuestionLocationChange) {
+          onQuestionLocationChange(activeQuestionIndex, updatedLocationAnswers);
+        }
+
+        // Show success notification
+        toast({
+          title: "Location updated",
+          description: "Location answers have been saved successfully",
+
         });
-        window.dispatchEvent(event);
+
+        // Dispatch event to update all components
+        if (typeof window !== 'undefined') {
+          const syncEvent = new CustomEvent('location:force:sync', {
+            detail: {
+              locationData: updatedLocationAnswers,
+              timestamp: Date.now(),
+              source: 'settings'
+            }
+          });
+          window.dispatchEvent(syncEvent);
+        }
+
+        setIsSaving(false);
+        return response;
       }
+
 
       toast({
         title: 'Saved successfully',
         description: 'Your changes have been saved.',
       });
-    } catch (error) {
-      console.error('Error updating activity:', error);
 
-      // Thông báo lỗi nhưng VẪN GIỐNG màu trong UI (không reset về màu cũ)
+      // For all other updates, use the regular updateActivity endpoint
+      return await activitiesApi.updateActivity(activity.id, data);
+
+    } catch (error) {
+      console.error("Error updating activity:", error);
       toast({
-        title: 'Error saving changes',
-        description:
-          'Could not save your changes to the server. Please try again.',
-        variant: 'destructive',
+
+        title: "Error updating activity",
+        description: "Please try again",
+        variant: "destructive"
+
       });
     } finally {
       setIsSaving(false);
@@ -1199,16 +1347,10 @@ export function QuestionSettings({
 
       console.log('Silently updating activity with payload:', finalPayload);
       await activitiesApi.updateActivity(activity.id, finalPayload);
-
-      // No toast for silent updates
     } catch (error) {
-      console.error('Error updating activity silently:', error);
-      // Only show toast for errors
-      toast({
-        title: 'Error saving changes',
-        description: 'Could not save your changes. Please try again.',
-        variant: 'destructive',
-      });
+
+      console.error('Error silently updating activity:', error);
+
     }
   };
 
@@ -1222,6 +1364,124 @@ export function QuestionSettings({
     // Update API immediately
     if (activity && value !== activity.customBackgroundMusic) {
       debouncedUpdateActivity({ customBackgroundMusic: value });
+    }
+  };
+
+  const handlePointTypeChange = (value: string) => {
+    // Update local state
+    setPointType(value);
+
+    // Call API to update the quiz based on question type
+    if (activity && activity.id) {
+      try {
+        const questionType = activeQuestion.question_type;
+        const quizPayload = { pointType: value };
+
+        // Update with the appropriate quiz API call based on quiz type
+        switch (questionType) {
+          case 'multiple_choice':
+            activitiesApi.updateButtonsQuiz(activity.id, {
+              type: "CHOICE",
+              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+              pointType: value,
+              answers: activity.quiz?.quizAnswers || activeQuestion.options?.map(opt => ({
+                answerText: opt.option_text,
+                isCorrect: opt.is_correct,
+                explanation: opt.explanation || ''
+              })) || []
+            });
+            break;
+          case 'multiple_response':
+            activitiesApi.updateCheckboxesQuiz(activity.id, {
+              type: "CHOICE",
+              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+              pointType: value,
+              answers: activity.quiz?.quizAnswers || activeQuestion.options?.map(opt => ({
+                answerText: opt.option_text,
+                isCorrect: opt.is_correct,
+                explanation: opt.explanation || ''
+              })) || []
+            });
+            break;
+          case 'true_false':
+            activitiesApi.updateTrueFalseQuiz(activity.id, {
+              type: "TRUE_FALSE",
+              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+              pointType: value,
+              correctAnswer: activeQuestion.options?.find(o => o.is_correct)?.option_text.toLowerCase() === 'true'
+            });
+            break;
+          case 'text_answer':
+            activitiesApi.updateTypeAnswerQuiz(activity.id, {
+              type: "TYPE_ANSWER",
+              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+              pointType: value,
+              correctAnswer: activeQuestion.correct_answer_text || ''
+            });
+            break;
+          case 'reorder':
+            activitiesApi.updateReorderQuiz(activity.id, {
+              type: "REORDER",
+              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+              pointType: value,
+              correctOrder: activeQuestion.options?.map(o => o.option_text) || []
+            });
+            break;
+          case 'location':
+            // For location quizzes
+            const locationData = activeQuestion.location_data || {};
+
+            // Use the correct field name for location answers
+            const locationAnswers = activity?.quiz?.quizLocationAnswers ||
+              locationData.quizLocationAnswers ||
+              locationData.locationAnswers ||
+              [{
+                quizLocationAnswerId: "",
+                longitude: locationData.lng || 0,
+                latitude: locationData.lat || 0,
+                radius: locationData.radius || 20
+              }];
+
+            if (onQuestionLocationChange) {
+              // Update local state
+              const updatedData = {
+                ...locationData,
+                pointType: value
+              };
+
+              onQuestionLocationChange(activeQuestionIndex, updatedData);
+
+              // Update via API
+              activitiesApi.updateLocationQuiz(activity.id, {
+                type: "LOCATION",
+                questionText: activeQuestion.question_text,
+                timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+                pointType: value,
+                locationAnswers: locationAnswers.map(answer => ({
+                  longitude: answer.longitude,
+                  latitude: answer.latitude,
+                  radius: answer.radius
+                }))
+              });
+            }
+            break;
+          default:
+            // For other types, just update the activity directly
+            debouncedUpdateActivity({ pointType: value });
+            break;
+        }
+
+        console.log(`Updated point type to ${value} for ${questionType} question`);
+      } catch (error) {
+        console.error('Error updating point type:', error);
+        // Fall back to general update if specific API fails
+        debouncedUpdateActivity({ pointType: value });
+      }
     }
   };
 
@@ -1245,6 +1505,34 @@ export function QuestionSettings({
     if (activity && activity.backgroundImage) {
       debouncedUpdateActivity({ backgroundImage: '' });
     }
+  };
+
+  // Add PointTypeSelector component
+  const PointTypeSelector = ({
+    value,
+    onChange
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+  }) => {
+    return (
+      <div className="space-y-2">
+        <Label htmlFor="point-type">Point Type</Label>
+        <Select
+          value={value}
+          onValueChange={onChange}
+        >
+          <SelectTrigger id="point-type" className="w-full">
+            <SelectValue placeholder="Select point type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="STANDARD">Standard Points</SelectItem>
+            <SelectItem value="NO_POINTS">No Points</SelectItem>
+            <SelectItem value="DOUBLE_POINTS">Double Points</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    );
   };
 
   const ActivityMetadataTab = () => {
@@ -1512,6 +1800,7 @@ export function QuestionSettings({
                   // Set invalid state to prevent infinite loops
                   if (!invalidImageUrl) {
                     setInvalidImageUrl(true);
+
                     (e.target as HTMLImageElement).src =
                       'https://via.placeholder.com/300x200?text=Invalid+Image+URL';
 
@@ -1520,6 +1809,7 @@ export function QuestionSettings({
                       description: 'The image URL could not be loaded.',
                       variant: 'destructive',
                     });
+
                   }
                 }}
               />
@@ -1671,6 +1961,7 @@ export function QuestionSettings({
 
   // Location settings component
   const LocationSettings = () => {
+
     return (
       <div className="space-y-4">
         <div className="space-y-2">
@@ -1687,15 +1978,658 @@ export function QuestionSettings({
                   radius: value[0],
                 };
                 onQuestionLocationChange(activeQuestionIndex, updatedData);
+
+    const { toast } = useToast();
+    const [locationData, setLocationData] = useState<any[]>([]);
+    const [updatedFields, setUpdatedFields] = useState<{ [key: string]: boolean }>({});
+    const locationDataRef = useRef<any[]>([]);
+    const [isDragging, setIsDragging] = useState(false);
+
+    // Get or convert location answers from the activity
+    // When we have quizLocationAnswers from the API, use that structure
+    useEffect(() => {
+      let answers = [];
+      if (activity?.quiz?.quizLocationAnswers?.length > 0) {
+        answers = activity.quiz.quizLocationAnswers.map(answer => ({
+          quizLocationAnswerId: answer.quizLocationAnswerId,
+          longitude: answer.longitude,
+          latitude: answer.latitude,
+          radius: answer.radius
+        }));
+      } else if (activeQuestion?.location_data) {
+        // For newer format
+        if (Array.isArray(activeQuestion.location_data)) {
+          answers = activeQuestion.location_data;
+        } else if (activeQuestion.location_data.lng) {
+          // For backward compatibility with old format
+          answers = [{
+            longitude: activeQuestion.location_data.lng,
+            latitude: activeQuestion.location_data.lat,
+            radius: activeQuestion.location_data.radius || 10
+          }];
+        }
+      }
+
+      // Ensure we always have at least one location
+      if (answers.length === 0) {
+        answers = [{ longitude: 105.804817, latitude: 21.028511, radius: 10 }];
+      }
+
+      // Only update if there's an actual change or this is the first load
+      const currentDataString = JSON.stringify(locationData);
+      const newDataString = JSON.stringify(answers);
+
+      if (currentDataString !== newDataString || locationData.length === 0) {
+        console.log("Updating location data from API:", answers);
+        setLocationData(answers);
+        locationDataRef.current = answers;
+        previousAnswersRef.current = answers;
+      }
+    }, [activity?.quiz?.quizLocationAnswers, activeQuestion?.location_data]);
+
+    const handlePointTypeChange = (value: string) => {
+      // Update the activity with the new point type
+      if (activity?.id) {
+        updateActivity({
+          pointType: value
+        });
+      }
+    };
+
+    const handleLocationAnswersChange = (questionIndex: number, newLocationData: any[]) => {
+      console.log("Location answers updated:", newLocationData);
+
+      // Generate an update timestamp for tracking
+      const updateTimestamp = Date.now();
+
+      // Deep clone the data to avoid reference issues
+      const updateData = JSON.parse(JSON.stringify(newLocationData));
+
+      // Store the updated data in our ref to prevent overrides
+      locationDataRef.current = updateData;
+
+      // Update our local state for immediate UI feedback
+      setLocationData(updateData);
+
+      // Save to previous answers ref to avoid reset on blur events
+      previousAnswersRef.current = updateData;
+
+      // Update the global lastLocationUpdate tracker
+      if (typeof window !== 'undefined') {
+        window.lastLocationUpdate = {
+          timestamp: updateTimestamp,
+          activityId: activity?.id || '',
+          locationData: updateData
+        };
+      }
+
+      // Call the API to update location answers
+      if (activity?.id) {
+        const locationAnswers = updateData.map(location => ({
+          quizLocationAnswerId: location.quizLocationAnswerId,
+          longitude: location.longitude,
+          latitude: location.latitude,
+          radius: location.radius
+        }));
+
+        // Show a loading indicator
+        const loadingToastId = toast({
+          title: "Updating location data...",
+          description: "Saving changes to the server",
+          duration: 2000
+        });
+
+        // Call the API with complete payload
+        const locationPayload = {
+          locationAnswers: locationAnswers,
+          pointType: activity.quiz?.pointType || "STANDARD",
+          timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit
+        };
+
+        // Call the API
+        updateActivity(locationPayload).then(() => {
+          // Show success message
+          toast({
+            title: "Location data saved",
+            description: "Changes have been saved to the server",
+            duration: 2000
+          });
+
+          // Force update local refs again to be safe
+          locationDataRef.current = updateData;
+          previousAnswersRef.current = updateData;
+
+          // Dispatch event to force all components to sync
+          if (typeof window !== 'undefined') {
+            const syncEvent = new CustomEvent('location:force:sync', {
+              detail: {
+                locationData: updateData,
+                timestamp: updateTimestamp,
+                source: 'settings'
+
               }
-            }}
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>10m</span>
-            <span>{activeQuestion.location_data?.radius || 20}m</span>
-            <span>100m</span>
+            });
+            window.dispatchEvent(syncEvent);
+          }
+        }).catch(error => {
+          console.error("Error updating location data:", error);
+          toast({
+            title: "Error saving location data",
+            description: "Please try again",
+            variant: "destructive",
+            duration: 3000
+          });
+        });
+      }
+
+      // Also update the local state if needed
+      if (onQuestionLocationChange) {
+        onQuestionLocationChange(questionIndex, updateData);
+      }
+    };
+
+    // Function to request map sync
+    const requestMapSync = () => {
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('location:sync:request');
+        window.dispatchEvent(event);
+      }
+    };
+
+    // Sync map with settings when component mounts or when location data changes from API
+    useEffect(() => {
+      // Small delay to ensure everything is loaded
+      const timer = setTimeout(() => {
+        requestMapSync();
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }, [activity?.quiz?.quizLocationAnswers]);
+
+    // Add a new effect to ensure our local state stays in sync with our ref
+    useEffect(() => {
+      // If our ref has data that differs from state, update the state
+      if (locationDataRef.current.length > 0) {
+        const refDataString = JSON.stringify(locationDataRef.current);
+        const stateDataString = JSON.stringify(locationData);
+
+        if (refDataString !== stateDataString) {
+          console.log("Syncing location state with ref data");
+          setLocationData([...locationDataRef.current]);
+        }
+      }
+    }, [activity?.id]); // Only run when activity changes
+
+    const handleLatitudeChange = (index: number, value: string) => {
+      // Just update the local state for UI display while typing
+      const newLocationData = [...locationData];
+      newLocationData[index] = {
+        ...newLocationData[index],
+        latitude: parseFloat(value) || newLocationData[index].latitude
+      };
+      setLocationData(newLocationData);
+
+      // Also update our ref to prevent overrides
+      locationDataRef.current = newLocationData;
+    };
+
+    const handleLatitudeBlur = (index: number, value: string) => {
+      const lat = parseFloat(value);
+
+      if (isNaN(lat) || lat < -90 || lat > 90) {
+        toast({
+          title: "Invalid latitude",
+          description: "Latitude must be between -90 and 90",
+          variant: "destructive"
+        });
+
+        // Revert to previous valid value
+        const newLocationData = JSON.parse(JSON.stringify(locationData));
+        newLocationData[index] = {
+          ...newLocationData[index],
+          latitude: previousAnswersRef.current[index]?.latitude || 0
+        };
+        setLocationData(newLocationData);
+        locationDataRef.current = newLocationData;
+        return;
+      }
+
+      // Generate an update timestamp
+      const updateTimestamp = Date.now();
+
+      // Update local state immediately
+      const newLocationData = JSON.parse(JSON.stringify(locationData));
+      newLocationData[index] = {
+        ...newLocationData[index],
+        latitude: lat
+      };
+
+      // Update all refs and state
+      setLocationData(newLocationData);
+      locationDataRef.current = newLocationData;
+      previousAnswersRef.current = newLocationData;
+
+      // Update global tracking
+      if (typeof window !== 'undefined') {
+        window.lastLocationUpdate = {
+          timestamp: updateTimestamp,
+          activityId: activity?.id || '',
+          locationData: newLocationData
+        };
+      }
+
+      // Show update indicator
+      setUpdatedFields({ ...updatedFields, [`lat-${index}`]: true });
+      setTimeout(() => {
+        setUpdatedFields(prev => ({ ...prev, [`lat-${index}`]: false }));
+      }, 2000);
+
+      // Dispatch event to update map marker position immediately
+      if (typeof window !== 'undefined') {
+        // First dispatch a simple coordinate update event for the map
+        const event = new CustomEvent('location:coordinate:updated', {
+          detail: {
+            index,
+            longitude: newLocationData[index].longitude,
+            latitude: lat,
+            timestamp: updateTimestamp
+          }
+        });
+        window.dispatchEvent(event);
+
+        // Then dispatch a more comprehensive sync event
+        setTimeout(() => {
+          const syncEvent = new CustomEvent('location:force:sync', {
+            detail: {
+              locationData: newLocationData,
+              timestamp: updateTimestamp,
+              source: 'settings'
+            }
+          });
+          window.dispatchEvent(syncEvent);
+        }, 100);
+      }
+
+      // Update API with all location data to ensure consistency
+      debouncedLocationUpdate(newLocationData);
+    };
+
+    const handleLongitudeChange = (index: number, value: string) => {
+      // Just update the local state for UI display while typing
+      const newLocationData = [...locationData];
+      newLocationData[index] = {
+        ...newLocationData[index],
+        longitude: parseFloat(value) || newLocationData[index].longitude
+      };
+      setLocationData(newLocationData);
+
+      // Also update our ref to prevent overrides
+      locationDataRef.current = newLocationData;
+    };
+
+    const handleLongitudeBlur = (index: number, value: string) => {
+      const lng = parseFloat(value);
+
+      if (isNaN(lng) || lng < -180 || lng > 180) {
+        toast({
+          title: "Invalid longitude",
+          description: "Longitude must be between -180 and 180",
+          variant: "destructive"
+        });
+
+        // Revert to previous valid value
+        const newLocationData = JSON.parse(JSON.stringify(locationData));
+        newLocationData[index] = {
+          ...newLocationData[index],
+          longitude: previousAnswersRef.current[index]?.longitude || 0
+        };
+        setLocationData(newLocationData);
+        locationDataRef.current = newLocationData;
+        return;
+      }
+
+      // Generate an update timestamp
+      const updateTimestamp = Date.now();
+
+      // Update local state immediately
+      const newLocationData = JSON.parse(JSON.stringify(locationData));
+      newLocationData[index] = {
+        ...newLocationData[index],
+        longitude: lng
+      };
+
+      // Update all refs and state
+      setLocationData(newLocationData);
+      locationDataRef.current = newLocationData;
+      previousAnswersRef.current = newLocationData;
+
+      // Update global tracking
+      if (typeof window !== 'undefined') {
+        window.lastLocationUpdate = {
+          timestamp: updateTimestamp,
+          activityId: activity?.id || '',
+          locationData: newLocationData
+        };
+      }
+
+      // Show update indicator
+      setUpdatedFields({ ...updatedFields, [`lng-${index}`]: true });
+      setTimeout(() => {
+        setUpdatedFields(prev => ({ ...prev, [`lng-${index}`]: false }));
+      }, 2000);
+
+      // Dispatch event to update map marker position immediately
+      if (typeof window !== 'undefined') {
+        // First dispatch a simple coordinate update event for the map
+        const event = new CustomEvent('location:coordinate:updated', {
+          detail: {
+            index,
+            longitude: lng,
+            latitude: newLocationData[index].latitude,
+            timestamp: updateTimestamp
+          }
+        });
+        window.dispatchEvent(event);
+
+        // Then dispatch a more comprehensive sync event
+        setTimeout(() => {
+          const syncEvent = new CustomEvent('location:force:sync', {
+            detail: {
+              locationData: newLocationData,
+              timestamp: updateTimestamp,
+              source: 'settings'
+            }
+          });
+          window.dispatchEvent(syncEvent);
+        }, 100);
+      }
+
+      // Update API with all location data to ensure consistency
+      debouncedLocationUpdate(newLocationData);
+    };
+
+    // Track previous valid answers
+    const previousAnswersRef = useRef<any[]>(locationData);
+
+    // Update previous answers ref when location data changes from API
+    useEffect(() => {
+      // Only update from API if there's actual data
+      if (activity?.quiz?.quizLocationAnswers?.length > 0) {
+        previousAnswersRef.current = activity.quiz.quizLocationAnswers.map(answer => ({
+          quizLocationAnswerId: answer.quizLocationAnswerId,
+          longitude: answer.longitude,
+          latitude: answer.latitude,
+          radius: answer.radius
+        }));
+
+        // Also update our main ref
+        locationDataRef.current = previousAnswersRef.current;
+      }
+    }, [activity?.quiz?.quizLocationAnswers]);
+
+    // Debounced function to update location data via API
+    const debouncedLocationUpdate = useCallback(
+      (newLocationData: any[]) => {
+        if (!activity?.id) return;
+
+        // Clear any existing timeout
+        if (window.locationUpdateTimer) {
+          clearTimeout(window.locationUpdateTimer);
+        }
+
+        // Store a timestamp and data in ref to avoid losing changes
+        const updateTimestamp = Date.now();
+        const updateData = JSON.parse(JSON.stringify(newLocationData));
+
+        // Update our ref immediately to prevent overrides
+        locationDataRef.current = JSON.parse(JSON.stringify(updateData));
+
+        // Also update our state for UI consistency
+        setLocationData(JSON.parse(JSON.stringify(updateData)));
+
+        // Also update previousAnswersRef for continuity
+        previousAnswersRef.current = JSON.parse(JSON.stringify(updateData));
+
+        // Update lastLocationUpdate to track the latest data
+        if (typeof window !== 'undefined') {
+          window.lastLocationUpdate = {
+            timestamp: updateTimestamp,
+            activityId: activity.id,
+            locationData: JSON.parse(JSON.stringify(updateData))
+          };
+        }
+
+        // Set a new timeout for API update
+        window.locationUpdateTimer = setTimeout(() => {
+          // Check if this is still the most recent update request
+          if (typeof window !== 'undefined' && window.lastLocationUpdate &&
+            window.lastLocationUpdate.timestamp > updateTimestamp) {
+            console.log("Skipping outdated location update request");
+            return;
+          }
+
+          // Create a complete payload with all required fields
+          const locationPayload = {
+            locationAnswers: updateData,
+            pointType: activity.quiz?.pointType || "STANDARD",
+            timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit
+          };
+
+          // Call handler with complete data
+          handleLocationAnswersChange(activeQuestionIndex, updateData);
+        }, 1000); // Longer debounce for API calls
+      },
+      [activity?.id, activeQuestionIndex, activity?.quiz?.pointType, activity?.quiz?.timeLimitSeconds, timeLimit]
+    );
+
+    const handleRadiusChange = (index: number, value: number[]) => {
+      console.log(`Radius changed for location ${index} to ${value[0]}km`);
+
+      // Generate an update timestamp
+      const updateTimestamp = Date.now();
+
+      // Create a deep copy to avoid reference issues
+      const newLocationData = JSON.parse(JSON.stringify(locationData));
+
+      // Update the radius for this location
+      newLocationData[index] = {
+        ...newLocationData[index],
+        radius: value[0]
+      };
+
+      // Update local state immediately
+      setLocationData([...newLocationData]);
+      locationDataRef.current = [...newLocationData];
+
+      // Show update indicator
+      setUpdatedFields({ ...updatedFields, [`radius-${index}`]: true });
+      setTimeout(() => {
+        setUpdatedFields(prev => ({ ...prev, [`radius-${index}`]: false }));
+      }, 2000);
+
+      // Save the current valid state
+      previousAnswersRef.current = [...newLocationData];
+
+      // Dispatch event to update circle radius immediately
+      if (typeof window !== 'undefined') {
+        // First update the radius
+        const event = new CustomEvent('location:radius:updated', {
+          detail: {
+            index,
+            radius: value[0]
+          }
+        });
+        window.dispatchEvent(event);
+
+        // Then force a sync between all components
+        setTimeout(() => {
+          const syncEvent = new CustomEvent('location:force:sync', {
+            detail: {
+              locationData: [...newLocationData]
+            }
+          });
+          window.dispatchEvent(syncEvent);
+        }, 100);
+      }
+
+      // Create a complete payload with all required fields
+      const locationPayload = {
+        locationAnswers: newLocationData,
+        pointType: activity?.quiz?.pointType || "STANDARD",
+        timeLimitSeconds: activity?.quiz?.timeLimitSeconds || timeLimit
+      };
+
+      // Update API with all location data to ensure consistency
+      // Use the direct update method to ensure it persists
+      if (activity?.id && !isDragging) {
+        // Only update the API if we're not in the middle of dragging
+        // This prevents too many API calls during slider dragging
+        updateActivity(locationPayload);
+      } else {
+        // If dragging, use the debounced version
+        debouncedLocationUpdate([...newLocationData]);
+      }
+    };
+
+    const handleAddLocation = () => {
+      // Get center of map if possible, otherwise use default or average of existing points
+      let newLat = 21.028511;
+      let newLng = 105.804817;
+
+      // If we have existing locations, calculate a slightly offset position from the last one
+      if (locationData.length > 0) {
+        const lastLocation = locationData[locationData.length - 1];
+        // Add a small offset to make the new point visible but close to existing ones
+        newLat = lastLocation.latitude + 0.01;
+        newLng = lastLocation.longitude + 0.01;
+      }
+
+      // Add the new location to the array
+      const newLocationData = [
+        ...locationData,
+        {
+          longitude: newLng,
+          latitude: newLat,
+          radius: 10
+        }
+      ];
+
+      // Update local state immediately
+      setLocationData(newLocationData);
+      locationDataRef.current = newLocationData;
+
+      // Dispatch an event to notify the map to update and focus on the new point
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('location:point:added', {
+          detail: {
+            index: newLocationData.length - 1,
+            longitude: newLng,
+            latitude: newLat
+          }
+        });
+        window.dispatchEvent(event);
+      }
+
+      // Debounce the API update
+      debouncedLocationUpdate(newLocationData);
+
+      toast({
+        title: "Location added",
+        description: "A new location point has been added"
+      });
+    };
+
+    const handleRemoveLocation = (index: number) => {
+      // Prevent removing the last location
+      if (locationData.length <= 1) {
+        toast({
+          title: "Cannot remove",
+          description: "At least one location is required",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Dispatch event to remove the marker from the map immediately
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('location:point:removed', {
+          detail: { index }
+        });
+        window.dispatchEvent(event);
+      }
+
+      // Update local state
+      const newLocationData = locationData.filter((_, i) => i !== index);
+      setLocationData(newLocationData);
+      locationDataRef.current = newLocationData;
+
+      // Debounce the API update
+      debouncedLocationUpdate(newLocationData);
+
+      toast({
+        title: "Location removed",
+        description: "The location point has been removed"
+      });
+    };
+
+    // Add listener for the force sync event
+    useEffect(() => {
+      const handleForceSync = (event: CustomEvent) => {
+        if (event.detail && event.detail.locationData) {
+          // Update our local state with the forced data
+          setLocationData(event.detail.locationData);
+          locationDataRef.current = event.detail.locationData;
+          previousAnswersRef.current = event.detail.locationData;
+
+          console.log("Force synced location data from event:", event.detail.locationData);
+        }
+      };
+
+      if (typeof window !== 'undefined') {
+        window.addEventListener('location:force:sync', handleForceSync as EventListener);
+      }
+
+      return () => {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('location:force:sync', handleForceSync as EventListener);
+        }
+      };
+    }, []);
+
+    // Add a debugging effect to track location data changes
+    useEffect(() => {
+      console.log("LocationSettings: locationData changed:", locationData);
+
+      // When location data changes, ensure our refs are updated
+      locationDataRef.current = [...locationData];
+      previousAnswersRef.current = [...locationData];
+
+    }, [locationData]);
+
+    // Also monitor activity quiz changes
+    useEffect(() => {
+      if (activity?.quiz?.quizLocationAnswers) {
+        console.log("LocationSettings: Activity quiz location answers changed:",
+          activity.quiz.quizLocationAnswers);
+      }
+    }, [activity?.quiz?.quizLocationAnswers]);
+
+    return (
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Location Question Settings</h3>
+
+          <div className="bg-blue-50 dark:bg-blue-900/10 rounded-md p-4 border border-blue-100 dark:border-blue-800">
+            <h4 className="font-medium text-blue-800 dark:text-blue-300 mb-2">Point Type</h4>
+            <PointTypeSelector
+              value={pointType}
+              onChange={handlePointTypeChange}
+            />
+            <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+              Determines how points are awarded for this question.
+            </p>
           </div>
-        </div>
+
 
         <div className="space-y-2">
           <Label>Hint (Optional)</Label>
@@ -1713,6 +2647,137 @@ export function QuestionSettings({
             }}
             className="min-h-[80px] text-sm"
           />
+
+          <div className="rounded-md border">
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-800">
+              <div className="flex justify-between items-center">
+                <h4 className="font-medium text-blue-800 dark:text-blue-300">
+                  Location Map Preview
+                </h4>
+              </div>
+              <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                Drag pins to reposition. Use settings below to add or adjust locations.
+              </p>
+            </div>
+
+            <div className="p-4">
+              <LocationQuestionEditor
+                questionText={activeQuestion.question_text || ""}
+                locationAnswers={locationData}
+                onLocationChange={handleLocationAnswersChange}
+                questionIndex={activeQuestionIndex}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-md border">
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-800">
+              <div className="flex justify-between items-center">
+                <h4 className="font-medium text-blue-800 dark:text-blue-300">
+                  Location Points
+                </h4>
+                <Button
+                  onClick={handleAddLocation}
+                  size="sm"
+                  className="bg-blue-500 hover:bg-blue-600"
+                >
+                  <PlusCircle className="h-4 w-4 mr-1" />
+                  Add Location
+                </Button>
+              </div>
+              <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                Define multiple correct locations if needed. Players just need to click within one of them to be correct.
+              </p>
+            </div>
+
+            <div className="divide-y">
+              {locationData.map((location, index) => (
+                <div key={index} className="p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h5 className="font-medium">Location Point {index + 1}</h5>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveLocation(index)}
+                      className="h-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash className="h-4 w-4 mr-1" />
+                      Remove
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="relative">
+                      <Label htmlFor={`latitude-${index}`}>Latitude</Label>
+                      <div className="relative">
+                        <Input
+                          id={`latitude-${index}`}
+                          value={location.latitude}
+                          onChange={(e) => handleLatitudeChange(index, e.target.value)}
+                          onBlur={(e) => handleLatitudeBlur(index, e.target.value)}
+                          placeholder="Latitude (-90 to 90)"
+                          type="number"
+                          step="0.000001"
+                          className={updatedFields[`lat-${index}`] ? "border-green-500 pr-10" : ""}
+                        />
+                        {updatedFields[`lat-${index}`] && (
+                          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-green-500 animate-pulse">
+                            <Check className="h-5 w-5" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <Label htmlFor={`longitude-${index}`}>Longitude</Label>
+                      <div className="relative">
+                        <Input
+                          id={`longitude-${index}`}
+                          value={location.longitude}
+                          onChange={(e) => handleLongitudeChange(index, e.target.value)}
+                          onBlur={(e) => handleLongitudeBlur(index, e.target.value)}
+                          placeholder="Longitude (-180 to 180)"
+                          type="number"
+                          step="0.000001"
+                          className={updatedFields[`lng-${index}`] ? "border-green-500 pr-10" : ""}
+                        />
+                        {updatedFields[`lng-${index}`] && (
+                          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-green-500 animate-pulse">
+                            <Check className="h-5 w-5" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label htmlFor={`radius-${index}`}>
+                        Radius (km): {location.radius}
+                        {updatedFields[`radius-${index}`] && (
+                          <span className="ml-2 text-green-500 inline-flex items-center animate-pulse">
+                            <Check className="h-4 w-4 mr-1" /> Updated
+                          </span>
+                        )}
+                      </Label>
+                    </div>
+                    <Slider
+                      id={`radius-${index}`}
+                      value={[location.radius]}
+                      min={1}
+                      max={100}
+                      step={1}
+                      onValueChange={(values) => handleRadiusChange(index, values)}
+                      className={updatedFields[`radius-${index}`] ? "border border-green-500 rounded-md p-1" : ""}
+                    />
+                    <p className="text-xs text-gray-500">
+                      Area within which player's answer will be considered correct.
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </div>
     );
@@ -1722,55 +2787,72 @@ export function QuestionSettings({
   const ContentTab = () => {
     return (
       <div className="space-y-6">
-        <QuestionTypeSelector />
 
-        {/* Option list for choice questions */}
-        {(activeQuestion.question_type === 'multiple_choice' ||
-          activeQuestion.question_type === 'multiple_response') && (
-          <OptionList
-            options={activeQuestion.options}
-            activeQuestionIndex={activeQuestionIndex}
-            questionType={activeQuestion.question_type}
-            onAddOption={onAddOption}
-            onOptionChange={(questionIndex, optionIndex, field, value) =>
-              onOptionChange(questionIndex, optionIndex, field, value)
-            }
-            onDeleteOption={onDeleteOption}
-          />
-        )}
+        {/* Section 1: Question Type */}
+        <div>
+          <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
+            Question Type
+          </h3>
+          <QuestionTypeSelector />
+        </div>
 
-        {/* True/false selector */}
-        {activeQuestion.question_type === 'true_false' && (
-          <TrueFalseSelector
-            options={activeQuestion.options}
-            onOptionChange={onOptionChange}
-            activeQuestionIndex={activeQuestionIndex}
-          />
-        )}
+        {/* Section 2: Content/Answer Options */}
+        <div>
+          <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
+            {activeQuestion.question_type === 'slide' || activeQuestion.question_type === 'info_slide' ? "Slide Content" : "Answer Options"}
+          </h3>
 
-        {/* Text answer input */}
-        {activeQuestion.question_type === 'text_answer' && (
-          <TextAnswerForm
-            correctAnswerText={correctAnswerText}
-            onTextAnswerChange={handleTextAnswerChange}
-            onTextAnswerBlur={handleTextAnswerBlur}
-          />
-        )}
+          {/* Display different content based on question type */}
+          {activeQuestion.question_type === 'multiple_choice' || activeQuestion.question_type === 'multiple_response' ? (
+            <div className={cn(
+              "p-3 rounded-md border",
+              activeQuestion.question_type === 'multiple_choice'
+                ? "bg-purple-50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-800"
+                : "bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800"
+            )}>
+              <OptionList
+                options={activeQuestion.options}
+                activeQuestionIndex={activeQuestionIndex}
+                questionType={activeQuestion.question_type}
+                onAddOption={onAddOption}
+                onOptionChange={(questionIndex, optionIndex, field, value) => onOptionChange(questionIndex, optionIndex, field, value)}
+                onDeleteOption={onDeleteOption}
+              />
+            </div>
+          ) : activeQuestion.question_type === 'true_false' ? (
+            <div className="p-3 bg-green-50 dark:bg-green-900/10 rounded-md border border-green-100 dark:border-green-800">
+              <TrueFalseSelector
+                options={activeQuestion.options}
+                onOptionChange={onOptionChange}
+                activeQuestionIndex={activeQuestionIndex}
+              />
+            </div>
+          ) : activeQuestion.question_type === 'text_answer' ? (
+            <TextAnswerForm
+              correctAnswerText={correctAnswerText}
+              onTextAnswerChange={handleTextAnswerChange}
+              onTextAnswerBlur={handleTextAnswerBlur}
 
-        {/* Reorder options */}
-        {activeQuestion.question_type === 'reorder' && onReorderOptions && (
-          <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
-            <ReorderOptions
-              options={activeQuestion.options}
-              onOptionChange={(index, field, value) =>
-                onOptionChange(activeQuestionIndex, index, field, value)
-              }
-              onDeleteOption={onDeleteOption}
-              onAddOption={onAddOption}
-              onReorder={onReorderOptions}
             />
-          </div>
-        )}
+          ) : activeQuestion.question_type === 'slide' || activeQuestion.question_type === 'info_slide' ? (
+            <SlideSettings />
+          ) : activeQuestion.question_type === 'reorder' ? (
+            <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
+              <ReorderOptions
+                options={activeQuestion.options}
+                onOptionChange={(index, field, value) => onOptionChange(activeQuestionIndex, index, field, value)}
+                onDeleteOption={onDeleteOption}
+                onAddOption={onAddOption}
+                onReorder={onReorderOptions}
+              />
+            </div>
+          ) : activeQuestion.question_type === 'location' ? (
+            <LocationSettings />
+          ) : null}
+        </div>
+
 
         {/* Slide content editor */}
         {activeQuestion.question_type === 'slide' && (
@@ -1780,8 +2862,36 @@ export function QuestionSettings({
         {/* Location question editor */}
         {activeQuestion.question_type === 'location' && <LocationSettings />}
 
-        {/* Time limit control - for all question types */}
-        <TimeSettings />
+        {/* Section 3: Time Settings */}
+        <div>
+          <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
+            Time
+          </h3>
+          <TimeSettings />
+        </div>
+
+        {/* Section 4: Point Type Settings */}
+        <div>
+          <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
+            Points
+          </h3>
+          <PointTypeSelector
+            value={pointType}
+            onChange={handlePointTypeChange}
+          />
+        </div>
+
+
+        {/* Section 5: Advanced Settings */}
+        <div>
+          <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
+            More Settings
+          </h3>
+          <AdvancedSettings />
+        </div>
       </div>
     );
   };
@@ -1907,7 +3017,7 @@ export function QuestionSettings({
                 ) : null}
               </div>
 
-              {/* Time Settings */}
+              {/* Section 3: Time Settings */}
               <div>
                 <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
@@ -1916,7 +3026,19 @@ export function QuestionSettings({
                 <TimeSettings />
               </div>
 
-              {/* Advanced Settings */}
+              {/* Section 4: Point Type Settings */}
+              <div>
+                <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
+                  <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
+                  Points
+                </h3>
+                <PointTypeSelector
+                  value={pointType}
+                  onChange={handlePointTypeChange}
+                />
+              </div>
+
+              {/* Section 5: Advanced Settings */}
               <div>
                 <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>

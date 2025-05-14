@@ -1,6 +1,32 @@
 import { toast } from "sonner";
+import axiosClient from "@/api-client/axios-client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+
+// Define types for location quiz data
+interface LocationAnswer {
+  longitude: number;
+  latitude: number;
+  radius: number;
+}
+
+interface CreateLocationQuizPayload {
+  collectionId: string;
+  activityType: string;
+  title: string;
+  description?: string;
+  isPublished?: boolean;
+  backgroundColor?: string;
+  backgroundImage?: string;
+  customBackgroundMusic?: string;
+}
+
+interface UpdateLocationQuizPayload {
+  questionText: string;
+  timeLimitSeconds: number;
+  pointType: string;
+  locationAnswers: LocationAnswer[];
+}
 
 /**
  * Service for handling collection-related API calls
@@ -110,6 +136,42 @@ export const CollectionService = {
       console.error("Error fetching collection:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to fetch collection"
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new location quiz activity
+   * @param payload Data for creating a new location quiz
+   * @returns Promise with the created activity
+   */
+  createLocationQuizActivity: async (payload: CreateLocationQuizPayload) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/collections/${payload.collectionId}/activities`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create location quiz");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error creating location quiz:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to create location quiz"
       );
       throw error;
     }

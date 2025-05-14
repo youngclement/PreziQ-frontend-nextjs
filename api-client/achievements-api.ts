@@ -30,9 +30,34 @@ export interface UpdateAchievementPayload {
 export interface AchievementsResponse {
   data: {
     data: {
-    content: Achievement[];
+
+      content: Achievement[];
+    };
   };
-  }
+}
+
+// Define the API response structure for getMyAchievements
+export interface MyAchievementsResponse {
+  data: {
+    success: boolean;
+    message: string;
+    data: {
+      meta: {
+        currentPage: number;
+        pageSize: number;
+        totalPages: number;
+        totalElements: number;
+        hasNext: boolean;
+        hasPrevious: boolean;
+      };
+      content: Achievement[];
+    };
+    meta: {
+      timestamp: string;
+      instance: string;
+    };
+  };
+
 }
 
 export const achievementsApi = {
@@ -52,6 +77,17 @@ export const achievementsApi = {
         return response.data.data.content;
       });
   },
+
+
+  // Get my achievements
+  getMyAchievements(): Promise<MyAchievementsResponse['data']['data']> {
+    return axiosClient
+      .get(`/achievements/me`)
+      .then((response: MyAchievementsResponse) => {
+        return response.data.data;
+      });
+  },
+
 
   // Get achievement by ID
   getAchievementById(id: string): Promise<Achievement> {
