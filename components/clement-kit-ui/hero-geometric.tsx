@@ -1,23 +1,22 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Inter, Dancing_Script } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
 import { useEffect, useState, ReactNode } from 'react';
 import { TypingAnimation } from '@/components/magicui/typing-animation';
+// Import font từ Fontsource thay thế cho Google Fonts
+import '@fontsource/dancing-script/700.css'; // Weight 700
 
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
 });
 
-const dancingScript = Dancing_Script({
-  subsets: ['latin'],
-  weight: ['700'],
-  variable: '--font-dancing-script',
-});
+// Sử dụng font Dancing Script từ Fontsource
+const dancingScriptClass = 'font-cursive';
 
 function ElegantShape({
   className,

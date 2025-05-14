@@ -19,6 +19,8 @@ import { CollectionGridItem } from '../collections/components/collection-grid-it
 import { CollectionListItem } from '../collections/components/collection-list-item';
 import { CollectionPreviewDialog } from '../collections/components/collection-preview-dialog';
 import Loading from '@/components/common/loading';
+import ClientOnly from '@/components/ClientOnly';
+
 export default function MyCollectionsPage() {
     const router = useRouter();
     const { toast } = useToast();
@@ -222,145 +224,147 @@ export default function MyCollectionsPage() {
     console.log('Pagination:', pagination);
 
     return (
-        <div className="flex justify-center">
-            <div className="container max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
-                {/* Header Section */}
-                <CollectionHeader
-                    onCreateCollection={handleCreateCollection}
-                    title="My Collections"
-                />
-
-                {/* Filters Section */}
-                <CollectionFilters
-                    topics={[]}
-                    selectedTopic=""
-                    onTopicChange={(topic) => console.log("Topic selected:", topic)}
-                />
-
-                {/* Loading state */}
-                {isLoading && (
-                    <Loading />
-                )}
-
-                {/* Error state */}
-                {!isLoading && error && (
-                    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-16 w-16 text-red-500 mb-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        <h3 className="text-xl font-semibold mb-2">Đã xảy ra lỗi</h3>
-                        <p className="text-zinc-500 dark:text-zinc-400 mb-4">{error}</p>
-                        <button
-                            onClick={() => fetchMyCollections()}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none"
-                        >
-                            Thử lại
-                        </button>
-                    </div>
-                )}
-
-                {/* Collections Display */}
-                {!isLoading && !error && filteredCollections?.length === 0 ? (
-                    <EmptyCollections
-                        searchQuery={searchQuery}
+        <ClientOnly>
+            <div className="flex justify-center">
+                <div className="container max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
+                    {/* Header Section */}
+                    <CollectionHeader
                         onCreateCollection={handleCreateCollection}
+                        title="My Collections"
                     />
-                ) : (
-                    !isLoading &&
-                    !error && (
-                        <>
-                            {viewMode === 'grid' ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {filteredCollections.map((collection) => (
-                                        <CollectionGridItem
-                                            key={collection.id}
-                                            collection={collection}
-                                            activities={getCollectionActivities(collection.id)}
-                                            onEdit={handleEditCollection}
-                                            onView={handleViewActivities}
-                                        />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {filteredCollections.map((collection) => (
-                                        <CollectionListItem
-                                            key={collection.id}
-                                            collection={collection}
-                                            activities={getCollectionActivities(collection.id)}
-                                            onEdit={handleEditCollection}
-                                            onView={handleViewActivities}
-                                        />
-                                    ))}
-                                </div>
-                            )}
 
-                            {/* Pagination UI */}
-                            {pagination.totalPages > 1 && (
-                                <div className="flex justify-center mt-8">
-                                    <div className="flex space-x-2">
-                                        <button
-                                            onClick={() =>
-                                                fetchMyCollections(
-                                                    pagination.currentPage - 1,
-                                                    pagination.pageSize
-                                                )
-                                            }
-                                            disabled={!pagination.hasPrevious}
-                                            className={`px-4 py-2 rounded-md ${!pagination.hasPrevious
-                                                ? 'bg-gray-300 cursor-not-allowed'
-                                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                                }`}
-                                        >
-                                            Trang trước
-                                        </button>
-                                        <div className="px-4 py-2 bg-gray-100 rounded-md">
-                                            Trang {pagination.currentPage} / {pagination.totalPages}
-                                        </div>
-                                        <button
-                                            onClick={() =>
-                                                fetchMyCollections(
-                                                    pagination.currentPage + 1,
-                                                    pagination.pageSize
-                                                )
-                                            }
-                                            disabled={!pagination.hasNext}
-                                            className={`px-4 py-2 rounded-md ${!pagination.hasNext
-                                                ? 'bg-gray-300 cursor-not-allowed'
-                                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                                }`}
-                                        >
-                                            Trang sau
-                                        </button>
+                    {/* Filters Section */}
+                    <CollectionFilters
+                        topics={[]}
+                        selectedTopic=""
+                        onTopicChange={(topic) => console.log("Topic selected:", topic)}
+                    />
+
+                    {/* Loading state */}
+                    {isLoading && (
+                        <Loading />
+                    )}
+
+                    {/* Error state */}
+                    {!isLoading && error && (
+                        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-16 w-16 text-red-500 mb-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                            </svg>
+                            <h3 className="text-xl font-semibold mb-2">Đã xảy ra lỗi</h3>
+                            <p className="text-zinc-500 dark:text-zinc-400 mb-4">{error}</p>
+                            <button
+                                onClick={() => fetchMyCollections()}
+                                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none"
+                            >
+                                Thử lại
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Collections Display */}
+                    {!isLoading && !error && filteredCollections?.length === 0 ? (
+                        <EmptyCollections
+                            searchQuery={searchQuery}
+                            onCreateCollection={handleCreateCollection}
+                        />
+                    ) : (
+                        !isLoading &&
+                        !error && (
+                            <>
+                                {viewMode === 'grid' ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {filteredCollections.map((collection) => (
+                                            <CollectionGridItem
+                                                key={collection.id}
+                                                collection={collection}
+                                                activities={getCollectionActivities(collection.id)}
+                                                onEdit={handleEditCollection}
+                                                onView={handleViewActivities}
+                                            />
+                                        ))}
                                     </div>
-                                </div>
-                            )}
-                        </>
-                    )
-                )}
+                                ) : (
+                                    <div className="space-y-4">
+                                        {filteredCollections.map((collection) => (
+                                            <CollectionListItem
+                                                key={collection.id}
+                                                collection={collection}
+                                                activities={getCollectionActivities(collection.id)}
+                                                onEdit={handleEditCollection}
+                                                onView={handleViewActivities}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
 
-                {/* Collection Preview Dialog */}
-                <CollectionPreviewDialog
-                    open={previewOpen}
-                    onOpenChange={setPreviewOpen}
-                    selectedCollection={selectedCollection}
-                    activities={selectedCollectionActivities}
-                    onViewActivities={handleViewActivities}
-                    onEditCollection={handleEditCollection}
-                    onPreviewActivity={handlePreviewActivity}
-                />
+                                {/* Pagination UI */}
+                                {pagination.totalPages > 1 && (
+                                    <div className="flex justify-center mt-8">
+                                        <div className="flex space-x-2">
+                                            <button
+                                                onClick={() =>
+                                                    fetchMyCollections(
+                                                        pagination.currentPage - 1,
+                                                        pagination.pageSize
+                                                    )
+                                                }
+                                                disabled={!pagination.hasPrevious}
+                                                className={`px-4 py-2 rounded-md ${!pagination.hasPrevious
+                                                    ? 'bg-gray-300 cursor-not-allowed'
+                                                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                    }`}
+                                            >
+                                                Trang trước
+                                            </button>
+                                            <div className="px-4 py-2 bg-gray-100 rounded-md">
+                                                Trang {pagination.currentPage} / {pagination.totalPages}
+                                            </div>
+                                            <button
+                                                onClick={() =>
+                                                    fetchMyCollections(
+                                                        pagination.currentPage + 1,
+                                                        pagination.pageSize
+                                                    )
+                                                }
+                                                disabled={!pagination.hasNext}
+                                                className={`px-4 py-2 rounded-md ${!pagination.hasNext
+                                                    ? 'bg-gray-300 cursor-not-allowed'
+                                                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                    }`}
+                                            >
+                                                Trang sau
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )
+                    )}
+
+                    {/* Collection Preview Dialog */}
+                    <CollectionPreviewDialog
+                        open={previewOpen}
+                        onOpenChange={setPreviewOpen}
+                        selectedCollection={selectedCollection}
+                        activities={selectedCollectionActivities}
+                        onViewActivities={handleViewActivities}
+                        onEditCollection={handleEditCollection}
+                        onPreviewActivity={handlePreviewActivity}
+                    />
+                </div>
             </div>
-        </div>
+        </ClientOnly>
     );
 } 
