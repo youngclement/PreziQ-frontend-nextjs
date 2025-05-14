@@ -1,4 +1,10 @@
-import { BookOpen, CalendarIcon, Eye, Presentation } from 'lucide-react';
+import {
+  BookOpen,
+  CalendarIcon,
+  Eye,
+  Presentation,
+  Trash2,
+} from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Collection, Activity } from './types';
@@ -10,6 +16,8 @@ interface CollectionListItemProps {
   activities: Activity[];
   onEdit?: (id: string) => void;
   onView: (id: string) => void;
+  onViewCollection?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 export function CollectionListItem({
@@ -17,6 +25,8 @@ export function CollectionListItem({
   activities,
   onEdit,
   onView,
+  onViewCollection,
+  onDelete,
 }: CollectionListItemProps) {
   const router = useRouter();
 
@@ -37,12 +47,42 @@ export function CollectionListItem({
     }
   };
 
+  const handleViewCollection = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onViewCollection) {
+      onViewCollection(collection.collectionId);
+    }
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete) {
+      if (
+        window.confirm(`Bạn có chắc chắn muốn xoá "${collection.title}" không?`)
+      ) {
+        onDelete(collection.collectionId);
+      }
+    }
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
+
+    try {
+      // Xử lý chuỗi ngày tháng từ định dạng "YYYY-MM-DD HH:MM:SS AM/PM"
+      const parts = dateString.split(' ');
+      if (parts.length >= 2) {
+        const datePart = parts[0]; // YYYY-MM-DD
+        return new Date(datePart).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        });
+      }
+      return dateString;
+    } catch (error) {
+      console.error('Error formatting date:', dateString, error);
+      return dateString; // Trả về chuỗi gốc nếu có lỗi
+    }
   };
 
   return (
@@ -53,7 +93,12 @@ export function CollectionListItem({
       <div className='flex flex-col sm:flex-row h-full'>
         <div
           className='sm:w-64 h-40 sm:h-auto bg-cover bg-center relative'
-          style={{ backgroundImage: `url(${collection.coverImage || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=400&h=250&auto=format&fit=crop'})` }}
+          style={{
+            backgroundImage: `url(${
+              collection.coverImage ||
+              'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=400&h=250&auto=format&fit=crop'
+            })`,
+          }}
         >
           {/* Topic Badge */}
           {collection.topic && (
@@ -65,7 +110,9 @@ export function CollectionListItem({
 
         <div className='flex-1 p-5'>
           <div className='flex flex-col sm:flex-row justify-between gap-2 mb-3'>
-            <h3 className='font-bold text-xl dark:text-white'>{collection.title}</h3>
+            <h3 className='font-bold text-xl dark:text-white'>
+              {collection.title}
+            </h3>
             <div className='flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-300'>
               <div className='flex items-center gap-1'>
                 <BookOpen className='h-3.5 w-3.5' />
@@ -82,15 +129,36 @@ export function CollectionListItem({
             {collection.description || 'No description available'}
           </p>
 
-          <div className="flex space-x-3">
-            <PlayButton onClick={handleHostSession} className="sm:w-auto min-w-32">
+          <div className='flex flex-wrap gap-3'>
+            <PlayButton
+              onClick={handleHostSession}
+              className='sm:w-auto min-w-36'
+            >
               HOST
             </PlayButton>
 
+            {onViewCollection && (
+              <ViewButton
+                onClick={handleViewCollection}
+                className='sm:w-auto min-w-36'
+              >
+                VIEW
+              </ViewButton>
+            )}
+
             {onEdit && (
-              <EditButton onClick={handleEdit} className="sm:w-auto min-w-24">
+              <EditButton onClick={handleEdit} className='sm:w-auto min-w-36'>
                 EDIT
               </EditButton>
+            )}
+
+            {onDelete && (
+              <DeleteButton
+                onClick={handleDelete}
+                className='sm:w-auto min-w-36'
+              >
+                XOÁ
+              </DeleteButton>
             )}
           </div>
         </div>
@@ -103,7 +171,7 @@ export function CollectionListItem({
 function PlayButton({
   children,
   onClick,
-  className = ""
+  className = '',
 }: {
   children: React.ReactNode;
   onClick: (e: React.MouseEvent) => void;
@@ -112,34 +180,95 @@ function PlayButton({
   return (
     <button
       onClick={onClick}
-      className={`relative flex group text-sm leading-5 touch-manipulation cursor-pointer font-bold text-white h-10 ${className}`}
+      className={`relative flex button-group text-sm leading-5 touch-manipulation cursor-pointer font-bold text-white h-10 ${className}`}
       style={{ borderRadius: 0 }}
     >
-      <div className="-inset-1 absolute z-0" style={{ borderRadius: "2.875rem" }}></div>
       <div
-        className="absolute inset-x-0 top-0 bottom-0 transform group-active:translate-y-0.5 group-active:bottom-0.5 z-1 bg-black"
-        style={{ borderRadius: "3.125rem", padding: "0.25rem" }}
+        className='-inset-1 absolute z-0'
+        style={{ borderRadius: '2.875rem' }}
+      ></div>
+      <div
+        className='absolute inset-x-0 top-0 bottom-0 transform button-group-active:translate-y-0.5 button-group-active:bottom-0.5 z-1 bg-black'
+        style={{ borderRadius: '3.125rem', padding: '0.25rem' }}
       >
-        <div className="relative w-full h-full">
+        <div className='relative w-full h-full'>
           <div
-            className="top-1 absolute inset-x-0 bottom-0 overflow-hidden"
-            style={{ backgroundColor: "#00a76d", borderRadius: "2.8125rem" }}
+            className='top-1 absolute inset-x-0 bottom-0 overflow-hidden'
+            style={{ backgroundColor: '#00a76d', borderRadius: '2.8125rem' }}
           >
-            <div className="bg-opacity-30 absolute inset-0 bg-black"></div>
+            <div className='bg-opacity-30 absolute inset-0 bg-black'></div>
           </div>
           <div
-            className="bottom-1 absolute inset-x-0 top-0 overflow-hidden group-active:bottom-0.5"
-            style={{ backgroundColor: "#00a76d", borderRadius: "2.8125rem" }}
+            className='bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5'
+            style={{ backgroundColor: '#00a76d', borderRadius: '2.8125rem' }}
           >
-            <div className="group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0"></div>
+            <div className='button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0'></div>
           </div>
         </div>
       </div>
-      <div className="relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 group-active:translate-y-0" style={{ padding: "0.25rem" }}>
-        <div className="flex flex-col flex-1 items-center">
-          <div className="relative">
-            <div className="relative flex items-center justify-center">
-              <Presentation className="h-3.5 w-3.5 mr-1.5" />
+      <div
+        className='relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 button-group-active:translate-y-0'
+        style={{ padding: '0.25rem' }}
+      >
+        <div className='flex flex-col flex-1 items-center'>
+          <div className='relative'>
+            <div className='relative flex items-center justify-center'>
+              <Presentation className='h-3.5 w-3.5 mr-1.5' />
+              {children}
+            </div>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function ViewButton({
+  children,
+  onClick,
+  className = '',
+}: {
+  children: React.ReactNode;
+  onClick: (e: React.MouseEvent) => void;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex button-group text-sm leading-5 touch-manipulation cursor-pointer font-bold text-black h-10 ${className}`}
+      style={{ borderRadius: 0 }}
+    >
+      <div
+        className='-inset-1 absolute z-0'
+        style={{ borderRadius: '2.875rem' }}
+      ></div>
+      <div
+        className='absolute inset-x-0 top-0 bottom-0 transform button-group-active:translate-y-0.5 button-group-active:bottom-0.5 z-1 bg-black'
+        style={{ borderRadius: '3.125rem', padding: '0.25rem' }}
+      >
+        <div className='relative w-full h-full'>
+          <div
+            className='top-1 absolute inset-x-0 bottom-0 overflow-hidden'
+            style={{ backgroundColor: '#FFD166', borderRadius: '2.8125rem' }}
+          >
+            <div className='bg-opacity-30 absolute inset-0 bg-black'></div>
+          </div>
+          <div
+            className='bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5'
+            style={{ backgroundColor: '#FFD166', borderRadius: '2.8125rem' }}
+          >
+            <div className='button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0'></div>
+          </div>
+        </div>
+      </div>
+      <div
+        className='relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 button-group-active:translate-y-0'
+        style={{ padding: '0.25rem' }}
+      >
+        <div className='flex flex-col flex-1 items-center'>
+          <div className='relative'>
+            <div className='relative flex items-center justify-center'>
+              <Eye className='h-3.5 w-3.5 mr-1.5' />
               {children}
             </div>
           </div>
@@ -152,7 +281,7 @@ function PlayButton({
 function EditButton({
   children,
   onClick,
-  className = ""
+  className = '',
 }: {
   children: React.ReactNode;
   onClick: (e: React.MouseEvent) => void;
@@ -161,33 +290,93 @@ function EditButton({
   return (
     <button
       onClick={onClick}
-      className={`relative flex group text-sm leading-5 touch-manipulation cursor-pointer font-bold text-black h-10 ${className}`}
+      className={`relative flex button-group text-sm leading-5 touch-manipulation cursor-pointer font-bold text-black h-10 ${className}`}
       style={{ borderRadius: 0 }}
     >
-      <div className="-inset-1 absolute z-0" style={{ borderRadius: "2.875rem" }}></div>
       <div
-        className="absolute inset-x-0 top-0 bottom-0 transform group-active:translate-y-0.5 group-active:bottom-0.5 z-1 bg-black"
-        style={{ borderRadius: "3.125rem", padding: "0.25rem" }}
+        className='-inset-1 absolute z-0'
+        style={{ borderRadius: '2.875rem' }}
+      ></div>
+      <div
+        className='absolute inset-x-0 top-0 bottom-0 transform button-group-active:translate-y-0.5 button-group-active:bottom-0.5 z-1 bg-black'
+        style={{ borderRadius: '3.125rem', padding: '0.25rem' }}
       >
-        <div className="relative w-full h-full">
+        <div className='relative w-full h-full'>
           <div
-            className="top-1 absolute inset-x-0 bottom-0 overflow-hidden"
-            style={{ backgroundColor: "#6FEEFF", borderRadius: "2.8125rem" }}
+            className='top-1 absolute inset-x-0 bottom-0 overflow-hidden'
+            style={{ backgroundColor: '#6FEEFF', borderRadius: '2.8125rem' }}
           >
-            <div className="bg-opacity-30 absolute inset-0 bg-black"></div>
+            <div className='bg-opacity-30 absolute inset-0 bg-black'></div>
           </div>
           <div
-            className="bottom-1 absolute inset-x-0 top-0 overflow-hidden group-active:bottom-0.5"
-            style={{ backgroundColor: "#6FEEFF", borderRadius: "2.8125rem" }}
+            className='bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5'
+            style={{ backgroundColor: '#6FEEFF', borderRadius: '2.8125rem' }}
           >
-            <div className="group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0"></div>
+            <div className='button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0'></div>
           </div>
         </div>
       </div>
-      <div className="relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 group-active:translate-y-0" style={{ padding: "0.25rem" }}>
-        <div className="flex flex-col flex-1 items-center">
-          <div className="relative">
-            <div className="relative">{children}</div>
+      <div
+        className='relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 button-group-active:translate-y-0'
+        style={{ padding: '0.25rem' }}
+      >
+        <div className='flex flex-col flex-1 items-center'>
+          <div className='relative'>
+            <div className='relative'>{children}</div>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+function DeleteButton({
+  children,
+  onClick,
+  className = '',
+}: {
+  children: React.ReactNode;
+  onClick: (e: React.MouseEvent) => void;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex button-group text-sm leading-5 touch-manipulation cursor-pointer font-bold text-white h-10 ${className}`}
+      style={{ borderRadius: 0 }}
+    >
+      <div
+        className='-inset-1 absolute z-0'
+        style={{ borderRadius: '2.875rem' }}
+      ></div>
+      <div
+        className='absolute inset-x-0 top-0 bottom-0 transform button-group-active:translate-y-0.5 button-group-active:bottom-0.5 z-1 bg-black'
+        style={{ borderRadius: '3.125rem', padding: '0.25rem' }}
+      >
+        <div className='relative w-full h-full'>
+          <div
+            className='top-1 absolute inset-x-0 bottom-0 overflow-hidden'
+            style={{ backgroundColor: '#F87171', borderRadius: '2.8125rem' }}
+          >
+            <div className='bg-opacity-30 absolute inset-0 bg-black'></div>
+          </div>
+          <div
+            className='bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5'
+            style={{ backgroundColor: '#F87171', borderRadius: '2.8125rem' }}
+          >
+            <div className='button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0'></div>
+          </div>
+        </div>
+      </div>
+      <div
+        className='relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 button-group-active:translate-y-0'
+        style={{ padding: '0.25rem' }}
+      >
+        <div className='flex flex-col flex-1 items-center'>
+          <div className='relative'>
+            <div className='relative flex items-center justify-center'>
+              <Trash2 className='h-3.5 w-3.5 mr-1.5' />
+              {children}
+            </div>
           </div>
         </div>
       </div>

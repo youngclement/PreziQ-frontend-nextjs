@@ -113,7 +113,7 @@ body {
     --game-color-5: 30 100% 65%; /* Orange */
   }
   .font-cursive {
-    font-family: "Dancing Script", "Brush Script MT", cursive, serif;
+    font-family: 'Dancing Script', 'Brush Script MT', cursive, serif;
     font-weight: 700;
   }
 }
@@ -269,4 +269,31 @@ body {
   .hide-scrollbar::-webkit-scrollbar {
     display: none; /* Chrome, Safari and Opera */
   }
+}
+
+/* Button group variants */
+.button-group-hover\:bg-opacity-20:hover {
+  --tw-bg-opacity: 0.2;
+}
+
+.button-group-active\:translate-y-0:active {
+  --tw-translate-y: 0px;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y))
+    rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y))
+    scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.button-group-active\:translate-y-0\.5:active {
+  --tw-translate-y: 0.125rem;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y))
+    rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y))
+    scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.button-group-active\:bottom-0\.5:active {
+  bottom: 0.125rem;
+}
+
+.button-group-active\:bottom-0:active {
+  bottom: 0px;
 }
