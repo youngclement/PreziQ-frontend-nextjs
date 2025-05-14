@@ -130,7 +130,6 @@ export default function RolesProvider({ children }: Props) {
           throw new Error(response.data.message || 'Không thể tạo vai trò');
         }
 
-        toast.success('Tạo vai trò thành công');
         setOpen(null);
         fetchRoles(); // Tải lại dữ liệu sau khi tạo
       } catch (err) {
@@ -166,7 +165,6 @@ export default function RolesProvider({ children }: Props) {
           );
         }
 
-        toast.success('Cập nhật vai trò thành công');
         setOpen(null);
         setCurrentRow(null);
         fetchRoles(); // Tải lại dữ liệu sau khi cập nhật
@@ -195,7 +193,6 @@ export default function RolesProvider({ children }: Props) {
           throw new Error(response.data.message || 'Không thể xóa vai trò');
         }
 
-        toast.success('Xóa vai trò thành công');
         setOpen(null);
         setCurrentRow(null);
         fetchRoles(); // Tải lại dữ liệu sau khi xóa
@@ -225,7 +222,6 @@ export default function RolesProvider({ children }: Props) {
           throw new Error(response.data.message || 'Không thể cập nhật quyền');
         }
 
-        toast.success('Cập nhật quyền thành công');
         fetchRoles(); // Tải lại dữ liệu sau khi cập nhật quyền
       } catch (err) {
         toast.error(
