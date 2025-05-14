@@ -53,7 +53,6 @@ import { slidesApi } from '@/api-client/slides-api';
 import { storageApi } from '@/api-client/storage-api';
 import { debounce } from 'lodash';
 import { SlideElementPayload } from '@/types/slideInterface';
-import { useToast } from '@/hooks/use-toast';
 import { activitiesApi, ActivityType } from '@/api-client/activities-api';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -125,7 +124,6 @@ export function QuestionPreview({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
   const [editMode, setEditMode] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [editingOptionIndex, setEditingOptionIndex] = useState<number | null>(null);
@@ -718,7 +716,7 @@ export function QuestionPreview({
     }
 
     // Simplified location question type
-    if (question.question_type === 'location') {
+    if (question.question_type === "location") {
       return (
         <Card
           className={cn(
@@ -730,26 +728,95 @@ export function QuestionPreview({
             viewMode === 'tablet' && 'max-w-2xl',
             viewMode === 'mobile' && 'max-w-sm'
           )}
+          key={`question-card-location-${questionIndex}-${renderKey}`}
         >
-          {editMode !== null ? (
-            <DynamicLocationQuestionEditor
-              questionText={question.question_text || "Chọn vị trí trên bản đồ"}
-              locationData={question.location_data || { lat: 21.028511, lng: 105.804817, radius: 10 }}
-              onLocationChange={(locationData) => onQuestionLocationChange(questionIndex, locationData)}
-              mapStyle="mapbox://styles/mapbox/streets-v12"
-              use3D={false}
-              useGlobe={false}
-            />
-          ) : (
-            <DynamicLocationQuestionPlayer
-              questionText={question.question_text}
-              locationData={question.location_data || { lat: 0, lng: 0, radius: 10 }}
-              onAnswer={() => { }}
-              mapStyle="mapbox://styles/mapbox/streets-v12"
-              use3D={false}
-              useGlobe={false}
-            />
-          )}
+          <motion.div
+            className={cn(
+              'aspect-[16/5] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
+            )}
+            style={{
+              backgroundColor: actualBackgroundColor // Always apply background color
+            }}
+            initial={{ opacity: 0.8 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            key={`question-bg-${questionIndex}-${renderKey}-${actualBackgroundColor}`}
+          >
+            {/* Light overlay */}
+            <div className="absolute inset-0 bg-black/30" />
+
+            {/* Simplified Status Bar */}
+            <div className="absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "h-7 w-7 rounded-full flex items-center justify-center shadow-sm",
+                  getQuestionTypeColor(question.question_type)
+                )}>
+                  {getQuestionTypeIcon(question.question_type)}
+                </div>
+                <div>
+                  <div className="text-xs capitalize font-medium">
+                    {question.question_type.replace(/_/g, ' ')}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full text-xs font-medium">
+                  Q{questionIndex + 1}
+                </div>
+                <div className="flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="time-limit-display">
+                    {(activity && activity.quiz?.timeLimitSeconds) || question.time_limit_seconds || timeLimit}s
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Question Text */}
+            <div className="flex-1 flex flex-col items-center justify-center z-10 py-6 px-5">
+              {editMode !== null ? (
+                <div className="w-full max-w-2xl">
+                  <Textarea
+                    value={question.question_text || `Location Question ${questionIndex + 1}`}
+                    onChange={(e) => onQuestionTextChange(e.target.value, questionIndex)}
+                    className="text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
+                  />
+                </div>
+              ) : (
+                <div className="relative w-full max-w-2xl">
+                  <h2 className="text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4">
+                    {question.question_text || `Location Question ${questionIndex + 1}`}
+                  </h2>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          <CardContent className="p-4 bg-white dark:bg-gray-800">
+            <div className="flex flex-col items-center">
+              <div className="text-muted-foreground mb-2 text-sm text-center">
+                Find and mark the location on the map
+              </div>
+
+              <div className="w-full mt-2">
+                {!previewMode ? (
+                  <DynamicLocationQuestionEditor
+                    questionText={question.question_text || ""}
+                    locationAnswers={getLocationAnswers(question, activity)}
+                    onLocationChange={(questionIndex, locationData) => onQuestionLocationChange?.(questionIndex, locationData)}
+                    questionIndex={questionIndex}
+                  />
+                ) : (
+                  <DynamicLocationQuestionPlayer
+                    questionText={question.question_text || ""}
+                    locationData={getLocationData(question, activity)}
+                    onAnswer={(isCorrect) => console.log("Answer:", isCorrect)}
+                  />
+                )}
+              </div>
+            </div>
+          </CardContent>
         </Card>
       );
     }
@@ -887,11 +954,7 @@ export function QuestionPreview({
                             );
                           });
 
-                          toast({
-                            title: "Correct answer updated",
-                            description: "The correct answer has been updated",
-                            variant: "default",
-                          });
+                          console.log("Correct answer updated");
                         }
                       }}
                     >
@@ -1217,11 +1280,7 @@ export function QuestionPreview({
         title: text
       }, questions[questionIndex].activity_id);
 
-      toast({
-        title: "Question updated",
-        description: "Question text has been updated successfully",
-        variant: "default",
-      });
+      console.log("Question updated");
     }
   };
 
@@ -1231,11 +1290,7 @@ export function QuestionPreview({
 
     onOptionChange(questionIndex, optionIndex, "option_text", text);
 
-    toast({
-      title: "Option updated",
-      description: "Option text has been updated successfully",
-      variant: "default",
-    });
+    console.log("Option text updated successfully");
   };
 
   // Function to toggle correct answer
@@ -1269,11 +1324,7 @@ export function QuestionPreview({
       });
     }
 
-    toast({
-      title: "Correct answer updated",
-      description: "The correct answer has been updated",
-      variant: "default",
-    });
+    console.log("Correct answer updated");
   };
 
   // Function to update activity via API
@@ -1311,20 +1362,11 @@ export function QuestionPreview({
         }
       }
 
-      toast({
-        title: "Success",
-        description: "Question updated successfully",
-        variant: "default",
-      });
+      console.log("Question updated successfully");
 
       return response;
     } catch (error) {
       console.error("Error updating activity:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update question",
-        variant: "destructive",
-      });
       throw error;
     } finally {
       setIsSaving(false);
@@ -1364,13 +1406,8 @@ export function QuestionPreview({
       onCorrectAnswerChange(text);
     }
 
-    // No toast needed for direct editing - reduces UI noise
     if (editMode === null) {
-      toast({
-        title: "Text answer updated",
-        description: "The correct text answer has been updated",
-        variant: "default",
-      });
+      console.log("The correct text answer has been updated");
     }
   };
 
@@ -1443,8 +1480,7 @@ export function QuestionPreview({
       case 'true_false': return 'QUIZ_TRUE_OR_FALSE';
       case 'text_answer': return 'QUIZ_TYPE_ANSWER';
       case 'reorder': return 'QUIZ_REORDER';
-      // Location doesn't have a specific activity type, so we'll use INFO_SLIDE as a fallback
-      case 'location': return 'INFO_SLIDE';
+      case 'location': return 'QUIZ_LOCATION';
       case 'slide': return 'INFO_SLIDE';
       case 'info_slide': return 'INFO_SLIDE';
       default: return 'INFO_SLIDE';
@@ -1458,11 +1494,7 @@ export function QuestionPreview({
 
       // Get the collection ID from current activity if available
       if (!activity?.collection_id) {
-        toast({
-          title: "Collection not found",
-          description: "Cannot add activity: collection information not available.",
-          variant: "destructive",
-        });
+        console.error("Cannot add activity: collection information not available.");
         return;
       }
 
@@ -1598,6 +1630,28 @@ export function QuestionPreview({
             await activitiesApi.updateReorderQuiz(newActivityId, quizPayload);
             break;
 
+          case 'location':
+            quizPayload = {
+              type: "LOCATION" as const,
+              questionText: questionData.question_text,
+              timeLimitSeconds: questionData.time_limit_seconds || 30,
+              pointType: "STANDARD" as const,
+              locationAnswers: questionData.location_data?.quizLocationAnswers || [{
+                longitude: 105.804817, // Default longitude (Hanoi)
+                latitude: 21.028511,   // Default latitude (Hanoi) 
+                radius: 10             // Default radius in km
+              }]
+            };
+            console.log("Creating location quiz with payload:", quizPayload);
+            try {
+              const quizResponse = await activitiesApi.updateLocationQuiz(newActivityId, quizPayload);
+              console.log("Location quiz created successfully:", quizResponse);
+            } catch (quizError) {
+              console.error("Error creating location quiz:", quizError);
+              // We still continue even if there's an error
+            }
+            break;
+
           case 'slide':
           case 'info_slide':
             // Slides don't need quiz data initialization
@@ -1612,11 +1666,7 @@ export function QuestionPreview({
         console.error(`Error initializing quiz data for ${questionData.question_type}:`, quizError);
         // We don't throw here to avoid stopping the flow if quiz initialization fails
         // The activity is still created and can be edited by the user
-        toast({
-          title: "Warning",
-          description: "Activity created but quiz data initialization failed. You may need to set up the questions manually.",
-          variant: "destructive",
-        });
+        console.warn("Activity created but quiz data initialization failed. You may need to set up the questions manually.");
       }
 
       // Step 3: Update the local state with the new question
@@ -1649,21 +1699,9 @@ export function QuestionPreview({
       }
 
       // Handle success
-      toast({
-        title: "Activity added",
-        description: `New ${questionData.question_type.replace('_', ' ')} activity created successfully.`,
-        variant: "default",
-      });
-
-      // Close the dialog (if it was open)
-      setIsAddActivityOpen(false);
+      console.log("New question added successfully");
     } catch (error) {
-      console.error("Error creating activity:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create new activity. Please try again.",
-        variant: "destructive",
-      });
+      console.error("Error adding question:", error);
     } finally {
       setIsSaving(false);
     }
@@ -1752,19 +1790,10 @@ export function QuestionPreview({
       }
 
       // Show success notification
-      toast({
-        title: "Activity deleted",
-        description: "The activity has been successfully deleted",
-        variant: "default",
-      });
+      console.log("Activity deleted successfully");
 
     } catch (error) {
       console.error("Error deleting activity:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete activity. Please try again.",
-        variant: "destructive",
-      });
 
       // Re-enable scrolling in case of error
       if (typeof document !== 'undefined') {
@@ -1807,111 +1836,146 @@ export function QuestionPreview({
     };
   }, [scrollToNewestQuestion]);
 
+  // Add or update the handleQuestionLocationChange function:
+
+  const handleQuestionLocationChange = (questionIndex: number, locationData: any) => {
+    console.log('Handling location change:', questionIndex, locationData);
+
+    // Clone questions array to avoid direct state mutation
+    const updatedQuestions = [...questions];
+
+    // For multiple location answers format
+    if (Array.isArray(locationData)) {
+      // This is the new format with multiple location answers
+      updatedQuestions[questionIndex] = {
+        ...updatedQuestions[questionIndex],
+        location_data: {
+          ...updatedQuestions[questionIndex].location_data,
+          quizLocationAnswers: locationData
+        }
+      };
+
+      // Call the parent's onQuestionLocationChange if available
+      if (onQuestionLocationChange) {
+        onQuestionLocationChange(questionIndex, locationData);
+      }
+    }
+    // For backward compatibility with single location format
+    else {
+      updatedQuestions[questionIndex] = {
+        ...updatedQuestions[questionIndex],
+        location_data: locationData
+      };
+
+      // Call the parent's onQuestionLocationChange if available
+      if (onQuestionLocationChange) {
+        onQuestionLocationChange(questionIndex, locationData);
+      }
+    }
+  };
+
   return (
-    <>
-      <Card className={cn(
-        "overflow-hidden transition-all w-full h-full border-none shadow-md",
-        isQuestionListCollapsed && "max-w-full",
-        isQuestionListCollapsed ? "ml-0" : "ml-0"
-      )} key={`preview-card-${renderKey}`}>
-        <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
-          <div className="flex items-center gap-4">
-            <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">Preview</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="edit-mode"
-                checked={editMode !== null}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    setEditMode('global_edit_mode');
-                  } else {
-                    setEditMode(null);
-                  }
-                }}
-              />
-              <Label htmlFor="edit-mode" className="text-xs">Edit Mode</Label>
-            </div>
-            {isSaving && (
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                Saving...
-              </Badge>
-            )}
+    <Card className={cn(
+      "overflow-hidden transition-all w-full h-full border-none shadow-md",
+      isQuestionListCollapsed && "max-w-full"
+    )} key={`preview-card-${renderKey}`}>
+      <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
+        <div className="flex items-center gap-4">
+          <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">Preview</CardTitle>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="edit-mode"
+              checked={editMode !== null}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setEditMode('global_edit_mode');
+                } else {
+                  setEditMode(null);
+                }
+              }}
+            />
+            <Label htmlFor="edit-mode" className="text-xs">Edit Mode</Label>
           </div>
-          <div className="flex items-center gap-2">
-            <Tabs value={viewMode} onValueChange={setViewMode} className="h-8">
-              <TabsList className="h-8 py-1">
-                <TabsTrigger
-                  value="mobile"
-                  className="h-6 w-8 px-1.5 data-[state=active]:bg-gray-200 dark:data-[state=active]:bg-gray-800"
-                >
-                  <Smartphone className="h-3 w-3" />
-                </TabsTrigger>
-                <TabsTrigger
-                  value="tablet"
-                  className="h-6 w-8 px-1.5 data-[state=active]:bg-gray-200 dark:data-[state=active]:bg-gray-800"
-                >
-                  <Tablet className="h-3 w-3" />
-                </TabsTrigger>
-                <TabsTrigger
-                  value="desktop"
-                  className="h-6 w-8 px-1.5 data-[state=active]:bg-gray-200 dark:data-[state=active]:bg-gray-800"
-                >
-                  <Monitor className="h-3 w-3" />
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </CardHeader>
-        <CardContent
-          className="p-1 overflow-auto bg-gray-50 dark:bg-gray-950"
-          ref={scrollContainerRef}
-          style={{ height: 'calc(100% - 52px)' }}
-        >
-          <div className="w-full pb-2">
-            {questions.map((question, questionIndex) => (
-              <div
-                key={questionIndex}
-                ref={(el) => (questionRefs.current[questionIndex] = el)}
-                className={cn(
-                  'w-full mb-4 px-3 pt-3',
-                  questionIndex === activeQuestionIndex && 'scroll-mt-4'
+          {isSaving && (
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              Saving...
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Tabs value={viewMode} onValueChange={setViewMode} className="h-8">
+            <TabsList className="h-8 py-1">
+              <TabsTrigger
+                value="mobile"
+                className="h-6 w-8 px-1.5 data-[state=active]:bg-gray-200 dark:data-[state=active]:bg-gray-800"
+              >
+                <Smartphone className="h-3 w-3" />
+              </TabsTrigger>
+              <TabsTrigger
+                value="tablet"
+                className="h-6 w-8 px-1.5 data-[state=active]:bg-gray-200 dark:data-[state=active]:bg-gray-800"
+              >
+                <Tablet className="h-3 w-3" />
+              </TabsTrigger>
+              <TabsTrigger
+                value="desktop"
+                className="h-6 w-8 px-1.5 data-[state=active]:bg-gray-200 dark:data-[state=active]:bg-gray-800"
+              >
+                <Monitor className="h-3 w-3" />
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      </CardHeader>
+      <CardContent
+        className="p-1 overflow-auto bg-gray-50 dark:bg-gray-950"
+        ref={scrollContainerRef}
+        style={{ height: 'calc(100% - 52px)' }}
+      >
+        <div className="w-full pb-2">
+          {questions.map((question, questionIndex) => (
+            <div
+              key={`question-preview-${question.id}-${questionIndex}-${renderKey}`}
+              ref={(el) => (questionRefs.current[questionIndex] = el)}
+              className={cn(
+                'w-full mb-4 px-3 pt-3',
+                questionIndex === activeQuestionIndex && 'scroll-mt-4'
+              )}
+            >
+              {/* Add delete button */}
+              <div className="flex justify-end mb-2">
+                {question.activity_id && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-7"
+                    onClick={() => handleDeleteActivity(question.activity_id)}
+                  >
+                    <Trash className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
                 )}
-              >
-                {/* Add delete button */}
-                <div className="flex justify-end mb-2">
-                  {question.activity_id && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-7"
-                      onClick={() => handleDeleteActivity(question.activity_id)}
-                    >
-                      <Trash className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
-                  )}
-                </div>
-
-                {/* Conditional rendering based on question_type */}
-                <div className="w-full">
-                  {renderQuestionContent(question, questionIndex, questionIndex === activeQuestionIndex, viewMode, backgroundImage)}
-                </div>
               </div>
-            ))}
 
-            {/* Simple Add Activity button */}
-            <div className="w-full px-3 py-5 flex justify-center">
-              <Button
-                className="flex items-center gap-2"
-                onClick={() => onAddQuestion()}
-              >
-                <Plus className="h-4 w-4" />
-                Add Activity
-              </Button>
+              {/* Conditional rendering based on question_type */}
+              <div className="w-full">
+                {renderQuestionContent(question, questionIndex, questionIndex === activeQuestionIndex, viewMode, backgroundImage)}
+              </div>
             </div>
+          ))}
+
+          {/* Simple Add Activity button */}
+          <div className="w-full px-3 py-5 flex justify-center">
+            <Button
+              className="flex items-center gap-2"
+              onClick={() => onAddQuestion()}
+            >
+              <Plus className="h-4 w-4" />
+              Add Activity
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </CardContent>
 
       {/* Delete confirmation dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -1932,7 +1996,7 @@ export function QuestionPreview({
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </Card>
   );
 }
 
@@ -2097,4 +2161,69 @@ function OptionItem({ option, index, questionType, questionIndex, onOptionEdit, 
       </div>
     </motion.div>
   );
+}
+
+// Add these helper functions after the renderQuestionContent function:
+
+// Helper function to get location answers from question or activity
+function getLocationAnswers(question: any, activity: any) {
+  // First try to get from the activity quiz structure
+  if (activity?.quiz?.quizLocationAnswers?.length > 0) {
+    return activity.quiz.quizLocationAnswers.map((answer: any) => ({
+      quizLocationAnswerId: answer.quizLocationAnswerId,
+      longitude: answer.longitude,
+      latitude: answer.latitude,
+      radius: answer.radius
+    }));
+  }
+
+  // Then try to get from the question location_data if it has quizLocationAnswers
+  if (question.location_data?.quizLocationAnswers?.length > 0) {
+    return question.location_data.quizLocationAnswers.map((answer: any) => ({
+      quizLocationAnswerId: answer.quizLocationAnswerId || "",
+      longitude: answer.longitude,
+      latitude: answer.latitude,
+      radius: answer.radius
+    }));
+  }
+
+  // For backward compatibility, handle the old location_answer format
+  if (question.location_answer) {
+    const locationData = question.location_answer;
+    return [{
+      longitude: locationData.lng,
+      latitude: locationData.lat,
+      radius: locationData.radius || 10
+    }];
+  }
+
+  // For even older format with location_data
+  if (question.location_data) {
+    return [{
+      longitude: question.location_data.lng || 0,
+      latitude: question.location_data.lat || 0,
+      radius: question.location_data.radius || 10
+    }];
+  }
+
+  // Default empty array, should never reach here because we initialize with defaults
+  return [];
+}
+
+// Helper function to get a single location for the player view
+// In preview mode, we just use the first location answer
+function getLocationData(question: any, activity: any) {
+  const locationAnswers = getLocationAnswers(question, activity);
+
+  if (locationAnswers.length > 0) {
+    const firstAnswer = locationAnswers[0];
+    return {
+      lat: firstAnswer.latitude,
+      lng: firstAnswer.longitude,
+      radius: firstAnswer.radius
+    };
+  }
+
+  // Default location
+  return { lat: 21.028511, lng: 105.804817, radius: 10 };
 }
