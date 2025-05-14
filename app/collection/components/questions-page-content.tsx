@@ -22,7 +22,6 @@ import { Save, ArrowLeft, Monitor, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { activitiesApi } from "@/api-client/activities-api";
@@ -83,7 +82,8 @@ export default function QuestionsPageContent() {
         handleQuestionTypeChange,
         handleQuestionLocationChange,
         handleQuestionTextChange,
-        handleTimeLimitChange
+        handleTimeLimitChange,
+        handleAddLocationQuestion: handleAddLocationQuestionFromHook
     } = useQuestionOperations(
         collectionId,
         activities,
@@ -365,24 +365,58 @@ export default function QuestionsPageContent() {
     // Handle reordering activities
     const handleReorderActivities = async (orderedIds: string[]) => {
         try {
-            // Call the API to reorder activities
-            await CollectionService.reorderActivities(collectionId, orderedIds);
+            // Lưu lại vị trí cuộn và trạng thái UI hiện tại
+            const scrollPositions: Record<string, number> = {};
+            document.querySelectorAll('.overflow-auto').forEach((container, index) => {
+                scrollPositions[`container-${index}`] = (container as HTMLElement).scrollTop;
+            });
 
-            // Update the local state to reflect the new order
+            // Lưu lại activity và question hiện tại đang active
+            const currentActivityId = activity?.id;
+            const currentQuestionIndex = activeQuestionIndex;
+
+            // Cập nhật UI ngay lập tức với thứ tự mới
             if (activities) {
-                // Create a map for quick lookup
                 const activityMap = new Map(activities.map(a => [a.id, a]));
-
-                // Create a new array with the updated order
                 const reorderedActivities = orderedIds
                     .map(id => activityMap.get(id))
                     .filter(a => a !== undefined);
 
-                // Update the state with the reordered activities
+                // Cập nhật state với activities đã sắp xếp lại
                 setActivities(reorderedActivities as any);
+
+                // Quan trọng: Tạo lại danh sách questions mới theo đúng thứ tự của activities
+                const questionMap = new Map(questions.map(q => [q.activity_id, q]));
+                const reorderedQuestions = orderedIds
+                    .map(id => questionMap.get(id))
+                    .filter(q => q !== undefined) as typeof questions;
+
+                // Cập nhật state với questions đã sắp xếp lại
+                setQuestions(reorderedQuestions);
+
+                // Cập nhật activeQuestionIndex để giữ nguyên câu hỏi đang hiển thị
+                if (currentActivityId) {
+                    const newActiveIndex = reorderedQuestions.findIndex(q => q.activity_id === currentActivityId);
+                    if (newActiveIndex !== -1 && newActiveIndex !== currentQuestionIndex) {
+                        setActiveQuestionIndex(newActiveIndex);
+                    }
+                }
             }
+
+            // Khôi phục vị trí cuộn sau khi cập nhật UI
+            setTimeout(() => {
+                document.querySelectorAll('.overflow-auto').forEach((container, index) => {
+                    if (scrollPositions[`container-${index}`]) {
+                        (container as HTMLElement).scrollTop = scrollPositions[`container-${index}`];
+                    }
+                });
+            }, 10);
+
+            // Gọi API với đầy đủ danh sách orderedIds
+            await CollectionService.reorderActivities(collectionId, orderedIds);
         } catch (error) {
             console.error("Error reordering activities:", error);
+            // Không gọi refreshCollectionData() để tránh reload toàn bộ trang
         }
     };
 
@@ -391,27 +425,64 @@ export default function QuestionsPageContent() {
         if (!activity) return;
 
         try {
-            // First, update the local state for immediate UI response
+            // Lưu lại vị trí cuộn và trạng thái UI hiện tại
+            const scrollPositions: Record<string, number> = {};
+            document.querySelectorAll('.overflow-auto').forEach((container, index) => {
+                scrollPositions[`container-${index}`] = (container as HTMLElement).scrollTop;
+            });
+
+            // Lưu lại question hiện tại đang active
+            const currentQuestionId = questions[activeQuestionIndex]?.id;
+
+            // Cập nhật UI ngay lập tức
             const questionMap = new Map(questions.map(q => [q.id, q]));
             const reorderedQuestions = orderedQuestionIds
                 .map(id => questionMap.get(id))
                 .filter(q => q !== undefined) as typeof questions;
 
+            // Cập nhật state
             setQuestions(reorderedQuestions);
 
-            // Then call the API to persist the changes
+            // Nếu có question active, cập nhật lại index mới sau khi sắp xếp
+            if (currentQuestionId) {
+                const newIndex = reorderedQuestions.findIndex(q => q.id === currentQuestionId);
+                if (newIndex !== -1 && newIndex !== activeQuestionIndex) {
+                    setActiveQuestionIndex(newIndex);
+                }
+            }
+
+            // Khôi phục vị trí cuộn sau khi cập nhật UI
+            setTimeout(() => {
+                document.querySelectorAll('.overflow-auto').forEach((container, index) => {
+                    if (scrollPositions[`container-${index}`]) {
+                        (container as HTMLElement).scrollTop = scrollPositions[`container-${index}`];
+                    }
+                });
+            }, 10);
+
+            // Gọi API để lưu thay đổi với đầy đủ danh sách ID
             await CollectionService.reorderQuestions(activity.id, orderedQuestionIds);
         } catch (error) {
             console.error("Error reordering questions:", error);
-
-            // If there was an error, refresh the data to ensure UI is in sync with server
-            refreshCollectionData();
+            // Không gọi refreshCollectionData() để tránh reload toàn bộ trang
         }
     };
 
     // Replace the original handleAddQuestion function with a simplified version that uses the hook
     const handleAddQuestion = async () => {
         await handleAddQuestionFromHook();
+
+        // Use the scrollToNewestQuestion function exposed by QuestionPreview
+        setTimeout(() => {
+            if (typeof window !== 'undefined' && window.scrollToNewestQuestion) {
+                window.scrollToNewestQuestion();
+            }
+        }, 200);
+    };
+
+    // Add a function to handle adding location questions
+    const handleAddLocationQuestion = async (pointType: string = "STANDARD") => {
+        await handleAddLocationQuestionFromHook(pointType);
 
         // Use the scrollToNewestQuestion function exposed by QuestionPreview
         setTimeout(() => {
@@ -459,10 +530,16 @@ export default function QuestionsPageContent() {
                 <div className="grid grid-cols-12 gap-1 h-full overflow-hidden">
                     {/* Main content area with question preview and settings */}
 
-                    <div className="col-span-12 grid grid-cols-12  pt-3 gap-4 overflow-hidden" style={{ height: 'calc(100vh - 190px)' }}>
+                    <div className="col-span-12 grid grid-cols-12 pt-3 gap-4 overflow-hidden"
+                        style={{
+                            height: isQuestionListCollapsed
+                                ? 'calc(100vh - 52px)' // Chiều cao gần như toàn màn hình khi thu gọn hoàn toàn
+                                : 'calc(100vh - 190px)' // Chiều cao bình thường khi có question list
+                        }}
+                    >
 
                         {/* Question Preview - scrollable */}
-                        <div className="col-span-12 md:col-span-8  overflow-auto h-full pb-1">
+                        <div className="col-span-12 md:col-span-8 overflow-auto h-full pb-1">
                             {questions[activeQuestionIndex] && (
                                 <QuestionPreview
                                     questions={questions}
@@ -592,7 +669,10 @@ export default function QuestionsPageContent() {
                     </div>
 
                     {/* Question List - fixed at bottom with fixed height */}
-                    <div className="col-span-12 h-[138px] overflow-hidden">
+                    <div className={cn(
+                        "col-span-12 relative",
+                        isQuestionListCollapsed ? "h-1 min-h-[1px] mb-8 overflow-visible" : "overflow-hidden"
+                    )}>
                         <QuestionList
                             questions={questions}
                             activeQuestionIndex={activeQuestionIndex}
@@ -600,11 +680,18 @@ export default function QuestionsPageContent() {
                             onAddQuestion={handleAddQuestion}
                             onDeleteQuestion={handleDeleteQuestion}
                             isCollapsed={isQuestionListCollapsed}
-                            onCollapseToggle={(collapsed) => setIsQuestionListCollapsed(collapsed)}
+                            onCollapseToggle={(collapsed) => {
+                                setIsQuestionListCollapsed(collapsed);
+                                // Điều chỉnh lại các scroll container nếu cần
+                                setTimeout(() => {
+                                    window.dispatchEvent(new Event('resize'));
+                                }, 300);
+                            }}
                             onReorderQuestions={handleReorderQuestions}
                             collectionId={collectionId}
                             activities={activities}
                             onReorderActivities={handleReorderActivities}
+                            onAddLocationQuestion={handleAddLocationQuestion}
                         />
                     </div>
                 </div>
