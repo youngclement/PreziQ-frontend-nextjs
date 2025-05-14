@@ -112,6 +112,10 @@ body {
     --game-color-4: 160 100% 55%; /* Neon green */
     --game-color-5: 30 100% 65%; /* Orange */
   }
+  .font-cursive {
+    font-family: "Dancing Script", "Brush Script MT", cursive, serif;
+    font-weight: 700;
+  }
 }
 
 @layer base {

@@ -119,6 +119,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@fontsource/dancing-script": "^5.2.5",
     "@types/aos": "^3.0.7",
     "@types/lodash": "^4.17.16",
     "@types/react-beautiful-dnd": "^13.1.8"
