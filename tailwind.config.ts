@@ -8,12 +8,11 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-
   	extend: {
-     highlight: {
-        DEFAULT: "hsl(var(--highlight))",
-        foreground: "hsl(var(--foreground))",
-      },
+  		highlight: {
+  			DEFAULT: 'hsl(var(--highlight))',
+  			foreground: 'hsl(var(--foreground))'
+  		},
   		backgroundImage: {
   			'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
   			'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))'
@@ -98,7 +97,6 @@ const config: Config = {
   			'accordion-up': 'accordion-up 0.2s ease-out'
   		}
   	}
-
   },
   plugins: [require("tailwindcss-animate")],
 };
