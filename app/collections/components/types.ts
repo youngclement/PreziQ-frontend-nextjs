@@ -11,6 +11,7 @@ export interface Collection {
   createdBy?: string;
   categoryId?: string;
   category?: Category;
+  topic?: string;
   _activityCount?: number; // For mock data only
   views?: number;
   likes?: number;
@@ -71,6 +72,26 @@ export interface ApiCollectionDetail {
   success: boolean;
   message: string;
   data: Collection;
+  meta: {
+    timestamp: string;
+    instance: string;
+  };
+}
+
+export interface ApiTopicsResponse {
+  success: boolean;
+  message: string;
+  data: string[];
+  meta: {
+    timestamp: string;
+    instance: string;
+  };
+}
+
+export interface ApiGroupedCollectionsByTopicResponse {
+  success: boolean;
+  message: string;
+  data: Record<string, Collection[]>;
   meta: {
     timestamp: string;
     instance: string;

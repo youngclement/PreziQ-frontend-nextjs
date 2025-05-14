@@ -6,11 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowRight, KeyRound, Code } from 'lucide-react';
+import { ArrowRight, KeyRound, Code, PresentationIcon } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const SessionPage = () => {
   const [sessionCode, setSessionCode] = useState('');
+  const [collectionCode, setCollectionCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [hostError, setHostError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleJoinSession = (e: React.FormEvent) => {
@@ -22,6 +25,16 @@ const SessionPage = () => {
 
     // Chỉ chuyển hướng đến trang sessions/[code], không tạo WebSocket ở đây
     router.push(`/sessions/${sessionCode}`);
+  };
+
+  const handleHostSession = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!collectionCode.trim()) {
+      setHostError('Vui lòng nhập mã collection để host');
+      return;
+    }
+
+    router.push(`/sessions/host/${collectionCode}`);
   };
 
   return (
@@ -51,66 +64,129 @@ const SessionPage = () => {
               </div>
               <h1 className='text-3xl font-bold mb-2'>PreziQ</h1>
               <p className='text-white/70'>
-                Tham gia phiên và bắt đầu cuộc vui
+                Tham gia hoặc host phiên tương tác
               </p>
             </motion.div>
           </div>
 
           <div className='p-8'>
-            <form onSubmit={handleJoinSession} className='space-y-6'>
-              <div className='space-y-2'>
-                <label
-                  htmlFor='sessionCode'
-                  className='text-white/80 font-medium text-sm'
-                >
-                  Nhập mã phiên
-                </label>
-                <div className='relative'>
-                  <Input
-                    id='sessionCode'
-                    value={sessionCode}
-                    onChange={(e) => setSessionCode(e.target.value)}
-                    placeholder='Nhập mã PIN'
-                    className='h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl pl-10 focus:border-[#aef359] focus:ring-[#aef359]/20'
-                  />
-                  <Code className='absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/50' />
-                </div>
-              </div>
+            <Tabs defaultValue="join" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="join">Tham gia phiên</TabsTrigger>
+                <TabsTrigger value="host">Host phiên</TabsTrigger>
+              </TabsList>
 
-              <motion.div
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <Button
-                  type='submit'
-                  className='w-full py-5 text-lg font-bold rounded-full bg-gradient-to-r from-[#c5ee4f] to-[#8fe360] text-[#0f2231] hover:shadow-[#aef359]/20 hover:shadow-2xl transition-all duration-300'
-                >
-                  <span className='flex items-center justify-center gap-2'>
-                    Tham gia ngay
-                    <ArrowRight className='h-5 w-5' />
-                  </span>
-                </Button>
-              </motion.div>
-            </form>
+              <TabsContent value="join">
+                <form onSubmit={handleJoinSession} className='space-y-6'>
+                  <div className='space-y-2'>
+                    <label
+                      htmlFor='sessionCode'
+                      className='text-white/80 font-medium text-sm'
+                    >
+                      Nhập mã phiên
+                    </label>
+                    <div className='relative'>
+                      <Input
+                        id='sessionCode'
+                        value={sessionCode}
+                        onChange={(e) => setSessionCode(e.target.value)}
+                        placeholder='Nhập mã PIN'
+                        className='h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl pl-10 focus:border-[#aef359] focus:ring-[#aef359]/20'
+                      />
+                      <Code className='absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/50' />
+                    </div>
+                  </div>
 
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className='mt-6'
-              >
-                <Alert
-                  variant='destructive'
-                  className='bg-red-500/20 border border-red-500 text-white rounded-xl'
-                >
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              </motion.div>
-            )}
+                  <motion.div
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <Button
+                      type='submit'
+                      className='w-full py-5 text-lg font-bold rounded-full bg-gradient-to-r from-[#c5ee4f] to-[#8fe360] text-[#0f2231] hover:shadow-[#aef359]/20 hover:shadow-2xl transition-all duration-300'
+                    >
+                      <span className='flex items-center justify-center gap-2'>
+                        Tham gia ngay
+                        <ArrowRight className='h-5 w-5' />
+                      </span>
+                    </Button>
+                  </motion.div>
+                </form>
+
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className='mt-6'
+                  >
+                    <Alert
+                      variant='destructive'
+                      className='bg-red-500/20 border border-red-500 text-white rounded-xl'
+                    >
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  </motion.div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="host">
+                <form onSubmit={handleHostSession} className='space-y-6'>
+                  <div className='space-y-2'>
+                    <label
+                      htmlFor='collectionCode'
+                      className='text-white/80 font-medium text-sm'
+                    >
+                      Nhập mã collection để host
+                    </label>
+                    <div className='relative'>
+                      <Input
+                        id='collectionCode'
+                        value={collectionCode}
+                        onChange={(e) => setCollectionCode(e.target.value)}
+                        placeholder='Nhập mã collection'
+                        className='h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl pl-10 focus:border-[#aef359] focus:ring-[#aef359]/20'
+                      />
+                      <PresentationIcon className='absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/50' />
+                    </div>
+                  </div>
+
+                  <motion.div
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <Button
+                      type='submit'
+                      className='w-full py-5 text-lg font-bold rounded-full bg-gradient-to-r from-[#e879f9] to-[#d946ef] text-white hover:shadow-[#e879f9]/20 hover:shadow-2xl transition-all duration-300'
+                    >
+                      <span className='flex items-center justify-center gap-2'>
+                        Host phiên ngay
+                        <ArrowRight className='h-5 w-5' />
+                      </span>
+                    </Button>
+                  </motion.div>
+                </form>
+
+                {hostError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className='mt-6'
+                  >
+                    <Alert
+                      variant='destructive'
+                      className='bg-red-500/20 border border-red-500 text-white rounded-xl'
+                    >
+                      <AlertDescription>{hostError}</AlertDescription>
+                    </Alert>
+                  </motion.div>
+                )}
+              </TabsContent>
+            </Tabs>
 
             <div className='mt-8 text-center'>
-              <p className='text-white/60'>Tạo phiên học mới?</p>
+              <p className='text-white/60'>Muốn tạo collection mới?</p>
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -121,7 +197,7 @@ const SessionPage = () => {
                   className='border border-white/20 text-white hover:bg-white/10 rounded-xl font-medium transition-all'
                   onClick={() => router.push('/collections')}
                 >
-                  Tạo phiên mới
+                  Tạo collection mới
                 </Button>
               </motion.div>
             </div>

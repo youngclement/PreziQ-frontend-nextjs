@@ -1,11 +1,13 @@
 /**
  * Custom hook for managing question options
  */
+
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { activitiesApi } from '@/api-client';
 import { Activity, QuizQuestion } from '../components/types';
 import { reorderOptions } from '../utils/question-helpers';
+
 
 export function useOptionOperations(
   questions: QuizQuestion[],
@@ -14,8 +16,6 @@ export function useOptionOperations(
   activity: Activity | null,
   timeLimit: number
 ) {
-  const { toast } = useToast();
-
   /**
    * Handle option text/value changes
    */
@@ -32,6 +32,7 @@ export function useOptionOperations(
     // Create deep copies to avoid reference issues
     const updatedQuestions = JSON.parse(JSON.stringify(questions));
     const activeQuestion = updatedQuestions[questionIndex];
+
 
     // Skip updates for INFO_SLIDE type as they don't have options
     if (activity.activity_type_id === 'INFO_SLIDE') {
@@ -52,6 +53,7 @@ export function useOptionOperations(
     ) {
       console.error(`Option at index ${optionIndex} does not exist`);
       return;
+
     }
 
     // Special handling for multiple_choice and true_false questions - only one correct answer allowed
@@ -148,19 +150,11 @@ export function useOptionOperations(
           break;
       }
 
-      toast({
-        title: 'Success',
-        description: 'Answer text updated successfully',
-        variant: 'default',
-        duration: 2000,
-      });
+
+      console.log("Answer text updated successfully");
     } catch (error) {
-      console.error('Error updating answer text:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update answer text',
-        variant: 'destructive',
-      });
+      console.error("Error updating answer text:", error);
+
     }
   };
 
@@ -209,20 +203,11 @@ export function useOptionOperations(
         correctOrder: reorderedOptions.map((opt) => opt.option_text),
       });
 
-      console.log('Reorder update response:', response);
-
-      toast({
-        title: 'Success',
-        description: 'Reorder steps updated successfully',
-        duration: 2000,
-      });
+      console.log("Reorder update response:", response);
+      console.log("Reorder steps updated successfully");
     } catch (error) {
-      console.error('Error updating reorder steps:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update reorder steps',
-        variant: 'destructive',
-      });
+      console.error("Error updating reorder steps:", error);
+
     }
   };
 
@@ -237,11 +222,9 @@ export function useOptionOperations(
 
     // Don't allow more than 8 options
     if (activeQuestion.options.length >= 8) {
-      toast({
-        title: 'Maximum options reached',
-        description: "You can't add more than 8 options",
-        variant: 'destructive',
-      });
+
+      console.log("Maximum options reached: You can't add more than 8 options");
+
       return;
     }
 
@@ -305,18 +288,11 @@ export function useOptionOperations(
           break;
       }
 
-      toast({
-        title: 'Success',
-        description: 'New option added successfully',
-        duration: 2000,
-      });
+
+      console.log("New option added successfully");
     } catch (error) {
-      console.error('Error adding option:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add option',
-        variant: 'destructive',
-      });
+      console.error("Error adding option:", error);
+
     }
   };
 
@@ -335,11 +311,11 @@ export function useOptionOperations(
       (activeQuestion.question_type === 'multiple_choice' ||
         activeQuestion.question_type === 'multiple_response')
     ) {
-      toast({
-        title: 'Minimum options required',
-        description: 'You need at least 2 options for this question type',
-        variant: 'destructive',
-      });
+
+      console.log(
+        "Minimum options required: You need at least 2 options for this question type"
+      );
+
       return;
     }
 
@@ -411,18 +387,10 @@ export function useOptionOperations(
           break;
       }
 
-      toast({
-        title: 'Success',
-        description: 'Option deleted successfully',
-        duration: 2000,
-      });
+      console.log("Option deleted successfully");
     } catch (error) {
-      console.error('Error deleting option:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete option',
-        variant: 'destructive',
-      });
+      console.error("Error deleting option:", error);
+
     }
   };
 
@@ -454,22 +422,12 @@ export function useOptionOperations(
           correctAnswer: value,
         });
 
-        console.log('Successfully updated text answer question:', response);
 
-        toast({
-          title: 'Success',
-          description: 'Correct answer updated successfully',
-          variant: 'default',
-          duration: 2000,
-        });
+        console.log("Successfully updated text answer question:", response);
       }
     } catch (error) {
-      console.error('Error updating correct answer:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update correct answer',
-        variant: 'destructive',
-      });
+      console.error("Error updating correct answer:", error);
+
     }
   };
 
@@ -499,19 +457,11 @@ export function useOptionOperations(
         correctOrder: activeQuestion.options.map((opt) => opt.option_text),
       });
 
-      console.log('API update successful for REORDER question option');
 
-      toast({
-        title: 'Success',
-        description: 'Reorder step updated successfully',
-      });
+      console.log("API update successful for REORDER question option");
     } catch (error) {
-      console.error('Error updating reorder option:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update reorder step',
-        variant: 'destructive',
-      });
+      console.error("Error updating reorder option:", error);
+
     }
   };
 

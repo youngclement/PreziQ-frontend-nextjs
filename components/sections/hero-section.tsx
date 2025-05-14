@@ -2,11 +2,32 @@
 
 import HeroGeometric from "@/components/clement-kit-ui/hero-geometric";
 import { useLanguage } from "@/contexts/language-context";
+import { Dancing_Script } from 'next/font/google';
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+import { TypingAnimation } from "@/components/magicui/typing-animation";
+
+const dancingScript = Dancing_Script({
+  subsets: ['latin'],
+  weight: ['700'],
+});
 
 export function HeroSection() {
   const { t } = useLanguage();
+  const { theme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  // Add translations for all text in the hero section
+  // Wait until mounted to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Use mounted check to avoid hydration issues
+  const isDark = mounted && (resolvedTheme === 'dark' || theme === 'dark');
+
+  // Create styled version of title2 with cursive font
   const title2 = t("presentationTitle");
 
   return (
@@ -14,7 +35,33 @@ export function HeroSection() {
       <HeroGeometric
         badge="PreziQ"
         title1={t("heroTitle")}
-        title2={title2}
+        title2={
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{
+              delay: 1.5,
+              duration: 0.5,
+              ease: [0.25, 0.4, 0.25, 1]
+            }}
+            className="relative"
+          >
+            <TypingAnimation
+              className={cn(
+                dancingScript.className,
+                "relative inline-block text-5xl sm:text-7xl md:text-8xl bg-clip-text text-transparent",
+                isDark
+                  ? "bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300"
+                  : "bg-gradient-to-r from-blue-500 via-purple-600 to-pink-500",
+                "drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)]"
+              )}
+              delay={1700}
+              duration={70}
+            >
+              {title2}
+            </TypingAnimation>
+          </motion.div>
+        }
         description={t("heroSubtitle")}
       />
     </section>
