@@ -479,7 +479,7 @@ export default function ParticipantActivities({
               );
             default:
               return (
-                <div className='p-6 bg-[#0e1c26]/50 rounded-lg border border-white/10'>
+                <div className='p-6 bg-black bg-opacity-20 rounded-lg border border-white/10'>
                   <h3 className='font-medium text-lg mb-2 text-white/90'>
                     {currentActivity.title || 'Hoạt động chưa được hỗ trợ'}
                   </h3>
@@ -487,11 +487,11 @@ export default function ParticipantActivities({
                     {currentActivity.description ||
                       'Không có mô tả cho hoạt động này'}
                   </p>
-                  <div className='bg-[#0e2838]/50 p-4 rounded-md border border-white/10'>
+                  <div className='bg-black bg-opacity-30 p-4 rounded-md border border-white/10'>
                     <p className='text-sm text-white/50 mb-2'>
                       Chi tiết hoạt động:
                     </p>
-                    <pre className='text-xs whitespace-pre-wrap overflow-auto max-h-60 bg-[#0e1c26]/80 p-2 rounded border border-white/10 text-white/60'>
+                    <pre className='text-xs whitespace-pre-wrap overflow-auto max-h-60 bg-black bg-opacity-40 p-2 rounded border border-white/10 text-white/60'>
                       {JSON.stringify(currentActivity, null, 2)}
                     </pre>
                   </div>
@@ -504,7 +504,7 @@ export default function ParticipantActivities({
   };
 
   return (
-    <div className='min-h-screen bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white'>
+    <div className='min-h-screen bg-black text-white'>
       {/* Hiển thị CountdownOverlay ở mức cao nhất để che phủ toàn màn hình khi KHÔNG ở chế độ toàn màn hình */}
       {showCountdown && !isFullscreenMode && (
         <div className='fixed inset-0 z-[9999]'>
@@ -516,7 +516,7 @@ export default function ParticipantActivities({
       <div className='absolute inset-0 overflow-hidden pointer-events-none'>
         {/* Gradient orbs with reduced opacity */}
         <motion.div
-          className='absolute top-10 left-10 w-32 h-32 bg-[#aef359] rounded-full filter blur-[80px]'
+          className='absolute top-10 left-10 w-32 h-32 bg-[rgb(198,234,132)] rounded-full filter blur-[80px]'
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.05, 0.1, 0.05],
@@ -528,7 +528,7 @@ export default function ParticipantActivities({
           }}
         />
         <motion.div
-          className='absolute bottom-10 right-10 w-32 h-32 bg-[#e4f88d] rounded-full filter blur-[80px]'
+          className='absolute bottom-10 right-10 w-32 h-32 bg-[rgb(255,244,180)] rounded-full filter blur-[80px]'
           animate={{
             scale: [1.2, 1, 1.2],
             opacity: [0.05, 0.1, 0.05],
@@ -542,11 +542,11 @@ export default function ParticipantActivities({
         />
 
         {/* Dotted grid */}
-        <div className='absolute inset-0 bg-[radial-gradient(rgba(174,243,89,0.03)_1px,transparent_1px)] bg-[size:20px_20px]' />
+        <div className='absolute inset-0 bg-[radial-gradient(rgba(198,234,132,0.03)_1px,transparent_1px)] bg-[size:20px_20px]' />
 
         {/* Moving light beam with reduced opacity */}
         <motion.div
-          className='absolute top-0 left-0 w-[200vw] h-[200vh] bg-[radial-gradient(circle,rgba(174,243,89,0.015)_0%,transparent_20%)] pointer-events-none'
+          className='absolute top-0 left-0 w-[200vw] h-[200vh] bg-[radial-gradient(circle,rgba(198,234,132,0.015)_0%,transparent_20%)] pointer-events-none'
           animate={{
             x: ['-50%', '0%'],
             y: ['-50%', '0%'],
@@ -639,9 +639,8 @@ export default function ParticipantActivities({
       )}
 
       <div
-        className={`${
-          isFullscreenMode ? 'p-0' : 'container mx-auto px-4 py-6'
-        }`}
+        className={`${isFullscreenMode ? 'p-0' : 'container mx-auto px-4 py-6'
+          }`}
       >
         {!isFullscreenMode && (
           <div className='text-xs text-center text-white/50 mb-4 md:hidden'>
@@ -684,11 +683,10 @@ export default function ParticipantActivities({
             onClick={toggleFullscreen}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            className={`p-2 rounded-full ${
-              isFullscreenMode
+            className={`p-2 rounded-full ${isFullscreenMode
                 ? 'bg-[#aef359] text-[#0a1b25]'
                 : 'bg-[#0e2838] text-[#aef359]'
-            } shadow-lg border border-white/10`}
+              } shadow-lg border border-white/10`}
             title={
               isFullscreenMode ? 'Thoát toàn màn hình' : 'Chế độ toàn màn hình'
             }
@@ -798,11 +796,10 @@ export default function ParticipantActivities({
                 </div>
               )}
               <div
-                className={`${
-                  isFullscreenMode
+                className={`${isFullscreenMode
                     ? 'h-screen flex items-center justify-center'
                     : 'p-6'
-                }`}
+                  }`}
               >
                 {/* Hiển thị CountdownOverlay trong phần nội dung khi ở chế độ toàn màn hình */}
                 {showCountdown && isFullscreenMode && (
@@ -813,10 +810,9 @@ export default function ParticipantActivities({
 
                 <div
                   className={`
-                    ${
-                      isFullscreenMode
-                        ? 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
-                        : ''
+                    ${isFullscreenMode
+                      ? 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
+                      : ''
                     }
                   `}
                 >
@@ -911,11 +907,10 @@ export default function ParticipantActivities({
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`p-3 rounded-l-xl ${
-              isSidebarCollapsed
+            className={`p-3 rounded-l-xl ${isSidebarCollapsed
                 ? 'bg-[#aef359] text-[#0e1c26]'
                 : 'bg-[#0e2838] text-[#aef359]'
-            } shadow-lg border border-r-0 border-[#aef359]/30 flex items-center justify-center`}
+              } shadow-lg border border-r-0 border-[#aef359]/30 flex items-center justify-center`}
             title={
               isSidebarCollapsed ? 'Hiện bảng xếp hạng' : 'Ẩn bảng xếp hạng'
             }

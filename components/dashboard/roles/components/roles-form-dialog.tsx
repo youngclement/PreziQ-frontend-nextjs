@@ -37,6 +37,7 @@ import { usePermissions } from '@/components/dashboard/permissions/context/permi
 import { Role } from '../data/schema';
 import { permissionsApi } from '@/api-client';
 import { rolesApi } from '@/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Tên vai trò không được để trống'),
@@ -68,7 +69,8 @@ interface GroupedPermissions {
 
 export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
   const { permissions: allPermissions } = usePermissions();
-  const { updateRole, createRole, handleCloseDialog } = useRoles();
+  const { updateRole, createRole, handleCloseDialog, fetchRoles } = useRoles();
+  const queryClient = useQueryClient();
   const isEdit = !!currentRow;
   const [isLoading, setIsLoading] = useState(false);
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
@@ -123,10 +125,16 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
       permissionIds: [],
     });
     setInitialPermissions([]);
+    setOpenModules({});
+
+    // Đóng dialog thông qua prop onOpenChange
+    onOpenChange(false);
 
     // Gọi handleCloseDialog để reset state trong context
-    handleCloseDialog();
-  }, [form, handleCloseDialog]);
+    setTimeout(() => {
+      handleCloseDialog();
+    }, 100);
+  }, [form, handleCloseDialog, onOpenChange]);
 
   const onSubmit = async (data: FormValues) => {
     try {
@@ -165,10 +173,9 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
         // Xử lý riêng cho từng loại thay đổi
         if (addedPermissions.length > 0) {
           // Thêm permissions mới vào role
-          await rolesApi.updateRolePermissions(
-            currentRow.roleId,
-            addedPermissions
-          );
+          await rolesApi.updateRole(currentRow.roleId, {
+            permissionIds: addedPermissions,
+          });
         }
 
         if (removedPermissions.length > 0) {
@@ -193,6 +200,9 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
         if (Object.keys(updatedData).length > 0) {
           await updateRole(currentRow.roleId, updatedData);
         }
+
+        // Đảm bảo dữ liệu được cập nhật sau khi thay đổi
+        queryClient.invalidateQueries({ queryKey: ['roles'] });
 
         toast({
           title: 'Thành công',
@@ -331,6 +341,9 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
           e.preventDefault();
         }}
         onFocusOutside={(e) => {
+          e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
           e.preventDefault();
         }}
       >

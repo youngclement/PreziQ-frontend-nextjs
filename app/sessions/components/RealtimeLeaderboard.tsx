@@ -193,11 +193,11 @@ export default function RealtimeLeaderboard({
   };
 
   return (
-    <Card className='bg-[#0e1c26]/80 backdrop-blur-md shadow-xl border border-white/5 text-white h-full'>
+    <Card className='bg-black bg-opacity-40 backdrop-blur-md shadow-xl border border-white/5 text-white h-full'>
       <div className='p-4 h-full flex flex-col'>
         <div className='flex items-center justify-between mb-4'>
-          <h3 className='text-lg font-semibold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text flex items-center gap-2'>
-            <TrendingUp className='w-5 h-5 text-[#aef359]' />
+          <h3 className='text-lg font-semibold text-[rgb(198,234,132)] flex items-center gap-2'>
+            <TrendingUp className='w-5 h-5 text-[rgb(198,234,132)]' />
             Bảng xếp hạng
           </h3>
           <motion.span
@@ -208,7 +208,7 @@ export default function RealtimeLeaderboard({
               repeat: Infinity,
               repeatType: 'reverse',
             }}
-            className=' text-white/50 bg-[#0e2838]/80 px-2 py-0.5 rounded-full text-xs border border-white/10'
+            className=' text-white/50 bg-black bg-opacity-30 px-2 py-0.5 rounded-full text-xs border border-white/10'
           >
             {participants.length} người chơi
           </motion.span>
@@ -219,7 +219,7 @@ export default function RealtimeLeaderboard({
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className='text-center py-8 bg-[#0e2838]/30 rounded-lg border border-white/5'
+              className='text-center py-8 bg-black bg-opacity-20 rounded-lg border border-white/5'
             >
               <p className='text-white/70'>Chưa có người tham gia nào</p>
               <p className='text-sm mt-2 text-white/50'>
@@ -252,11 +252,10 @@ export default function RealtimeLeaderboard({
                         damping: 30,
                         mass: 1,
                       }}
-                      className={`flex items-center p-2 rounded-lg mb-2 backdrop-blur-sm ${
-                        isCurrentUser
-                          ? 'bg-[#aef359]/10 border border-[#aef359]/30'
-                          : 'bg-[#0e2838]/50 border border-white/5 hover:bg-[#0e2838]/70'
-                      }`}
+                      className={`flex items-center p-2 rounded-lg mb-2 backdrop-blur-sm ${isCurrentUser
+                          ? 'bg-[rgb(198,234,132)]/10 border border-[rgb(198,234,132)]/30'
+                          : 'bg-black bg-opacity-30 border border-white/5 hover:bg-black hover:bg-opacity-40'
+                        }`}
                     >
                       {/* Thứ hạng */}
                       <div className='w-6 text-center font-bold'>
@@ -275,13 +274,12 @@ export default function RealtimeLeaderboard({
                         >
                           {participant.realtimeRanking <= 3 && (
                             <motion.div
-                              className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border ${
-                                participant.realtimeRanking === 1
+                              className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border ${participant.realtimeRanking === 1
                                   ? 'bg-yellow-500 border-yellow-300'
                                   : participant.realtimeRanking === 2
-                                  ? 'bg-gray-400 border-gray-300'
-                                  : 'bg-amber-600 border-amber-500'
-                              }`}
+                                    ? 'bg-gray-400 border-gray-300'
+                                    : 'bg-amber-600 border-amber-500'
+                                }`}
                               animate={{
                                 scale: [1, 1.2, 1],
                                 opacity: [0.7, 1, 0.7],
@@ -296,7 +294,7 @@ export default function RealtimeLeaderboard({
 
                           <Avatar className='h-7 w-7 rounded-full border border-white/20'>
                             <AvatarImage src={participant.displayAvatar} />
-                            <AvatarFallback className='bg-[#0e2838] text-[#aef359] text-xs'>
+                            <AvatarFallback className='bg-black bg-opacity-40 text-[rgb(198,234,132)] text-xs'>
                               {participant.displayName.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
@@ -336,7 +334,7 @@ export default function RealtimeLeaderboard({
                         animate={{ scale: 1 }}
                         className='min-w-[40px] text-right'
                       >
-                        <div className='font-bold text-sm bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text'>
+                        <div className='font-bold text-sm text-[rgb(198,234,132)]'>
                           {participant.realtimeScore}
                         </div>
                       </motion.div>

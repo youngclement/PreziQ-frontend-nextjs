@@ -547,8 +547,8 @@ const SessionJoinPage = () => {
               animate={
                 !isMuted
                   ? {
-                      scale: [1, 1.2, 1],
-                    }
+                    scale: [1, 1.2, 1],
+                  }
                   : {}
               }
               transition={{
@@ -641,11 +641,10 @@ const SessionJoinPage = () => {
                   <Button
                     type='submit'
                     disabled={!isConnected || !isFormValid}
-                    className={`w-full py-6 text-lg font-bold rounded-full shadow-xl transition-all duration-300 ${
-                      isConnected && isFormValid
-                        ? 'bg-gradient-to-r from-[#c5ee4f] to-[#8fe360] text-[#0f2231] hover:shadow-[#aef359]/20 hover:shadow-2xl'
-                        : 'bg-gradient-to-r from-[#c5ee4f]/60 to-[#8fe360]/60 text-[#0f2231]/70'
-                    }`}
+                    className={`w-full py-6 text-lg font-bold rounded-full shadow-xl transition-all duration-300 ${isConnected && isFormValid
+                      ? 'bg-gradient-to-r from-[#c5ee4f] to-[#8fe360] text-[#0f2231] hover:shadow-[#aef359]/20 hover:shadow-2xl'
+                      : 'bg-gradient-to-r from-[#c5ee4f]/60 to-[#8fe360]/60 text-[#0f2231]/70'
+                      }`}
                   >
                     {!isConnected ? (
                       <span className='flex items-center justify-center gap-2'>

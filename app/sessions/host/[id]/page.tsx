@@ -239,7 +239,7 @@ export default function HostSessionPage() {
         setError('Failed to connect to session');
       });
 
-    return () => {};
+    return () => { };
   }, [
     sessionCode,
     sessionId,
@@ -489,7 +489,7 @@ export default function HostSessionPage() {
     }
   };
 
-  const handleSessionEnd = () => {};
+  const handleSessionEnd = () => { };
 
   const handleCopy = () => {
     if (sessionCode) {
@@ -678,8 +678,8 @@ export default function HostSessionPage() {
               animate={
                 !isMuted
                   ? {
-                      scale: [1, 1.2, 1],
-                    }
+                    scale: [1, 1.2, 1],
+                  }
                   : {}
               }
               transition={{
@@ -872,13 +872,12 @@ export default function HostSessionPage() {
           {[...Array(30)].map((_, i) => (
             <motion.div
               key={i}
-              className={`absolute w-1 h-1 ${
-                i % 3 === 0
-                  ? 'bg-[#aef359]/20 w-1.5 h-1.5'
-                  : i % 3 === 1
+              className={`absolute w-1 h-1 ${i % 3 === 0
+                ? 'bg-[#aef359]/20 w-1.5 h-1.5'
+                : i % 3 === 1
                   ? 'bg-[#e4f88d]/15 w-1 h-1'
                   : 'bg-white/10 w-0.5 h-0.5'
-              } rounded-full`}
+                } rounded-full`}
               initial={{
                 x: Math.random() * 100 + '%',
                 y: Math.random() * 100 + '%',

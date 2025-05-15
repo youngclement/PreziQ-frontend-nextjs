@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+  <rect width="1200" height="600" fill="#4F46E5" />
+  <rect x="50" y="50" width="1100" height="500" rx="20" fill="#ffffff" fill-opacity="0.1" />
+  
+  <!-- Logo (using the favicon design) -->
+  <g transform="translate(300, 300) scale(6)">
+    <circle cx="16" cy="16" r="13" fill="none" stroke="white" stroke-width="2" />
+    <circle cx="16" cy="16" r="4" fill="none" stroke="white" stroke-width="2" />
+    <circle cx="16" cy="16" r="2" fill="white" />
+  </g>
+  
+  <!-- Text -->
+  <text x="750" y="270" font-family="Arial, sans-serif" font-size="60" font-weight="bold" fill="white" text-anchor="middle">PreziQ</text>
+  <text x="750" y="340" font-family="Arial, sans-serif" font-size="30" fill="white" text-anchor="middle">Interactive Learning Platform</text>
+</svg> 

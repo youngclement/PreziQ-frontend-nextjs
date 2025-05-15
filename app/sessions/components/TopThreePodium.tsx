@@ -86,11 +86,11 @@ export default function TopThreePodium({
   const getPodiumColor = (ranking: number) => {
     switch (ranking) {
       case 1:
-        return 'bg-gradient-to-r from-amber-500 to-yellow-400';
+        return 'bg-[rgb(255,198,121)]';
       case 2:
-        return 'bg-gradient-to-r from-slate-400 to-slate-300';
+        return 'bg-[rgb(173,216,255)]';
       case 3:
-        return 'bg-gradient-to-r from-orange-600 to-orange-500';
+        return 'bg-[rgb(255,204,188)]';
       default:
         return 'bg-gray-300';
     }
@@ -100,11 +100,11 @@ export default function TopThreePodium({
   const getBorderColor = (ranking: number) => {
     switch (ranking) {
       case 1:
-        return 'border-amber-500 ring-4 ring-amber-300 ring-opacity-50';
+        return 'border-[rgb(255,198,121)] ring-4 ring-[rgb(255,198,121)] ring-opacity-50';
       case 2:
-        return 'border-slate-400 ring-2 ring-slate-300 ring-opacity-50';
+        return 'border-[rgb(173,216,255)] ring-2 ring-[rgb(173,216,255)] ring-opacity-50';
       case 3:
-        return 'border-orange-600 ring-2 ring-orange-400 ring-opacity-50';
+        return 'border-[rgb(255,204,188)] ring-2 ring-[rgb(255,204,188)] ring-opacity-50';
       default:
         return 'border-gray-400';
     }
@@ -114,11 +114,11 @@ export default function TopThreePodium({
   const getGlowEffect = (ranking: number) => {
     switch (ranking) {
       case 1:
-        return 'shadow-[0_0_35px_rgba(245,158,11,0.7)]';
+        return 'shadow-[0_0_35px_rgba(255,198,121,0.7)]';
       case 2:
-        return 'shadow-[0_0_25px_rgba(148,163,184,0.7)]';
+        return 'shadow-[0_0_25px_rgba(173,216,255,0.7)]';
       case 3:
-        return 'shadow-[0_0_20px_rgba(234,88,12,0.7)]';
+        return 'shadow-[0_0_20px_rgba(255,204,188,0.7)]';
       default:
         return '';
     }
@@ -180,14 +180,14 @@ export default function TopThreePodium({
           colors={
             showRainbowConfetti
               ? [
-                  '#f59e0b',
-                  '#d97706',
-                  '#b45309',
-                  '#92400e',
-                  '#fbbf24',
-                  '#f59e0b',
-                  '#92400e',
-                ]
+                '#f59e0b',
+                '#d97706',
+                '#b45309',
+                '#92400e',
+                '#fbbf24',
+                '#f59e0b',
+                '#92400e',
+              ]
               : ['#f59e0b', '#fbbf24', '#fcd34d', '#fde68a', '#fff7ed']
           }
         />
@@ -297,11 +297,11 @@ export default function TopThreePodium({
                       </AvatarFallback>
                     </Avatar>
                     <div className='text-white text-center'>
-                      <div className='font-bold text-xl mb-1 text-slate-300'>
+                      <div className='font-bold text-xl mb-1 text-[rgb(173,216,255)]'>
                         {second.displayName}
                       </div>
                       <div className='flex items-center justify-center'>
-                        <Medal className='h-6 w-6 text-slate-400 mr-1' />
+                        <Medal className='h-6 w-6 text-[rgb(173,216,255)] mr-1' />
                         <span className='text-slate-200'>
                           {second.finalScore} điểm
                         </span>
@@ -333,10 +333,9 @@ export default function TopThreePodium({
 
                   {/* Spotlight */}
                   <motion.div
-                    className='absolute bottom-0 opacity-0 w-[180px] h-[100%]'
-                    style={{
+                    className='absolute bottom-0 opacity-0 w-[180px] h-[100%]' style={{
                       background:
-                        'conic-gradient(from 90deg at 50% 0%, transparent 340deg, rgba(148, 163, 184, 0.3) 350deg, rgba(148, 163, 184, 0.7) 355deg, rgba(148, 163, 184, 0.3) 360deg, transparent 365deg)',
+                        'conic-gradient(from 90deg at 50% 0%, transparent 340deg, rgba(173, 216, 255, 0.3) 350deg, rgba(173, 216, 255, 0.7) 355deg, rgba(173, 216, 255, 0.3) 360deg, transparent 365deg)',
                       transform: 'translateX(-50%)',
                       left: '50%',
                       transformOrigin: 'top',
@@ -406,11 +405,11 @@ export default function TopThreePodium({
                       </AvatarFallback>
                     </Avatar>
                     <div className='text-white text-center'>
-                      <div className='font-bold text-2xl mb-1 text-yellow-300'>
+                      <div className='font-bold text-2xl mb-1 text-[rgb(255,198,121)]'>
                         {first.displayName}
                       </div>
                       <div className='flex items-center justify-center'>
-                        <Trophy className='h-7 w-7 text-yellow-500 mr-2' />
+                        <Trophy className='h-7 w-7 text-[rgb(255,198,121)] mr-2' />
                         <span className='text-xl text-yellow-200'>
                           {first.finalScore} điểm
                         </span>
@@ -433,7 +432,7 @@ export default function TopThreePodium({
                       }}
                       style={{
                         background:
-                          'radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, rgba(245, 158, 11, 0) 70%)',
+                          'radial-gradient(circle, rgba(255, 198, 121, 0.3) 0%, rgba(255, 198, 121, 0) 70%)',
                         width: '250px',
                         height: '250px',
                         top: '-20%',
@@ -486,10 +485,9 @@ export default function TopThreePodium({
 
                   {/* Spotlight */}
                   <motion.div
-                    className='absolute bottom-0 opacity-0 w-[250px] h-[100%]'
-                    style={{
+                    className='absolute bottom-0 opacity-0 w-[250px] h-[100%]' style={{
                       background:
-                        'conic-gradient(from 90deg at 50% 0%, transparent 338deg, rgba(245, 158, 11, 0.3) 345deg, rgba(245, 158, 11, 0.8) 350deg, rgba(245, 158, 11, 0.9) 355deg, rgba(245, 158, 11, 0.8) 360deg, rgba(245, 158, 11, 0.3) 365deg, transparent 370deg)',
+                        'conic-gradient(from 90deg at 50% 0%, transparent 338deg, rgba(255, 198, 121, 0.3) 345deg, rgba(255, 198, 121, 0.8) 350deg, rgba(255, 198, 121, 0.9) 355deg, rgba(255, 198, 121, 0.8) 360deg, rgba(255, 198, 121, 0.3) 365deg, transparent 370deg)',
                       transform: 'translateX(-50%)',
                       left: '50%',
                       transformOrigin: 'top',
@@ -518,10 +516,9 @@ export default function TopThreePodium({
                       times: [0, 0.5, 1],
                       repeat: Infinity,
                       repeatType: 'loop',
-                    }}
-                    style={{
+                    }} style={{
                       background:
-                        'radial-gradient(circle, rgba(245, 158, 11, 0.8) 0%, rgba(245, 158, 11, 0) 70%)',
+                        'radial-gradient(circle, rgba(255, 198, 121, 0.8) 0%, rgba(255, 198, 121, 0) 70%)',
                       width: '350px',
                       height: '350px',
                       top: '20%',
@@ -582,11 +579,11 @@ export default function TopThreePodium({
                       </AvatarFallback>
                     </Avatar>
                     <div className='text-white text-center'>
-                      <div className='font-bold text-xl mb-1 text-orange-400'>
+                      <div className='font-bold text-xl mb-1 text-[rgb(255,204,188)]'>
                         {third.displayName}
                       </div>
                       <div className='flex items-center justify-center'>
-                        <Award className='h-5 w-5 text-orange-500 mr-1' />
+                        <Award className='h-5 w-5 text-[rgb(255,204,188)] mr-1' />
                         <span className='text-orange-200'>
                           {third.finalScore} điểm
                         </span>
@@ -618,10 +615,9 @@ export default function TopThreePodium({
 
                   {/* Spotlight */}
                   <motion.div
-                    className='absolute bottom-0 opacity-0 w-[180px] h-[100%]'
-                    style={{
+                    className='absolute bottom-0 opacity-0 w-[180px] h-[100%]' style={{
                       background:
-                        'conic-gradient(from 90deg at 50% 0%, transparent 340deg, rgba(249, 115, 22, 0.3) 350deg, rgba(249, 115, 22, 0.7) 355deg, rgba(249, 115, 22, 0.3) 360deg, transparent 365deg)',
+                        'conic-gradient(from 90deg at 50% 0%, transparent 340deg, rgba(255, 204, 188, 0.3) 350deg, rgba(255, 204, 188, 0.7) 355deg, rgba(255, 204, 188, 0.3) 360deg, transparent 365deg)',
                       transform: 'translateX(-50%)',
                       left: '50%',
                       transformOrigin: 'top',

@@ -37,9 +37,9 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      email: 'priziq.admin@gmail.com',
+      email: '',
       phoneNumber: '',
-      password: 'PriziQ123@',
+      password: '',
     },
   });
 

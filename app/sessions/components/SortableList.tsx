@@ -61,24 +61,22 @@ function SortableItem({ id, text, disabled }: Item & { disabled?: boolean }) {
         transition,
         zIndex: isDragging ? 10 : 1,
       }}
-      className={`flex items-center p-3 mb-2 bg-gradient-to-r from-[#0e2838]/90 to-[#0f2231]/90 text-white rounded ${
-        !disabled ? 'cursor-move' : 'cursor-not-allowed'
-      } border touch-none ${
-        isDragging
-          ? 'border-[#aef359]/60 shadow-lg'
+      className={`flex items-center p-3 mb-2 bg-black bg-opacity-40 text-white rounded ${!disabled ? 'cursor-move' : 'cursor-not-allowed'
+        } border touch-none ${isDragging
+          ? 'border-[rgb(198,234,132)]/60 shadow-lg'
           : disabled
-          ? 'border-white/5 opacity-80'
-          : 'border-white/10'
-      }`}
+            ? 'border-white/5 opacity-80'
+            : 'border-white/10'
+        }`}
       {...attributes}
       {...listeners}
     >
       <GripVertical
-        className={`mr-2 ${disabled ? 'text-gray-500' : 'text-[#aef359]'}`}
+        className={`mr-2 ${disabled ? 'text-gray-500' : 'text-[rgb(198,234,132)]'}`}
       />
       <span className='flex-1'>{text}</span>
       {isDragging && (
-        <div className='absolute inset-0 rounded bg-[#aef359]/5 border border-[#aef359]/20'></div>
+        <div className='absolute inset-0 rounded bg-[rgb(198,234,132)]/5 border border-[rgb(198,234,132)]/20'></div>
       )}
     </div>
   );

@@ -53,13 +53,13 @@ body {
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 0%; /* black sidebar */
-    --sidebar-foreground: 0 0% 100%; /* white text */
-    --sidebar-primary: 0 0% 0%; /* black */
-    --sidebar-primary-foreground: 0 0% 100%; /* white */
-    --sidebar-accent: 0 0% 10%; /* very dark gray */
-    --sidebar-accent-foreground: 0 0% 100%; /* white */
-    --sidebar-border: 0 0% 20%; /* dark gray border */
+    --sidebar-background: 0 0% 98%; /* black sidebar */
+    --sidebar-foreground: 240 5.3% 26.1%; /* white text */
+    --sidebar-primary: 240 5.9% 10%; /* black */
+    --sidebar-primary-foreground: 0 0% 98%; /* white */
+    --sidebar-accent: 240 4.8% 95.9%; /* very dark gray */
+    --sidebar-accent-foreground: 240 5.9% 10%; /* white */
+    --sidebar-border: 220 13% 91%; /* dark gray border */
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Game-inspired highlight colors for animation */
@@ -96,13 +96,13 @@ body {
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-    --sidebar-background: 0 0% 0%; /* pure black */
-    --sidebar-foreground: 0 0% 100%; /* white */
+    --sidebar-background: 240 5.9% 10%; /* pure black */
+    --sidebar-foreground: 240 4.8% 95.9%; /* white */
     --sidebar-primary: 224.3 76.3% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 0%; /* black instead of very dark gray */
-    --sidebar-accent-foreground: 0 0% 100%; /* white */
-    --sidebar-border: 0 0% 10%; /* almost black border */
+    --sidebar-accent: 240 3.7% 15.9%; /* black instead of very dark gray */
+    --sidebar-accent-foreground: 240 4.8% 95.9%; /* white */
+    --sidebar-border: 240 3.7% 15.9%; /* almost black border */
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Brighter colors for dark mode */
@@ -113,7 +113,7 @@ body {
     --game-color-5: 30 100% 65%; /* Orange */
   }
   .font-cursive {
-    font-family: "Dancing Script", "Brush Script MT", cursive, serif;
+    font-family: 'Dancing Script', 'Brush Script MT', cursive, serif;
     font-weight: 700;
   }
 }
@@ -269,4 +269,31 @@ body {
   .hide-scrollbar::-webkit-scrollbar {
     display: none; /* Chrome, Safari and Opera */
   }
+}
+
+/* Button group variants */
+.button-group-hover\:bg-opacity-20:hover {
+  --tw-bg-opacity: 0.2;
+}
+
+.button-group-active\:translate-y-0:active {
+  --tw-translate-y: 0px;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y))
+    rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y))
+    scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.button-group-active\:translate-y-0\.5:active {
+  --tw-translate-y: 0.125rem;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y))
+    rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y))
+    scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.button-group-active\:bottom-0\.5:active {
+  bottom: 0.125rem;
+}
+
+.button-group-active\:bottom-0:active {
+  bottom: 0px;
 }

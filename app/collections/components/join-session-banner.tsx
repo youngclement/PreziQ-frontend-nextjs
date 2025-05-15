@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useTheme } from 'next-themes';
 import { Code, ArrowRight, Users, PlayCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
@@ -12,11 +12,13 @@ export function JoinSessionBanner() {
     const [sessionCode, setSessionCode] = useState('');
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
 
     const handleJoinSession = (e: React.FormEvent) => {
         e.preventDefault();
         if (!sessionCode.trim()) {
-            setError('Vui lòng nhập mã phiên tham gia');
+            setError('Please enter a session code');
             return;
         }
 
@@ -31,7 +33,7 @@ export function JoinSessionBanner() {
     return (
         <div className="flex flex-col md:flex-row gap-4 mb-10">
             {/* Left panel - Join Session */}
-            <div className="md:w-1/2 bg-[#17494D] rounded-xl flex flex-row items-center justify-start w-full gap-8 p-4 md:p-8 lg:p-0">
+            <div className={`md:w-1/2 rounded-xl flex flex-row items-center justify-start w-full gap-8 p-4 md:p-8 lg:p-0 ${isDark ? 'bg-[#124045]' : 'bg-[#17494D]'}`}>
                 <div className="aspect-square lg:block relative hidden w-5/12 ml-8">
                     <div className="absolute inset-0 flex items-center justify-center">
                         <PlayCircle className="w-24 h-24 text-[#6FEEFF] opacity-80" />
@@ -39,11 +41,11 @@ export function JoinSessionBanner() {
                 </div>
                 <div className="lg:w-7/12 lg:mr-8 lg:my-8 flex flex-col items-center justify-center w-full">
                     <h2 className="md:text-4xl lg:text-3xl xl:text-4xl 2xl:text-5xl md:pb-0 pb-2 text-3xl font-black leading-none text-center text-white">
-                        Tham gia phiên học
+                        Join Session
                     </h2>
                     <h3 className="md:text-base lg:text-xl flex flex-col items-center justify-center pb-4 text-sm font-bold leading-none text-center text-white">
-                        <div>Nhập mã PIN để</div>
-                        <div>tham gia trả lời câu hỏi</div>
+                        <div>Enter PIN code to</div>
+                        <div>participate and answer questions</div>
                     </h3>
 
                     <form onSubmit={handleJoinSession} className="w-full max-w-[12rem]">
@@ -54,7 +56,7 @@ export function JoinSessionBanner() {
                                     setSessionCode(e.target.value);
                                     setError(null);
                                 }}
-                                placeholder="Nhập mã PIN"
+                                placeholder="Enter PIN code"
                                 className="pl-10 h-12 bg-white/10 text-white placeholder:text-white/70 border-white/30 focus:border-white focus:ring-white/30 rounded-xl"
                             />
                             <Code className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/70" />
@@ -103,7 +105,7 @@ export function JoinSessionBanner() {
                                 <div className="relative flex flex-row gap-x-4 items-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 group-active:translate-y-0" style={{ padding: "0.25rem" }}>
                                     <div className="flex flex-col flex-1 items-center">
                                         <div className="relative">
-                                            <div className="relative">Tham gia ngay</div>
+                                            <div className="relative">Join Now</div>
                                         </div>
                                     </div>
                                 </div>
@@ -114,7 +116,7 @@ export function JoinSessionBanner() {
             </div>
 
             {/* Right panel - Create Collection */}
-            <div className="md:w-1/2 bg-[#17494D] rounded-xl flex flex-row items-center justify-start w-full gap-8 p-4 md:p-0">
+            <div className={`md:w-1/2 rounded-xl flex flex-row items-center justify-start w-full gap-8 p-4 md:p-0 ${isDark ? 'bg-[#124045]' : 'bg-[#17494D]'}`}>
                 <div className="aspect-square lg:block relative hidden w-5/12 ml-8">
                     <div className="absolute inset-0 flex items-center justify-center">
                         <Users className="w-24 h-24 text-[#6FEEFF] opacity-80" />
@@ -122,11 +124,11 @@ export function JoinSessionBanner() {
                 </div>
                 <div className="lg:w-7/12 lg:mr-8 lg:my-8 flex flex-col items-center justify-center w-full">
                     <h2 className="md:text-4xl lg:text-3xl xl:text-4xl 2xl:text-5xl md:pb-0 pb-2 text-3xl font-black leading-none text-center text-white">
-                        Tạo Collection
+                        Create Collection
                     </h2>
                     <h3 className="md:text-base lg:text-xl flex flex-col items-center justify-center pb-4 text-sm font-bold leading-none text-center text-white">
-                        <div>Tạo bộ sưu tập</div>
-                        <div>câu hỏi cho riêng bạn</div>
+                        <div>Create your own</div>
+                        <div>question collection</div>
                     </h3>
 
                     <motion.div
@@ -162,7 +164,7 @@ export function JoinSessionBanner() {
                             <div className="relative flex flex-row gap-x-4 items-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 group-active:translate-y-0" style={{ padding: "0.25rem" }}>
                                 <div className="flex flex-col flex-1 items-center">
                                     <div className="relative">
-                                        <div className="relative">Tạo collection</div>
+                                        <div className="relative">Create Collection</div>
                                     </div>
                                 </div>
                             </div>
