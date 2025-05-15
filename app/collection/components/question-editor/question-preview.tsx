@@ -60,6 +60,7 @@ import {
   Edit,
   Plus,
   Trash,
+  Info,
 } from 'lucide-react';
 import {
   Card,
@@ -1267,10 +1268,10 @@ export function QuestionPreview({
                 </div>
 
                 {/* Correct answer display */}
-                <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic relative group">
+                <div className="mt-2 text-sm text-gray-600 dark:text-white italic relative group">
                   {editMode !== null ? (
                     <div className="flex items-center">
-                      <span className="font-medium mr-2">Correct answer:</span>
+                      <span className="font-medium mr-2 text-gray-700 dark:text-white">Correct answer:</span>
                       <Input
                         value={
                           question.correct_answer_text ||
@@ -1283,19 +1284,41 @@ export function QuestionPreview({
                         onChange={(e) =>
                           saveTextAnswer(questionIndex, e.target.value)
                         }
-                        className="flex-1"
+                        className="flex-1 border-blue-200 focus:border-blue-400 focus:ring-blue-400 text-gray-800 dark:text-white dark:bg-gray-700"
+                        autoFocus
                       />
                     </div>
                   ) : (
-                    <>
+                    <div
+                      className="flex items-center cursor-pointer transition-all hover:bg-blue-50 dark:hover:bg-blue-900/30 p-2 rounded-md -mx-2"
+                      onClick={() => setEditMode('text_answer_edit')}
+                    >
                       <span className="font-medium">Correct answer:</span>{' '}
-                      {question.correct_answer_text ||
-                        (question.options &&
-                          question.options.length > 0 &&
-                          question.options.find((opt) => opt.is_correct)
-                            ?.option_text) ||
-                        'Not specified'}
-                    </>
+                      <span className="ml-1 font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800">
+                        {question.correct_answer_text ||
+                          (question.options &&
+                            question.options.length > 0 &&
+                            question.options.find((opt) => opt.is_correct)
+                              ?.option_text) ||
+                          'Not specified'}
+                      </span>
+                      <Pencil className="h-3.5 w-3.5 ml-2 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Help text */}
+                <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  {editMode !== null ? (
+                    <p className="flex items-center">
+                      <Info className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+                      Click outside or press Enter to save your changes
+                    </p>
+                  ) : (
+                    <p className="flex items-center">
+                      <Info className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+                      Click on the answer to edit it when in edit mode
+                    </p>
                   )}
                 </div>
               </div>
@@ -1717,20 +1740,47 @@ export function QuestionPreview({
   const saveQuestionText = (questionIndex: number, text: string) => {
     if (text.trim() === questions[questionIndex].question_text) return;
 
+    // Update local state through the parent component
     onQuestionTextChange(text, questionIndex);
 
     // If we have an activity, update the activity title as well
     if (activity && questions[questionIndex].activity_id) {
+      setIsSaving(true);
+
+      // Update the activity via API
       updateActivity(
         {
           title: text,
         },
         questions[questionIndex].activity_id
-      );
+      ).then(() => {
+        // Dispatch an event to notify other components about the title change
+        if (typeof window !== 'undefined') {
+          const event = new CustomEvent('activity:title:updated', {
+            detail: {
+              activityId: questions[questionIndex].activity_id,
+              title: text,
+              questionIndex: questionIndex
+            },
+          });
+          window.dispatchEvent(event);
+        }
 
-
-      console.log("Question updated");
-
+        toast({
+          title: 'Success',
+          description: 'Question title updated successfully',
+          variant: 'default',
+        });
+      }).catch((error) => {
+        console.error('Error updating question title:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update question title',
+          variant: 'destructive',
+        });
+      }).finally(() => {
+        setIsSaving(false);
+      });
     }
   };
 
@@ -1912,10 +1962,39 @@ export function QuestionPreview({
       onCorrectAnswerChange(text);
     }
 
-    if (editMode === null) {
+    // Call API to update the text answer if in edit mode and we have an activity ID
+    if (editMode !== null && question.activity_id && activity) {
+      setIsSaving(true);
 
-      console.log("The correct text answer has been updated");
+      // Create the payload for the API
+      const payload = {
+        type: "TYPE_ANSWER" as const,
+        questionText: question.question_text || '',
+        timeLimitSeconds: question.time_limit_seconds || timeLimit || 30,
+        pointType: "STANDARD" as const,
+        correctAnswer: text
+      };
 
+      // Call the API
+      activitiesApi.updateTypeAnswerQuiz(question.activity_id, payload)
+        .then(() => {
+          toast({
+            title: 'Success',
+            description: 'Correct answer updated successfully',
+            variant: 'default',
+          });
+        })
+        .catch((error) => {
+          console.error('Error updating correct answer:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to update correct answer',
+            variant: 'destructive',
+          });
+        })
+        .finally(() => {
+          setIsSaving(false);
+        });
     }
   };
 
@@ -2532,6 +2611,41 @@ export function QuestionPreview({
 
     }
   };
+
+  // Add this useEffect to listen for title updates from other components
+  useEffect(() => {
+    // Handler for title updates from other components
+    const handleTitleUpdate = (event: any) => {
+      if (
+        event.detail &&
+        event.detail.activityId &&
+        event.detail.title &&
+        event.detail.sender !== 'questionPreview'
+      ) {
+        // Find the question with this activity ID
+        const questionIndex = questions.findIndex(
+          q => q.activity_id === event.detail.activityId
+        );
+
+        if (questionIndex >= 0 && questions[questionIndex].question_text !== event.detail.title) {
+          // Update the question text without calling the API again (since it was already updated)
+          onQuestionTextChange(event.detail.title, questionIndex);
+        }
+      }
+    };
+
+    // Add the event listener
+    if (typeof window !== 'undefined') {
+      window.addEventListener('activity:title:updated', handleTitleUpdate);
+    }
+
+    // Clean up
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('activity:title:updated', handleTitleUpdate);
+      }
+    };
+  }, [questions, onQuestionTextChange]);
 
   return (
     <Card

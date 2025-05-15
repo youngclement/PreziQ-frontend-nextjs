@@ -571,9 +571,7 @@ export default function HostSessionPage() {
   // Format session code for display (add space in the middle)
   const formatSessionCode = (code: string) => {
     if (!code || code.length < 6) return code;
-    const firstPart = code.substring(0, 3);
-    const secondPart = code.substring(3);
-    return `${firstPart} ${secondPart}`;
+    return code; // Return the code as is without adding space
   };
 
 
@@ -930,42 +928,25 @@ export default function HostSessionPage() {
             <div className='flex flex-col items-center w-full h-full'>
               <div className='flex flex-col items-center w-full h-full'>
                 <div className='w-full px-4 sm:px-6 md:px-8 lg:px-10 py-8 bg-black bg-opacity-25 rounded-xl mb-6'>                    <div className='lg:flex-row lg:gap-6 xl:gap-8 lg:items-stretch flex flex-col items-center w-full gap-6'>
-                  {/* Join at section */}
-                  <div className='flex flex-col items-center justify-start gap-3 lg:flex-none lg:w-1/5 xl:w-1/4 w-full max-w-md bg-black bg-opacity-25 p-5 rounded-xl backdrop-blur-sm shadow-sm border border-[#1e4b51]'>
-                    <div className='text-lg font-bold text-center text-white'>Join at:</div>
-                    <div className='flex items-center justify-center flex-1 w-full'>
-                      <span className='text-3xl md:text-4xl font-bold tracking-tight text-white drop-shadow-sm'>
-                        preziq.com
-                      </span>
-                    </div>
-                  </div>
+
 
 
                   {/* PIN code section */}
-                  <div className='flex flex-col items-center justify-center flex-1 gap-4 bg-black bg-opacity-25 p-5 rounded-xl backdrop-blur-sm shadow-sm border border-[#1e4b51]'>
+                  <div className='flex flex-col items-center justify-center flex-1 gap-4 bg-black bg-opacity-25 p-5 rounded-xl backdrop-blur-sm shadow-sm border border-[#1e4b51] min-h-[200px]'>
                     <div className='text-lg font-bold text-center text-white'>PIN code:</div>
                     <div className='flex flex-row items-center justify-center flex-1 w-full'>
                       <h1 className='xl:text-6xl lg:text-5xl text-gray-800 text-6xl font-black leading-none text-center'>
                         <div className='relative inline-block'>
                           <div className='relative'>
-                            <div className='flex flex-row items-center justify-center flex-1 gap-4'>
+                            <div className='flex flex-row items-center justify-center flex-1'>
                               {!hidePin ? (
                                 sessionCode ? (
-                                  <>
-                                    <div className="min-w-[6rem] text-center text-[#c6ea84]">{sessionCode.substring(0, 3)}</div>
-                                    <div className="min-w-[6rem] text-center text-[#c6ea84]">{sessionCode.substring(3)}</div>
-                                  </>
+                                  <div className="min-w-[12rem] text-center text-[#c6ea84]">{sessionCode}</div>
                                 ) : (
-                                  <>
-                                    <div className="min-w-[6rem] text-center bg-gradient-to-r from-[#ffd1dc] to-[#ffc8dd] bg-clip-text text-transparent">XXX</div>
-                                    <div className="min-w-[6rem] text-center bg-gradient-to-r from-[#c8ddff] to-[#c8fff0] bg-clip-text text-transparent">XXX</div>
-                                  </>
+                                  <div className="min-w-[12rem] text-center bg-gradient-to-r from-[#ffd1dc] to-[#c8fff0] bg-clip-text text-transparent">XXXXXX</div>
                                 )
                               ) : (
-                                <>
-                                  <div className="min-w-[6rem] text-center text-gray-300">XXX</div>
-                                  <div className="min-w-[6rem] text-center text-gray-300">XXX</div>
-                                </>
+                                <div className="min-w-[12rem] text-center text-gray-300">XXXXXX</div>
                               )}
                             </div>
                           </div>
@@ -1102,7 +1083,7 @@ export default function HostSessionPage() {
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" className='group-hover:opacity-100 w-6 h-6 text-gray-400 opacity-50 mr-2 group-hover:text-[#d5456c]'>
                         <path fill="currentColor" d="M20 10a5.412 5.412 0 0 0 0 10.824A5.412 5.412 0 0 0 20 10zm0 12.706c-3.53 0-6.848 1.74-8.825 4.635a3.482 3.482 0 0 0-.587 1.976c0 .377.329.683.705.683h17.412c.376 0 .706-.306.706-.683a3.26 3.26 0 0 0-.589-1.976c-1.976-2.894-5.293-4.635-8.823-4.635zm-5.273 1.692c-2.985 2.03-4.558 5.143-4.558 5.143l-.195.391.195.39s3.435 6.771 9.831 6.771c2.06 0 3.785-.728 5.208-1.692l-.911-1.367c-1.22.826-2.63 1.432-4.297 1.432-4.892 0-7.619-5.023-7.943-5.6.272-.482 1.294-2.545 3.581-4.1z"></path>
                       </svg>
-                      <div className='group-hover:underline group-hover:text-opacity-100 text-sm font-normal leading-none text-center text-white text-opacity-50 group-hover:text-white'>Join on this device</div>
+
                     </button>
                   )}
                 </div>
@@ -1230,7 +1211,7 @@ export default function HostSessionPage() {
 
 
           {/* Phiên bản với animation */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.2, duration: 0.8 }}
@@ -1251,11 +1232,11 @@ export default function HostSessionPage() {
                 ease: 'easeInOut',
               }}
             />
-          </motion.div>
+          </motion.div> */}
 
 
           {/* Nút Start Session */}
-          {isConnected && !isSessionStarted && (
+          {/* {isConnected && !isSessionStarted && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1280,7 +1261,7 @@ export default function HostSessionPage() {
                 )}
               </Button>
             </motion.div>
-          )}
+          )} */}
         </motion.div>
 
 
@@ -1305,15 +1286,15 @@ export default function HostSessionPage() {
                 </div>
               </div>
               <div className='flex flex-col items-start justify-center w-full'>
-                <h3 className='pb-2 font-sans text-xl font-bold leading-none text-gray-700'>PreziQ Collection</h3>
+                <h3 className='pb-2 font-sans text-xl font-bold leading-none text-white'>PreziQ Collection</h3>
                 <div className='flex flex-row items-center justify-start w-full gap-4'>
-                  <p className='font-sans text-sm leading-tight text-gray-500'>6 activities</p>
+                  <p className='font-sans text-sm leading-tight text-white'>6 activities</p>
                   <button className='group flex flex-row items-center hover:bg-gray-200 p-1.5 rounded-lg transition-colors duration-200'>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" className='group-hover:opacity-100 w-5 h-5 text-gray-400 opacity-50 group-hover:text-[rgb(255,182,193)]'>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" className='group-hover:opacity-100 w-5 h-5 text-white opacity-50 group-hover:text-[rgb(255,182,193)]'>
                       <path fill="none" d="M0 0h40v40H0z"></path>
                       <path fill="currentColor" d="M18.18 27.82a8.55 8.55 0 0 1-3.41-.68A8.86 8.86 0 0 1 12 25.23a9 9 0 0 1-1.9-2.81 8.89 8.89 0 0 1 0-6.82 8.86 8.86 0 0 1 1.9-2.81 9.17 9.17 0 0 1 2.81-1.9 8.75 8.75 0 0 1 6.81 0 9.1 9.1 0 0 1 2.82 1.9 8.9 8.9 0 0 1 1.89 2.82 8.75 8.75 0 0 1 0 6.81 9 9 0 0 1-1.89 2.81 8.79 8.79 0 0 1-2.82 1.91 8.48 8.48 0 0 1-3.44.68Zm0-2.54a6 6 0 0 0 2.44-.49A6.36 6.36 0 0 0 24 21.44a6.25 6.25 0 0 0 0-4.85 6.09 6.09 0 0 0-1.35-2 6.35 6.35 0 0 0-2-1.36 6.3 6.3 0 0 0-4.87 0 6.39 6.39 0 0 0-2 1.36 6.22 6.22 0 0 0-1.34 2 6.25 6.25 0 0 0 0 4.85 6.33 6.33 0 0 0 1.34 2 6.2 6.2 0 0 0 2 1.35 6 6 0 0 0 2.4.49Zm10.69 6.36a2 2 0 0 1-.69-.12 1.62 1.62 0 0 1-.59-.38l-5.74-5.73 2.56-2.53 5.72 5.72a1.62 1.62 0 0 1 .38.59 2 2 0 0 1 .12.67 1.83 1.83 0 0 1-.22.91 1.78 1.78 0 0 1-.64.64 1.72 1.72 0 0 1-.9.23Z"></path>
                     </svg>
-                    <div className='group-hover:underline group-hover:text-opacity-100 text-sm font-bold leading-none text-center text-gray-500 text-opacity-50 ml-1 group-hover:text-gray-700'>Preview</div>
+                    <div className='group-hover:underline group-hover:text-opacity-100 text-sm font-bold leading-none text-center text-white '>Preview</div>
                   </button>
                 </div>
               </div>

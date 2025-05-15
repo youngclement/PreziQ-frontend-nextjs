@@ -1,0 +1,5 @@
+// This is a placeholder for the Android Chrome icon (512x512).
+// Please convert the SVG file (public/favicon.svg) to PNG format using a tool like:
+// - https://convertio.co/svg-png/
+// - https://cloudconvert.com/svg-to-png
+// Or use the command line tool ImageMagick: convert -resize 512x512 favicon.svg android-chrome-512x512.png 
