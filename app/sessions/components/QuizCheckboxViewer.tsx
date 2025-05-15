@@ -247,32 +247,32 @@ export default function QuizCheckboxViewer({
   ) => {
     const styles = [
       {
-        bg: 'from-pink-500/70 to-rose-600/70',
-        bgSelected: 'from-pink-500/90 to-rose-600/90',
-        bgCorrect: 'from-green-500/80 to-emerald-600/80',
-        bgIncorrect: 'from-red-500/70 to-rose-600/70',
-        glow: '#ff5c8d',
+        bg: 'rgb(255, 182, 193)', // Hồng phấn pastel (Cherry)
+        bgSelected: 'rgb(255, 182, 193)',
+        bgCorrect: 'rgb(198, 234, 132)', // Xanh lá nhạt pha vàng (Banana)
+        bgIncorrect: 'rgb(255, 198, 121)', // Cam đào nhạt (Strawberry)
+        glow: 'rgb(255, 182, 193)',
       },
       {
-        bg: 'from-blue-500/70 to-indigo-600/70',
-        bgSelected: 'from-blue-500/90 to-indigo-600/90',
-        bgCorrect: 'from-green-500/80 to-emerald-600/80',
-        bgIncorrect: 'from-red-500/70 to-rose-600/70',
-        glow: '#5c8dff',
+        bg: 'rgb(173, 216, 255)', // Xanh da trời nhạt (Blueberry)
+        bgSelected: 'rgb(173, 216, 255)',
+        bgCorrect: 'rgb(198, 234, 132)', // Xanh lá nhạt pha vàng (Banana)
+        bgIncorrect: 'rgb(255, 198, 121)', // Cam đào nhạt (Strawberry)
+        glow: 'rgb(173, 216, 255)',
       },
       {
-        bg: 'from-purple-500/70 to-violet-600/70',
-        bgSelected: 'from-purple-500/90 to-violet-600/90',
-        bgCorrect: 'from-green-500/80 to-emerald-600/80',
-        bgIncorrect: 'from-red-500/70 to-rose-600/70',
-        glow: '#c45cff',
+        bg: 'rgb(213, 189, 255)', // Tím lavender nhạt (Grape)
+        bgSelected: 'rgb(213, 189, 255)',
+        bgCorrect: 'rgb(198, 234, 132)', // Xanh lá nhạt pha vàng (Banana)
+        bgIncorrect: 'rgb(255, 198, 121)', // Cam đào nhạt (Strawberry)
+        glow: 'rgb(213, 189, 255)',
       },
       {
-        bg: 'from-amber-500/70 to-orange-600/70',
-        bgSelected: 'from-amber-500/90 to-orange-600/90',
-        bgCorrect: 'from-green-500/80 to-emerald-600/80',
-        bgIncorrect: 'from-red-500/70 to-rose-600/70',
-        glow: '#ffb55c',
+        bg: 'rgb(255, 244, 180)', // Vàng mơ nhạt (Lemon)
+        bgSelected: 'rgb(255, 244, 180)',
+        bgCorrect: 'rgb(198, 234, 132)', // Xanh lá nhạt pha vàng (Banana)
+        bgIncorrect: 'rgb(255, 198, 121)', // Cam đào nhạt (Strawberry)
+        glow: 'rgb(255, 244, 180)',
       },
     ];
 
@@ -281,27 +281,27 @@ export default function QuizCheckboxViewer({
     if (isSubmitted && isQuizEnded) {
       if (isCorrect) {
         return {
-          bg: `bg-gradient-to-r ${baseStyle.bgCorrect}`,
-          glow: '#5cff8d',
+          bg: baseStyle.bgCorrect,
+          glow: baseStyle.bgCorrect,
         };
       } else if (isSelected) {
         return {
-          bg: `bg-gradient-to-r ${baseStyle.bgIncorrect}`,
-          glow: '#ff5c5c',
+          bg: baseStyle.bgIncorrect,
+          glow: baseStyle.bgIncorrect,
         };
       }
     }
 
     if (isSelected) {
       return {
-        bg: `bg-gradient-to-r ${baseStyle.bgSelected}`,
-        glow: baseStyle.glow,
+        bg: baseStyle.bgSelected,
+        glow: baseStyle.bgSelected,
       };
     }
 
     return {
-      bg: `bg-gradient-to-r ${baseStyle.bg}`,
-      glow: baseStyle.glow,
+      bg: baseStyle.bg,
+      glow: baseStyle.bg,
     };
   };
 
@@ -321,13 +321,13 @@ export default function QuizCheckboxViewer({
           }}
         >
           {/* Overlay */}
-          <div className='absolute inset-0 bg-gradient-to-b from-[#0a1b25]/80 to-[#0f2231]/70' />
+          <div className='absolute inset-0 bg-black bg-opacity-30' />
 
           {/* Status Bar */}
-          <div className='sticky top-0 left-0 right-0 h-12 bg-[#0e1c26]/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-5 text-white z-20'>
+          <div className='sticky top-0 left-0 right-0 h-12 bg-black bg-opacity-40 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-5 text-white z-20'>
             <div className='flex items-center gap-3'>
-              <div className='h-7 w-7 rounded-full bg-gradient-to-r from-[#aef359] to-[#e4f88d] flex items-center justify-center shadow-md'>
-                <CheckSquare className='h-4 w-4 text-[#0e1c26]' />
+              <div className='h-7 w-7 rounded-full bg-[rgb(198,234,132)] flex items-center justify-center shadow-md'>
+                <CheckSquare className='h-4 w-4 text-black' />
               </div>
               <div className='text-xs capitalize font-medium text-white/80'>
                 Multiple Response
@@ -335,7 +335,7 @@ export default function QuizCheckboxViewer({
             </div>
             <div className='flex items-center gap-2'>
               <motion.div
-                className='flex items-center gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
+                className='flex items-center gap-1.5 bg-black bg-opacity-30 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
                 animate={{
                   opacity: timeLeft < 10 ? [0.7, 1] : 1,
                   scale: timeLeft < 10 ? [1, 1.05, 1] : 1,
@@ -346,7 +346,7 @@ export default function QuizCheckboxViewer({
                   repeatType: 'reverse',
                 }}
               >
-                <Clock className='h-3.5 w-3.5 text-[#aef359]' />
+                <Clock className='h-3.5 w-3.5 text-[rgb(198,234,132)]' />
                 <span
                   className={timeLeft < 10 ? 'text-red-300' : 'text-white/90'}
                 >
@@ -358,10 +358,9 @@ export default function QuizCheckboxViewer({
                 <motion.div
                   key={`${answeredCount}-${totalParticipants}`}
                   className={`
-                    flex items-center gap-1.5 mr-2 ${
-                      answeredCount >= totalParticipants
-                        ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
-                        : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
+                    flex items-center gap-1.5 mr-2 ${answeredCount >= totalParticipants
+                      ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
+                      : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
                     } border border-white/10 px-2 py-1 rounded-full text-xs font-medium`}
                   animate={{
                     scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
@@ -415,7 +414,7 @@ export default function QuizCheckboxViewer({
         <div className='w-full'>
           {/* Time Progress */}
           <motion.div
-            className='h-1 bg-gradient-to-r from-[#aef359] to-[#e4f88d]'
+            className='h-1 bg-[rgb(198,234,132)]'
             initial={{ width: '100%' }}
             animate={{
               width: `${Math.min(
@@ -430,7 +429,7 @@ export default function QuizCheckboxViewer({
           />
           {/* Participants Progress */}
           <motion.div
-            className='h-1 bg-violet-500/70'
+            className='h-1 bg-[rgb(213,189,255)]'
             initial={{ width: '0%' }}
             animate={{
               width: `${Math.min(
@@ -446,7 +445,7 @@ export default function QuizCheckboxViewer({
         </div>
 
         {/* Options */}
-        <div className='p-6 bg-[#0e1c26]/70'>
+        <div className='p-6 bg-black bg-opacity-20'>
           <AnimatePresence>
             {error && (
               <motion.div
@@ -493,9 +492,8 @@ export default function QuizCheckboxViewer({
                     whileTap={{
                       scale: !isSubmitted && !isQuizEnded ? 0.98 : 1,
                     }}
-                    className={`relative rounded-xl ${
-                      isSelected ? 'z-10' : 'z-0'
-                    }`}
+                    className={`relative rounded-xl ${isSelected ? 'z-10' : 'z-0'
+                      }`}
                     onClick={() =>
                       !isSubmitted &&
                       !isQuizEnded &&
@@ -634,8 +632,8 @@ export default function QuizCheckboxViewer({
           {/* Results */}
           <AnimatePresence>
             {(isSubmitted && isQuizEnded) ||
-            activity.hostShowAnswer ||
-            isQuizEnded ? (
+              activity.hostShowAnswer ||
+              isQuizEnded ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}

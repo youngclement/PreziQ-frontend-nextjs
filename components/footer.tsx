@@ -3,9 +3,30 @@
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import Logo from "./common/logo";
+import { useLanguage } from "@/contexts/language-context";
+import TranslatedText from "./ui/translated-text";
 // import Logo from "@/components/logo";
 
 const Footer = () => {
+    const { t } = useLanguage();
+    const currentYear = new Date().getFullYear();
+
+    const navItems = [
+        { key: "home", label: "Home" },
+        { key: "about", label: "About" },
+        { key: "services", label: "Services" },
+        { key: "projects", label: "Projects" },
+        { key: "blog", label: "Blog" },
+        { key: "contact", label: "Contact" }
+    ];
+
+    const socialItems = [
+        { key: "linkedin", label: "LinkedIn", url: "https://www.linkedin.com" },
+        { key: "twitter", label: "Twitter", url: "https://www.twitter.com" },
+        { key: "instagram", label: "Instagram", url: "https://www.instagram.com" },
+        { key: "github", label: "GitHub", url: "https://www.github.com" }
+    ];
+
     return (
         <footer className=" py-16">
             <div className="container mx-auto px-4">
@@ -19,11 +40,16 @@ const Footer = () => {
                         >
                             <Logo />
                         </motion.h2>
-                        <p className="">Shaping the future of web development</p>
+                        <p className="">
+                            <TranslatedText
+                                text="Shaping the future of web development"
+                                translationKey="footerDesc"
+                            />
+                        </p>
                         <div className="relative">
                             <input
                                 type="email"
-                                placeholder="Your email"
+                                placeholder={t("emailPlaceholder")}
                                 className="w-full border-2 rounded-full py-2 px-4 outline-none transition-all duration-300"
                             />
                             <button className="absolute right-1 top-2 rounded-full p-1 transition-colors duration-300">
@@ -33,38 +59,44 @@ const Footer = () => {
                     </div>
 
                     <div>
-                        <h3 className="text-xl font-semibold mb-4">Navigation</h3>
+                        <h3 className="text-xl font-semibold mb-4">
+                            <TranslatedText
+                                text="Navigation"
+                                translationKey="footerNavigation"
+                            />
+                        </h3>
                         <ul className="space-y-2">
-                            {["Home", "About", "Services", "Projects", "Blog", "Contact"].map(
-                                (item) => (
-                                    <motion.li
-                                        key={item}
-                                        whileHover={{ x: 5 }}
-                                        transition={{ type: "spring", stiffness: 300 }}
+                            {navItems.map((item) => (
+                                <motion.li
+                                    key={item.key}
+                                    whileHover={{ x: 5 }}
+                                    transition={{ type: "spring", stiffness: 300 }}
+                                >
+                                    <a
+                                        href={`#${item.key.toLowerCase()}`}
+                                        className="text-black dark:text-white transition-colors duration-300"
                                     >
-                                        <a
-                                            href={`#${item.toLowerCase()}`}
-                                            className="text-black dark:text-white transition-colors duration-300"
-                                        >
-                                            {item}
-                                        </a>
-                                    </motion.li>
-                                ),
-                            )}
+                                        <TranslatedText
+                                            text={item.label}
+                                            translationKey={`footer${item.label}`}
+                                        />
+                                    </a>
+                                </motion.li>
+                            ))}
                         </ul>
                     </div>
 
                     <div>
-                        <h3 className="text-xl font-semibold mb-4">Connect</h3>
+                        <h3 className="text-xl font-semibold mb-4">
+                            <TranslatedText
+                                text="Connect"
+                                translationKey="footerConnect"
+                            />
+                        </h3>
                         <ul className="space-y-2">
-                            {[
-                                { name: "LinkedIn", url: "https://www.linkedin.com" },
-                                { name: "Twitter", url: "https://www.twitter.com" },
-                                { name: "Instagram", url: "https://www.instagram.com" },
-                                { name: "GitHub", url: "https://www.github.com" },
-                            ].map((item) => (
+                            {socialItems.map((item) => (
                                 <motion.li
-                                    key={item.name}
+                                    key={item.key}
                                     whileHover={{ x: 5 }}
                                     transition={{ type: "spring", stiffness: 300 }}
                                 >
@@ -74,7 +106,10 @@ const Footer = () => {
                                         rel="noopener noreferrer"
                                         className=" dark:text-white text-black transition-colors duration-300 flex items-center"
                                     >
-                                        {item.name}
+                                        <TranslatedText
+                                            text={item.label}
+                                            translationKey={`footer${item.key}`}
+                                        />
                                         <ArrowUpRight className="w-4 h-4 ml-1" />
                                     </a>
                                 </motion.li>
@@ -83,10 +118,17 @@ const Footer = () => {
                     </div>
 
                     <div className="space-y-4">
-                        <h3 className="text-xl font-semibold">Our Vision</h3>
+                        <h3 className="text-xl font-semibold">
+                            <TranslatedText
+                                text="Our Vision"
+                                translationKey="footerVision"
+                            />
+                        </h3>
                         <p className="">
-                            Pioneering the next generation of web experiences through
-                            innovative code and cutting-edge design.
+                            <TranslatedText
+                                text="Pioneering the next generation of web experiences through innovative code and cutting-edge design."
+                                translationKey="footerVisionDesc"
+                            />
                         </p>
                         <div className="flex space-x-4">
                             <motion.div
@@ -110,20 +152,30 @@ const Footer = () => {
 
                 <div className="mt-12 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center">
                     <p className=" text-sm">
-                        &copy; {new Date().getFullYear()}. All rights reserved.
+                        &copy; {currentYear}.
+                        <TranslatedText
+                            text="All rights reserved."
+                            translationKey="copyright"
+                        />
                     </p>
                     <div className="flex space-x-4 mt-4 md:mt-0">
                         <a
                             href="#"
                             className=" hover:text-white transition-colors duration-300 text-sm"
                         >
-                            Privacy Policy
+                            <TranslatedText
+                                text="Privacy Policy"
+                                translationKey="privacy"
+                            />
                         </a>
                         <a
                             href="#"
                             className=" hover:text-white transition-colors duration-300 text-sm"
                         >
-                            Terms of Service
+                            <TranslatedText
+                                text="Terms of Service"
+                                translationKey="terms"
+                            />
                         </a>
                     </div>
                 </div>

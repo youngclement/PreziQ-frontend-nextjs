@@ -49,11 +49,12 @@ export default function PublishedCollectionsPage() {
     const container = carouselRefs.current.get(topicId);
     if (!container) return;
 
-    const scrollAmount = 320; // Width of a card plus gap
-    const scrollPosition =
-      direction === 'left'
-        ? container.scrollLeft - scrollAmount
-        : container.scrollLeft + scrollAmount;
+
+    const scrollAmount = 600; // Scroll by approximately 2 cards at once
+    const scrollPosition = direction === 'left'
+      ? container.scrollLeft - scrollAmount
+      : container.scrollLeft + scrollAmount;
+
 
     container.scrollTo({
       left: scrollPosition,
@@ -445,12 +446,60 @@ export default function PublishedCollectionsPage() {
                       ))}
                     </div>
                   )}
+
                 </section>
               )
             )}
+
+                </div>
+
+                {viewMode === 'grid' ? (
+                  <div
+                    className="flex overflow-x-auto pb-4 space-x-4 hide-scrollbar"
+                    ref={el => el && carouselRefs.current.set(topic, el)}
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {topicCollections.map(collection => (
+                      <div key={collection.collectionId} className="flex-none w-[300px]">
+                        <CollectionGridItem
+                          collection={collection}
+                          activities={getCollectionActivities(collection.collectionId)}
+                          onView={() => handleViewActivities(collection.collectionId)}
+                          onEdit={() => handleEditCollection(collection.collectionId)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {topicCollections.map(collection => (
+                      <CollectionListItem
+                        key={collection.collectionId}
+                        collection={collection}
+                        activities={getCollectionActivities(collection.collectionId)}
+                        onView={() => handleViewActivities(collection.collectionId)}
+                        onEdit={() => handleEditCollection(collection.collectionId)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            ))}
+
           </div>
         )}
       </div>
+
+      {/* CSS for hiding scrollbar */}
+      <style jsx global>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }
