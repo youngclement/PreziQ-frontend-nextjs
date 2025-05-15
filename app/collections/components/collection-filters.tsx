@@ -5,6 +5,7 @@ import {
 	Trophy, HelpCircle, Layers, Hash, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { getTopicImageUrl } from '../constants/topic-images';
 
 // Define mapping for topic icons with Lucide icons
 const TopicIcon = ({ topic, className }: { topic: string, className?: string }) => {
@@ -17,14 +18,14 @@ const TopicIcon = ({ topic, className }: { topic: string, className?: string }) 
 	// Custom colors for each topic
 	const topicColors: Record<string, { light: string, dark: string }> = {
 		"All Topics": { light: "bg-indigo-100 text-indigo-700", dark: "bg-indigo-900 text-indigo-300" },
-		"Art & Literature": { light: "text-purple-600", dark: "text-purple-400" },
-		"Entertainment": { light: "text-pink-600", dark: "text-pink-400" },
-		"Geography": { light: "text-green-600", dark: "text-green-400" },
-		"History": { light: "text-amber-600", dark: "text-amber-400" },
-		"Languages": { light: "text-blue-600", dark: "text-blue-400" },
-		"Science & Nature": { light: "text-teal-600", dark: "text-teal-400" },
-		"Sports": { light: "text-red-600", dark: "text-red-400" },
-		"Trivia": { light: "text-violet-600", dark: "text-violet-400" },
+		"ART": { light: "text-purple-600", dark: "text-purple-400" },
+		"ENTERTAINMENT": { light: "text-pink-600", dark: "text-pink-400" },
+		"GEOGRAPHY": { light: "text-green-600", dark: "text-green-400" },
+		"HISTORY": { light: "text-amber-600", dark: "text-amber-400" },
+		"LITERATURE": { light: "text-blue-600", dark: "text-blue-400" },
+		"SCIENCE": { light: "text-teal-600", dark: "text-teal-400" },
+		"SPORTS": { light: "text-red-600", dark: "text-red-400" },
+		"TRIVIA": { light: "text-violet-600", dark: "text-violet-400" },
 	};
 
 	// Get topic-specific colors
@@ -36,21 +37,23 @@ const TopicIcon = ({ topic, className }: { topic: string, className?: string }) 
 
 	// Return the appropriate icon based on topic
 	switch (topic) {
-		case "Art & Literature":
+		case "ART":
+		case "LITERATURE":
 			return <BookText className={iconClass} />;
-		case "Entertainment":
+		case "ENTERTAINMENT":
 			return <Film className={iconClass} />;
-		case "Geography":
+		case "GEOGRAPHY":
 			return <Globe className={iconClass} />;
-		case "History":
+		case "HISTORY":
 			return <History className={iconClass} />;
-		case "Languages":
+		case "EDUCATION":
 			return <Languages className={iconClass} />;
-		case "Science & Nature":
+		case "SCIENCE":
+		case "NATURE":
 			return <Beaker className={iconClass} />;
-		case "Sports":
+		case "SPORTS":
 			return <Trophy className={iconClass} />;
-		case "Trivia":
+		case "TRIVIA":
 			return <HelpCircle className={iconClass} />;
 		case "All Topics":
 			return <Layers className={iconClass} />;
@@ -114,6 +117,7 @@ export function CollectionFilters({
 				<div className="flex flex-row flex-nowrap space-x-6 md:space-x-4 whitespace-nowrap min-w-max">
 					{allTopics.map((topic) => {
 						const isSelected = (selectedTopic === topic) || (topic === "All Topics" && selectedTopic === "");
+						const imageUrl = getTopicImageUrl(topic);
 
 						return (
 							<a
@@ -125,17 +129,19 @@ export function CollectionFilters({
 								className="flex flex-col items-center justify-center cursor-pointer flex-shrink-0"
 								href="#"
 							>
-								<div className={`relative md:w-12 md:h-12 w-10 h-10 flex items-center justify-center rounded-full transition-colors ${isSelected
+								<div className={`relative md:w-16 md:h-16 w-14 h-14 flex items-center justify-center rounded-full transition-colors overflow-hidden ${isSelected
 									? isDark
-										? 'bg-gray-800 shadow-inner shadow-gray-700'
-										: 'bg-gray-100 shadow-inner shadow-gray-200'
-									: isDark
-										? 'bg-gray-900'
-										: 'bg-white'
+										? 'ring-2 ring-white'
+										: 'ring-2 ring-indigo-600'
+									: ''
 									}`}>
-									<TopicIcon
-										topic={topic}
-										className="md:w-6 md:h-6 w-5 h-5"
+									{/* Background Image only, no overlay or icon */}
+									<Image
+										src={imageUrl}
+										alt={topic}
+										fill
+										className="object-cover"
+										sizes="(max-width: 768px) 56px, 64px"
 									/>
 								</div>
 
@@ -150,24 +156,7 @@ export function CollectionFilters({
 									className={`w-full max-w-[48px] mt-1 transition-opacity h-1 rounded-full ${isSelected
 										? "opacity-100"
 										: "opacity-0"
-										} ${topic in {
-											"Art & Literature": true,
-											"Entertainment": true,
-											"Geography": true,
-											"History": true,
-											"Languages": true,
-											"Science & Nature": true,
-											"Sports": true,
-											"Trivia": true,
-											"All Topics": true,
-										}
-											? isDark
-												? `bg-${topic === "All Topics" ? "indigo" : topic === "Art & Literature" ? "purple" : topic === "Entertainment" ? "pink" : topic === "Geography" ? "green" : topic === "History" ? "amber" : topic === "Languages" ? "blue" : topic === "Science & Nature" ? "teal" : topic === "Sports" ? "red" : "violet"}-400`
-												: `bg-${topic === "All Topics" ? "indigo" : topic === "Art & Literature" ? "purple" : topic === "Entertainment" ? "pink" : topic === "Geography" ? "green" : topic === "History" ? "amber" : topic === "Languages" ? "blue" : topic === "Science & Nature" ? "teal" : topic === "Sports" ? "red" : "violet"}-600`
-											: isDark
-												? "bg-gray-400"
-												: "bg-gray-600"
-										}`}
+										} ${isDark ? "bg-indigo-400" : "bg-indigo-600"}`}
 								></div>
 							</a>
 						);

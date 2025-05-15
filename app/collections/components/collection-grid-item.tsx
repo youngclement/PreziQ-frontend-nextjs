@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Collection, Activity } from './types';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
+import { getTopicImageUrl } from '../constants/topic-images';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +51,9 @@ export function CollectionGridItem({
   const imageUrl =
     collection.coverImage ||
     'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=400&h=250&auto=format&fit=crop';
+
+  // Get topic image
+  const topicImageUrl = collection.topic ? getTopicImageUrl(collection.topic) : null;
 
   // Close dropdown menu when clicking outside
   useEffect(() => {
@@ -143,7 +148,17 @@ export function CollectionGridItem({
 
             {/* Topic Badge */}
             {collection.topic && (
-              <div className='absolute top-3 left-3 bg-white dark:bg-[#17494D] text-gray-800 dark:text-white py-1 px-3 rounded-full text-xs font-semibold '>
+              <div className='absolute top-3 left-3 flex items-center gap-2 bg-white dark:bg-[#17494D] text-gray-800 dark:text-white py-1 px-3 rounded-full text-xs font-semibold'>
+                {topicImageUrl && (
+                  <div className='relative w-4 h-4 rounded-full overflow-hidden'>
+                    <Image
+                      src={topicImageUrl}
+                      alt={collection.topic}
+                      fill
+                      className='object-cover'
+                    />
+                  </div>
+                )}
                 {collection.topic}
               </div>
             )}

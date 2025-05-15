@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Collection, Activity } from './types';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { getTopicImageUrl } from '../constants/topic-images';
 
 interface CollectionListItemProps {
   collection: Collection;
@@ -29,6 +31,9 @@ export function CollectionListItem({
   onDelete,
 }: CollectionListItemProps) {
   const router = useRouter();
+
+  // Get topic image
+  const topicImageUrl = collection.topic ? getTopicImageUrl(collection.topic) : null;
 
   const handleHostSession = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -94,15 +99,24 @@ export function CollectionListItem({
         <div
           className='sm:w-64 h-40 sm:h-auto bg-cover bg-center relative'
           style={{
-            backgroundImage: `url(${
-              collection.coverImage ||
+            backgroundImage: `url(${collection.coverImage ||
               'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=400&h=250&auto=format&fit=crop'
-            })`,
+              })`,
           }}
         >
           {/* Topic Badge */}
           {collection.topic && (
-            <div className='absolute top-3 left-3 bg-white dark:bg-[#17494D] text-gray-800 dark:text-white py-1 px-3 rounded-full text-xs font-semibold shadow-md'>
+            <div className='absolute top-3 left-3 flex items-center gap-2 bg-white dark:bg-[#17494D] text-gray-800 dark:text-white py-1 px-3 rounded-full text-xs font-semibold shadow-md'>
+              {topicImageUrl && (
+                <div className='relative w-4 h-4 rounded-full overflow-hidden'>
+                  <Image
+                    src={topicImageUrl}
+                    alt={collection.topic}
+                    fill
+                    className='object-cover'
+                  />
+                </div>
+              )}
               {collection.topic}
             </div>
           )}

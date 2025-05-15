@@ -28,7 +28,7 @@ export function DemoUISection() {
                 }
             >
                 <Image
-                    src={`/presentation-demo.webp`}
+                    src={"https://images.pexels.com/photos/1796727/pexels-photo-1796727.jpeg?cs=srgb&dl=pexels-chaitaastic-1796727.jpg&fm=jpg"}
                     alt={t("demoImageAlt")}
                     height={720}
                     width={1400}

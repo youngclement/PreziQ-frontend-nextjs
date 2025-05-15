@@ -9,6 +9,8 @@ import {
   ApiCollectionResponse,
 } from './components/types';
 import { collectionsApi } from '@/api-client';
+import { getTopicImageUrl } from './constants/topic-images';
+import Image from 'next/image';
 
 // Import các component đã tách
 import { CollectionHeader } from './components/collection-header';
@@ -18,6 +20,15 @@ import { CollectionGridItem } from './components/collection-grid-item';
 import { CollectionListItem } from './components/collection-list-item';
 import { JoinSessionBanner } from './components/join-session-banner';
 import { Button } from '@/components/ui/button';
+
+// Topic mapping from API format to display format
+const mapTopicName = (apiTopic: string): string => {
+  // If already in display format, return as is
+  if (apiTopic === "All Topics") return apiTopic;
+
+  // Return the API format directly as that's what we use in our topic-images.ts
+  return apiTopic;
+};
 
 export default function PublishedCollectionsPage() {
   const router = useRouter();
@@ -76,6 +87,7 @@ export default function PublishedCollectionsPage() {
     try {
       const response = await collectionsApi.getCollectionTopics();
       if (response?.data?.success && Array.isArray(response.data.data)) {
+        // Use the original topic names from API
         setTopics(response.data.data);
       }
     } catch (err) {
@@ -349,7 +361,18 @@ export default function PublishedCollectionsPage() {
               ([topic, topicCollections]) => (
                 <section key={topic} className='mb-10'>
                   <div className='flex justify-between items-center mb-6'>
-                    <h2 className='text-2xl font-bold'>{topic}</h2>
+                    <div className='flex items-center gap-3'>
+                      <div className='relative w-10 h-10 rounded-full overflow-hidden'>
+                        <Image
+                          src={getTopicImageUrl(topic)}
+                          alt={topic}
+                          fill
+                          className='object-cover'
+                        />
+                        <div className='absolute inset-0 bg-black opacity-30'></div>
+                      </div>
+                      <h2 className='text-2xl font-bold'>{topic}</h2>
+                    </div>
                     {topicCollections.length > 3 && (
                       <div className='flex space-x-2'>
                         <button
