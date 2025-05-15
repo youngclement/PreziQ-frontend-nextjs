@@ -4,9 +4,9 @@ export interface TopicImage {
 }
 
 export const topicImages: Record<string, string> = {
-  ART: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=200&q=80",
+  ART: "https://mastermedia.vn/wp-content/uploads/2023/05/art-va-design-1.jpg",
   SCIENCE:
-    "https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=200&q=80",
+    "https://cdn.vietnambiz.vn/2019/10/15/1nvhe7mchqmjbgyvx-uobra-15711056360651103109227.png",
   TECHNOLOGY:
     "https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=200&q=80",
   HISTORY:
@@ -18,7 +18,7 @@ export const topicImages: Record<string, string> = {
   SPORTS:
     "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=200&q=80",
   GEOGRAPHY:
-    "https://images.unsplash.com/photo-1526778548025-fa2f459cd5ce?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=200&q=80",
+    "https://www.sciencing.com/sciencing/what-is-geology-13764454/ce627d12bb604ced899fee14f2ff23fb.jpg  ",
   HEALTH:
     "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=200&q=80",
   EDUCATION:
