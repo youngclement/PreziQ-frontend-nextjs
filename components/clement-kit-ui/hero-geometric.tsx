@@ -269,12 +269,13 @@ export default function HeroGeometric({
 
               <div
                 className={cn(
-                  'block mt-2 bg-clip-text text-transparent',
+                  'block mt-0 bg-clip-text text-transparent w-full mx-auto',
+                  'px-2 sm:px-4 md:px-8 pb-0 min-h-[60px] sm:min-h-[80px] md:min-h-[60px] flex items-center justify-center',
                   isDark
                     ? 'bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300' // More vibrant colors for dark mode
                     : 'bg-gradient-to-r from-blue-500 via-purple-600 to-pink-500', // More vibrant colors for light mode
                   inter.className,
-                  'text-4xl sm:text-6xl md:text-7xl leading-tight'
+                  'text-4xl sm:text-6xl md:text-7xl leading-[1.1]'
                 )}
               >
                 {title2}
@@ -290,7 +291,7 @@ export default function HeroGeometric({
           >
             <p
               className={cn(
-                'mx-auto max-w-xl text-lg md:text-xl mb-8 md:mb-12',
+                'mx-auto max-w-xl text-lg md:text-xl mb-6 md:mb-8 mt-2',
                 isDark ? 'text-white/70' : 'text-black/70'
               )}
             >

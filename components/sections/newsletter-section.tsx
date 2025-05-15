@@ -7,6 +7,8 @@ import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/contexts/language-context";
+import TranslatedText from "@/components/ui/translated-text";
 
 const people = [
     {
@@ -69,6 +71,7 @@ const fadeUpVariants = {
 const Newsletter = () => {
     const { theme, resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const { t } = useLanguage();
 
     useEffect(() => {
         setMounted(true);
@@ -117,22 +120,38 @@ const Newsletter = () => {
                                 )}
                             >
                                 <Mail className="w-4 h-4 mr-2 random-highlight" />
-                                <span className="text-highlight">PreziQ Newsletter</span>
+                                <span className="text-highlight">
+                                    <TranslatedText
+                                        text="PreziQ Newsletter"
+                                        translationKey="newsletterBadge"
+                                    />
+                                </span>
                             </Badge>
 
                             <h2 className={cn(
                                 "mt-6 text-xl font-bold tracking-tight sm:text-xl lg:text-3xl",
                                 "text-foreground"
                             )}>
-                                Stay ahead with our presentation <span className="text-highlight">insights & templates</span>
+                                <TranslatedText
+                                    text="Stay ahead with our presentation "
+                                    translationKey="newsletterTitle"
+                                />
+                                <span className="text-highlight">
+                                    <TranslatedText
+                                        text="insights & templates"
+                                        translationKey="newsletterHighlight"
+                                    />
+                                </span>
                             </h2>
 
                             <p className={cn(
                                 "mt-4 text-lg",
                                 "text-muted-foreground"
                             )}>
-                                Get updates on presentation design trends, public speaking tips,
-                                exclusive templates, and expert advice to elevate your presentations.
+                                <TranslatedText
+                                    text="Get updates on presentation design trends, public speaking tips, exclusive templates, and expert advice to elevate your presentations."
+                                    translationKey="newsletterDesc"
+                                />
                             </p>
 
                             <form className="mt-8 space-y-4 sm:space-y-0">
@@ -140,7 +159,7 @@ const Newsletter = () => {
                                     <div className="relative flex-1">
                                         <input
                                             type="email"
-                                            placeholder="Enter your email address"
+                                            placeholder={t("emailPlaceholder")}
                                             className={cn(
                                                 "shadow-lg w-full rounded-lg px-4 py-3 h-12 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-transparent",
                                                 isDark
@@ -157,7 +176,10 @@ const Newsletter = () => {
                                             "bg-primary text-primary-foreground border-transparent"
                                         )}
                                     >
-                                        Subscribe
+                                        <TranslatedText
+                                            text="Subscribe"
+                                            translationKey="subscribe"
+                                        />
                                         <Send className="w-5 h-5 ml-2" />
                                     </button>
                                 </div>
@@ -166,13 +188,24 @@ const Newsletter = () => {
                                 "text-xs mt-2",
                                 "text-muted-foreground"
                             )}>
-                                By subscribing, you agree to our{" "}
+                                <TranslatedText
+                                    text="By subscribing, you agree to our"
+                                    translationKey="privacyStatement"
+                                />
+                                {" "}
                                 <Link href="#" className="text-highlight hover:opacity-80">
-                                    Privacy Policy
+                                    <TranslatedText
+                                        text="Privacy Policy"
+                                        translationKey="privacy"
+                                    />
                                 </Link>{" "}
-                                and{" "}
+                                <TranslatedText text="and" translationKey="and" />
+                                {" "}
                                 <Link href="#" className="text-highlight hover:opacity-80">
-                                    Terms and Conditions
+                                    <TranslatedText
+                                        text="Terms and Conditions"
+                                        translationKey="terms"
+                                    />
                                 </Link>
                             </p>
                         </div>
@@ -184,8 +217,22 @@ const Newsletter = () => {
                                 "ml-4 text-sm font-medium",
                                 "text-muted-foreground"
                             )}>
-                                <span className="text-foreground">Over <span className="text-highlight font-bold">10K</span> presentation pros</span>
-                                <br /> have already subscribed.
+                                <span className="text-foreground">
+                                    <TranslatedText
+                                        text="Over "
+                                        translationKey="over"
+                                    />
+                                    <span className="text-highlight font-bold">10K</span>
+                                    <TranslatedText
+                                        text=" presentation pros"
+                                        translationKey="presentationPros"
+                                    />
+                                </span>
+                                <br />
+                                <TranslatedText
+                                    text=" have already subscribed."
+                                    translationKey="alreadySubscribed"
+                                />
                             </p>
                         </div>
                     </motion.div>
@@ -206,7 +253,7 @@ const Newsletter = () => {
                             <img
                                 className="w-full h-full object-cover"
                                 src="/newsletter-image.jpg" // Update with your actual image path
-                                alt="Stay connected with PreziQ newsletter"
+                                alt={t("newsletterImageAlt")}
                                 onError={(e) => {
                                     // Fallback if image not found
                                     e.currentTarget.src = "https://fastly.picsum.photos/id/60/1920/1200.jpg?hmac=fAMNjl4E_sG_WNUjdU39Kald5QAHQMh-_-TsIbbeDNI";

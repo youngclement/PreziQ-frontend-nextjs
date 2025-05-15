@@ -47,7 +47,7 @@ export default function PublishedCollectionsPage() {
     const container = carouselRefs.current.get(topicId);
     if (!container) return;
 
-    const scrollAmount = 320; // Width of a card plus gap
+    const scrollAmount = 600; // Scroll by approximately 2 cards at once
     const scrollPosition = direction === 'left'
       ? container.scrollLeft - scrollAmount
       : container.scrollLeft + scrollAmount;
@@ -294,17 +294,19 @@ export default function PublishedCollectionsPage() {
 
                 {viewMode === 'grid' ? (
                   <div
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                    className="flex overflow-x-auto pb-4 space-x-4 hide-scrollbar"
                     ref={el => el && carouselRefs.current.set(topic, el)}
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   >
                     {topicCollections.map(collection => (
-                      <CollectionGridItem
-                        key={collection.collectionId}
-                        collection={collection}
-                        activities={getCollectionActivities(collection.collectionId)}
-                        onView={() => handleViewActivities(collection.collectionId)}
-                        onEdit={() => handleEditCollection(collection.collectionId)}
-                      />
+                      <div key={collection.collectionId} className="flex-none w-[300px]">
+                        <CollectionGridItem
+                          collection={collection}
+                          activities={getCollectionActivities(collection.collectionId)}
+                          onView={() => handleViewActivities(collection.collectionId)}
+                          onEdit={() => handleEditCollection(collection.collectionId)}
+                        />
+                      </div>
                     ))}
                   </div>
                 ) : (
@@ -325,6 +327,17 @@ export default function PublishedCollectionsPage() {
           </div>
         )}
       </div>
+
+      {/* CSS for hiding scrollbar */}
+      <style jsx global>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }
