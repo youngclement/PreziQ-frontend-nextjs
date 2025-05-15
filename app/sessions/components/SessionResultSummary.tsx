@@ -233,7 +233,7 @@ export default function SessionResultSummary({
 
           <div className='mt-8'>
             <Button
-              className='w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
+              className='w-full bg-[rgb(173,216,255)] text-white'
               onClick={onNavigateToHome}
             >
               <CheckCircle className='mr-2 h-4 w-4' /> Quay về trang chủ
@@ -248,26 +248,26 @@ export default function SessionResultSummary({
         >
           <h2 className='text-xl font-semibold mb-6'>Thống kê & Thành tựu</h2>
           <div className='space-y-4'>
-            <div className='bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800'>
+            <div className='bg-[rgb(173,216,255)]/20 p-4 rounded-lg border border-[rgb(173,216,255)]/40'>
               <div className='flex items-center gap-4'>
-                <div className='p-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full'>
+                <div className='p-3 bg-[rgb(173,216,255)] text-white rounded-full'>
                   <Target className='h-6 w-6' />
                 </div>
                 <div className='flex-1'>
                   <h3 className='font-bold text-lg'>Tỷ lệ chính xác</h3>
                   <p className='text-sm text-muted-foreground'>
                     {userResult &&
-                    userResult.finalCorrectCount !== undefined &&
-                    userResult.finalIncorrectCount !== undefined
+                      userResult.finalCorrectCount !== undefined &&
+                      userResult.finalIncorrectCount !== undefined
                       ? `${Math.round(
-                          (userResult.finalCorrectCount /
-                            Math.max(
-                              1,
-                              userResult.finalCorrectCount +
-                                userResult.finalIncorrectCount
-                            )) *
-                            100
-                        )}%`
+                        (userResult.finalCorrectCount /
+                          Math.max(
+                            1,
+                            userResult.finalCorrectCount +
+                            userResult.finalIncorrectCount
+                          )) *
+                        100
+                      )}%`
                       : '0%'}
                   </p>
                 </div>
@@ -276,9 +276,9 @@ export default function SessionResultSummary({
 
             {achievements && (
               <div className='mt-6'>
-                <div className='bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800 mb-4'>
+                <div className='bg-[rgb(255,198,121)]/20 p-4 rounded-lg border border-[rgb(255,198,121)]/40 mb-4'>
                   <div className='flex items-center gap-4'>
-                    <div className='p-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full'>
+                    <div className='p-3 bg-[rgb(255,198,121)] text-white rounded-full'>
                       <Star className='h-6 w-6' />
                     </div>
                     <div className='flex-1'>
@@ -291,7 +291,7 @@ export default function SessionResultSummary({
                 </div>
 
                 {achievements.newAchievements &&
-                achievements.newAchievements.length > 0 ? (
+                  achievements.newAchievements.length > 0 ? (
                   <div className='space-y-3'>
                     <h3 className='font-semibold text-base'>
                       Thành tựu mới đạt được:
@@ -302,10 +302,10 @@ export default function SessionResultSummary({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 * index }}
-                        className='bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 p-3 rounded-lg border border-indigo-200 dark:border-indigo-800'
+                        className='bg-[rgb(213,189,255)]/20 p-3 rounded-lg border border-[rgb(213,189,255)]/40'
                       >
                         <div className='flex items-start gap-3'>
-                          <div className='p-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full mt-1'>
+                          <div className='p-2 bg-[rgb(213,189,255)] text-white rounded-full mt-1'>
                             {renderAchievementIcon(achievement.iconUrl)}
                           </div>
                           <div>

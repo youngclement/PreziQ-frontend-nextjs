@@ -30,13 +30,13 @@ export default function CountdownOverlay({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className='fixed inset-0 bg-[#0a1b25]/80 backdrop-blur-md flex items-center justify-center z-50'
+          className='fixed inset-0 bg-black bg-opacity-70 backdrop-blur-md flex items-center justify-center z-50'
         >
           {/* Animated background elements */}
           <div className='absolute inset-0 overflow-hidden pointer-events-none'>
             {/* Gradient orbs */}
             <motion.div
-              className='absolute top-1/3 left-1/3 w-32 h-32 bg-[#aef359] rounded-full filter blur-[80px]'
+              className='absolute top-1/3 left-1/3 w-32 h-32 bg-[rgb(198,234,132)] rounded-full filter blur-[80px]'
               animate={{
                 scale: [1, 1.5, 1],
                 opacity: [0.1, 0.3, 0.1],
@@ -49,11 +49,11 @@ export default function CountdownOverlay({
             />
 
             {/* Dotted grid */}
-            <div className='absolute inset-0 bg-[radial-gradient(rgba(174,243,89,0.05)_1px,transparent_1px)] bg-[size:20px_20px]' />
+            <div className='absolute inset-0 bg-[radial-gradient(rgba(198,234,132,0.05)_1px,transparent_1px)] bg-[size:20px_20px]' />
 
             {/* Pulse ring */}
             <motion.div
-              className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-transparent rounded-full border-2 border-[#aef359]/30'
+              className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-transparent rounded-full border-2 border-[rgb(198,234,132)]/30'
               animate={{
                 scale: [1, 2.5],
                 opacity: [0.6, 0],
@@ -65,7 +65,7 @@ export default function CountdownOverlay({
               }}
             />
             <motion.div
-              className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-transparent rounded-full border-2 border-[#aef359]/20'
+              className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-transparent rounded-full border-2 border-[rgb(198,234,132)]/20'
               animate={{
                 scale: [1, 2.2],
                 opacity: [0.5, 0],
@@ -92,13 +92,13 @@ export default function CountdownOverlay({
               }}
               className='text-9xl font-bold relative'
             >
-              <span className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text drop-shadow-lg'>
+              <span className='text-[rgb(198,234,132)] drop-shadow-lg'>
                 {count}
               </span>
 
               {/* Shadow underneath */}
               <motion.div
-                className='absolute -bottom-4 left-1/2 -translate-x-1/2 w-16 h-2 bg-[#aef359]/20 rounded-full blur-md'
+                className='absolute -bottom-4 left-1/2 -translate-x-1/2 w-16 h-2 bg-[rgb(198,234,132)]/20 rounded-full blur-md'
                 animate={{
                   width: ['4rem', '5rem', '4rem'],
                   opacity: [0.2, 0.4, 0.2],
@@ -114,7 +114,7 @@ export default function CountdownOverlay({
               {[...Array(8)].map((_, i) => (
                 <motion.div
                   key={i}
-                  className='absolute w-1 h-1 bg-[#aef359] rounded-full'
+                  className='absolute w-1 h-1 bg-[rgb(198,234,132)] rounded-full'
                   style={{
                     left: `${50 + Math.cos((i * Math.PI) / 4) * 100}%`,
                     top: `${50 + Math.sin((i * Math.PI) / 4) * 100}%`,

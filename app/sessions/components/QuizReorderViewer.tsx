@@ -212,7 +212,7 @@ export const QuizReorderViewer = ({
 
   return (
     <div className='min-h-full bg-transparent'>
-      <Card className='bg-[#0e1c26]/80 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
+      <Card className='bg-black bg-opacity-30 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
         {/* Header với thời gian và tiến trình */}
         <motion.div
           className='rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
@@ -226,13 +226,13 @@ export const QuizReorderViewer = ({
           }}
         >
           {/* Overlay */}
-          <div className='absolute inset-0 bg-gradient-to-b from-[#0a1b25]/80 to-[#0f2231]/70' />
+          <div className='absolute inset-0 bg-black bg-opacity-30' />
 
           {/* Status Bar */}
-          <div className='sticky top-0 left-0 right-0 h-12 bg-[#0e1c26]/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-3 md:px-5 text-white z-20'>
+          <div className='sticky top-0 left-0 right-0 h-12 bg-black bg-opacity-40 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-3 md:px-5 text-white z-20'>
             <div className='flex items-center gap-2 md:gap-3'>
-              <div className='h-6 w-6 md:h-7 md:w-7 rounded-full bg-gradient-to-r from-[#aef359] to-[#e4f88d] flex items-center justify-center shadow-md'>
-                <ArrowUpDown className='h-3 w-3 md:h-4 md:w-4 text-[#0e1c26]' />
+              <div className='h-6 w-6 md:h-7 md:w-7 rounded-full bg-[rgb(198,234,132)] flex items-center justify-center shadow-md'>
+                <ArrowUpDown className='h-3 w-3 md:h-4 md:w-4 text-black' />
               </div>
               <div className='text-xs capitalize font-medium text-white/80'>
                 Reorder Quiz
@@ -240,7 +240,7 @@ export const QuizReorderViewer = ({
             </div>
             <div className='flex items-center gap-1 md:gap-2'>
               <motion.div
-                className='flex items-center gap-1 md:gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-[10px] md:text-xs font-medium'
+                className='flex items-center gap-1 md:gap-1.5 bg-black bg-opacity-30 border border-white/10 px-2 py-1 rounded-full text-[10px] md:text-xs font-medium'
                 animate={{
                   opacity: timeLeft < 10 ? [0.7, 1] : 1,
                   scale: timeLeft < 10 ? [1, 1.05, 1] : 1,
@@ -251,7 +251,7 @@ export const QuizReorderViewer = ({
                   repeatType: 'reverse',
                 }}
               >
-                <Clock className='h-3 w-3 md:h-3.5 md:w-3.5 text-[#aef359]' />
+                <Clock className='h-3 w-3 md:h-3.5 md:w-3.5 text-[rgb(198,234,132)]' />
                 <span
                   className={timeLeft < 10 ? 'text-red-300' : 'text-white/90'}
                 >
@@ -264,22 +264,21 @@ export const QuizReorderViewer = ({
                 <motion.div
                   key={`${answeredCount}-${totalParticipants}`}
                   className={`
-                    flex items-center gap-1 md:gap-1.5 mr-1 md:mr-2 ${
-                      answeredCount >= totalParticipants
-                        ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
-                        : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
+                    flex items-center gap-1 md:gap-1.5 mr-1 md:mr-2 ${answeredCount >= totalParticipants
+                      ? 'bg-black bg-opacity-30 border-[rgb(198,234,132)]/30 shadow-[rgb(198,234,132)]/10'
+                      : 'bg-black bg-opacity-30 border-[rgb(255,198,121)]/30 shadow-[rgb(255,198,121)]/10'
                     } border border-white/10 px-2 py-1 rounded-full text-[10px] md:text-xs font-medium`}
                   animate={{
                     scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
                     transition: { duration: 0.5 },
                   }}
                 >
-                  <Users className='h-3 w-3 md:h-3.5 md:w-3.5 text-[#aef359]' />
+                  <Users className='h-3 w-3 md:h-3.5 md:w-3.5 text-[rgb(198,234,132)]' />
                   <span
                     className={
                       answeredCount >= totalParticipants
-                        ? 'text-[#aef359]'
-                        : 'text-amber-400'
+                        ? 'text-[rgb(198,234,132)]'
+                        : 'text-[rgb(255,198,121)]'
                     }
                   >
                     {answeredCount}
@@ -321,7 +320,7 @@ export const QuizReorderViewer = ({
         <div className='w-full'>
           {/* Time Progress */}
           <motion.div
-            className='h-1 bg-gradient-to-r from-[#aef359] to-[#e4f88d]'
+            className='h-1 bg-[rgb(198,234,132)]'
             initial={{ width: '100%' }}
             animate={{
               width: `${Math.min(
@@ -333,7 +332,7 @@ export const QuizReorderViewer = ({
           />
           {/* Participants Progress */}
           <motion.div
-            className='h-1 bg-purple-500/70'
+            className='h-1 bg-[rgb(213,189,255)]'
             initial={{ width: '0%' }}
             animate={{
               width: `${Math.min(
@@ -349,7 +348,7 @@ export const QuizReorderViewer = ({
         </div>
 
         {/* Content */}
-        <div className='p-3 md:p-6 bg-[#0e1c26]/70'>
+        <div className='p-3 md:p-6 bg-black bg-opacity-20'>
           <AnimatePresence>
             {error && (
               <motion.div
@@ -367,38 +366,37 @@ export const QuizReorderViewer = ({
           </AnimatePresence>
 
           {/* Thông báo đã gửi câu trả lời khi submit nhưng chưa kết thúc quiz */}
-          {isAnswered && !isQuizEnded && (
-            <motion.div
-              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30 text-white/90'
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className='flex items-center gap-2 mb-2 text-[#aef359]'>
-                <CheckCircle className='h-5 w-5' />
-                <span className='font-semibold'>Đã gửi câu trả lời!</span>
-              </div>
-              <p className='text-white/70'>
-                Câu trả lời của bạn đã được ghi nhận. Kết quả sẽ được hiển thị
-                khi tất cả người tham gia đã trả lời hoặc hết thời gian.
-              </p>
-            </motion.div>
+          {isAnswered && !isQuizEnded && (<motion.div
+            className='mt-6 p-4 rounded-xl bg-black bg-opacity-30 border border-[rgb(198,234,132)]/30 text-white/90'
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className='flex items-center gap-2 mb-2 text-[rgb(198,234,132)]'>
+              <CheckCircle className='h-5 w-5' />
+              <span className='font-semibold'>Đã gửi câu trả lời!</span>
+            </div>
+            <p className='text-white/70'>
+              Câu trả lời của bạn đã được ghi nhận. Kết quả sẽ được hiển thị
+              khi tất cả người tham gia đã trả lời hoặc hết thời gian.
+            </p>
+          </motion.div>
           )}
 
           {/* Results */}
           <AnimatePresence>
             {(isSubmitted && isQuizEnded) ||
-            activity.hostShowAnswer ||
-            isQuizEnded ? (
+              activity.hostShowAnswer ||
+              isQuizEnded ? (
               <motion.div
-                className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
+                className='mt-6 p-4 rounded-xl bg-black bg-opacity-30 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               >
                 {activity.hostShowAnswer && !isSubmitted ? (
                   <div>
-                    <div className='flex items-center gap-2 mb-3 text-[#aef359]'>
+                    <div className='flex items-center gap-2 mb-3 text-[rgb(198,234,132)]'>
                       <CheckCircle className='h-5 w-5' />
                       <span className='font-semibold'>Đáp án chính xác:</span>
                     </div>
@@ -412,7 +410,7 @@ export const QuizReorderViewer = ({
                             key={idx}
                             className='flex items-start gap-2 text-white/80'
                           >
-                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#aef359]'></div>
+                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[rgb(198,234,132)]'></div>
                             <p>{answer?.answerText || ''}</p>
                           </div>
                         );
@@ -434,7 +432,7 @@ export const QuizReorderViewer = ({
                             key={idx}
                             className='flex items-start gap-2 text-white/80'
                           >
-                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#aef359]'></div>
+                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[rgb(198,234,132)]'></div>
                             <p>{answer?.answerText || ''}</p>
                           </div>
                         );
@@ -446,14 +444,13 @@ export const QuizReorderViewer = ({
                     <div className='flex items-center gap-2 mb-3'>
                       <div className='flex items-center gap-2'>
                         {isCorrect ? (
-                          <CheckCircle className='h-5 w-5 text-[#aef359]' />
+                          <CheckCircle className='h-5 w-5 text-[rgb(198,234,132)]' />
                         ) : (
-                          <XCircle className='h-5 w-5 text-red-400' />
+                          <XCircle className='h-5 w-5 text-[rgb(255,182,193)]' />
                         )}
                         <span
-                          className={`font-semibold ${
-                            isCorrect ? 'text-[#aef359]' : 'text-red-400'
-                          }`}
+                          className={`font-semibold ${isCorrect ? 'text-[rgb(198,234,132)]' : 'text-[rgb(255,182,193)]'
+                            }`}
                         >
                           {isCorrect ? 'Đúng' : 'Sai'}
                         </span>
@@ -473,7 +470,7 @@ export const QuizReorderViewer = ({
                             key={idx}
                             className='flex items-start gap-2 text-white/80'
                           >
-                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#aef359]'></div>
+                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[rgb(198,234,132)]'></div>
                             <p>{answer?.answerText || ''}</p>
                           </div>
                         );
@@ -492,7 +489,7 @@ export const QuizReorderViewer = ({
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             {/* DnD list */}
-            <div className='bg-[#0e2838]/30 p-1 md:p-2 rounded-xl border border-white/5'>
+            <div className='bg-black bg-opacity-30 p-1 md:p-2 rounded-xl border border-white/5'>
               <SortableList
                 items={items}
                 onChange={setItems}
@@ -509,7 +506,7 @@ export const QuizReorderViewer = ({
                 transition={{ delay: 0.2 }}
               >
                 <Button
-                  className='w-full px-8 py-6 text-lg font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                  className='w-full px-8 py-6 text-lg font-bold bg-[rgb(198,234,132)] hover:bg-[rgb(198,234,132)]/90 text-black shadow-lg flex items-center justify-center gap-2'
                   disabled={isSubmitting || timeLeft <= 0}
                   onClick={handleSubmit}
                 >

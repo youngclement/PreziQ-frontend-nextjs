@@ -272,9 +272,9 @@ export default function QuizLocationViewer({
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(deg2rad(lat1)) *
-        Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // Khoảng cách tính bằng km
   }
@@ -285,7 +285,7 @@ export default function QuizLocationViewer({
 
   return (
     <div className='min-h-full bg-transparent'>
-      <Card className='bg-[#0e1c26]/80 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
+      <Card className='bg-black bg-opacity-30 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
         {/* Header với thời gian và tiến trình */}
         <motion.div
           className='rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
@@ -299,13 +299,13 @@ export default function QuizLocationViewer({
           }}
         >
           {/* Overlay */}
-          <div className='absolute inset-0 bg-gradient-to-b from-[#0a1b25]/80 to-[#0f2231]/70' />
+          <div className='absolute inset-0 bg-black bg-opacity-30' />
 
           {/* Status Bar */}
-          <div className='sticky top-0 left-0 right-0 h-12 bg-[#0e1c26]/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-5 text-white z-20'>
+          <div className='sticky top-0 left-0 right-0 h-12 bg-black bg-opacity-40 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-5 text-white z-20'>
             <div className='flex items-center gap-3'>
-              <div className='h-7 w-7 rounded-full bg-gradient-to-r from-[#aef359] to-[#e4f88d] flex items-center justify-center shadow-md'>
-                <MapPin className='h-4 w-4 text-[#0e1c26]' />
+              <div className='h-7 w-7 rounded-full bg-[rgb(198,234,132)] flex items-center justify-center shadow-md'>
+                <MapPin className='h-4 w-4 text-black' />
               </div>
               <div className='text-xs capitalize font-medium text-white/80'>
                 Location Quiz
@@ -313,7 +313,7 @@ export default function QuizLocationViewer({
             </div>
             <div className='flex items-center gap-2'>
               <motion.div
-                className='flex items-center gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
+                className='flex items-center gap-1.5 bg-black bg-opacity-30 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
                 animate={{
                   opacity: timeLeft < 10 ? [0.7, 1] : 1,
                   scale: timeLeft < 10 ? [1, 1.05, 1] : 1,
@@ -324,7 +324,7 @@ export default function QuizLocationViewer({
                   repeatType: 'reverse',
                 }}
               >
-                <Clock className='h-3.5 w-3.5 text-[#aef359]' />
+                <Clock className='h-3.5 w-3.5 text-[rgb(198,234,132)]' />
                 <span
                   className={timeLeft < 10 ? 'text-red-300' : 'text-white/90'}
                 >
@@ -335,22 +335,21 @@ export default function QuizLocationViewer({
                 <motion.div
                   key={`${answeredCount}-${totalParticipants}`}
                   className={`
-                    flex items-center gap-1.5 mr-2 ${
-                      answeredCount >= totalParticipants
-                        ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
-                        : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
+                    flex items-center gap-1.5 mr-2 ${answeredCount >= totalParticipants
+                      ? 'bg-black bg-opacity-30 border-[rgb(198,234,132)]/30 shadow-[rgb(198,234,132)]/10'
+                      : 'bg-black bg-opacity-30 border-[rgb(255,198,121)]/30 shadow-[rgb(255,198,121)]/10'
                     } border border-white/10 px-2 py-1 rounded-full text-xs font-medium`}
                   animate={{
                     scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
                     transition: { duration: 0.5 },
                   }}
                 >
-                  <Users className='h-3.5 w-3.5 text-[#aef359]' />
+                  <Users className='h-3.5 w-3.5 text-[rgb(198,234,132)]' />
                   <span
                     className={
                       answeredCount >= totalParticipants
-                        ? 'text-[#aef359]'
-                        : 'text-amber-400'
+                        ? 'text-[rgb(198,234,132)]'
+                        : 'text-[rgb(255,198,121)]'
                     }
                   >
                     {answeredCount}
@@ -392,7 +391,7 @@ export default function QuizLocationViewer({
         <div className='w-full'>
           {/* Time Progress */}
           <motion.div
-            className='h-1 bg-gradient-to-r from-[#aef359] to-[#e4f88d]'
+            className='h-1 bg-[rgb(198,234,132)]'
             initial={{ width: '100%' }}
             animate={{
               width: `${Math.min(
@@ -407,7 +406,7 @@ export default function QuizLocationViewer({
           />
           {/* Participants Progress - Đổi màu thành xanh dương thay vì cyan */}
           <motion.div
-            className='h-1 bg-blue-500/70'
+            className='h-1 bg-[rgb(173,216,255)]'
             initial={{ width: '0%' }}
             animate={{
               width: `${Math.min(
@@ -423,7 +422,7 @@ export default function QuizLocationViewer({
         </div>
 
         {/* Map */}
-        <div className='p-6 bg-[#0e1c26]/70'>
+        <div className='p-6 bg-black bg-opacity-20'>
           <AnimatePresence>
             {error && (
               <motion.div
@@ -451,24 +450,24 @@ export default function QuizLocationViewer({
               locationData={
                 activity.quiz.locationAnswers?.[0]
                   ? {
-                      lat: activity.quiz.locationAnswers[0].latitude,
-                      lng: activity.quiz.locationAnswers[0].longitude,
-                      radius: activity.quiz.locationAnswers[0].radius,
-                    }
+                    lat: activity.quiz.locationAnswers[0].latitude,
+                    lng: activity.quiz.locationAnswers[0].longitude,
+                    radius: activity.quiz.locationAnswers[0].radius,
+                  }
                   : activity.quiz.quizAnswers[0]?.locationData || {
-                      lat: 0,
-                      lng: 0,
-                      radius: 10,
-                    }
+                    lat: 0,
+                    lng: 0,
+                    radius: 10,
+                  }
               }
               onAnswer={(isCorrect, distance) => {
                 if (isSubmitted || isQuizEnded) return;
                 const location = activity.quiz.locationAnswers?.[0]
                   ? {
-                      lat: activity.quiz.locationAnswers[0].latitude,
-                      lng: activity.quiz.locationAnswers[0].longitude,
-                      radius: activity.quiz.locationAnswers[0].radius,
-                    }
+                    lat: activity.quiz.locationAnswers[0].latitude,
+                    lng: activity.quiz.locationAnswers[0].longitude,
+                    radius: activity.quiz.locationAnswers[0].radius,
+                  }
                   : activity.quiz.quizAnswers[0]?.locationData;
                 if (location) {
                   setSelectedLocation(location);
@@ -561,8 +560,8 @@ export default function QuizLocationViewer({
           {/* Results */}
           <AnimatePresence>
             {(isSubmitted && isQuizEnded) ||
-            activity.hostShowAnswer ||
-            isQuizEnded ? (
+              activity.hostShowAnswer ||
+              isQuizEnded ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
@@ -613,8 +612,8 @@ export default function QuizLocationViewer({
                           {calculateScore() < 50
                             ? 'Vị trí được chọn khá xa so với vị trí đúng.'
                             : calculateScore() < 80
-                            ? 'Vị trí được chọn khá gần với vị trí đúng.'
-                            : 'Bạn đã chọn đúng vị trí!'}
+                              ? 'Vị trí được chọn khá gần với vị trí đúng.'
+                              : 'Bạn đã chọn đúng vị trí!'}
                         </p>
                         <div className='mt-2'>
                           <p className='font-medium text-white/90'>
