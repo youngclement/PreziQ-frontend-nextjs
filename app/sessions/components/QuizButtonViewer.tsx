@@ -310,7 +310,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
     Math.min(100, (timeLeft / activity.quiz.timeLimitSeconds) * 100)
   );
 
-  // Thêm các hàm helper từ question-preview
+  // Các màu đã được cập nhật theo yêu cầu
   const getOptionStyle = (
     index: number,
     isSelected: boolean,
@@ -319,36 +319,36 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
   ) => {
     const styles = [
       {
-        bg: 'from-pink-500/70 to-rose-600/70',
-        bgSelected: 'from-pink-500/70 to-rose-600/70',
-        bgCorrect: 'from-green-500/80 to-emerald-600/80',
-        bgIncorrect: 'from-red-500/70 to-rose-600/70',
-        iconBg: 'bg-gradient-to-r from-pink-600 via-rose-500 to-rose-700',
-        glow: '#ff5c8d',
+        bg: 'rgb(255, 182, 193)', // Hồng phấn pastel
+        bgSelected: 'rgb(255, 182, 193)',
+        bgCorrect: 'rgb(198, 234, 132)', // Xanh lá nhạt pha vàng
+        bgIncorrect: 'rgb(255, 198, 121)', // Cam đào nhạt
+        iconBg: 'rgb(255, 182, 193)',
+        glow: 'rgb(255, 182, 193)',
       },
       {
-        bg: 'from-blue-500/70 to-indigo-600/70',
-        bgSelected: 'from-blue-500/70 to-indigo-600/70',
-        bgCorrect: 'from-green-500/80 to-emerald-600/80',
-        bgIncorrect: 'from-red-500/70 to-rose-600/70',
-        iconBg: 'bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-700',
-        glow: '#5c8dff',
+        bg: 'rgb(173, 216, 255)', // Xanh da trời nhạt
+        bgSelected: 'rgb(173, 216, 255)',
+        bgCorrect: 'rgb(198, 234, 132)', // Xanh lá nhạt pha vàng
+        bgIncorrect: 'rgb(255, 198, 121)', // Cam đào nhạt
+        iconBg: 'rgb(173, 216, 255)',
+        glow: 'rgb(173, 216, 255)',
       },
       {
-        bg: 'from-purple-500/70 to-violet-600/70',
-        bgSelected: 'from-purple-500/70 to-violet-600/70',
-        bgCorrect: 'from-green-500/80 to-emerald-600/80',
-        bgIncorrect: 'from-red-500/70 to-rose-600/70',
-        iconBg: 'bg-gradient-to-r from-purple-600 via-violet-500 to-violet-700',
-        glow: '#c45cff',
+        bg: 'rgb(213, 189, 255)', // Tím lavender nhạt
+        bgSelected: 'rgb(213, 189, 255)',
+        bgCorrect: 'rgb(198, 234, 132)', // Xanh lá nhạt pha vàng
+        bgIncorrect: 'rgb(255, 198, 121)', // Cam đào nhạt
+        iconBg: 'rgb(213, 189, 255)',
+        glow: 'rgb(213, 189, 255)',
       },
       {
-        bg: 'from-amber-500/70 to-orange-600/70',
-        bgSelected: 'from-amber-500/70 to-orange-600/70',
-        bgCorrect: 'from-green-500/80 to-emerald-600/80',
-        bgIncorrect: 'from-red-500/70 to-rose-600/70',
-        iconBg: 'bg-gradient-to-r from-amber-600 via-orange-500 to-orange-700',
-        glow: '#ffb55c',
+        bg: 'rgb(255, 244, 180)', // Vàng mơ nhạt
+        bgSelected: 'rgb(255, 244, 180)',
+        bgCorrect: 'rgb(198, 234, 132)', // Xanh lá nhạt pha vàng
+        bgIncorrect: 'rgb(255, 198, 121)', // Cam đào nhạt
+        iconBg: 'rgb(255, 244, 180)',
+        glow: 'rgb(255, 244, 180)',
       },
     ];
 
@@ -358,13 +358,13 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
     if (isQuizEnded) {
       if (isCorrect) {
         return {
-          bg: `bg-gradient-to-r ${baseStyle.bgCorrect}`,
-          glow: '#5cff8d',
+          bg: baseStyle.bgCorrect,
+          glow: baseStyle.bgCorrect,
         };
       } else if (isSelected && isSubmitted) {
         return {
-          bg: `bg-gradient-to-r ${baseStyle.bgIncorrect}`,
-          glow: '#ff5c5c',
+          bg: baseStyle.bgIncorrect,
+          glow: baseStyle.bgIncorrect,
         };
       }
     }
@@ -372,22 +372,22 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
     // Nếu đã chọn và đã submit nhưng chưa kết thúc, giữ màu nổi bật
     if (isSelected && isSubmitted) {
       return {
-        bg: `bg-gradient-to-r ${baseStyle.bgSelected}`,
-        glow: baseStyle.glow,
+        bg: baseStyle.bgSelected,
+        glow: baseStyle.bgSelected,
       };
     }
 
     // Nếu chỉ đã chọn nhưng chưa submit và chưa kết thúc, chỉ hiển thị hiệu ứng viền sáng
     if (isSelected) {
       return {
-        bg: `bg-gradient-to-r ${baseStyle.bgSelected}`,
+        bg: baseStyle.bg,
         glow: baseStyle.glow,
       };
     }
 
     return {
-      bg: `bg-gradient-to-r ${baseStyle.bg}`,
-      glow: baseStyle.glow,
+      bg: 'bg-black bg-opacity-30',
+      glow: 'transparent',
     };
   };
 
@@ -407,13 +407,13 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
           }}
         >
           {/* Overlay */}
-          <div className='absolute inset-0 bg-gradient-to-b from-[#0a1b25]/80 to-[#0f2231]/70' />
+          <div className='absolute inset-0 bg-black bg-opacity-30' />
 
           {/* Status Bar */}
-          <div className='sticky top-0 left-0 right-0 h-12 bg-[#0e1c26]/80 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-5 text-white z-20'>
+          <div className='sticky top-0 left-0 right-0 h-12 bg-black bg-opacity-40 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-5 text-white z-20'>
             <div className='flex items-center gap-3'>
-              <div className='h-7 w-7 rounded-full bg-gradient-to-r from-[#aef359] to-[#e4f88d] flex items-center justify-center shadow-md'>
-                <Radio className='h-4 w-4 text-[#0e1c26]' />
+              <div className='h-7 w-7 rounded-full bg-[rgb(198,234,132)] flex items-center justify-center shadow-md'>
+                <Radio className='h-4 w-4 text-black' />
               </div>
               <div className='text-xs capitalize font-medium text-white/80'>
                 Multiple Choice
@@ -425,22 +425,21 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                 <motion.div
                   key={`${responseRatio.count}-${responseRatio.total}`}
                   className={`
-                    flex items-center gap-1.5 mr-2 ${
-                      responseRatio.percentage >= 100
-                        ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
-                        : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
-                    } border border-white/10 px-2 py-1 rounded-full text-xs font-medium`}
+                    flex items-center gap-1.5 mr-2 ${responseRatio.percentage >= 100
+                      ? 'bg-black bg-opacity-30 border-white/20'
+                      : 'bg-black bg-opacity-30 border-white/20'
+                    } border px-2 py-1 rounded-full text-xs font-medium`}
                   animate={{
                     scale: hasRecentUpdate ? [1, 1.15, 1] : 1,
                     transition: { duration: 0.5 },
                   }}
                 >
-                  <Users className='h-3.5 w-3.5 text-[#aef359]' />
+                  <Users className='h-3.5 w-3.5 text-[rgb(198,234,132)]' />
                   <span
                     className={
                       responseRatio.percentage >= 100
-                        ? 'text-[#aef359]'
-                        : 'text-amber-400'
+                        ? 'text-[rgb(198,234,132)]'
+                        : 'text-[rgb(255,244,180)]'
                     }
                   >
                     {responseRatio.count}
@@ -453,17 +452,17 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
               )}
 
               <motion.div
-                className='flex items-center gap-1.5 bg-[#0e2838]/80 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
+                className='flex items-center gap-1.5 bg-black bg-opacity-30 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
                 animate={{
                   opacity: timeLeft < 10 ? [0.7, 1] : 1,
                   scale: timeLeft < 10 ? [1, 1.05, 1] : 1,
                   backgroundColor:
                     timeLeft < 10
                       ? [
-                          'rgba(14, 40, 56, 0.8)',
-                          'rgba(220, 38, 38, 0.3)',
-                          'rgba(14, 40, 56, 0.8)',
-                        ]
+                        'rgba(0, 0, 0, 0.3)',
+                        'rgba(255, 198, 121, 0.3)',
+                        'rgba(0, 0, 0, 0.3)',
+                      ]
                       : undefined,
                 }}
                 transition={{
@@ -473,12 +472,11 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                 }}
               >
                 <Clock
-                  className={`h-3.5 w-3.5 ${
-                    timeLeft < 10 ? 'text-red-400' : 'text-[#aef359]'
-                  }`}
+                  className={`h-3.5 w-3.5 ${timeLeft < 10 ? 'text-[rgb(255,198,121)]' : 'text-[rgb(198,234,132)]'
+                    }`}
                 />
                 <span
-                  className={timeLeft < 10 ? 'text-red-300' : 'text-white/90'}
+                  className={timeLeft < 10 ? 'text-[rgb(255,198,121)]' : 'text-white/90'}
                 >
                   {formatTime(timeLeft)}
                 </span>
@@ -502,9 +500,9 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
         </motion.div>
 
         {/* Progress Bar */}
-        <div className='w-full h-1 bg-[#0e2838]'>
+        <div className='w-full h-1 bg-black bg-opacity-20'>
           <motion.div
-            className='h-full bg-gradient-to-r from-[#aef359] to-[#e4f88d]'
+            className='h-full bg-[rgb(198,234,132)]'
             initial={{ width: '100%' }}
             animate={{ width: `${progressPercentage}%` }}
             transition={{ duration: 0.1 }}
@@ -512,7 +510,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
         </div>
 
         {/* Options */}
-        <div className='p-6 bg-[#0e1c26]/70'>
+        <div className='p-6 bg-black bg-opacity-20'>
           <motion.div
             className={`grid grid-cols-1 md:grid-cols-2 gap-3`}
             initial={{ opacity: 0 }}
@@ -541,9 +539,8 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                     whileTap={{
                       scale: !isSubmitted && !isQuizEnded ? 0.98 : 1,
                     }}
-                    className={`relative rounded-xl ${
-                      isSelected ? 'z-10' : 'z-0'
-                    }`}
+                    className={`relative rounded-xl ${isSelected ? 'z-10' : 'z-0'
+                      }`}
                     onClick={() =>
                       !isSubmitted &&
                       !isQuizEnded &&
@@ -624,7 +621,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
               transition={{ delay: 0.2 }}
             >
               <Button
-                className='w-full px-8 py-6 text-lg font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                className='w-full px-8 py-6 text-lg font-bold bg-[rgb(198,234,132)] hover:bg-[rgb(198,234,132)]/90 text-black shadow-lg flex items-center justify-center gap-2'
                 disabled={isSubmitting || timeLeft <= 0}
                 onClick={handleSubmit}
               >
@@ -657,12 +654,12 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
           {/* Thông báo đã gửi câu trả lời khi submit nhưng chưa kết thúc quiz */}
           {isSubmitted && !isQuizEnded && (
             <motion.div
-              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30 text-white/90'
+              className='mt-6 p-4 rounded-xl bg-black bg-opacity-30 border border-white/20 text-white/90'
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className='flex items-center gap-2 mb-2 text-[#aef359]'>
+              <div className='flex items-center gap-2 mb-2 text-[rgb(198,234,132)]'>
                 <CheckCircle className='h-5 w-5' />
                 <span className='font-semibold'>Đã gửi câu trả lời!</span>
               </div>
@@ -696,13 +693,13 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
           <AnimatePresence>
             {submitError && (
               <motion.div
-                className='mt-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-white/90'
+                className='mt-4 p-3 rounded-xl bg-black bg-opacity-30 border border-[rgb(255,198,121)] text-white/90'
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
               >
                 <div className='flex items-center gap-2'>
-                  <AlertCircle className='h-5 w-5 text-red-400' />
+                  <AlertCircle className='h-5 w-5 text-[rgb(255,198,121)]' />
                   <span>{submitError}</span>
                 </div>
               </motion.div>
@@ -713,21 +710,21 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
           <AnimatePresence>
             {(isQuizEnded || activity.hostShowAnswer) && (
               <motion.div
-                className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
+                className='mt-6 p-4 rounded-xl bg-black bg-opacity-30 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               >
                 {/* Show correct answer for quiz ended but not submitted */}
                 {isQuizEnded && !isSubmitted && (
-                  <div className='flex items-center gap-2 mb-2 text-[#aef359]'>
+                  <div className='flex items-center gap-2 mb-2 text-[rgb(198,234,132)]'>
                     <CheckCircle className='h-5 w-5' />
                     <span className='font-semibold'>Đáp án chính xác:</span>
                   </div>
                 )}
 
                 {activity.hostShowAnswer && !isQuizEnded && (
-                  <div className='flex items-center gap-2 mb-2 text-[#aef359]'>
+                  <div className='flex items-center gap-2 mb-2 text-[rgb(198,234,132)]'>
                     <CheckCircle className='h-5 w-5' />
                     <span className='font-semibold'>Đáp án chính xác:</span>
                   </div>
@@ -736,12 +733,12 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                 {isSubmitted && isQuizEnded && (
                   <div className='flex items-center gap-2 mb-2'>
                     {isCorrect ? (
-                      <div className='flex items-center gap-2 text-[#aef359]'>
+                      <div className='flex items-center gap-2 text-[rgb(198,234,132)]'>
                         <CheckCircle className='h-5 w-5' />
                         <span className='font-semibold'>Chính xác!</span>
                       </div>
                     ) : (
-                      <div className='flex items-center gap-2 text-red-400'>
+                      <div className='flex items-center gap-2 text-[rgb(255,198,121)]'>
                         <AlertCircle className='h-5 w-5' />
                         <span className='font-semibold'>Chưa chính xác</span>
                       </div>
@@ -758,21 +755,21 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                           key={idx}
                           className='flex items-center gap-2 text-white/80'
                         >
-                          <div className='h-2 w-2 rounded-full bg-[#aef359]'></div>
+                          <div className='h-2 w-2 rounded-full bg-[rgb(198,234,132)]'></div>
                           <p>{answer.answerText}</p>
                         </div>
                       ))}
                     {activity.quiz.quizAnswers.filter(
                       (answer) => answer.isCorrect
                     )[0]?.explanation && (
-                      <p className='text-white/70 mt-2 pt-2 border-t border-white/10'>
-                        {
-                          activity.quiz.quizAnswers.filter(
-                            (answer) => answer.isCorrect
-                          )[0].explanation
-                        }
-                      </p>
-                    )}
+                        <p className='text-white/70 mt-2 pt-2 border-t border-white/10'>
+                          {
+                            activity.quiz.quizAnswers.filter(
+                              (answer) => answer.isCorrect
+                            )[0].explanation
+                          }
+                        </p>
+                      )}
                   </div>
                 ) : isQuizEnded && isSubmitted ? (
                   <p className='text-white/70'>

@@ -469,11 +469,11 @@ export function QuestionSettings({
         label: 'Information Slide',
         icon: <FileText className="h-4 w-4 mr-2 text-yellow-600" />,
       },
-      {
-        value: 'info_slide',
-        label: 'Interactive Info Slide',
-        icon: <FileText className="h-4 w-4 mr-2 text-indigo-600" />,
-      },
+      // {
+      //   value: 'info_slide',
+      //   label: 'Interactive Info Slide',
+      //   icon: <FileText className="h-4 w-4 mr-2 text-indigo-600" />,
+      // },
     ];
 
     // Find the current question type

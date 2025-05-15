@@ -52,8 +52,8 @@ export default function DashboardLayout({
   // Show dashboard only if authorized
   if (isAuthorized) {
     return (
-      <SidebarProvider>
-        <div className='flex min-h-[calc(100vh-4rem)] flex-col w-full mt-[4rem]'>
+      <SidebarProvider>       
+        <div className='flex min-h-[calc(100vh-4rem)] flex-col w-full mt-4'>
           <div className='flex flex-1'>
             <AppSidebar />
             <div className='flex flex-1 flex-col min-w-0'>

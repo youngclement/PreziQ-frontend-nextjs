@@ -6,7 +6,14 @@ import { Check, ChevronRight, Circle } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-const DropdownMenu = DropdownMenuPrimitive.Root;
+// Thêm modal={false} mặc định để tránh lỗi aria-hidden
+const DropdownMenu = ({
+  modal = false,
+  ...props
+}: DropdownMenuPrimitive.DropdownMenuProps) => (
+  <DropdownMenuPrimitive.Root modal={modal} {...props} />
+);
+DropdownMenu.displayName = DropdownMenuPrimitive.Root.displayName;
 
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
@@ -34,7 +41,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
     {...props}
   >
     {children}
-    <ChevronRight className="ml-auto h-4 w-4" />
+    <ChevronRight className='ml-auto h-4 w-4' />
   </DropdownMenuPrimitive.SubTrigger>
 ));
 DropdownMenuSubTrigger.displayName =
@@ -105,9 +112,9 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     checked={checked}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+    <span className='absolute left-2 flex h-3.5 w-3.5 items-center justify-center'>
       <DropdownMenuPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
+        <Check className='h-4 w-4' />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
     {children}
@@ -128,9 +135,9 @@ const DropdownMenuRadioItem = React.forwardRef<
     )}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+    <span className='absolute left-2 flex h-3.5 w-3.5 items-center justify-center'>
       <DropdownMenuPrimitive.ItemIndicator>
-        <Circle className="h-2 w-2 fill-current" />
+        <Circle className='h-2 w-2 fill-current' />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
     {children}

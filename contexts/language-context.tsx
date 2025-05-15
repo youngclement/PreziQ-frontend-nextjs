@@ -86,6 +86,8 @@ i18next
 
                     // Text Marquee Section
                     "trustedBy": "Trusted by innovative companies worldwide",
+                    "marqueeTextFirst": "Create Impressive Presentations with PreziQ",
+                    "marqueeTextSecond": "Engage Your Audience • Deliver Your Message • Stand Out",
 
                     // Newsletter Section
                     "newsletterTitle": "Stay Updated",
@@ -93,11 +95,19 @@ i18next
                     "emailPlaceholder": "Enter your email",
                     "subscribe": "Subscribe",
                     "privacyStatement": "We respect your privacy. Unsubscribe at any time.",
+                    "newsletterBadge": "PreziQ Newsletter",
+                    "newsletterHighlight": "insights & templates",
+                    "newsletterImageAlt": "Stay connected with PreziQ newsletter",
+                    "over": "Over",
+                    "presentationPros": "presentation pros",
+                    "alreadySubscribed": "have already subscribed.",
+                    "and": "and",
 
                     // Demo UI Section
                     "demoTitle": "Try it Yourself",
                     "demoSubtitle": "See how easy it is to create interactive presentations",
                     "demoButton": "View Demo",
+                    "demoImageAlt": "PreziQ presentation demo",
 
                     // FAQ Section
                     "faqTitle": "Frequently Asked Questions",
@@ -128,6 +138,20 @@ i18next
                     "privacy": "Privacy Policy",
                     "terms": "Terms of Service",
                     "copyright": "© 2023 PreziQ. All rights reserved.",
+                    "footerNavigation": "Navigation",
+                    "footerConnect": "Connect",
+                    "footerVision": "Our Vision",
+                    "footerVisionDesc": "Pioneering the next generation of web experiences through innovative code and cutting-edge design.",
+                    "footerHome": "Home",
+                    "footerAbout": "About",
+                    "footerServices": "Services",
+                    "footerProjects": "Projects",
+                    "footerBlog": "Blog",
+                    "footerContact": "Contact",
+                    "footerlinkedin": "LinkedIn",
+                    "footertwitter": "Twitter",
+                    "footerinstagram": "Instagram",
+                    "footergithub": "GitHub",
 
                     // User Auth
                     "email": "Email",
@@ -215,18 +239,26 @@ i18next
 
                     // Text Marquee Section
                     "trustedBy": "Được tin dùng bởi các công ty đổi mới trên toàn thế giới",
+                    "marqueeTextFirst": "Tạo bài thuyết trình ấn tượng với PreziQ",
+                    "marqueeTextSecond": "Thu hút khán giả của bạn • Truyền tải thông điệp • Nổi bật",
 
                     // Newsletter Section
-                    "newsletterTitle": "Cập nhật thông tin",
-                    "newsletterDesc": "Đăng ký nhận bản tin để nhận thông tin cập nhật mới nhất",
+                    "newsletterTitle": "Cập nhật thông tin về thuyết trình với",
+                    "newsletterDesc": "Nhận cập nhật về xu hướng thiết kế bài thuyết trình, mẹo nói trước công chúng, mẫu độc quyền và lời khuyên chuyên gia để nâng cao bài thuyết trình của bạn.",
                     "emailPlaceholder": "Nhập email của bạn",
                     "subscribe": "Đăng ký",
                     "privacyStatement": "Chúng tôi tôn trọng quyền riêng tư của bạn. Hủy đăng ký bất cứ lúc nào.",
+                    "newsletterImageAlt": "Kết nối với bản tin PreziQ",
+                    "over": "Hơn",
+                    "presentationPros": "chuyên gia thuyết trình",
+                    "alreadySubscribed": "đã đăng ký.",
+                    "and": "và",
 
                     // Demo UI Section
-                    "demoTitle": "Hãy thử nó",
+                    "demoTitle": "Chuyển đổi bài thuyết trình của bạn với",
                     "demoSubtitle": "Xem thử cách tạo bài thuyết trình tương tác dễ dàng như thế nào",
                     "demoButton": "Xem Demo",
+                    "demoImageAlt": "Demo thuyết trình PreziQ",
 
                     // FAQ Section
                     "faqTitle": "Câu hỏi thường gặp",
@@ -257,6 +289,20 @@ i18next
                     "privacy": "Chính sách bảo mật",
                     "terms": "Điều khoản sử dụng",
                     "copyright": "© 2023 PreziQ. Đã đăng ký bản quyền.",
+                    "footerNavigation": "Điều hướng",
+                    "footerConnect": "Kết nối",
+                    "footerVision": "Tầm nhìn của chúng tôi",
+                    "footerVisionDesc": "Tiên phong trong thế hệ trải nghiệm web tiếp theo thông qua mã sáng tạo và thiết kế tiên tiến.",
+                    "footerHome": "Trang chủ",
+                    "footerAbout": "Giới thiệu",
+                    "footerServices": "Dịch vụ",
+                    "footerProjects": "Dự án",
+                    "footerBlog": "Blog",
+                    "footerContact": "Liên hệ",
+                    "footerlinkedin": "LinkedIn",
+                    "footertwitter": "Twitter",
+                    "footerinstagram": "Instagram",
+                    "footergithub": "GitHub",
 
                     // User Auth
                     "email": "Email",

@@ -168,7 +168,7 @@ export default function HostSessionSummary({
             <Button
               variant='secondary'
               onClick={handleReplayPodium}
-              className='bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300'
+              className='bg-[rgb(255,198,121)]/30 text-[rgb(255,198,121)] hover:bg-[rgb(255,198,121)]/40 border border-[rgb(255,198,121)]/40'
             >
               <PlayCircle className='mr-2 h-4 w-4' /> Xem lại top 3
             </Button>
@@ -178,7 +178,7 @@ export default function HostSessionSummary({
         {/* Bảng xếp hạng */}
         <Card className='p-6 mb-8'>
           <h2 className='text-xl font-semibold mb-6 flex items-center'>
-            <Trophy className='mr-2 h-5 w-5 text-amber-500' />
+            <Trophy className='mr-2 h-5 w-5 text-[rgb(255,198,121)]' />
             Bảng xếp hạng
           </h2>
 
@@ -202,33 +202,32 @@ export default function HostSessionSummary({
               {sortedParticipants.map((participant, index) => (
                 <motion.div
                   key={index}
-                  className={`grid grid-cols-1 md:grid-cols-12 items-center p-4 rounded-lg ${
-                    index === 0
-                      ? 'bg-amber-50 border border-amber-200 dark:bg-amber-900/10 dark:border-amber-800'
+                  className={`grid grid-cols-1 md:grid-cols-12 items-center p-4 rounded-lg ${index === 0
+                      ? 'bg-[rgb(255,198,121)]/20 border border-[rgb(255,198,121)]/30'
                       : index === 1
-                      ? 'bg-slate-50 border border-slate-200 dark:bg-slate-900/10 dark:border-slate-800'
-                      : index === 2
-                      ? 'bg-orange-50 border border-orange-200 dark:bg-orange-900/10 dark:border-orange-800'
-                      : 'bg-gray-50 border border-gray-200 dark:bg-gray-900/10 dark:border-gray-800'
-                  }`}
+                        ? 'bg-[rgb(173,216,255)]/20 border border-[rgb(173,216,255)]/30'
+                        : index === 2
+                          ? 'bg-[rgb(255,204,188)]/20 border border-[rgb(255,204,188)]/30'
+                          : 'bg-gray-50/10 border border-white/5'
+                    }`}
                   variants={itemVariants}
                 >
                   {/* Thứ hạng */}
                   <div className='md:col-span-1 flex md:block items-center justify-center text-center mb-2 md:mb-0'>
                     {index === 0 ? (
-                      <div className='p-1.5 bg-amber-100 text-amber-800 rounded-full inline-flex'>
+                      <div className='p-1.5 bg-[rgb(255,198,121)] text-white rounded-full inline-flex'>
                         <Trophy className='h-5 w-5' />
                       </div>
                     ) : index === 1 ? (
-                      <div className='p-1.5 bg-slate-100 text-slate-800 rounded-full inline-flex'>
+                      <div className='p-1.5 bg-[rgb(173,216,255)] text-white rounded-full inline-flex'>
                         <Medal className='h-5 w-5' />
                       </div>
                     ) : index === 2 ? (
-                      <div className='p-1.5 bg-orange-100 text-orange-800 rounded-full inline-flex'>
+                      <div className='p-1.5 bg-[rgb(255,204,188)] text-white rounded-full inline-flex'>
                         <Award className='h-5 w-5' />
                       </div>
                     ) : (
-                      <div className='h-8 w-8 bg-gray-200 text-gray-800 rounded-full inline-flex items-center justify-center font-bold'>
+                      <div className='h-8 w-8 bg-black bg-opacity-20 text-white rounded-full inline-flex items-center justify-center font-bold'>
                         {participant.finalRanking}
                       </div>
                     )}
@@ -250,7 +249,7 @@ export default function HostSessionSummary({
                       <div className='md:hidden flex items-center gap-3 mt-1 text-sm'>
                         <Badge
                           variant='outline'
-                          className='bg-blue-50 text-blue-800 border-blue-200'
+                          className='bg-[rgb(173,216,255)]/20 text-[rgb(173,216,255)] border-[rgb(173,216,255)]/40'
                         >
                           {participant.finalScore} điểm
                         </Badge>
@@ -301,29 +300,29 @@ export default function HostSessionSummary({
           className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-8'
           variants={itemVariants}
         >
-          <Card className='p-4 flex items-center justify-between'>
+          <Card className='p-4 flex items-center justify-between bg-[rgb(173,216,255)]/10 border-[rgb(173,216,255)]/30'>
             <div>
               <p className='text-muted-foreground text-sm'>
                 Tổng người tham gia
               </p>
               <p className='text-2xl font-bold'>{participants.length}</p>
             </div>
-            <Users className='h-8 w-8 text-blue-500 opacity-80' />
+            <Users className='h-8 w-8 text-[rgb(173,216,255)]' />
           </Card>
 
-          <Card className='p-4 flex items-center justify-between'>
+          <Card className='p-4 flex items-center justify-between bg-[rgb(255,198,121)]/10 border-[rgb(255,198,121)]/30'>
             <div>
               <p className='text-muted-foreground text-sm'>Điểm trung bình</p>
               <p className='text-2xl font-bold'>
                 {participants.length > 0
                   ? Math.round(
-                      participants.reduce((sum, p) => sum + p.finalScore, 0) /
-                        participants.length
-                    )
+                    participants.reduce((sum, p) => sum + p.finalScore, 0) /
+                    participants.length
+                  )
                   : 0}
               </p>
             </div>
-            <Trophy className='h-8 w-8 text-amber-500 opacity-80' />
+            <Trophy className='h-8 w-8 text-[rgb(255,198,121)]' />
           </Card>
 
           <Card className='p-4 flex items-center justify-between'>
@@ -334,17 +333,17 @@ export default function HostSessionSummary({
               <p className='text-2xl font-bold'>
                 {participants.length > 0
                   ? Math.round(
-                      (participants.reduce(
-                        (sum, p) => sum + p.finalCorrectCount,
+                    (participants.reduce(
+                      (sum, p) => sum + p.finalCorrectCount,
+                      0
+                    ) /
+                      participants.reduce(
+                        (sum, p) =>
+                          sum + p.finalCorrectCount + p.finalIncorrectCount,
                         0
-                      ) /
-                        participants.reduce(
-                          (sum, p) =>
-                            sum + p.finalCorrectCount + p.finalIncorrectCount,
-                          0
-                        )) *
-                        100 || 0
-                    )
+                      )) *
+                    100 || 0
+                  )
                   : 0}
                 %
               </p>
