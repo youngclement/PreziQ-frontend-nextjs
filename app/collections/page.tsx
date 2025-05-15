@@ -24,8 +24,10 @@ export default function PublishedCollectionsPage() {
   const { toast } = useToast();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
-  const [selectedTopic, setSelectedTopic] = useState<string>("");
-  const [collectionsByTopic, setCollectionsByTopic] = useState<Record<string, Collection[]>>({});
+  const [selectedTopic, setSelectedTopic] = useState<string>('');
+  const [collectionsByTopic, setCollectionsByTopic] = useState<
+    Record<string, Collection[]>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,14 +49,16 @@ export default function PublishedCollectionsPage() {
     const container = carouselRefs.current.get(topicId);
     if (!container) return;
 
+
     const scrollAmount = 600; // Scroll by approximately 2 cards at once
     const scrollPosition = direction === 'left'
       ? container.scrollLeft - scrollAmount
       : container.scrollLeft + scrollAmount;
 
+
     container.scrollTo({
       left: scrollPosition,
-      behavior: 'smooth'
+      behavior: 'smooth',
     });
   };
 
@@ -93,7 +97,7 @@ export default function PublishedCollectionsPage() {
     try {
       const response = await collectionsApi.getGroupedCollectionsByTopic({
         page,
-        size
+        size,
       });
 
       if (response?.data?.success && response.data.data) {
@@ -103,7 +107,7 @@ export default function PublishedCollectionsPage() {
         const allCollections: Collection[] = [];
         Object.values(response.data.data).forEach((topicCollections: any) => {
           if (Array.isArray(topicCollections)) {
-            topicCollections.forEach(collection => {
+            topicCollections.forEach((collection) => {
               allCollections.push({
                 ...collection,
                 id: collection.collectionId || collection.id,
@@ -137,19 +141,65 @@ export default function PublishedCollectionsPage() {
   };
 
   const handleEditCollection = (id: string) => {
+    router.push(`/collections/edit/${id}`);
+  };
+
+  const handleViewCollection = (id: string) => {
     router.push(`/collection?collectionId=${id}`);
   };
 
   const handleViewActivities = (id: string) => {
-    router.push(`/collections/${id}`);
+    router.push(`/collection?collectionId=${id}`);
+  };
+
+  const handleDeleteCollection = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const response = await collectionsApi.deleteCollection(id);
+
+      if (response?.data?.success) {
+        toast({
+          title: 'Thành công',
+          description: 'Đã xóa bộ sưu tập thành công.',
+          variant: 'default',
+        });
+
+        // Cập nhật lại state sau khi xóa
+        setCollections((prev) => prev.filter((c) => c.collectionId !== id));
+
+        // Cập nhật collectionsByTopic
+        const updatedCollectionsByTopic = { ...collectionsByTopic };
+        Object.keys(updatedCollectionsByTopic).forEach((topic) => {
+          updatedCollectionsByTopic[topic] = updatedCollectionsByTopic[
+            topic
+          ].filter((c) => c.collectionId !== id);
+        });
+        setCollectionsByTopic(updatedCollectionsByTopic);
+      } else {
+        throw new Error(response?.data?.message || 'Có lỗi xảy ra khi xóa');
+      }
+    } catch (err) {
+      console.error('Error deleting collection:', err);
+      toast({
+        title: 'Lỗi',
+        description: 'Không thể xóa bộ sưu tập. Vui lòng thử lại sau.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Filter collections by search query
   const filteredCollections = searchQuery
-    ? collections.filter(collection =>
-      collection.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (collection.description && collection.description.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
+    ? collections.filter(
+        (collection) =>
+          collection.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (collection.description &&
+            collection.description
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()))
+      )
     : collections;
 
   // Handle topic change
@@ -162,14 +212,14 @@ export default function PublishedCollectionsPage() {
     if (searchQuery) {
       // If searching, just return filtered collections in a single group
       return {
-        "Search Results": filteredCollections
+        'Search Results': filteredCollections,
       };
     }
 
     if (selectedTopic) {
       // If a topic is selected, only return collections for that topic
       return {
-        [selectedTopic]: collectionsByTopic[selectedTopic] || []
+        [selectedTopic]: collectionsByTopic[selectedTopic] || [],
       };
     }
 
@@ -177,53 +227,83 @@ export default function PublishedCollectionsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <div className='container mx-auto px-4 py-6 max-w-7xl'>
       {/* Search and View Mode Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+      <div className='flex flex-col md:flex-row justify-between items-center gap-4 mb-8'>
+        <h1 className='text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent'>
           Collections
         </h1>
 
-        <div className="flex items-center gap-4">
-          <div className="relative w-full sm:w-60">
+        <div className='flex items-center gap-4'>
+          <div className='relative w-full sm:w-60'>
             <input
-              type="text"
-              placeholder="Search collections..."
+              type='text'
+              placeholder='Search collections...'
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-8 pr-4 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className='w-full h-10 pl-8 pr-4 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500'
             />
             <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+              xmlns='http://www.w3.org/2000/svg'
+              className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
             >
               <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                strokeLinecap='round'
+                strokeLinejoin='round'
                 strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'
               />
             </svg>
           </div>
 
-          <div className="flex items-center space-x-2 border rounded-lg overflow-hidden">
+          <div className='flex items-center space-x-2 border rounded-lg overflow-hidden'>
             <button
-              className={`flex items-center justify-center w-10 h-10 ${viewMode === 'grid' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400'}`}
+              className={`flex items-center justify-center w-10 h-10 ${
+                viewMode === 'grid'
+                  ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}
               onClick={() => setViewMode('grid')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                className='h-5 w-5'
+                fill='none'
+                viewBox='0 0 24 24'
+                stroke='currentColor'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z'
+                />
               </svg>
             </button>
             <button
-              className={`flex items-center justify-center w-10 h-10 ${viewMode === 'list' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400'}`}
+              className={`flex items-center justify-center w-10 h-10 ${
+                viewMode === 'list'
+                  ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}
               onClick={() => setViewMode('list')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                className='h-5 w-5'
+                fill='none'
+                viewBox='0 0 24 24'
+                stroke='currentColor'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M4 6h16M4 12h16M4 18h16'
+                />
               </svg>
             </button>
           </div>
@@ -231,7 +311,7 @@ export default function PublishedCollectionsPage() {
       </div>
 
       {/* Topic Filters */}
-      <div className="mb-8">
+      <div className='mb-8'>
         <CollectionFilters
           topics={topics}
           selectedTopic={selectedTopic}
@@ -243,14 +323,14 @@ export default function PublishedCollectionsPage() {
       <JoinSessionBanner />
 
       {/* Collection Content */}
-      <div className="mt-10">
+      <div className='mt-10'>
         {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+          <div className='flex justify-center items-center h-64'>
+            <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600'></div>
           </div>
         ) : error ? (
-          <div className="text-center py-10">
-            <p className="text-red-500 mb-4">{error}</p>
+          <div className='text-center py-10'>
+            <p className='text-red-500 mb-4'>{error}</p>
             <Button
               onClick={() => {
                 fetchTopics();
@@ -261,35 +341,116 @@ export default function PublishedCollectionsPage() {
             </Button>
           </div>
         ) : Object.keys(groupedCollections()).length === 0 ? (
-          <EmptyCollections onCreateCollection={handleCreateCollection} searchQuery={searchQuery} />
+          <EmptyCollections
+            onCreateCollection={handleCreateCollection}
+            searchQuery={searchQuery}
+          />
         ) : (
-          <div className="space-y-12">
-            {Object.entries(groupedCollections()).map(([topic, topicCollections]) => (
-              <section key={topic} className="mb-10">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">{topic}</h2>
-                  {topicCollections.length > 3 && (
-                    <div className="flex space-x-2">
-                      <button
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
-                        onClick={() => scrollCarousel(topic, 'left')}
-                      >
-                        <span className="sr-only">Scroll left</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                      </button>
-                      <button
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
-                        onClick={() => scrollCarousel(topic, 'right')}
-                      >
-                        <span className="sr-only">Scroll right</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </button>
+          <div className='space-y-12'>
+            {Object.entries(groupedCollections()).map(
+              ([topic, topicCollections]) => (
+                <section key={topic} className='mb-10'>
+                  <div className='flex justify-between items-center mb-6'>
+                    <h2 className='text-2xl font-bold'>{topic}</h2>
+                    {topicCollections.length > 3 && (
+                      <div className='flex space-x-2'>
+                        <button
+                          className='w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          onClick={() => scrollCarousel(topic, 'left')}
+                        >
+                          <span className='sr-only'>Scroll left</span>
+                          <svg
+                            xmlns='http://www.w3.org/2000/svg'
+                            className='h-4 w-4'
+                            fill='none'
+                            viewBox='0 0 24 24'
+                            stroke='currentColor'
+                          >
+                            <path
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              strokeWidth={2}
+                              d='M15 19l-7-7 7-7'
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          className='w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          onClick={() => scrollCarousel(topic, 'right')}
+                        >
+                          <span className='sr-only'>Scroll right</span>
+                          <svg
+                            xmlns='http://www.w3.org/2000/svg'
+                            className='h-4 w-4'
+                            fill='none'
+                            viewBox='0 0 24 24'
+                            stroke='currentColor'
+                          >
+                            <path
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              strokeWidth={2}
+                              d='M9 5l7 7-7 7'
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {viewMode === 'grid' ? (
+                    <div
+                      className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                      ref={(el) => el && carouselRefs.current.set(topic, el)}
+                    >
+                      {topicCollections.map((collection) => (
+                        <CollectionGridItem
+                          key={collection.collectionId}
+                          collection={collection}
+                          activities={getCollectionActivities(
+                            collection.collectionId
+                          )}
+                          onView={() =>
+                            handleViewActivities(collection.collectionId)
+                          }
+                          onEdit={() =>
+                            handleEditCollection(collection.collectionId)
+                          }
+                          onViewCollection={() =>
+                            handleViewCollection(collection.collectionId)
+                          }
+                          onDelete={handleDeleteCollection}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className='space-y-6'>
+                      {topicCollections.map((collection) => (
+                        <CollectionListItem
+                          key={collection.collectionId}
+                          collection={collection}
+                          activities={getCollectionActivities(
+                            collection.collectionId
+                          )}
+                          onView={() =>
+                            handleViewActivities(collection.collectionId)
+                          }
+                          onEdit={() =>
+                            handleEditCollection(collection.collectionId)
+                          }
+                          onViewCollection={() =>
+                            handleViewCollection(collection.collectionId)
+                          }
+                          onDelete={handleDeleteCollection}
+                        />
+                      ))}
                     </div>
                   )}
+
+                </section>
+              )
+            )}
+
                 </div>
 
                 {viewMode === 'grid' ? (
@@ -324,6 +485,7 @@ export default function PublishedCollectionsPage() {
                 )}
               </section>
             ))}
+
           </div>
         )}
       </div>
