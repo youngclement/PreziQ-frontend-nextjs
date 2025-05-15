@@ -364,11 +364,7 @@ export function QuestionSettings({
       } catch (error) {
         console.error('Error updating text answer quiz:', error);
 
-        toast({
-          title: 'Error saving answer',
-          description: 'Could not save the correct answer. Please try again.',
-          variant: 'destructive',
-        });
+      
 
       }
     }
@@ -836,11 +832,7 @@ export function QuestionSettings({
     const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg'];
     if (!allowedTypes.includes(file.type)) {
 
-      toast({
-        title: 'Invalid format',
-        description: 'Please select an audio file in MP3, WAV or OGG format.',
-        variant: 'destructive',
-      });
+    
 
       return;
     }
@@ -848,11 +840,7 @@ export function QuestionSettings({
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
 
-      toast({
-        title: 'Invalid file size',
-        description: 'Audio file must be smaller than 10MB.',
-        variant: 'destructive',
-      });
+    
 
       return;
     }
@@ -893,26 +881,14 @@ export function QuestionSettings({
         setCustomBackgroundMusic(fileUrl);
         await updateActivity({ customBackgroundMusic: fileUrl });
 
-        // Show success notification
-        toast({
-          title: "Audio uploaded successfully",
-          variant: "default"
-        });
+     
       } else {
         console.error('No file URL in response:', response);
-        toast({
-          title: "Audio upload failed",
-          description: "Could not process the uploaded audio",
-          variant: "destructive"
-        });
+    
       }
     } catch (error) {
       console.error('Error uploading audio file:', error);
-      toast({
-        title: "Audio upload failed",
-        description: error instanceof Error ? error.message : "An error occurred during upload",
-        variant: "destructive"
-      });
+   
     } finally {
       setIsUploadingAudio(false);
       setUploadAudioProgress(0);
@@ -1094,13 +1070,7 @@ export function QuestionSettings({
       }
     } catch (error) {
       console.error("Error updating activity:", error);
-      toast({
-
-        title: "Error updating activity",
-        description: "Please try again",
-        variant: "destructive"
-
-      });
+     
     } finally {
       setIsSaving(false);
     }
@@ -1582,21 +1552,13 @@ export function QuestionSettings({
       // Check file type
       const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
       if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: 'Invalid format',
-          description: 'Please upload a JPG or PNG image.',
-          variant: 'destructive',
-        });
+       
         return;
       }
 
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: 'File too large',
-          description: 'Image must be smaller than 5MB.',
-          variant: 'destructive',
-        });
+      
         return;
       }
 
@@ -1637,19 +1599,11 @@ export function QuestionSettings({
             updateActivity({ backgroundImage: fileUrl });
           }
         } else {
-          toast({
-            title: 'Upload failed',
-            description: 'Could not get image URL from server response.',
-            variant: 'destructive',
-          });
+        
         }
       } catch (error) {
         console.error('Error uploading file:', error);
-        toast({
-          title: 'Upload failed',
-          description: error instanceof Error ? error.message : 'An unknown error occurred',
-          variant: 'destructive',
-        });
+       
       } finally {
         setIsUploading(false);
         setUploadProgress(0);
@@ -1806,11 +1760,7 @@ export function QuestionSettings({
                     (e.target as HTMLImageElement).src =
                       'https://via.placeholder.com/300x200?text=Invalid+Image+URL';
 
-                    toast({
-                      title: 'Invalid image URL',
-                      description: 'The image URL could not be loaded.',
-                      variant: 'destructive',
-                    });
+                  
 
                   }
                 }}

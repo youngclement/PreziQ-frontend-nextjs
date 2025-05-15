@@ -1766,18 +1766,10 @@ export function QuestionPreview({
           window.dispatchEvent(event);
         }
 
-        toast({
-          title: 'Success',
-          description: 'Question title updated successfully',
-          variant: 'default',
-        });
+       
       }).catch((error) => {
         console.error('Error updating question title:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to update question title',
-          variant: 'destructive',
-        });
+       
       }).finally(() => {
         setIsSaving(false);
       });
@@ -1902,20 +1894,12 @@ export function QuestionPreview({
         });
       }
 
-      toast({
-        title: 'Success',
-        description: 'Question updated successfully',
-        variant: 'default',
-      });
+     
 
       return response;
     } catch (error) {
       console.error('Error updating activity:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update question',
-        variant: 'destructive',
-      });
+   
 
       throw error;
     } finally {
@@ -1978,19 +1962,11 @@ export function QuestionPreview({
       // Call the API
       activitiesApi.updateTypeAnswerQuiz(question.activity_id, payload)
         .then(() => {
-          toast({
-            title: 'Success',
-            description: 'Correct answer updated successfully',
-            variant: 'default',
-          });
+       
         })
         .catch((error) => {
           console.error('Error updating correct answer:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to update correct answer',
-            variant: 'destructive',
-          });
+         
         })
         .finally(() => {
           setIsSaving(false);
@@ -2552,21 +2528,15 @@ export function QuestionPreview({
         });
       }
 
-      toast({
-        title: 'Success',
-        description: 'Slide background updated',
-        duration: 2000,
-      });
+    
+
 
       // Force re-render bằng cách cập nhật renderKey
       setRenderKey((prev) => prev + 1);
     } catch (error) {
       console.error('Error updating slide background:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update slide background',
-        variant: 'destructive',
-      });
+    
+
     }
   };
 
