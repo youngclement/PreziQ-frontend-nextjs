@@ -50,7 +50,7 @@ export default function PublishedCollectionsPage() {
     if (!container) return;
 
 
-    const scrollAmount = 600; // Scroll by approximately 2 cards at once
+    const scrollAmount = 320; // Scroll by approximately 2 cards at once
     const scrollPosition = direction === 'left'
       ? container.scrollLeft - scrollAmount
       : container.scrollLeft + scrollAmount;
@@ -193,13 +193,13 @@ export default function PublishedCollectionsPage() {
   // Filter collections by search query
   const filteredCollections = searchQuery
     ? collections.filter(
-        (collection) =>
-          collection.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (collection.description &&
-            collection.description
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()))
-      )
+      (collection) =>
+        collection.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (collection.description &&
+          collection.description
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()))
+    )
     : collections;
 
   // Handle topic change
@@ -261,11 +261,10 @@ export default function PublishedCollectionsPage() {
 
           <div className='flex items-center space-x-2 border rounded-lg overflow-hidden'>
             <button
-              className={`flex items-center justify-center w-10 h-10 ${
-                viewMode === 'grid'
-                  ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
+              className={`flex items-center justify-center w-10 h-10 ${viewMode === 'grid'
+                ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
+                : 'text-gray-600 dark:text-gray-400'
+                }`}
               onClick={() => setViewMode('grid')}
             >
               <svg
@@ -284,11 +283,10 @@ export default function PublishedCollectionsPage() {
               </svg>
             </button>
             <button
-              className={`flex items-center justify-center w-10 h-10 ${
-                viewMode === 'list'
-                  ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
+              className={`flex items-center justify-center w-10 h-10 ${viewMode === 'list'
+                ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
+                : 'text-gray-600 dark:text-gray-400'
+                }`}
               onClick={() => setViewMode('list')}
             >
               <svg
@@ -446,46 +444,9 @@ export default function PublishedCollectionsPage() {
                       ))}
                     </div>
                   )}
-
                 </section>
               )
             )}
-
-                </div>
-
-                {viewMode === 'grid' ? (
-                  <div
-                    className="flex overflow-x-auto pb-4 space-x-4 hide-scrollbar"
-                    ref={el => el && carouselRefs.current.set(topic, el)}
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                  >
-                    {topicCollections.map(collection => (
-                      <div key={collection.collectionId} className="flex-none w-[300px]">
-                        <CollectionGridItem
-                          collection={collection}
-                          activities={getCollectionActivities(collection.collectionId)}
-                          onView={() => handleViewActivities(collection.collectionId)}
-                          onEdit={() => handleEditCollection(collection.collectionId)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {topicCollections.map(collection => (
-                      <CollectionListItem
-                        key={collection.collectionId}
-                        collection={collection}
-                        activities={getCollectionActivities(collection.collectionId)}
-                        onView={() => handleViewActivities(collection.collectionId)}
-                        onEdit={() => handleEditCollection(collection.collectionId)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </section>
-            ))}
-
           </div>
         )}
       </div>
