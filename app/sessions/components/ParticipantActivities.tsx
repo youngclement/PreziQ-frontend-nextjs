@@ -896,7 +896,7 @@ export default function ParticipantActivities({
             className='mt-8 text-center'
           >
             <p className='text-xs text-white/30'>
-              PreziQ &copy; {new Date().getFullYear()}
+              PreziQ! &copy; {new Date().getFullYear()}
             </p>
           </motion.div>
         )}

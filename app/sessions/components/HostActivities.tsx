@@ -914,7 +914,7 @@ export default function HostActivities({
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: 'spring', stiffness: 400 }}
               >
-                PreziQ Host
+                PreziQ! Host
               </motion.h1>
               <motion.div
                 className='bg-black bg-opacity-30 px-3 py-1 rounded-full text-sm text-white/80 border border-white/10 shadow-inner'
