@@ -1,5 +1,5 @@
-import { Collection } from "@/app/collections/components/types";
-import axiosClient from "./axios-client";
+import { Collection } from '@/app/collections/components/types';
+import axiosClient from './axios-client';
 
 interface CreateCollectionPayload {
   title: string;
@@ -40,7 +40,7 @@ export const collectionsApi = {
    * @returns Promise với kết quả từ API
    */
   createCollection(payload: CreateCollectionPayload) {
-    return axiosClient.post("/collections", payload);
+    return axiosClient.post('/collections', payload);
   },
 
   /**
@@ -58,7 +58,7 @@ export const collectionsApi = {
    * @returns Promise với kết quả từ API
    */
   getCollections(params: GetCollectionsParams = { page: 1, size: 100 }) {
-    return axiosClient.get("/collections", { params });
+    return axiosClient.get('/collections', { params });
   },
 
   /**
@@ -69,7 +69,7 @@ export const collectionsApi = {
   getPublishedCollections(
     params: GetCollectionsParams = { page: 1, size: 100 }
   ) {
-    return axiosClient.get("/collections", {
+    return axiosClient.get('/collections', {
       params: {
         ...params,
         isPublished: true,
@@ -83,10 +83,10 @@ export const collectionsApi = {
    * @returns Promise với kết quả từ API
    */
   getMyCollections(params: GetCollectionsParams = { page: 1, size: 100 }) {
-    return axiosClient.get("/collections", {
+    return axiosClient.get('/collections', {
       params: {
         ...params,
-        owner: "current",
+        owner: 'current',
       },
     });
   },
@@ -115,7 +115,7 @@ export const collectionsApi = {
    * @returns Promise với kết quả từ API
    */
   getCollectionTopics() {
-    return axiosClient.get("/collections/topics");
+    return axiosClient.get('/collections/topics');
   },
 
   /**
@@ -126,6 +126,6 @@ export const collectionsApi = {
   getGroupedCollectionsByTopic(
     params: GetGroupedCollectionsByTopicParams = { page: 1, size: 10 }
   ) {
-    return axiosClient.get("/collections/grouped/topics", { params });
+    return axiosClient.get('/collections/grouped/topics', { params });
   },
 };

@@ -2031,12 +2031,15 @@ export function QuestionSettings({
               <div>
                 <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                  {activeQuestion.question_type === 'slide' || activeQuestion.question_type === 'info_slide' ? "Slide Content" : "Answer Options"}
+                  {activeQuestion.question_type === 'slide' ||
+                  activeQuestion.question_type === 'info_slide'
+                    ? 'Slide Content'
+                    : 'Answer Options'}
                 </h3>
 
                 {/* Display different content based on question type */}
                 {activeQuestion.question_type === 'multiple_choice' ||
-                  activeQuestion.question_type === 'multiple_response' ? (
+                activeQuestion.question_type === 'multiple_response' ? (
                   <div
                     className={cn(
                       'p-3 rounded-md border',
@@ -2081,8 +2084,8 @@ export function QuestionSettings({
                     <SlideToolbar slideId={activity.id} />
                     <div>
                       <h3 className="text-sm font-medium mb-2.5 mt-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
-                        <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                        Background Settings
+                        {/* <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
+                        Background Settings */}
                       </h3>
                     </div>
                   </>
@@ -2103,35 +2106,43 @@ export function QuestionSettings({
                 ) : null}
               </div>
 
+              {activeQuestion.question_type === 'slide' ||
+              activeQuestion.question_type === 'info_slide' ? (
+                ''
+              ) : (
+                <div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
+                      <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
+                      Time
+                    </h3>
+                    <TimeSettings />
+                  </div>
+
+                  {/* Section 4: Point Type Settings */}
+                  <div>
+                    <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
+                      <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
+                      Points
+                    </h3>
+                    <PointTypeSelector
+                      value={pointType}
+                      onChange={handlePointTypeChange}
+                    />
+                  </div>
+
+                  {/* Section 5: Advanced Settings */}
+                  <div>
+                    <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
+                      <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
+                      More Settings
+                    </h3>
+                    <AdvancedSettings />
+                  </div>
+                </div>
+              )}
+
               {/* Section 3: Time Settings */}
-              <div>
-                <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
-                  <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                  Time
-                </h3>
-                <TimeSettings />
-              </div>
-
-              {/* Section 4: Point Type Settings */}
-              <div>
-                <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
-                  <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                  Points
-                </h3>
-                <PointTypeSelector
-                  value={pointType}
-                  onChange={handlePointTypeChange}
-                />
-              </div>
-
-              {/* Section 5: Advanced Settings */}
-              <div>
-                <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
-                  <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                  More Settings
-                </h3>
-                <AdvancedSettings />
-              </div>
             </div>
           </TabsContent>
 
@@ -2139,7 +2150,7 @@ export function QuestionSettings({
             {/* Design tab: Background, colors, etc */}
 
             {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide' ? (
+            activeQuestion.question_type === 'info_slide' ? (
               <SlideSettings
                 slideId={activity?.id || ''}
                 backgroundColor={backgroundColor}

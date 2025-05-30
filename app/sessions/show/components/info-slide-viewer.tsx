@@ -62,16 +62,16 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
   const isMobile = useIsMobile();
   const { backgroundColor, backgroundImage, slide } = activity;
 
-  // Kích thước chuẩn (giống với FabricEditor)
-  const STANDARD_CANVAS_WIDTH = 812; // ORIGINAL_CANVAS_WIDTH
-  const STANDARD_CANVAS_HEIGHT = (STANDARD_CANVAS_WIDTH * height) / width; // Giữ tỷ lệ 900:510 hoặc tương ứng
+  // Kích thước chuẩn
+  const STANDARD_CANVAS_WIDTH = 812;
+  const STANDARD_CANVAS_HEIGHT = (STANDARD_CANVAS_WIDTH * height) / width;
 
   // Tính toán kích thước canvas responsive
   const getCanvasDimensions = () => {
     if (isMobile) {
       const windowWidth = window.innerWidth;
-      const canvasWidth = Math.min(windowWidth * 0.95, 360); // Giới hạn tối đa 360px
-      const canvasHeight = canvasWidth * (height / width); // Giữ tỷ lệ
+      const canvasWidth = Math.min(windowWidth * 0.95, 360);
+      const canvasHeight = canvasWidth * (height / width);
       return { canvasWidth, canvasHeight };
     }
     return { canvasWidth: width, canvasHeight: height };
@@ -91,7 +91,7 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       selection: false,
     });
 
-    // Set background
+    canvas.backgroundColor = backgroundColor || '#fff';
     if (backgroundImage) {
       FabricImage.fromURL(backgroundImage).then((img) => {
         img.set({
@@ -109,8 +109,190 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     return canvas;
   };
 
+  // Hàm chuyển đổi SlideElement thành Fabric Object
+  const slideElementToFabric = (
+    element: SlideElement,
+    canvas: fabric.Canvas,
+    loadedImages: { element: SlideElement; imgElement: HTMLImageElement }[],
+    scaleX: number,
+    scaleY: number
+  ): fabric.Object | null => {
+    const zoom = canvas.getZoom();
+    const canvasWidth = canvas.getWidth() / zoom;
+    const canvasHeight = canvas.getHeight() / zoom;
+
+    // Tính toán vị trí và kích thước dựa trên tỷ lệ chuẩn, sau đó scale
+    const left = (element.positionX / 100) * STANDARD_CANVAS_WIDTH * scaleX;
+    const top = (element.positionY / 100) * STANDARD_CANVAS_HEIGHT * scaleY;
+    const width = (element.width / 100) * STANDARD_CANVAS_WIDTH * scaleX;
+    const height = (element.height / 100) * STANDARD_CANVAS_HEIGHT * scaleY;
+
+    if (element.slideElementType === 'TEXT' && element.content) {
+      try {
+        const textboxJson = JSON.parse(element.content);
+        const fontSizePercent = textboxJson.fontSize || 2.4630541871921183;
+        const fontSize =
+          (fontSizePercent / 100) * STANDARD_CANVAS_WIDTH * scaleX;
+
+        const styles: { [line: string]: { [char: string]: any } } = {};
+
+        if (textboxJson.styles && Array.isArray(textboxJson.styles)) {
+          const lines = (textboxJson.text || '').split('\n');
+          let charPosWithoutNewlines = 0;
+
+          textboxJson.styles.forEach((styleEntry: any) => {
+            if (
+              styleEntry.start !== undefined &&
+              styleEntry.end !== undefined
+            ) {
+              let currentPos = 0;
+              charPosWithoutNewlines = 0;
+
+              for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+                const lineLength = lines[lineIndex].length;
+
+                if (
+                  styleEntry.start < charPosWithoutNewlines + lineLength &&
+                  styleEntry.end > charPosWithoutNewlines
+                ) {
+                  const startInLine = Math.max(
+                    0,
+                    styleEntry.start - charPosWithoutNewlines
+                  );
+                  const endInLine = Math.min(
+                    lineLength,
+                    styleEntry.end - charPosWithoutNewlines
+                  );
+
+                  if (startInLine < endInLine) {
+                    const lineKey = lineIndex.toString();
+                    styles[lineKey] = styles[lineKey] || {};
+
+                    for (
+                      let charIndex = startInLine;
+                      charIndex < endInLine;
+                      charIndex++
+                    ) {
+                      const style = { ...styleEntry.style };
+                      if (style.fontSize) {
+                        style.fontSize =
+                          (style.fontSize / 100) *
+                          STANDARD_CANVAS_WIDTH *
+                          scaleX;
+                      }
+                      styles[lineKey][charIndex] = style;
+                    }
+                  }
+                }
+
+                charPosWithoutNewlines += lineLength;
+                currentPos += lineLength + 1;
+              }
+            }
+          });
+        }
+
+        if (
+          textboxJson.styles &&
+          !Array.isArray(textboxJson.styles) &&
+          typeof textboxJson.styles === 'object'
+        ) {
+          for (const lineIndex in textboxJson.styles) {
+            const line = textboxJson.styles[lineIndex];
+            styles[lineIndex] = {};
+            for (const charIndex in line) {
+              const style = { ...line[charIndex] };
+              if (style.fontSize) {
+                style.fontSize =
+                  (style.fontSize / 100) * STANDARD_CANVAS_WIDTH * scaleX;
+              }
+              styles[lineIndex][charIndex] = style;
+            }
+          }
+        }
+
+        const textbox = new fabric.Textbox(textboxJson.text || 'New Text', {
+          left,
+          top,
+          width,
+          height,
+          fontSize,
+          fontWeight: textboxJson.fontWeight || 'normal',
+          fontFamily: textboxJson.fontFamily || 'Arial',
+          fontStyle: textboxJson.fontStyle || 'normal',
+          lineHeight: textboxJson.lineHeight || 1.16,
+          textAlign: textboxJson.textAlign || 'left',
+          charSpacing: textboxJson.charSpacing || 0,
+          fill: textboxJson.fill || '#000000',
+          styles,
+          angle: element.rotation || 0,
+          originX: 'left',
+          originY: 'top',
+          minWidth: textboxJson.minWidth || 20,
+          splitByGrapheme: textboxJson.splitByGrapheme || false,
+          backgroundColor: textboxJson.backgroundColor || '',
+          underline: textboxJson.underline || false,
+          overline: textboxJson.overline || false,
+          linethrough: textboxJson.linethrough || false,
+          textBackgroundColor: textboxJson.textBackgroundColor || '',
+          direction: textboxJson.direction || 'ltr',
+          pathStartOffset: textboxJson.pathStartOffset || 0,
+          pathSide: textboxJson.pathSide || 'left',
+          pathAlign: textboxJson.pathAlign || 'baseline',
+          scaleX: textboxJson.scaleX || 1,
+          scaleY: textboxJson.scaleY || 1,
+          selectable: false,
+        });
+
+        textbox.set('slideElementId', element.slideElementId);
+        return textbox;
+      } catch (err) {
+        console.error('Lỗi khi parse content của TEXT element:', err);
+        return null;
+      }
+    } else if (element.slideElementType === 'IMAGE' && element.sourceUrl) {
+      const loadedImage = loadedImages.find(
+        (img) => img.element.sourceUrl === element.sourceUrl
+      );
+      if (!loadedImage) {
+        console.warn('Không tìm thấy ảnh đã tải:', element.sourceUrl);
+        return null;
+      }
+
+      const { imgElement } = loadedImage;
+      const img = new fabric.Image(imgElement);
+      if (!img.width || !img.height) {
+        console.warn('Ảnh không có kích thước hợp lệ:', element.sourceUrl);
+        return null;
+      }
+
+      const scaleX = img.width > 0 ? width / img.width : 1;
+      const scaleY = img.height > 0 ? height / img.height : 1;
+
+      img.set({
+        left,
+        top,
+        angle: element.rotation || 0,
+        scaleX,
+        scaleY,
+        originX: 'left',
+        originY: 'top',
+        selectable: false,
+        slideElementId: element.slideElementId,
+      });
+
+      return img;
+    }
+
+    console.warn(
+      'Loại slideElement không được hỗ trợ:',
+      element.slideElementType
+    );
+    return null;
+  };
+
+  // Hàm render slide
   const renderSlide = async (activity: Activity) => {
-    console.log('Slide elements:', activity.slide.slideElements);
     const canvas = fabricCanvas.current;
     if (!canvas) return;
 
@@ -122,23 +304,31 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
 
     // Thiết lập hình ảnh nền nếu có
     if (backgroundImage) {
-      const img = await fabric.FabricImage.fromURL(backgroundImage);
-      img.set({
-        scaleX: canvas.getWidth() / img.width,
-        scaleY: canvas.getHeight() / img.height,
-        originX: 'left',
-        originY: 'top',
-      });
-      canvas.backgroundImage = img;
-      canvas.renderAll();
+      try {
+        const img = await FabricImage.fromURL(backgroundImage);
+        img.set({
+          scaleX: canvas.getWidth() / img.width,
+          scaleY: canvas.getHeight() / img.height,
+          originX: 'left',
+          originY: 'top',
+        });
+        canvas.backgroundImage = img;
+        canvas.renderAll();
+      } catch (err) {
+        console.error('Lỗi tải hình nền:', err);
+      }
     }
+
+    // Tỷ lệ scale giữa canvas thực tế và canvas chuẩn
+    const scaleX = canvas.getWidth() / STANDARD_CANVAS_WIDTH;
+    const scaleY = canvas.getHeight() / STANDARD_CANVAS_HEIGHT;
 
     // Sắp xếp elements theo layerOrder
     const sortedElements = [...activity.slide.slideElements].sort(
       (a, b) => a.layerOrder - b.layerOrder
     );
 
-    // Load all images first
+    // Load tất cả ảnh trước
     const imagePromises = sortedElements
       .filter(
         (element) => element.slideElementType === 'IMAGE' && element.sourceUrl
@@ -158,99 +348,17 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     try {
       const loadedImages = await Promise.all(imagePromises);
 
-      // Tỷ lệ scale giữa canvas thực tế và canvas chuẩn
-      const scaleX = canvas.getWidth() / STANDARD_CANVAS_WIDTH;
-      const scaleY = canvas.getHeight() / STANDARD_CANVAS_HEIGHT;
-
-      // Add all elements to canvas in order
+      // Thêm các elements vào canvas
       sortedElements.forEach((element) => {
-        const {
-          positionX,
-          positionY,
-          width,
-          height,
-          rotation,
-          slideElementType,
-          content,
-          sourceUrl,
-        } = element;
-
-        // Tính toán vị trí và kích thước dựa trên kích thước chuẩn, sau đó scale
-        const left = (positionX / 100) * STANDARD_CANVAS_WIDTH * scaleX;
-        const top = (positionY / 100) * STANDARD_CANVAS_HEIGHT * scaleY;
-        const elementWidth = (width / 100) * STANDARD_CANVAS_WIDTH * scaleX;
-        const elementHeight = (height / 100) * STANDARD_CANVAS_HEIGHT * scaleY;
-
-        if (slideElementType === 'IMAGE' && sourceUrl) {
-          const loadedImage = loadedImages.find(
-            (img) => img.element.sourceUrl === sourceUrl
-          );
-          if (!loadedImage) {
-            return;
-          }
-          const { imgElement } = loadedImage;
-          console.log('Ảnh tải thành công:', sourceUrl, {
-            width: imgElement.width,
-            height: imgElement.height,
-          });
-          const img = new fabric.Image(imgElement);
-          if (!img.width || !img.height) {
-            return;
-          }
-          const scaleX = img.width > 0 ? elementWidth / img.width : 1;
-          const scaleY = img.height > 0 ? elementHeight / img.height : 1;
-          img.set({
-            left,
-            top,
-            angle: rotation,
-            scaleX,
-            scaleY,
-            selectable: false,
-          });
-          canvas.add(img);
-        } else if (slideElementType === 'TEXT' && content) {
-          const json = JSON.parse(content);
-          // Điều chỉnh fontSize theo tỷ lệ canvas
-          const fontSizePixel =
-            (json.fontSize / 100) * STANDARD_CANVAS_WIDTH * scaleX;
-          const { type, version, ...validProps } = json;
-          const textbox = new fabric.Textbox(json.text, {
-            ...validProps,
-            fontSize: fontSizePixel,
-            left,
-            top,
-            width: elementWidth,
-            height: elementHeight,
-            angle: rotation,
-            selectable: false,
-          });
-
-          // Sửa cách xử lý styles
-          if (json.styles && Object.keys(json.styles).length > 0) {
-            for (const lineIndex in json.styles) {
-              const line = json.styles[lineIndex];
-              for (const charIndex in line) {
-                const style = line[charIndex];
-                if (style.fontSize) {
-                  const scaledFontSize =
-                    (style.fontSize / 100) * STANDARD_CANVAS_WIDTH * scaleX;
-                  textbox.setSelectionStyles(
-                    { ...style, fontSize: scaledFontSize },
-                    parseInt(charIndex),
-                    parseInt(charIndex) + 1
-                  );
-                } else {
-                  textbox.setSelectionStyles(
-                    style,
-                    parseInt(charIndex),
-                    parseInt(charIndex) + 1
-                  );
-                }
-              }
-            }
-          }
-
-          canvas.add(textbox);
+        const fabricObject = slideElementToFabric(
+          element,
+          canvas,
+          loadedImages,
+          scaleX,
+          scaleY
+        );
+        if (fabricObject) {
+          canvas.add(fabricObject);
         }
       });
 
@@ -274,7 +382,7 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     const canvas = initCanvas(
       canvasRef.current,
       activity.backgroundColor || '#fff',
-      backgroundImage
+      activity.backgroundImage
     );
     renderSlide(activity);
 

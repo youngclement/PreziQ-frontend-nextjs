@@ -26,7 +26,7 @@ export const ToolbarHandlers = (
   currentTitle: string = '', // Pass current title
   currentContent: string = '' // Pass current content
 ) => {
-  console.log('slideId', slideId);
+  // console.log('slideId', slideId);
   const updateTextboxElement = debounce((textbox: fabric.Textbox) => {
     const slideElementId = textbox.get('slideElementId');
     if (!slideElementId) return;

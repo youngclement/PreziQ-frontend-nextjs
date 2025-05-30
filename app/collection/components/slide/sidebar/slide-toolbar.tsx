@@ -21,9 +21,9 @@ const SlideToolbar = React.memo(
           <PexelsPanel slideId={slideId} />
         </div>
         <div className="mt-5 pt-4 border-t border-yellow-200 dark:border-yellow-800">
-          <h4 className="text-sm font-medium mb-3 text-yellow-800 dark:text-yellow-300">
+          {/* <h4 className="text-sm font-medium mb-3 text-yellow-800 dark:text-yellow-300">
             Advanced Editing Options
-          </h4>
+          </h4> */}
         </div>
       </div>
     );

@@ -237,6 +237,77 @@ export function QuestionPreview({
   // Add toast hook
   const { toast } = useToast();
 
+  const saveSlideElementsToServer = async (
+    activityId: string,
+    elements: SlideElementPayload[]
+  ) => {
+    try {
+      setIsSaving(true);
+
+      // Lấy dữ liệu hiện tại từ server để so sánh
+      const response = await activitiesApi.getActivityById(activityId);
+      const serverElements = response.data.data.slide?.slideElements || [];
+
+      // So sánh và đồng bộ các phần tử
+      const serverElementIds = new Set(
+        serverElements.map((el: SlideElementPayload) => el.slideElementId)
+      );
+      const localElementIds = new Set(elements.map((el) => el.slideElementId));
+
+      // Thêm hoặc cập nhật phần tử
+      for (const element of elements) {
+        if (serverElementIds.has(element.slideElementId)) {
+          // Nếu phần tử đã tồn tại trên server, cập nhật
+          await slidesApi.updateSlidesElement(
+            activityId,
+            element.slideElementId,
+            element
+          );
+        } else {
+          // Nếu phần tử chưa có, thêm mới
+          await slidesApi.addSlidesElement(activityId, element);
+        }
+      }
+
+      // Xóa các phần tử không còn trong state local
+      for (const serverElement of serverElements) {
+        if (!localElementIds.has(serverElement.slideElementId)) {
+          await slidesApi.deleteSlidesElement(
+            activityId,
+            serverElement.slideElementId
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error saving slide elements:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const saveBackgroundToServer = async (
+    activityId: string,
+    backgroundData: { backgroundImage: string; backgroundColor: string }
+  ) => {
+    try {
+      setIsSaving(true);
+      await activitiesApi.updateActivity(activityId, {
+        backgroundColor: backgroundData.backgroundColor,
+        backgroundImage: backgroundData.backgroundImage,
+      });
+
+      // Cập nhật global storage
+      if (typeof window !== 'undefined') {
+        if (!window.savedBackgroundColors) window.savedBackgroundColors = {};
+        window.savedBackgroundColors[activityId] = backgroundData.backgroundColor;
+      }
+    } catch (error) {
+      console.error("Error saving background:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   useEffect(() => {
     const fetchActivityData = async (
       activityId: string,
@@ -366,12 +437,6 @@ export function QuestionPreview({
       backgroundColor?: string;
     }
   ) => {
-    console.log(
-      'QuestionPreview: Updating background for activity:',
-      activityId,
-      properties
-    );
-
     // Lưu vào global storage ngay lập tức để đảm bảo đồng bộ
     if (typeof window !== 'undefined' && properties.backgroundColor) {
       // Đảm bảo object đã được khởi tạo
@@ -540,7 +605,6 @@ export function QuestionPreview({
   // Expose the function to parent component through the prop callback
   useEffect(() => {
     if (onUpdateActivityBackground) {
-      console.log('Registering updateActivityBackground with parent component');
       onUpdateActivityBackground(updateActivityBackground);
     }
   }, [onUpdateActivityBackground]);
@@ -905,30 +969,53 @@ export function QuestionPreview({
                   if (data.content && onSlideContentChange) {
                     onSlideContentChange(data.content);
                   }
+                  // if (data.slideElements && question.activity_id) {
+                  //   setSlidesElements((prev) => {
+                  //     const id = question.activity_id!;
+                  //     const oldList = prev[id] || [];
+                  //     const incoming = data.slideElements ?? [];
+
+                  //     // ghép và loại bỏ trùng
+                  //     const merged = [...oldList];
+                  //     incoming.forEach((el) => {
+                  //       if (
+                  //         !merged.find(
+                  //           (x) => x.slideElementId === el.slideElementId
+                  //         )
+                  //       ) {
+                  //         merged.push(el);
+                  //       }
+                  //     });
+
+                  //     return {
+                  //       ...prev,
+                  //       [id]: merged,
+                  //     };
+                  //   });
+                  //   console.log('data nhậnnnn: ', data.slideElements);
+                  // }
                   if (data.slideElements && question.activity_id) {
                     setSlidesElements((prev) => {
                       const id = question.activity_id!;
-                      const oldList = prev[id] || [];
-                      const incoming = data.slideElements ?? [];
-
-                      // ghép và loại bỏ trùng
-                      const merged = [...oldList];
-                      incoming.forEach((el) => {
-                        if (
-                          !merged.find(
-                            (x) => x.slideElementId === el.slideElementId
-                          )
-                        ) {
-                          merged.push(el);
-                        }
-                      });
-
-                      return {
-                        ...prev,
-                        [id]: merged,
-                      };
+                      const updatedElements = data.slideElements ?? [];
+                      // Lưu slide elements lên server ngay lập tức
+                      saveSlideElementsToServer(id, updatedElements);
+                      return { ...prev, [id]: updatedElements };
                     });
-                    console.log('data nhậnnnn: ', data.slideElements);
+                  }
+
+                  if (data.backgroundImage !== undefined || data.backgroundColor !== undefined) {
+                    const updatedBackground = {
+                      backgroundImage: data.backgroundImage ?? actualBackgroundImage,
+                      backgroundColor: data.backgroundColor ?? actualBackgroundColor,
+                    };
+                    setSlidesBackgrounds((prev) => ({
+                      ...prev,
+                      [question.activity_id!]: updatedBackground,
+                    }));
+                    if (question.activity_id) {
+                      saveBackgroundToServer(question.activity_id, updatedBackground);
+                    }
                   }
                 }}
                 width={
