@@ -72,11 +72,13 @@ const SortableActivityItem = ({
   index,
   isActive,
   onSelect,
+  questions, // Add this prop
 }: {
   activity: Activity;
   index: number;
   isActive: boolean;
   onSelect: () => void;
+  questions: QuizQuestion[]; // Add this prop type
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: activity.id });
@@ -111,6 +113,11 @@ const SortableActivityItem = ({
     }
   };
 
+  // Find the associated question to get the most up-to-date text
+  const associatedQuestion = questions.find((q) => q.activity_id === activity.id);
+  const displayTitle =
+    associatedQuestion?.question_text || activity.title || `Activity ${index + 1}`;
+
   return (
     <div
       ref={setNodeRef}
@@ -144,7 +151,7 @@ const SortableActivityItem = ({
       </div>
       <div className='p-2 h-full bg-black/30 flex flex-col justify-end'>
         <h3 className='text-[9px] font-medium line-clamp-2 text-white drop-shadow-sm'>
-          {activity.title || `Activity ${index + 1}`}
+          {displayTitle}
         </h3>
       </div>
     </div>
@@ -598,6 +605,31 @@ export function QuestionList({
     }
   };
 
+  // Listen for question text updates from QuestionPreview
+  useEffect(() => {
+    const handleTitleUpdate = (event: any) => {
+      if (
+        event.detail &&
+        event.detail.activityId &&
+        event.detail.title &&
+        event.detail.sender !== 'questionList'
+      ) {
+        // Force re-render when question text changes
+        setRenderKey((prev) => prev + 1);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('activity:title:updated', handleTitleUpdate);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('activity:title:updated', handleTitleUpdate);
+      }
+    };
+  }, []);
+
   return (
     <div
       className={cn(
@@ -715,6 +747,7 @@ export function QuestionList({
                         activity.id
                       }
                       onSelect={() => handleActivitySelect(activity.id)}
+                      questions={questions} // Add this prop
                     />
                   ))}
                   <div className='relative'>
