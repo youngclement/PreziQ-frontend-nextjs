@@ -39,7 +39,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   slideTitle,
   slideContent,
   onUpdate,
-  backgroundColor = '#fff',
+  backgroundColor = '#000',
   width,
   height = 430,
   zoom = 1,
@@ -59,6 +59,9 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   const isFirstLoad = useRef(true);
+
+  console.log("bgColor: ", backgroundColor);
+  console.log("bgImage: ", backgroundImage);
   // useEffect(() => {
   //   if (!fabricCanvas.current || !isFirstLoad.current) return;
   //   if (slideElements.length === 0) return;
@@ -155,7 +158,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         canvas.set({ backgroundImage: img });
       } catch (err) {
         console.error('Lỗi khi tải backgroundImage:', err);
-        canvas.backgroundColor = bgColor || '#fff';
+        canvas.backgroundColor = bgColor || '#000';
       }
     }
     canvas.renderAll();
@@ -330,7 +333,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     // canvas.backgroundImage = undefined;
     // canvas.backgroundColor = backgroundColor || '#fff';
     // canvas.renderAll();
-    await setCanvasBackground(canvas, backgroundColor, backgroundImage);
+    //await setCanvasBackground(canvas, backgroundColor, backgroundImage);
 
     // if (backgroundImage) {
     //   setBackgroundImageWithCover(canvas, backgroundImage);
@@ -405,10 +408,24 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     const initializeCanvas = async () => {
       setIsLoading(true);
       try {
-        console.log('Initializing canvas with slideId:', slideId, 'backgroundImage:', backgroundImage);
+        if (backgroundColor === '#FFFFFF' && slideId) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        console.log('Initializing canvas with:', {
+          backgroundColor,
+          backgroundImage,
+          width,
+          height,
+          zoom,
+        });
+
         await setCanvasBackground(canvas, backgroundColor, backgroundImage);
-        while (slideElementsRef.current.length === 0 && !isInitialMount.current) {
-          await new Promise((resolve) => setTimeout(resolve, 100)); // Chờ ngắn
+        while (
+          slideElementsRef.current.length === 0 &&
+          !isInitialMount.current
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
         await loadSlideElements();
       } finally {
@@ -489,7 +506,9 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       }
     };
 
-    const handleSetBackgroundImage = async (e: CustomEvent<{ url: string; slideId?: string }>) => {
+    const handleSetBackgroundImage = async (
+      e: CustomEvent<{ url: string; slideId?: string }>
+    ) => {
       console.log('Received fabric:set-background-image:', e.detail.url);
       if (!e.detail.slideId || e.detail.slideId !== slideId) {
         return;
@@ -497,11 +516,15 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
 
       if (fabricCanvas.current) {
         if (e.detail.url) {
-          await setCanvasBackground(fabricCanvas.current, backgroundColor, e.detail.url);
+          await setCanvasBackground(
+            fabricCanvas.current,
+            backgroundColor,
+            e.detail.url
+          );
           onUpdate?.({ backgroundImage: e.detail.url });
         } else {
           fabricCanvas.current.backgroundImage = undefined;
-          fabricCanvas.current.backgroundColor = backgroundColor || '#fff';
+          fabricCanvas.current.backgroundColor = backgroundColor || '#000';
           fabricCanvas.current.renderAll();
 
           onUpdate?.({
@@ -518,7 +541,10 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       'fabric:set-background-color',
       handleSetBackgroundColor as EventListener
     );
-    window.addEventListener('fabric:set-background-image', handleSetBackgroundImageWrapper);
+    window.addEventListener(
+      'fabric:set-background-image',
+      handleSetBackgroundImageWrapper
+    );
 
     // const { title, content } = initFabricEvents(canvas, onUpdate);
     const cleanupToolbar = slideId
@@ -691,7 +717,9 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       canvas.dispose();
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [width, height, zoom, slideId]);
+  }, [width, height, zoom, slideId, backgroundColor, backgroundImage]);
+
+  
 
   // ????????
   // useEffect(() => {

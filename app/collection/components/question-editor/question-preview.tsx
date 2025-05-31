@@ -904,23 +904,9 @@ export function QuestionPreview({
     const hasBackgroundImage =
       actualBackgroundImage && actualBackgroundImage.trim() !== '';
 
-    // console.log(`Rendering slide ${question.activity_id}:`, {
-    //   actualBackgroundColor,
-    //   actualBackgroundImage,
-    //   fromGlobal: window.savedBackgroundColors?.[question.activity_id],
-    //   fromActivityBackgrounds: activityBackgrounds[question.activity_id],
-    //   fromSlidesBackgrounds: slidesBackgrounds[question.activity_id],
-    // });
-
     if (isSlideType) {
       const slideTypeText =
         question.question_type === 'info_slide' ? 'Info Slide' : 'Slide';
-
-      // console.log(
-      //   'activityBackgrounds[question.activity_id]',
-      //   activityBackgrounds[question.activity_id],
-      //   question.activity_id
-      // );
 
       return (
         <div
@@ -999,21 +985,28 @@ export function QuestionPreview({
                       const id = question.activity_id!;
                       const updatedElements = data.slideElements ?? [];
                       // Lưu slide elements lên server ngay lập tức
-                      saveSlideElementsToServer(id, updatedElements);
+                     // saveSlideElementsToServer(id, updatedElements);
                       return { ...prev, [id]: updatedElements };
                     });
                   }
 
                   if (data.backgroundImage !== undefined || data.backgroundColor !== undefined) {
                     const updatedBackground = {
-                      backgroundImage: data.backgroundImage ?? actualBackgroundImage,
-                      backgroundColor: data.backgroundColor ?? actualBackgroundColor,
+                      backgroundImage:
+                        data.backgroundColor !== undefined
+                          ? ''
+                          : data.backgroundImage ?? '',
+                      backgroundColor:
+                        data.backgroundImage !== undefined
+                          ? ''
+                          : data.backgroundColor ?? '',
                     };
                     setSlidesBackgrounds((prev) => ({
                       ...prev,
                       [question.activity_id!]: updatedBackground,
                     }));
                     if (question.activity_id) {
+                      console.log('updatedBackground', updatedBackground);
                       saveBackgroundToServer(question.activity_id, updatedBackground);
                     }
                   }
