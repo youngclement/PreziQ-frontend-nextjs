@@ -858,7 +858,7 @@ export default function HostActivities({
         sessionId={sessionId}
         sessionCode={sessionCode}
         participants={sessionSummaries}
-        onNavigateToHome={() => (window.location.href = '/sessions/host')}
+        onNavigateToHome={() => (window.location.href = '/sessions/')}
       />
     );
   }
