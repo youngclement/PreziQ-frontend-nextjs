@@ -4,7 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as fabric from 'fabric';
 import { FabricImage } from 'fabric';
 import { useIsMobile } from '@/hooks/use-mobile';
-
+import gsap from 'gsap';
+import { animationMap } from '@/app/collection/components/slide/utils/animationMap';
 export type SlideElement = {
   slideElementId: string;
   slideElementType: 'TEXT' | 'IMAGE';
@@ -78,6 +79,53 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
   };
 
   const { canvasWidth, canvasHeight } = getCanvasDimensions();
+
+  // const animationMap: {
+  //   [key: string]: (
+  //     target: fabric.Object,
+  //     canvas: fabric.Canvas,
+  //     callback?: () => void
+  //   ) => void;
+  // } = {
+  //   Fade: (target, canvas, callback) => {
+  //     const initialOpacity = target.opacity ?? 1;
+  //     target.set('opacity', 0);
+  //     canvas.renderAll();
+  //     gsap.to(target, {
+  //       duration: 1,
+  //       opacity: initialOpacity,
+  //       onUpdate: () => canvas.renderAll(),
+  //       onComplete: callback,
+  //     });
+  //   },
+  //   SlideInLeft: (target, canvas, callback) => {
+  //     const initialLeft = target.left ?? 0;
+  //     target.set('left', initialLeft - 100);
+  //     canvas.renderAll();
+  //     gsap.to(target, {
+  //       duration: 0.5,
+  //       left: initialLeft,
+  //       opacity: 1,
+  //       ease: 'power2.out',
+  //       onUpdate: () => canvas.renderAll(),
+  //       onComplete: callback,
+  //     });
+  //   },
+  //   Bounce: (target, canvas, callback) => {
+  //     const initialTop = target.top ?? 0;
+  //     target.set('top', initialTop - 100);
+  //     target.set('opacity', 0);
+  //     canvas.renderAll();
+  //     gsap.to(target, {
+  //       duration: 0.5,
+  //       top: initialTop,
+  //       opacity: 1,
+  //       ease: 'bounce.out',
+  //       onUpdate: () => canvas.renderAll(),
+  //       onComplete: callback,
+  //     });
+  //   },
+  // };
 
   // Khởi tạo canvas
   const initCanvas = (
@@ -291,6 +339,32 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     return null;
   };
 
+  const applyEntryAnimation = (
+    obj: fabric.Object,
+    element: SlideElement,
+    scaleX: number,
+    scaleY: number
+  ) => {
+    if (!element.entryAnimation || !animationMap[element.entryAnimation]) {
+      return;
+    }
+
+    const animation = animationMap[element.entryAnimation];
+    const duration = (element.entryAnimationDuration || 1000) / 1000; // Chuyển ms thành giây
+    const delay = (element.entryAnimationDelay || 0) / 1000; // Chuyển ms thành giây
+
+    // Điều chỉnh GSAP animation để tôn trọng duration và delay
+    setTimeout(() => {
+      animation(obj, fabricCanvas.current!, () => {
+        // Callback để đảm bảo trạng thái cuối cùng
+        fabricCanvas.current?.renderAll();
+      });
+      // Ghi đè duration và delay
+      gsap.set(obj, { delay });
+      gsap.to(obj, { duration });
+    }, delay * 1000);
+  };
+
   // Hàm render slide
   const renderSlide = async (activity: Activity) => {
     const canvas = fabricCanvas.current;
@@ -359,6 +433,7 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
         );
         if (fabricObject) {
           canvas.add(fabricObject);
+          applyEntryAnimation(fabricObject, element, scaleX, scaleY);
         }
       });
 
