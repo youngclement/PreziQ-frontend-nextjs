@@ -24,12 +24,12 @@ export interface ActivitySubmission {
   sessionCode?: string;
   activityId: string;
   type?: string;
-  answerContent?: string;
+  answerContent?: string; // Dùng cho tất cả loại quiz, bao gồm location (định dạng: "longitude,latitude")
   locationAnswers?: Array<{
     latitude: number;
     longitude: number;
     radius: number;
-  }>;
+  }>; // Giữ lại để tương thích ngược
 }
 
 export interface SessionSummary {
@@ -1169,7 +1169,7 @@ export class SessionWebSocket {
       throw new Error('WebSocket not connected');
     }
 
-    console.log('Sending activity submission:', submission);
+    console.log('[SessionWebSocket] Nhận activity submission:', submission);
 
     // Tạo payload cơ bản
     const payload: any = {
@@ -1177,14 +1177,26 @@ export class SessionWebSocket {
       activityId: submission.activityId,
     };
 
-    // Thêm answerContent nếu có
+    // Thêm answerContent nếu có (ưu tiên cho tất cả loại quiz)
     if (submission.answerContent) {
       payload.answerContent = submission.answerContent;
+      console.log(
+        '[SessionWebSocket] Sử dụng answerContent:',
+        submission.answerContent
+      );
     }
 
-    // Thêm locationAnswers nếu có (cho quiz location)
-    if (submission.locationAnswers && submission.locationAnswers.length > 0) {
+    // Chỉ thêm locationAnswers nếu không có answerContent và có locationAnswers (để tương thích ngược)
+    if (
+      !submission.answerContent &&
+      submission.locationAnswers &&
+      submission.locationAnswers.length > 0
+    ) {
       payload.locationAnswers = submission.locationAnswers;
+      console.log(
+        '[SessionWebSocket] Sử dụng locationAnswers (tương thích ngược):',
+        submission.locationAnswers
+      );
     }
 
     // Thêm type nếu có
@@ -1192,7 +1204,7 @@ export class SessionWebSocket {
       payload.type = submission.type;
     }
 
-    console.log('Final payload being sent:', payload);
+    console.log('[SessionWebSocket] Payload cuối cùng được gửi:', payload);
 
     this.client.publish({
       destination: '/server/session/submit',

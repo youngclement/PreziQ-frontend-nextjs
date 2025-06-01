@@ -1,5 +1,18 @@
 'use client';
 
+/**
+ * QuizLocationViewer Component
+ *
+ * Component hiển thị quiz location trong session.
+ *
+ * Payload format khi submit:
+ * {
+ *   "sessionCode": "ABC123",
+ *   "activityId": "550e8400-e29b-41d4-a716-446655440001",
+ *   "answerContent": "105.8342,21.0278" // longitude,latitude
+ * }
+ */
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +57,7 @@ interface Quiz {
   timeLimitSeconds: number;
   pointType: string;
   locationAnswers?: LocationAnswer[];
+  quizLocationAnswers?: LocationAnswer[];
   quizAnswers: QuizAnswer[];
 }
 
@@ -104,21 +118,55 @@ export default function QuizLocationViewer({
 
   // Memoize locationData để tránh tạo object mới mỗi lần render
   const locationData = useMemo(() => {
+    // Ưu tiên sử dụng quizLocationAnswers từ server
+    if (activity.quiz.quizLocationAnswers?.[0]) {
+      console.log(
+        '[QuizLocation] Sử dụng quizLocationAnswers từ server:',
+        activity.quiz.quizLocationAnswers[0]
+      );
+      return {
+        lat: activity.quiz.quizLocationAnswers[0].latitude,
+        lng: activity.quiz.quizLocationAnswers[0].longitude,
+        radius: activity.quiz.quizLocationAnswers[0].radius,
+      };
+    }
+
+    // Fallback sang locationAnswers (tương thích ngược)
     if (activity.quiz.locationAnswers?.[0]) {
+      console.log(
+        '[QuizLocation] Sử dụng locationAnswers (fallback):',
+        activity.quiz.locationAnswers[0]
+      );
       return {
         lat: activity.quiz.locationAnswers[0].latitude,
         lng: activity.quiz.locationAnswers[0].longitude,
         radius: activity.quiz.locationAnswers[0].radius,
       };
     }
-    return (
-      activity.quiz.quizAnswers[0]?.locationData || {
-        lat: 0,
-        lng: 0,
-        radius: 10,
-      }
+
+    // Fallback cuối cùng sang quizAnswers
+    if (activity.quiz.quizAnswers[0]?.locationData) {
+      console.log(
+        '[QuizLocation] Sử dụng quizAnswers.locationData (fallback cuối):',
+        activity.quiz.quizAnswers[0].locationData
+      );
+      return activity.quiz.quizAnswers[0].locationData;
+    }
+
+    // Default location nếu không có dữ liệu
+    console.warn(
+      '[QuizLocation] Không tìm thấy dữ liệu location, sử dụng default'
     );
-  }, [activity.quiz.locationAnswers, activity.quiz.quizAnswers]);
+    return {
+      lat: 0,
+      lng: 0,
+      radius: 10,
+    };
+  }, [
+    activity.quiz.quizLocationAnswers,
+    activity.quiz.locationAnswers,
+    activity.quiz.quizAnswers,
+  ]);
 
   // Chuyển handleSubmit thành useCallback
   const handleSubmit = useCallback(async () => {
@@ -140,20 +188,50 @@ export default function QuizLocationViewer({
           return;
         }
 
+        // Validation cơ bản cho tọa độ
+        if (!userSelectedLocation.lng || !userSelectedLocation.lat) {
+          console.error(
+            '[QuizLocation] Tọa độ không hợp lệ:',
+            userSelectedLocation
+          );
+          setError('Tọa độ không hợp lệ. Vui lòng chọn lại vị trí.');
+          return;
+        }
+
+        // Kiểm tra phạm vi tọa độ hợp lệ
+        if (
+          userSelectedLocation.lng < -180 ||
+          userSelectedLocation.lng > 180 ||
+          userSelectedLocation.lat < -90 ||
+          userSelectedLocation.lat > 90
+        ) {
+          console.error(
+            '[QuizLocation] Tọa độ ngoài phạm vi hợp lệ:',
+            userSelectedLocation
+          );
+          setError('Tọa độ ngoài phạm vi hợp lệ. Vui lòng chọn lại vị trí.');
+          return;
+        }
+
+        // Tạo answerContent theo định dạng: longitude,latitude
+        // Ví dụ: "105.8342,21.0278" (longitude trước, latitude sau)
+        const answerContent = `${userSelectedLocation.lng},${userSelectedLocation.lat}`;
+
         const payload = {
           sessionCode: sessionCode,
           activityId: activity.activityId,
-          type: 'LOCATION',
-          locationAnswers: [
-            {
-              latitude: userSelectedLocation.lat,
-              longitude: userSelectedLocation.lng,
-              radius: userSelectedLocation.radius,
-            },
-          ],
+          answerContent: answerContent, // Định dạng: "longitude,latitude"
         };
 
-        console.log('[QuizLocation] Gửi câu trả lời:', payload);
+        console.log(
+          '[QuizLocation] Gửi câu trả lời với định dạng mới:',
+          payload
+        );
+        console.log('[QuizLocation] Tọa độ gốc:', {
+          longitude: userSelectedLocation.lng,
+          latitude: userSelectedLocation.lat,
+          radius: userSelectedLocation.radius,
+        });
         await sessionWebSocket.submitActivity(payload);
         console.log('[QuizLocation] Đã gửi câu trả lời thành công');
       } else {
@@ -261,6 +339,18 @@ export default function QuizLocationViewer({
     };
   }, [sessionWebSocket]);
 
+  // Debug effect để log props của LocationQuestionPlayer
+  useEffect(() => {
+    console.log('[QuizLocationViewer] LocationQuestionPlayer props:', {
+      locationData,
+      showCorrectLocation: isQuizEnded || activity.hostShowAnswer,
+      disabled: isSubmitted || isQuizEnded,
+      isQuizEnded,
+      hostShowAnswer: activity.hostShowAnswer,
+      isSubmitted,
+    });
+  }, [locationData, isQuizEnded, activity.hostShowAnswer, isSubmitted]);
+
   // Memoize handleLocationSelect để tránh tạo function mới mỗi lần render
   const handleLocationSelect = useCallback(
     (isCorrect: boolean, distance: number, userLocation?: LocationData) => {
@@ -281,10 +371,10 @@ export default function QuizLocationViewer({
   };
 
   const calculateScore = () => {
-    if (!userSelectedLocation || !activity.quiz.quizAnswers[0]?.locationData)
-      return 0;
+    if (!userSelectedLocation || !locationData) return 0;
 
-    const correctLocation = activity.quiz.quizAnswers[0].locationData;
+    // Sử dụng locationData đã được xử lý từ useMemo
+    const correctLocation = locationData;
     const distance = getDistanceFromLatLonInKm(
       userSelectedLocation.lat,
       userSelectedLocation.lng,
@@ -295,6 +385,15 @@ export default function QuizLocationViewer({
     // Tính điểm dựa trên khoảng cách và bán kính cho phép
     const maxDistance = correctLocation.radius; // Bán kính tính bằng km
     const score = Math.max(0, 100 - (distance / maxDistance) * 100);
+
+    console.log('[QuizLocation] Tính điểm:', {
+      userLocation: userSelectedLocation,
+      correctLocation,
+      distance,
+      maxDistance,
+      score,
+    });
+
     return Math.round(score);
   };
 

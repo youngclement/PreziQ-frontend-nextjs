@@ -181,6 +181,10 @@ export function LocationQuestionPlayer({
 
       return () => {
         if (mapRef.current) {
+          // Reset flag khi component unmount
+          if (mapRef.current.getContainer()) {
+            delete mapRef.current.getContainer().dataset.hasFlownToCorrect;
+          }
           mapRef.current.remove();
           mapRef.current = null;
         }
@@ -193,7 +197,33 @@ export function LocationQuestionPlayer({
 
   // Effect to show correct location when showCorrectLocation is true
   useEffect(() => {
-    if (!mapRef.current || !showCorrectLocation) return;
+    if (!mapRef.current) return;
+
+    // Reset flag khi showCorrectLocation thay đổi từ true về false
+    if (!showCorrectLocation) {
+      if (mapRef.current.getContainer()) {
+        delete mapRef.current.getContainer().dataset.hasFlownToCorrect;
+      }
+
+      // Remove correct location marker và circle khi ẩn đáp án
+      if (correctLocationMarkerRef.current) {
+        correctLocationMarkerRef.current.remove();
+        correctLocationMarkerRef.current = null;
+      }
+
+      // Remove radius circle
+      if (mapRef.current.getSource('radius-circle')) {
+        try {
+          mapRef.current.removeLayer('radius-circle-outline');
+          mapRef.current.removeLayer('radius-circle');
+          mapRef.current.removeSource('radius-circle');
+        } catch (error) {
+          console.log('Layers already removed');
+        }
+      }
+
+      return;
+    }
 
     try {
       // Show the correct location with a green marker
@@ -207,15 +237,41 @@ export function LocationQuestionPlayer({
         .setLngLat([locationData.lng, locationData.lat])
         .addTo(mapRef.current);
 
-      // Zoom to the correct location
-      mapRef.current.flyTo({
-        center: [locationData.lng, locationData.lat],
-        zoom: 12,
-        duration: 2000,
-      });
+      // Chỉ flyTo một lần khi showCorrectLocation được bật lần đầu
+      // Sử dụng flag để tránh flyTo liên tục
+      const hasFlownToCorrectLocation =
+        mapRef.current.getContainer().dataset.hasFlownToCorrect;
+
+      console.log(
+        '[LocationQuestionPlayer] showCorrectLocation:',
+        showCorrectLocation
+      );
+      console.log(
+        '[LocationQuestionPlayer] hasFlownToCorrectLocation:',
+        hasFlownToCorrectLocation
+      );
+      console.log('[LocationQuestionPlayer] locationData:', locationData);
+
+      if (!hasFlownToCorrectLocation) {
+        // Đánh dấu đã flyTo để tránh gọi lại
+        mapRef.current.getContainer().dataset.hasFlownToCorrect = 'true';
+
+        console.log('[LocationQuestionPlayer] Flying to correct location...');
+        // Zoom to the correct location một lần duy nhất
+        mapRef.current.flyTo({
+          center: [locationData.lng, locationData.lat],
+          zoom: 12,
+          duration: 2000,
+        });
+      } else {
+        console.log(
+          '[LocationQuestionPlayer] Đã flyTo trước đó, bỏ qua để cho phép zoom tự do'
+        );
+      }
 
       // Add a circle to show the acceptable radius
       if (mapRef.current.getSource('radius-circle')) {
+        mapRef.current.removeLayer('radius-circle-outline');
         mapRef.current.removeLayer('radius-circle');
         mapRef.current.removeSource('radius-circle');
       }
