@@ -19,6 +19,7 @@ import QuizCheckboxViewer from './QuizCheckboxViewer';
 import QuizTypeAnswerViewer from './QuizTypeAnswerViewer';
 import { QuizReorderViewer } from './QuizReorderViewer';
 import QuizTrueOrFalseViewer from './QuizTrueOrFalseViewer';
+import QuizLocationViewer from './QuizLocationViewer';
 import CountdownOverlay from './CountdownOverlay';
 import RealtimeLeaderboard from './RealtimeLeaderboard';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -477,6 +478,15 @@ export default function ParticipantActivities({
                   sessionWebSocket={sessionWs}
                 />
               );
+            case 'QUIZ_LOCATION':
+              return (
+                <QuizLocationViewer
+                  key={currentActivity.activityId}
+                  activity={currentActivity}
+                  sessionId={sessionCode}
+                  sessionWebSocket={sessionWs}
+                />
+              );
             default:
               return (
                 <div className='p-6 bg-black bg-opacity-20 rounded-lg border border-white/10'>
@@ -639,8 +649,9 @@ export default function ParticipantActivities({
       )}
 
       <div
-        className={`${isFullscreenMode ? 'p-0' : 'container mx-auto px-4 py-6'
-          }`}
+        className={`${
+          isFullscreenMode ? 'p-0' : 'container mx-auto px-4 py-6'
+        }`}
       >
         {!isFullscreenMode && (
           <div className='text-xs text-center text-white/50 mb-4 md:hidden'>
@@ -683,10 +694,11 @@ export default function ParticipantActivities({
             onClick={toggleFullscreen}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            className={`p-2 rounded-full ${isFullscreenMode
+            className={`p-2 rounded-full ${
+              isFullscreenMode
                 ? 'bg-[#aef359] text-[#0a1b25]'
                 : 'bg-[#0e2838] text-[#aef359]'
-              } shadow-lg border border-white/10`}
+            } shadow-lg border border-white/10`}
             title={
               isFullscreenMode ? 'Thoát toàn màn hình' : 'Chế độ toàn màn hình'
             }
@@ -796,10 +808,11 @@ export default function ParticipantActivities({
                 </div>
               )}
               <div
-                className={`${isFullscreenMode
+                className={`${
+                  isFullscreenMode
                     ? 'h-screen flex items-center justify-center'
                     : 'p-6'
-                  }`}
+                }`}
               >
                 {/* Hiển thị CountdownOverlay trong phần nội dung khi ở chế độ toàn màn hình */}
                 {showCountdown && isFullscreenMode && (
@@ -810,9 +823,10 @@ export default function ParticipantActivities({
 
                 <div
                   className={`
-                    ${isFullscreenMode
-                      ? 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
-                      : ''
+                    ${
+                      isFullscreenMode
+                        ? 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
+                        : ''
                     }
                   `}
                 >
@@ -907,10 +921,11 @@ export default function ParticipantActivities({
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`p-3 rounded-l-xl ${isSidebarCollapsed
+            className={`p-3 rounded-l-xl ${
+              isSidebarCollapsed
                 ? 'bg-[#aef359] text-[#0e1c26]'
                 : 'bg-[#0e2838] text-[#aef359]'
-              } shadow-lg border border-r-0 border-[#aef359]/30 flex items-center justify-center`}
+            } shadow-lg border border-r-0 border-[#aef359]/30 flex items-center justify-center`}
             title={
               isSidebarCollapsed ? 'Hiện bảng xếp hạng' : 'Ẩn bảng xếp hạng'
             }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -74,6 +74,9 @@ export default function QuizLocationViewer({
   sessionWebSocket,
   isParticipating = true,
 }: QuizActivityProps) {
+  // State cho vị trí user chọn (khác với vị trí đáp án đúng)
+  const [userSelectedLocation, setUserSelectedLocation] =
+    useState<LocationData | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(
     null
   );
@@ -90,6 +93,7 @@ export default function QuizLocationViewer({
 
   // Reset state when activity changes
   useEffect(() => {
+    setUserSelectedLocation(null);
     setSelectedLocation(null);
     setTimeLeft(activity?.quiz?.timeLimitSeconds || 60);
     setIsSubmitted(false);
@@ -98,16 +102,35 @@ export default function QuizLocationViewer({
     setError(null);
   }, [activity.activityId]);
 
+  // Memoize locationData để tránh tạo object mới mỗi lần render
+  const locationData = useMemo(() => {
+    if (activity.quiz.locationAnswers?.[0]) {
+      return {
+        lat: activity.quiz.locationAnswers[0].latitude,
+        lng: activity.quiz.locationAnswers[0].longitude,
+        radius: activity.quiz.locationAnswers[0].radius,
+      };
+    }
+    return (
+      activity.quiz.quizAnswers[0]?.locationData || {
+        lat: 0,
+        lng: 0,
+        radius: 10,
+      }
+    );
+  }, [activity.quiz.locationAnswers, activity.quiz.quizAnswers]);
+
   // Chuyển handleSubmit thành useCallback
   const handleSubmit = useCallback(async () => {
-    if (isSubmitting || isSubmitted || !selectedLocation || isQuizEnded) return;
+    if (isSubmitting || isSubmitted || !userSelectedLocation || isQuizEnded)
+      return;
 
     setIsSubmitting(true);
     setError(null);
 
     try {
       if (onAnswerSubmit) {
-        onAnswerSubmit(selectedLocation);
+        onAnswerSubmit(userSelectedLocation);
       }
 
       if (sessionWebSocket) {
@@ -123,9 +146,9 @@ export default function QuizLocationViewer({
           type: 'LOCATION',
           locationAnswers: [
             {
-              latitude: selectedLocation.lat,
-              longitude: selectedLocation.lng,
-              radius: selectedLocation.radius,
+              latitude: userSelectedLocation.lat,
+              longitude: userSelectedLocation.lng,
+              radius: userSelectedLocation.radius,
             },
           ],
         };
@@ -148,7 +171,7 @@ export default function QuizLocationViewer({
   }, [
     isSubmitting,
     isSubmitted,
-    selectedLocation,
+    userSelectedLocation,
     isQuizEnded,
     onAnswerSubmit,
     sessionWebSocket,
@@ -164,7 +187,7 @@ export default function QuizLocationViewer({
       setIsQuizEnded(true);
 
       // Tự động submit câu trả lời nếu đã chọn nhưng chưa gửi
-      if (selectedLocation && !isSubmitted && !isSubmitting) {
+      if (userSelectedLocation && !isSubmitted && !isSubmitting) {
         console.log(
           '[QuizLocationViewer] Tự động gửi đáp án khi hết thời gian'
         );
@@ -179,7 +202,7 @@ export default function QuizLocationViewer({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, selectedLocation, isSubmitted, isSubmitting, handleSubmit]);
+  }, [timeLeft, userSelectedLocation, isSubmitted, isSubmitting, handleSubmit]);
 
   useEffect(() => {
     if (
@@ -190,7 +213,7 @@ export default function QuizLocationViewer({
     }
   }, [timeLeft, answeredCount, totalParticipants]);
 
-  // Lắng nghe cập nhật số người tham gia
+  // Tối ưu hóa cập nhật số người tham gia - chỉ cập nhật khi cần thiết
   useEffect(() => {
     if (!sessionWebSocket) return;
 
@@ -205,16 +228,27 @@ export default function QuizLocationViewer({
         `[QuizLocation] Số người tham gia đã trả lời: ${participantsRatio.count}/${participantsRatio.total} (${participantsRatio.percentage}%)`
       );
 
-      // Cập nhật số lượng đếm
-      setAnsweredCount(participantsRatio.count);
-      setTotalParticipants(participantsRatio.total);
+      // Chỉ cập nhật nếu có thay đổi
+      setAnsweredCount((prev) => {
+        if (prev !== participantsRatio.count) {
+          return participantsRatio.count;
+        }
+        return prev;
+      });
+
+      setTotalParticipants((prev) => {
+        if (prev !== participantsRatio.total) {
+          return participantsRatio.total;
+        }
+        return prev;
+      });
     };
 
     // Cập nhật ban đầu
     updateResponseRatio();
 
-    // Thiết lập interval để cập nhật liên tục
-    const intervalId = setInterval(updateResponseRatio, 2000);
+    // Giảm tần suất cập nhật từ 2s xuống 5s để tránh rerender quá nhiều
+    const intervalId = setInterval(updateResponseRatio, 5000);
 
     // Đăng ký lắng nghe sự kiện participants update từ WebSocket
     sessionWebSocket.onParticipantsUpdateHandler(() => {
@@ -227,13 +261,18 @@ export default function QuizLocationViewer({
     };
   }, [sessionWebSocket]);
 
-  const handleLocationSelect = (isCorrect: boolean, distance: number) => {
-    if (isSubmitted || isQuizEnded) return;
-    const location = activity.quiz.quizAnswers[0]?.locationData;
-    if (location) {
-      setSelectedLocation(location);
-    }
-  };
+  // Memoize handleLocationSelect để tránh tạo function mới mỗi lần render
+  const handleLocationSelect = useCallback(
+    (isCorrect: boolean, distance: number, userLocation?: LocationData) => {
+      if (isSubmitted || isQuizEnded) return;
+
+      // Lưu vị trí user chọn
+      if (userLocation) {
+        setUserSelectedLocation(userLocation);
+      }
+    },
+    [isSubmitted, isQuizEnded]
+  );
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -242,13 +281,13 @@ export default function QuizLocationViewer({
   };
 
   const calculateScore = () => {
-    if (!selectedLocation || !activity.quiz.quizAnswers[0]?.locationData)
+    if (!userSelectedLocation || !activity.quiz.quizAnswers[0]?.locationData)
       return 0;
 
     const correctLocation = activity.quiz.quizAnswers[0].locationData;
     const distance = getDistanceFromLatLonInKm(
-      selectedLocation.lat,
-      selectedLocation.lng,
+      userSelectedLocation.lat,
+      userSelectedLocation.lng,
       correctLocation.lat,
       correctLocation.lng
     );
@@ -272,9 +311,9 @@ export default function QuizLocationViewer({
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(deg2rad(lat1)) *
-      Math.cos(deg2rad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+        Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // Khoảng cách tính bằng km
   }
@@ -335,9 +374,10 @@ export default function QuizLocationViewer({
                 <motion.div
                   key={`${answeredCount}-${totalParticipants}`}
                   className={`
-                    flex items-center gap-1.5 mr-2 ${answeredCount >= totalParticipants
-                      ? 'bg-black bg-opacity-30 border-[rgb(198,234,132)]/30 shadow-[rgb(198,234,132)]/10'
-                      : 'bg-black bg-opacity-30 border-[rgb(255,198,121)]/30 shadow-[rgb(255,198,121)]/10'
+                    flex items-center gap-1.5 mr-2 ${
+                      answeredCount >= totalParticipants
+                        ? 'bg-black bg-opacity-30 border-[rgb(198,234,132)]/30 shadow-[rgb(198,234,132)]/10'
+                        : 'bg-black bg-opacity-30 border-[rgb(255,198,121)]/30 shadow-[rgb(255,198,121)]/10'
                     } border border-white/10 px-2 py-1 rounded-full text-xs font-medium`}
                   animate={{
                     scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
@@ -447,35 +487,10 @@ export default function QuizLocationViewer({
           >
             <LocationQuestionPlayer
               questionText={activity.quiz.questionText}
-              locationData={
-                activity.quiz.locationAnswers?.[0]
-                  ? {
-                    lat: activity.quiz.locationAnswers[0].latitude,
-                    lng: activity.quiz.locationAnswers[0].longitude,
-                    radius: activity.quiz.locationAnswers[0].radius,
-                  }
-                  : activity.quiz.quizAnswers[0]?.locationData || {
-                    lat: 0,
-                    lng: 0,
-                    radius: 10,
-                  }
-              }
-              onAnswer={(isCorrect, distance) => {
-                if (isSubmitted || isQuizEnded) return;
-                const location = activity.quiz.locationAnswers?.[0]
-                  ? {
-                    lat: activity.quiz.locationAnswers[0].latitude,
-                    lng: activity.quiz.locationAnswers[0].longitude,
-                    radius: activity.quiz.locationAnswers[0].radius,
-                  }
-                  : activity.quiz.quizAnswers[0]?.locationData;
-                if (location) {
-                  setSelectedLocation(location);
-                  if (onAnswerSubmit) {
-                    onAnswerSubmit(location);
-                  }
-                }
-              }}
+              locationData={locationData}
+              onAnswer={handleLocationSelect}
+              showCorrectLocation={isQuizEnded || activity.hostShowAnswer}
+              disabled={isSubmitted || isQuizEnded}
             />
           </motion.div>
 
@@ -483,7 +498,7 @@ export default function QuizLocationViewer({
           {!isSubmitted &&
             !isQuizEnded &&
             isParticipating &&
-            selectedLocation && (
+            userSelectedLocation && (
               <motion.div
                 className='mt-6 w-full'
                 initial={{ opacity: 0, y: 10 }}
@@ -560,8 +575,8 @@ export default function QuizLocationViewer({
           {/* Results */}
           <AnimatePresence>
             {(isSubmitted && isQuizEnded) ||
-              activity.hostShowAnswer ||
-              isQuizEnded ? (
+            activity.hostShowAnswer ||
+            isQuizEnded ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
@@ -606,14 +621,14 @@ export default function QuizLocationViewer({
                         Đã gửi câu trả lời
                       </span>
                     </div>
-                    {selectedLocation && (
+                    {userSelectedLocation && (
                       <div className='space-y-2'>
                         <p className='text-white/70'>
                           {calculateScore() < 50
                             ? 'Vị trí được chọn khá xa so với vị trí đúng.'
                             : calculateScore() < 80
-                              ? 'Vị trí được chọn khá gần với vị trí đúng.'
-                              : 'Bạn đã chọn đúng vị trí!'}
+                            ? 'Vị trí được chọn khá gần với vị trí đúng.'
+                            : 'Bạn đã chọn đúng vị trí!'}
                         </p>
                         <div className='mt-2'>
                           <p className='font-medium text-white/90'>

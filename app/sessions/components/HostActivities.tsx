@@ -16,6 +16,7 @@ import QuizCheckboxViewer from './QuizCheckboxViewer';
 import QuizTypeAnswerViewer from './QuizTypeAnswerViewer';
 import { QuizReorderViewer } from './QuizReorderViewer';
 import QuizTrueOrFalseViewer from './QuizTrueOrFalseViewer';
+import QuizLocationViewer from './QuizLocationViewer';
 import CountdownOverlay from './CountdownOverlay';
 import {
   Loader2,
@@ -128,7 +129,8 @@ export default function HostActivities({
   // Thêm hàm kiểm tra loại activity là info slide hay không
   const isInfoSlideActivity = (activityType?: string): boolean => {
     console.log(
-      `[SLIDE] Kiểm tra activity có phải là slide không: ${activityType} => ${activityType === 'INFO_SLIDE'
+      `[SLIDE] Kiểm tra activity có phải là slide không: ${activityType} => ${
+        activityType === 'INFO_SLIDE'
       }`
     );
     return activityType === 'INFO_SLIDE';
@@ -137,7 +139,8 @@ export default function HostActivities({
   // Thêm useEffect để ghi log trạng thái tham gia của host khi component khởi tạo
   useEffect(() => {
     console.log(
-      `[HostActivities] Host đang ở chế độ: ${isParticipating ? 'Tham gia trả lời' : 'Chỉ quan sát'
+      `[HostActivities] Host đang ở chế độ: ${
+        isParticipating ? 'Tham gia trả lời' : 'Chỉ quan sát'
       }`
     );
   }, [isParticipating]);
@@ -218,8 +221,10 @@ export default function HostActivities({
       setResponseRatio(participantsRatio); // Cập nhật state lưu trữ tỷ lệ
 
       console.log(
-        `[HostActivities] Đã nhận sự kiện participants lần thứ ${participantsRatio.count
-        }/${participantsRatio.total} (${participantsRatio.percentage
+        `[HostActivities] Đã nhận sự kiện participants lần thứ ${
+          participantsRatio.count
+        }/${participantsRatio.total} (${
+          participantsRatio.percentage
         }%) cho activity: ${sessionWs.getCurrentActivityId()}`
       );
 
@@ -762,6 +767,16 @@ export default function HostActivities({
             isParticipating={isParticipating}
           />
         );
+      case 'QUIZ_LOCATION':
+        return (
+          <QuizLocationViewer
+            key={currentActivity.activityId}
+            activity={currentActivity}
+            sessionId={sessionId}
+            sessionWebSocket={sessionWs}
+            isParticipating={isParticipating}
+          />
+        );
       default:
         return (
           <div className='text-center py-6 text-white/70'>
@@ -932,10 +947,11 @@ export default function HostActivities({
 
               <motion.div
                 key={`${participantsEventCount}-${participants.length}`}
-                className={`px-3 py-1 rounded-full text-sm text-white/80 border shadow-inner hidden md:block ${sessionWs.getParticipantsEventRatio().percentage >= 100
+                className={`px-3 py-1 rounded-full text-sm text-white/80 border shadow-inner hidden md:block ${
+                  sessionWs.getParticipantsEventRatio().percentage >= 100
                     ? 'bg-black bg-opacity-30 border-white/20'
                     : 'bg-black bg-opacity-30 border-white/20'
-                  }`}
+                }`}
                 animate={{
                   scale: [1, 1.05, 1],
                   transition: { duration: 0.3 },
@@ -1014,8 +1030,9 @@ export default function HostActivities({
       )}
 
       <div
-        className={`${isFullscreenMode ? 'p-0' : 'container mx-auto px-4 py-6'
-          }`}
+        className={`${
+          isFullscreenMode ? 'p-0' : 'container mx-auto px-4 py-6'
+        }`}
       >
         {!isFullscreenMode && (
           <div className='text-sm text-center text-white/50 mb-4 md:hidden'>
@@ -1054,10 +1071,11 @@ export default function HostActivities({
             onClick={toggleFullscreen}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            className={`p-2 rounded-full ${isFullscreenMode
+            className={`p-2 rounded-full ${
+              isFullscreenMode
                 ? 'bg-[#aef359] text-[#0a1b25]'
                 : 'bg-[#0e2838] text-[#aef359]'
-              } shadow-lg border border-white/10`}
+            } shadow-lg border border-white/10`}
             title={
               isFullscreenMode ? 'Thoát toàn màn hình' : 'Chế độ toàn màn hình'
             }
@@ -1106,10 +1124,11 @@ export default function HostActivities({
             </div>
             <motion.div
               key={`${participantsEventCount}-${participants.length}`}
-              className={`px-3 py-1 rounded-full text-sm text-white/80 border shadow-inner ${sessionWs.getParticipantsEventRatio().percentage >= 100
+              className={`px-3 py-1 rounded-full text-sm text-white/80 border shadow-inner ${
+                sessionWs.getParticipantsEventRatio().percentage >= 100
                   ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
                   : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
-                }`}
+              }`}
               animate={{
                 scale: [1, 1.05, 1],
                 transition: { duration: 0.3 },
@@ -1273,10 +1292,11 @@ export default function HostActivities({
                 </div>
               )}
               <div
-                className={`${isFullscreenMode
+                className={`${
+                  isFullscreenMode
                     ? 'h-screen flex items-center justify-center'
                     : 'p-6'
-                  }`}
+                }`}
               >
                 {/* Hiển thị CountdownOverlay trong phần nội dung khi ở chế độ toàn màn hình */}
                 {showCountdown && isFullscreenMode && (
@@ -1319,10 +1339,11 @@ export default function HostActivities({
                 ) : (
                   <div
                     className={`
-                    ${isFullscreenMode
+                    ${
+                      isFullscreenMode
                         ? 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
                         : ''
-                      }
+                    }
                   `}
                   >
                     {renderActivityContent()}
@@ -1338,10 +1359,11 @@ export default function HostActivities({
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`p-3 rounded-l-xl ${isSidebarCollapsed
+              className={`p-3 rounded-l-xl ${
+                isSidebarCollapsed
                   ? 'bg-[#aef359] text-[#0e1c26]'
                   : 'bg-[#0e2838] text-[#aef359]'
-                } shadow-lg border border-r-0 border-[#aef359]/30 flex items-center justify-center`}
+              } shadow-lg border border-r-0 border-[#aef359]/30 flex items-center justify-center`}
               title={
                 isSidebarCollapsed ? 'Hiện bảng xếp hạng' : 'Ẩn bảng xếp hạng'
               }
@@ -1373,9 +1395,10 @@ export default function HostActivities({
               ${isFullscreenMode ? 'h-screen' : ''}
               ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}
               md:static md:bg-[#0e1c26]/95 md:h-full
-              ${!isSidebarCollapsed && !isFullscreenMode
-                ? 'fixed inset-y-0 right-0 z-50 bg-[#0e1c26]/95 max-w-[90vw] md:max-w-none md:relative md:z-10 md:w-1/4 lg:w-1/5'
-                : ''
+              ${
+                !isSidebarCollapsed && !isFullscreenMode
+                  ? 'fixed inset-y-0 right-0 z-50 bg-[#0e1c26]/95 max-w-[90vw] md:max-w-none md:relative md:z-10 md:w-1/4 lg:w-1/5'
+                  : ''
               }
             `}
             initial={false}

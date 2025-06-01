@@ -1478,13 +1478,32 @@ export class SessionWebSocket {
 
     console.log('Sending activity submission:', submission);
 
+    // Tạo payload cơ bản
+    const payload: any = {
+      sessionCode: this.sessionCode,
+      activityId: submission.activityId,
+    };
+
+    // Thêm answerContent nếu có
+    if (submission.answerContent) {
+      payload.answerContent = submission.answerContent;
+    }
+
+    // Thêm locationAnswers nếu có (cho quiz location)
+    if (submission.locationAnswers && submission.locationAnswers.length > 0) {
+      payload.locationAnswers = submission.locationAnswers;
+    }
+
+    // Thêm type nếu có
+    if (submission.type) {
+      payload.type = submission.type;
+    }
+
+    console.log('Final payload being sent:', payload);
+
     this.client.publish({
       destination: '/server/session/submit',
-      body: JSON.stringify({
-        sessionCode: this.sessionCode,
-        activityId: submission.activityId,
-        answerContent: submission.answerContent,
-      }),
+      body: JSON.stringify(payload),
     });
 
     return new Promise<void>((resolve) => {
