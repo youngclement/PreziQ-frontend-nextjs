@@ -2,10 +2,20 @@
 'use client';
 
 import type React from 'react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
-import { Sparkles, ArrowRight, Zap } from 'lucide-react';
-
+import {
+  Sparkles,
+  ArrowRight,
+  ArrowLeft,
+  Zap,
+  Maximize,
+  RotateCcw,
+  Type,
+  ZoomIn,
+  FlipHorizontal,
+} from 'lucide-react';
+import { debounce } from 'lodash';
 interface AnimationToolbarProps {
   slideId: string;
 }
@@ -35,6 +45,48 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
       description: 'Trượt từ trái',
     },
     {
+      name: 'Slide Right',
+      value: 'SlideInRight',
+      icon: <ArrowLeft className="w-3 h-3" />,
+      description: 'Trượt từ phải',
+    },
+    // {
+    //   name: 'Scale In',
+    //   value: 'ScaleIn',
+    //   icon: <Maximize className="w-3 h-3" />,
+    //   description: 'Phóng to',
+    // },
+    {
+      name: 'Rotate In',
+      value: 'RotateIn',
+      icon: <RotateCcw className="w-3 h-3" />,
+      description: 'Xoay vào',
+    },
+    // {
+    //   name: 'Typewriter',
+    //   value: 'Typewriter',
+    //   icon: <Type className="w-3 h-3" />,
+    //   description: 'Gõ chữ (Text)',
+    // },
+    // {
+    //   name: 'Fade Char',
+    //   value: 'FadeInChar',
+    //   icon: <Sparkles className="w-3 h-3" />,
+    //   description: 'Mờ dần từng chữ (Text)',
+    // },
+    // {
+    //   name: 'Zoom In',
+    //   value: 'ZoomIn',
+    //   icon: <ZoomIn className="w-3 h-3" />,
+    //   description: 'Phóng to (Image)',
+    // },
+    // {
+    //   name: 'Flip In',
+    //   value: 'FlipIn',
+    //   icon: <FlipHorizontal className="w-3 h-3" />,
+    //   description: 'Lật vào (Image)',
+    // },
+    {
       name: 'Bounce',
       value: 'Bounce',
       icon: <Zap className="w-3 h-3" />,
@@ -42,31 +94,31 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
     },
   ];
 
-  const handleAnimationPreview = (animationValue: string) => {
-    if (animationValue !== 'none') {
-      const event = new CustomEvent('fabric:preview-animation', {
-        detail: { slideId, animationName: animationValue },
-      });
-      window.dispatchEvent(event);
-    }
-  };
+  const handleAnimationPreview = useCallback(
+    debounce((animationValue: string) => {
+      if (animationValue !== 'none') {
+        const event = new CustomEvent('fabric:preview-animation', {
+          detail: { slideId, animationName: animationValue },
+        });
+        window.dispatchEvent(event);
+      }
+    }, 300),
+    [slideId]
+  );
 
   const handleAnimationSelect = (animationValue: string) => {
     setSelectedAnimation(animationValue);
     if (animationValue !== 'none') {
-      // Preview animation lại
       const previewEvent = new CustomEvent('fabric:preview-animation', {
         detail: { slideId, animationName: animationValue },
       });
       window.dispatchEvent(previewEvent);
 
-      // Áp dụng animation
       const setEvent = new CustomEvent('fabric:set-animation', {
         detail: { slideId, animationName: animationValue },
       });
       window.dispatchEvent(setEvent);
     } else {
-      // Nếu chọn "Không có", chỉ dispatch set-animation để xóa animation
       const setEvent = new CustomEvent('fabric:set-animation', {
         detail: { slideId, animationName: null },
       });
@@ -85,7 +137,6 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
         </p>
       </div>
 
-      {/* Grid layout for animation options */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         {animationOptions.map((option) => (
           <div
@@ -145,7 +196,6 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
         ))}
       </div>
 
-      {/* Hiển thị animation đang chọn */}
       {selectedAnimation !== 'none' && (
         <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-700">
           <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center">

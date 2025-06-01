@@ -16,59 +16,6 @@ import { gsap } from 'gsap';
 import { animationMap } from '../utils/animationMap';
 const ORIGINAL_CANVAS_WIDTH = 812;
 
-// const animationMap = {
-//   Fade: (
-//     target: fabric.Object,
-//     canvas: fabric.Canvas,
-//     callback?: () => void
-//   ) => {
-//     const initialOpacity = target.opacity ?? 1;
-//     target.set('opacity', 0);
-//     canvas.renderAll();
-//     gsap.to(target, {
-//       duration: 1,
-//       opacity: initialOpacity,
-//       onUpdate: () => canvas.renderAll(),
-//       onComplete: callback,
-//     });
-//   },
-//   SlideInLeft: (
-//     target: fabric.Object,
-//     canvas: fabric.Canvas,
-//     callback?: () => void
-//   ) => {
-//     const initialLeft = target.left ?? 0;
-//     target.set('left', initialLeft - 100);
-//     canvas.renderAll();
-//     gsap.to(target, {
-//       duration: 0.5,
-//       left: initialLeft,
-//       opacity: 1,
-//       ease: 'power2.out',
-//       onUpdate: () => canvas.renderAll(),
-//       onComplete: callback,
-//     });
-//   },
-//   Bounce: (
-//     target: fabric.Object,
-//     canvas: fabric.Canvas,
-//     callback?: () => void
-//   ) => {
-//     const initialTop = target.top ?? 0;
-//     target.set('top', initialTop - 100);
-//     target.set('opacity', 0);
-//     canvas.renderAll();
-//     gsap.to(target, {
-//       duration: 0.5,
-//       top: initialTop,
-//       opacity: 1,
-//       ease: 'bounce.out',
-//       onUpdate: () => canvas.renderAll(),
-//       onComplete: callback,
-//     });
-//   },
-// };
-
 export interface FabricEditorProps {
   slideTitle: string;
   slideContent: string;
@@ -114,14 +61,8 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   const [previewAnimation, setPreviewAnimation] = useState<string | null>(null);
   const isFirstLoad = useRef(true);
 
-  // console.log("bgColor: ", backgroundColor);
-  // console.log("bgImage: ", backgroundImage);
-  // useEffect(() => {
-  //   if (!fabricCanvas.current || !isFirstLoad.current) return;
-  //   if (slideElements.length === 0) return;
-  //   loadSlideElements();
-  //   isFirstLoad.current = false;
-  // }, [slideElements]);
+  console.log("bgColor: ", backgroundColor);
+  console.log("bgImage: ", backgroundImage);
 
   useEffect(() => {
     slideElementsRef.current = slideElements;
@@ -129,68 +70,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   }, [slideElements]);
 
 
-  // useEffect(() => {
-  //   if (
-  //     isInitialMount.current &&
-  //     fabricCanvas.current &&
-  //     backgroundColor &&
-  //     backgroundImage
-  //   ) {
-  //     fabricCanvas.current.backgroundImage = undefined;
-  //     fabricCanvas.current.backgroundColor = backgroundColor;
-  //     fabricCanvas.current.renderAll();
-  //     isInitialMount.current = false;
-  //     console.log('mouse');
-  //   }
-  // }, [backgroundColor, backgroundImage]);
-
-  // const updateSpecificElement = (updatedElement: SlideElementPayload) => {
-  //   const canvas = fabricCanvas.current;
-  //   if (!canvas) return;
-
-  //   // Tìm đối tượng trên canvas dựa trên slideElementId
-  //   const object = canvas
-  //     .getObjects()
-  //     .find(
-  //       (obj) => obj.get('slideElementId') === updatedElement.slideElementId
-  //     );
-
-  //   if (object) {
-  //     const zoom = canvas.getZoom();
-  //     const canvasWidth = canvas.getWidth()! / zoom;
-  //     const canvasHeight = canvas.getHeight()! / zoom;
-
-  //     // Cập nhật thuộc tính của đối tượng
-  //     object.set({
-  //       left: (updatedElement.positionX / 100) * canvasWidth * zoom,
-  //       top: (updatedElement.positionY / 100) * canvasHeight * zoom,
-  //       angle: updatedElement.rotation || 0,
-  //     });
-
-  //     if (updatedElement.slideElementType === 'TEXT') {
-  //       const textboxJson = JSON.parse(updatedElement.content);
-  //       const fontSize = (textboxJson.fontSize / 100) * ORIGINAL_CANVAS_WIDTH;
-  //       object.set({
-  //         width: (updatedElement.width / 100) * canvasWidth,
-  //         height: (updatedElement.height / 100) * canvasHeight,
-  //         fontSize,
-  //         text: textboxJson.text,
-  //         styles: textboxJson.styles,
-  //       });
-  //     } else if (updatedElement.slideElementType === 'IMAGE') {
-  //       const elementWidth = (updatedElement.width / 100) * canvasWidth;
-  //       const elementHeight = (updatedElement.height / 100) * canvasHeight;
-  //       const img = object as fabric.Image;
-  //       img.set({
-  //         scaleX: elementWidth / img.width!,
-  //         scaleY: elementHeight / img.height!,
-  //       });
-  //     }
-
-  //     canvas.renderAll();
-  //     saveState();
-  //   }
-  // };
 
   const setCanvasBackground = async (
     canvas: fabric.Canvas,
@@ -321,9 +200,11 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       if (obj.type === 'textbox') {
         const fontSizePercent =
           ((obj as fabric.Textbox).fontSize! / ORIGINAL_CANVAS_WIDTH) * 100;
+        const originalText = (obj as fabric.Textbox).text || '';
         const textboxJson = {
           ...obj.toJSON(),
           fontSize: fontSizePercent,
+          text: originalText,
         };
         if (textboxJson.styles && Object.keys(textboxJson.styles).length > 0) {
           for (const lineIndex in textboxJson.styles) {
@@ -342,7 +223,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           content: JSON.stringify(textboxJson),
           entryAnimation: obj.get('entryAnimation') || undefined,
           ...updates,
-        };
+        } as SlideElementPayload;
       } else {
         payload = {
           ...base,
@@ -350,10 +231,11 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           sourceUrl: obj.get('sourceUrl') || (obj as fabric.Image).getSrc(),
           entryAnimation: obj.get('entryAnimation') || undefined,
           ...updates,
-        };
+        } as SlideElementPayload;
       }
 
       try {
+        console.log('Sending payload:', payload);
         const res = await slidesApi.updateSlidesElement(
           slideId,
           slideElementId,
@@ -477,14 +359,32 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
 
     const animationName = e.detail.animationName;
     if (animationName in animationMap) {
+      // Lưu trạng thái ban đầu
+      const initialState = {
+        text: activeObject instanceof fabric.Textbox ? activeObject.text : undefined,
+        opacity: activeObject.opacity,
+        left: activeObject.left,
+        top: activeObject.top,
+        scaleX: activeObject.scaleX,
+        scaleY: activeObject.scaleY,
+        angle: activeObject.angle,
+      };
+
       animationMap[animationName](activeObject, fabricCanvas.current, () => {
+
         activeObject.set({
-          opacity: 1,
-          left: activeObject.left ?? 0,
-          top: activeObject.top ?? 0,
+          opacity: initialState.opacity ?? 1,
+          left: initialState.left ?? 0,
+          top: initialState.top ?? 0,
+          scaleX: initialState.scaleX ?? 1,
+          scaleY: initialState.scaleY ?? 1,
+          angle: initialState.angle ?? 0,
         });
+
+       if (fabricCanvas.current) {
         fabricCanvas.current.renderAll();
-        setPreviewAnimation(null);
+       }
+       setPreviewAnimation(null);
       });
       setPreviewAnimation(animationName);
     }
@@ -539,7 +439,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           slideElementsRef.current.length === 0 &&
           !isInitialMount.current
         ) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 150));
         }
         await loadSlideElements();
       } finally {
@@ -809,25 +709,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [width, height, zoom, slideId, backgroundColor, backgroundImage]);
-
-  
-
-  // ????????
-  // useEffect(() => {
-  //   if (!fabricCanvas.current || !slideElements) return;
-
-  //   slideElements.forEach((element) => {
-  //     updateSpecificElement(element);
-  //   });
-  // }, [slideElements]);
-
-  // useEffect(() => {
-  //   if (fabricCanvas.current && backgroundColor) {
-  //     fabricCanvas.current.backgroundImage = undefined;
-  //     fabricCanvas.current.backgroundColor = backgroundColor;
-  //     fabricCanvas.current.renderAll();
-  //   }
-  // }, [backgroundColor]);
 
   useEffect(() => {
     const handleDragStart = () => {

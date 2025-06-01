@@ -360,8 +360,11 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
         fabricCanvas.current?.renderAll();
       });
       // Ghi đè duration và delay
-      gsap.set(obj, { delay });
-      gsap.to(obj, { duration });
+      if(element.entryAnimation){
+        if (!['Typewriter', 'FadeInChar'].includes(element.entryAnimation)) {
+          gsap.to(obj, { duration, delay });
+        }
+      }
     }, delay * 1000);
   };
 
