@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/sidebar';
 import { NavGroup } from '@/components/dashboard/layout/NavGroup';
 import { NavUser } from '@/components/dashboard/layout/NavUser';
-import Logo from './logo';
+import Logo from '@/components/common/logo';
 import { useAuth } from '@/contexts/auth-context';
 import { generateSidebarData } from '../data/sidebarData';
 
