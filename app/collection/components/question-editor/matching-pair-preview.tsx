@@ -5,27 +5,20 @@ import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, RotateCcw } from 'lucide-react';
+import { Trophy, RotateCcw, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import type { QuizQuestion } from '../types';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface Connection {
   columnA: string;
   columnB: string;
-}
-
-interface MatchingPair {
-  left: {
-    id: string;
-    text: string;
-    pairId: string;
-  };
-  right: {
-    id: string;
-    text: string;
-    pairId: string;
-  };
 }
 
 interface MatchingPairPreviewProps {
@@ -93,23 +86,38 @@ export function MatchingPairPreview({
     e.preventDefault();
     if (!dragged) return;
 
-    // Remove existing connections for both items
-    const newConnections = connections.filter(
-      (conn) =>
-        conn.columnA !== dragged &&
-        conn.columnB !== targetId &&
-        conn.columnA !== targetId &&
-        conn.columnB !== dragged
-    );
+    // Check if we're trying to connect items from the same column
+    const draggedIsColumnA = dragged.startsWith('a');
+    const targetIsColumnA = targetId.startsWith('a');
 
-    // Add new connection
-    if (dragged.startsWith('a') && targetId.startsWith('b')) {
-      newConnections.push({ columnA: dragged, columnB: targetId });
-    } else if (dragged.startsWith('b') && targetId.startsWith('a')) {
-      newConnections.push({ columnA: targetId, columnB: dragged });
+    if (draggedIsColumnA === targetIsColumnA) {
+      // Both items are from the same column, don't allow connection
+      return;
     }
 
-    setConnections(newConnections);
+    // Determine which is columnA and which is columnB
+    const columnAId = draggedIsColumnA ? dragged : targetId;
+    const columnBId = draggedIsColumnA ? targetId : dragged;
+
+    // Check if this connection already exists
+    const connectionExists = connections.some(
+      (conn) => conn.columnA === columnAId && conn.columnB === columnBId
+    );
+
+    if (connectionExists) {
+      // Connection already exists, remove it (toggle behavior)
+      const newConnections = connections.filter(
+        (conn) => !(conn.columnA === columnAId && conn.columnB === columnBId)
+      );
+      setConnections(newConnections);
+    } else {
+      // Add new connection
+      setConnections([
+        ...connections,
+        { columnA: columnAId, columnB: columnBId },
+      ]);
+    }
+
     setDragged(null);
   };
 
@@ -136,17 +144,55 @@ export function MatchingPairPreview({
     return `M ${startX} ${startY} C ${controlX1} ${startY} ${controlX2} ${endY} ${endX} ${endY}`;
   };
 
+  // Check if a connection is correct
+  const isConnectionCorrect = (
+    columnAId: string,
+    columnBId: string
+  ): boolean => {
+    const leftItem = columnA.find((item) => item.id === columnAId);
+    const rightItem = columnB.find((item) => item.id === columnBId);
+
+    if (!leftItem || !rightItem) return false;
+
+    // Check if this is a valid match based on pair_ids
+    // For multi-answer support, pair_id can be a comma-separated string of IDs
+    const leftPairIds = leftItem.pair_id?.split(',') || [];
+    const rightPairIds = rightItem.pair_id?.split(',') || [];
+
+    // Check if any pair_id from left matches any pair_id from right
+    return leftPairIds.some((leftId) => rightPairIds.includes(leftId));
+  };
+
   // Check answers
   const checkAnswers = () => {
-    let correct = 0;
-    connections.forEach((conn) => {
-      const left = columnA.find((i) => i.id === conn.columnA);
-      const right = columnB.find((i) => i.id === conn.columnB);
-      if (left?.pair_id === right?.pair_id) correct++;
+    let correctCount = 0;
+    let totalPossibleCorrect = 0;
+
+    // Count total possible correct connections
+    columnA.forEach((leftItem) => {
+      const leftPairIds = leftItem.pair_id?.split(',') || [];
+      leftPairIds.forEach((pairId) => {
+        if (
+          columnB.some((rightItem) =>
+            rightItem.pair_id?.split(',').includes(pairId)
+          )
+        ) {
+          totalPossibleCorrect++;
+        }
+      });
     });
-    setScore(correct);
+
+    // Count correct connections made by user
+    connections.forEach((conn) => {
+      if (isConnectionCorrect(conn.columnA, conn.columnB)) {
+        correctCount++;
+      }
+    });
+
+    // Calculate score - can be more than the number of items in either column
+    setScore(correctCount);
     setShowResults(true);
-    onCorrectAnswerChange?.(correct.toString());
+    onCorrectAnswerChange?.(correctCount.toString());
   };
 
   // Reset quiz
@@ -156,38 +202,16 @@ export function MatchingPairPreview({
     setScore(0);
   };
 
-  // Check if item is connected
-  const isConnected = (itemId: string) => {
-    return connections.some(
+  // Check if item has any connections
+  const getItemConnections = (itemId: string): Connection[] => {
+    return connections.filter(
       (conn) => conn.columnA === itemId || conn.columnB === itemId
     );
   };
 
-  // Create matching pairs from options
-  const matchingPairs: MatchingPair[] = columnA.map((leftItem) => {
-    const rightItem = columnB.find((item) => item.pair_id === leftItem.pair_id);
-    return {
-      left: {
-        id: leftItem.id!,
-        text: leftItem.option_text,
-        pairId: leftItem.pair_id!,
-      },
-      right: {
-        id: rightItem!.id!,
-        text: rightItem!.option_text,
-        pairId: rightItem!.pair_id!,
-      },
-    };
-  });
-
-  // Check if a connection is correct
-  const getConnectionResult = (aId: string, bId: string): boolean => {
-    const pair = matchingPairs.find(
-      (p) =>
-        (p.left.id === aId && p.right.id === bId) ||
-        (p.left.id === bId && p.right.id === aId)
-    );
-    return !!pair;
+  // Count how many connections an item has
+  const connectionCount = (itemId: string): number => {
+    return getItemConnections(itemId).length;
   };
 
   return (
@@ -207,9 +231,27 @@ export function MatchingPairPreview({
           <h2 className="text-xl font-bold mb-2 text-gray-800 dark:text-white">
             {question.question_text}
           </h2>
-          <div className="text-gray-600 dark:text-gray-300 text-sm">
-            Drag and drop to match items from Column A with their corresponding
-            items in Column B
+          <div className="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-300 text-sm">
+            <span>
+              Kéo và thả để nối các mục phù hợp. Một mục có thể có nhiều đáp án
+              đúng.
+            </span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Info className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>
+                    Kéo từ một cột sang cột còn lại để tạo kết nối.
+                    <br />
+                    Kéo lại để xóa kết nối.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
@@ -231,7 +273,7 @@ export function MatchingPairPreview({
                     onDrop={(e) => item.id && handleDrop(e, item.id)}
                     className={cn(
                       'p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 cursor-move',
-                      isConnected(item.id!)
+                      connectionCount(item.id!) > 0
                         ? 'border-blue-500 dark:border-blue-400'
                         : 'border-gray-200 dark:border-gray-700',
                       'hover:shadow-lg transition-all duration-200'
@@ -239,13 +281,22 @@ export function MatchingPairPreview({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      {item.option_text}
-                    </span>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-gray-800 dark:text-gray-200">
+                        {item.option_text}
+                      </span>
+                      {connectionCount(item.id!) > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {connectionCount(item.id!)}
+                        </Badge>
+                      )}
+                    </div>
                   </motion.div>
                 ))
               ) : (
-                <div>Không có dữ liệu cột A</div>
+                <div className="p-4 bg-white/80 dark:bg-gray-800/80 rounded-lg text-center">
+                  Không có dữ liệu cột A
+                </div>
               )}
             </div>
 
@@ -254,29 +305,42 @@ export function MatchingPairPreview({
               <h3 className="text-lg font-semibold text-center mb-4 text-purple-700 dark:text-purple-300">
                 Column B
               </h3>
-              {columnB.map((item) => (
-                <motion.div
-                  key={item.id}
-                  id={`item-${item.id}`}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, item.id!)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => item.id && handleDrop(e, item.id)}
-                  className={cn(
-                    'p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 cursor-move',
-                    isConnected(item.id!)
-                      ? 'border-purple-500 dark:border-purple-400'
-                      : 'border-gray-200 dark:border-gray-700',
-                    'hover:shadow-lg transition-all duration-200'
-                  )}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <span className="font-medium text-gray-800 dark:text-gray-200">
-                    {item.option_text}
-                  </span>
-                </motion.div>
-              ))}
+              {columnB.length > 0 ? (
+                columnB.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    id={`item-${item.id}`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, item.id!)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => item.id && handleDrop(e, item.id)}
+                    className={cn(
+                      'p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 cursor-move',
+                      connectionCount(item.id!) > 0
+                        ? 'border-purple-500 dark:border-purple-400'
+                        : 'border-gray-200 dark:border-gray-700',
+                      'hover:shadow-lg transition-all duration-200'
+                    )}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-gray-800 dark:text-gray-200">
+                        {item.option_text}
+                      </span>
+                      {connectionCount(item.id!) > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {connectionCount(item.id!)}
+                        </Badge>
+                      )}
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="p-4 bg-white/80 dark:bg-gray-800/80 rounded-lg text-center">
+                  Không có dữ liệu cột B
+                </div>
+              )}
             </div>
           </div>
 
@@ -287,7 +351,7 @@ export function MatchingPairPreview({
             style={{ zIndex: 1 }}
           >
             {connections.map((conn, index) => {
-              const isCorrect = getConnectionResult(conn.columnA, conn.columnB);
+              const isCorrect = isConnectionCorrect(conn.columnA, conn.columnB);
               return (
                 <path
                   key={index}
@@ -313,11 +377,11 @@ export function MatchingPairPreview({
         <div className="flex justify-center gap-4 mt-8">
           <Button
             onClick={checkAnswers}
-            disabled={connections.length !== columnA.length}
+            disabled={connections.length === 0}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all"
           >
             <Trophy className="w-4 h-4 mr-2" />
-            Check Answers
+            Kiểm tra đáp án
           </Button>
           <Button
             onClick={resetQuiz}
@@ -325,7 +389,7 @@ export function MatchingPairPreview({
             className="px-6 py-2 border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm hover:shadow-md transition-all"
           >
             <RotateCcw className="w-4 h-4 mr-2" />
-            Reset
+            Làm lại
           </Button>
         </div>
 
@@ -342,7 +406,7 @@ export function MatchingPairPreview({
                   <div className="flex items-center justify-center gap-2 mb-4">
                     <Trophy className="w-8 h-8 text-yellow-500" />
                     <h3 className="text-2xl font-bold text-gray-800 dark:text-white">
-                      Results
+                      Kết quả
                     </h3>
                   </div>
                   <div className="flex justify-center gap-4 mb-4">
@@ -350,23 +414,25 @@ export function MatchingPairPreview({
                       variant="outline"
                       className="text-lg px-4 py-2 bg-blue-50 dark:bg-blue-900/50"
                     >
-                      Score: {score}/{columnA.length}
+                      Điểm: {score}/{connections.length}
                     </Badge>
                     <Badge
                       variant={
-                        score === columnA.length ? 'default' : 'secondary'
+                        score === connections.length ? 'default' : 'secondary'
                       }
                       className="text-lg px-4 py-2"
                     >
-                      {score === columnA.length
-                        ? 'Perfect!'
-                        : `${Math.round((score / columnA.length) * 100)}%`}
+                      {score === connections.length && score > 0
+                        ? 'Hoàn hảo!'
+                        : `${Math.round(
+                            (score / Math.max(connections.length, 1)) * 100
+                          )}%`}
                     </Badge>
                   </div>
                   <p className="text-gray-600 dark:text-gray-300">
-                    {score === columnA.length
-                      ? 'Congratulations! You matched all pairs correctly!'
-                      : 'Try again to get a better score!'}
+                    {score === connections.length && score > 0
+                      ? 'Chúc mừng! Bạn đã nối tất cả các cặp chính xác!'
+                      : 'Hãy thử lại để đạt điểm cao hơn!'}
                   </p>
                 </div>
               </CardContent>

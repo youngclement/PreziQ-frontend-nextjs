@@ -226,7 +226,8 @@ export function QuestionPreview({
       id: '1',
       activity_id: '1',
       question_type: 'matching_pair',
-      question_text: 'Nối các thủ đô với quốc gia tương ứng',
+      question_text:
+        'Nối các thủ đô với quốc gia tương ứng (một thủ đô có thể thuộc nhiều quốc gia)',
       options: [
         {
           id: 'a1',
@@ -246,27 +247,21 @@ export function QuestionPreview({
         },
         {
           id: 'a3',
-          option_text: 'Paris',
+          option_text: 'Jerusalem',
           type: 'left',
-          pair_id: '3',
+          // Multiple pair_ids separated by commas
+          pair_id: '3,4',
           is_correct: true,
           display_order: 3,
         },
         {
           id: 'a4',
-          option_text: 'London',
+          option_text: 'Brussels',
           type: 'left',
-          pair_id: '4',
+          // Multiple pair_ids separated by commas
+          pair_id: '5,6',
           is_correct: true,
           display_order: 4,
-        },
-        {
-          id: 'a5',
-          option_text: 'Washington D.C.',
-          type: 'left',
-          pair_id: '5',
-          is_correct: true,
-          display_order: 5,
         },
         {
           id: 'b1',
@@ -286,7 +281,7 @@ export function QuestionPreview({
         },
         {
           id: 'b3',
-          option_text: 'Pháp',
+          option_text: 'Israel',
           type: 'right',
           pair_id: '3',
           is_correct: true,
@@ -294,7 +289,7 @@ export function QuestionPreview({
         },
         {
           id: 'b4',
-          option_text: 'Anh',
+          option_text: 'Palestine',
           type: 'right',
           pair_id: '4',
           is_correct: true,
@@ -302,16 +297,24 @@ export function QuestionPreview({
         },
         {
           id: 'b5',
-          option_text: 'Mỹ',
+          option_text: 'Bỉ',
           type: 'right',
           pair_id: '5',
           is_correct: true,
           display_order: 5,
         },
+        {
+          id: 'b6',
+          option_text: 'Liên minh Châu Âu',
+          type: 'right',
+          pair_id: '6',
+          is_correct: true,
+          display_order: 6,
+        },
       ],
     },
-    // You can add more questions here
   ]);
+
   // Handler functions
   const handleQuestionTextChange = (value: string, questionIndex: number) => {
     const updatedQuestions = [...quizQuestions];
