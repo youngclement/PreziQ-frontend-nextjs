@@ -44,21 +44,21 @@ import {
   Zap,
   Image as ImageIcon,
   Upload,
-  Music,
   Info,
   Eye,
   EyeOff,
   Palette,
   AlertCircle,
   Check,
-
   Trash,
+  Trash2,
   Loader2,
   RefreshCw,
   PlusCircle,
   PaintBucket,
-  ChevronsUpDown
-
+  ChevronsUpDown,
+  Plus,
+  X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -266,7 +266,6 @@ export function QuestionSettings({
   const [invalidImageUrl, setInvalidImageUrl] = useState(false);
 
   const [backgroundColor, setBackgroundColor] = useState(activity?.backgroundColor || "#FFFFFF");
-  const [customBackgroundMusic, setCustomBackgroundMusic] = useState(activity?.customBackgroundMusic || "");
   const [title, setTitle] = useState(activity?.title || "");
   const [description, setDescription] = useState(activity?.description || "");
   const [isPublished, setIsPublished] = useState(activity?.is_published || false);
@@ -284,7 +283,6 @@ export function QuestionSettings({
   useEffect(() => {
     if (activity) {
       setBackgroundColor(activity.backgroundColor || '#FFFFFF');
-      setCustomBackgroundMusic(activity.customBackgroundMusic || '');
       setTitle(activity.title || '');
       setDescription(activity.description || '');
       setIsPublished(activity.is_published || false);
@@ -364,7 +362,7 @@ export function QuestionSettings({
       } catch (error) {
         console.error('Error updating text answer quiz:', error);
 
-      
+
 
       }
     }
@@ -734,10 +732,9 @@ export function QuestionSettings({
                 (locationData as any).quizLocationAnswers ||
                 (locationData as any).locationAnswers ||
                 [{
-                  quizLocationAnswerId: "",
-                  longitude: (locationData as any).lng || 0,
-                  latitude: (locationData as any).lat || 0,
-                  radius: (locationData as any).radius || 20
+                  longitude: (locationData as any).lng || 105.77803333582227,
+                  latitude: (locationData as any).lat || 19.83950812993956,
+                  radius: (locationData as any).radius || 10.0
                 }];
 
               // For location quizzes, use the activitiesApi
@@ -748,10 +745,13 @@ export function QuestionSettings({
                   timeLimitSeconds: value
                 };
 
+                // Call the callback to update parent state
+                onQuestionLocationChange(activeQuestionIndex, updatedLocationData);
+
                 // Update via API
                 activitiesApi.updateLocationQuiz(activity.id, {
-                  type: "LOCATION",
-                  questionText: activeQuestion.question_text,
+                  type: "LOCATION" as "LOCATION",
+                  questionText: activity.quiz?.questionText || activeQuestion.question_text,
                   timeLimitSeconds: value,
                   pointType: locationPointType as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS",
                   locationAnswers: locationAnswers.map((answer: any) => ({
@@ -759,7 +759,24 @@ export function QuestionSettings({
                     latitude: answer.latitude,
                     radius: answer.radius
                   }))
-                });
+                })
+                  .then((response) => {
+                    // **NEW**: Dispatch success event for location editor
+                    if (typeof window !== 'undefined') {
+                      const successEvent = new CustomEvent('location:api:success', {
+                        detail: {
+                          source: 'location-quiz-api-success-timeLimit',
+                          response: response,
+                          timestamp: Date.now()
+                        }
+                      });
+                      window.dispatchEvent(successEvent);
+                    }
+                    console.log('Location quiz time limit updated successfully');
+                  })
+                  .catch((error) => {
+                    console.error('Error updating location quiz time limit:', error);
+                  });
               }
               break;
             default:
@@ -817,88 +834,6 @@ export function QuestionSettings({
     );
   };
 
-  // Function to handle audio file upload
-  const audioFileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
-  const [uploadAudioProgress, setUploadAudioProgress] = useState(0);
-
-  const handleAudioFileUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file || !activity) return;
-
-    // Check file type
-    const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg'];
-    if (!allowedTypes.includes(file.type)) {
-
-    
-
-      return;
-    }
-
-    // Check file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-
-    
-
-      return;
-    }
-
-    setIsUploadingAudio(true);
-    setUploadAudioProgress(10);
-
-    try {
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadAudioProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 300);
-
-      // Upload file with flexible type
-      const response = await storageApi.uploadSingleFile(file, 'uploads') as FileUploadResponse;
-
-      clearInterval(progressInterval);
-      setUploadAudioProgress(100);
-
-      console.log('Audio file upload response:', response);
-
-      // Extract file URL from response using either structure
-      let fileUrl: string | undefined = undefined;
-
-      if (response.fileUrl) {
-        fileUrl = response.fileUrl;
-      } else if (response.data?.data?.fileUrl) {
-        fileUrl = response.data.data.fileUrl;
-      }
-
-      if (fileUrl) {
-        setCustomBackgroundMusic(fileUrl);
-        await updateActivity({ customBackgroundMusic: fileUrl });
-
-     
-      } else {
-        console.error('No file URL in response:', response);
-    
-      }
-    } catch (error) {
-      console.error('Error uploading audio file:', error);
-   
-    } finally {
-      setIsUploadingAudio(false);
-      setUploadAudioProgress(0);
-      // Clear file field
-      if (audioFileInputRef.current) {
-        audioFileInputRef.current.value = '';
-      }
-    }
-  };
-
   // Function to update activity in the API
   const updateActivity = async (data: any) => {
     if (!activity?.id) return;
@@ -951,10 +886,6 @@ export function QuestionSettings({
             data.backgroundImage !== undefined
               ? data.backgroundImage
               : activity.backgroundImage,
-          customBackgroundMusic:
-            data.customBackgroundMusic !== undefined
-              ? data.customBackgroundMusic
-              : activity.customBackgroundMusic,
         };
 
         // Special handling for time limit to trigger immediate DOM updates
@@ -987,70 +918,30 @@ export function QuestionSettings({
             questionText: activity.quiz?.questionText || activeQuestion.question_text,
             timeLimitSeconds: data.timeLimitSeconds || activity.quiz?.timeLimitSeconds || timeLimit,
             pointType: data.pointType || activity.quiz?.pointType || "STANDARD",
-            locationAnswers: data.locationAnswers
+            // Don't send quizLocationAnswerId - let API generate new ones
+            locationAnswers: data.locationAnswers.map((answer: any) => ({
+              longitude: answer.longitude,
+              latitude: answer.latitude,
+              radius: answer.radius
+            }))
           };
 
           console.log("Updating location quiz with payload:", locationPayload);
           const response = await activitiesApi.updateLocationQuiz(activity.id, locationPayload);
           console.log("Location quiz updated:", response);
 
-          // Update local state to reflect the changes - use deep cloning to avoid reference issues
-          const updatedLocationAnswers = data.locationAnswers.map((ans: any, idx: number) => ({
-            ...ans,
-            quizLocationAnswerId: ans.quizLocationAnswerId || `temp-id-${idx}`
-          }));
-
-          // Update local refs to prevent override from other components
-          if (locationDataRef && locationDataRef.current) {
-            locationDataRef.current = JSON.parse(JSON.stringify(updatedLocationAnswers));
-          }
-
-          // Dispatch event for background updates
-          const eventBg = new CustomEvent('activity:background:updated', {
-            detail: {
-              activityId: activity.id,
-              properties: { backgroundColor: data.backgroundColor },
-              sender: 'questionSettings_api',
-            }
-          });
-          window.dispatchEvent(eventBg);
-
-          if (previousAnswersRef && previousAnswersRef.current) {
-            previousAnswersRef.current = JSON.parse(JSON.stringify(updatedLocationAnswers));
-          }
-
-          // Update local state if using it
-          if (typeof setLocationData === 'function') {
-            setLocationData(JSON.parse(JSON.stringify(updatedLocationAnswers)));
-          }
-
-          // Force parent component update through callback
-          if (onQuestionLocationChange) {
-            onQuestionLocationChange(activeQuestionIndex, updatedLocationAnswers);
-          }
-
-          // Show success notification
-          toast({
-            title: "Location updated",
-            description: "Location answers have been saved successfully"
-          });
-
-          // Dispatch event to update all components
+          // Dispatch event to notify location editor of the update if needed
           if (typeof window !== 'undefined') {
-            const syncEvent = new CustomEvent('location:force:sync', {
+            const updateEvent = new CustomEvent('location:answers:updated', {
               detail: {
-                locationData: updatedLocationAnswers,
+                locationAnswers: response.data?.quiz?.quizLocationAnswers || data.locationAnswers,
                 timestamp: Date.now(),
                 source: 'settings'
               }
             });
-            window.dispatchEvent(syncEvent);
+            window.dispatchEvent(updateEvent);
           }
-
-          setIsSaving(false);
-          return response;
         }
-
 
         toast({
           title: 'Saved successfully',
@@ -1070,7 +961,7 @@ export function QuestionSettings({
       }
     } catch (error) {
       console.error("Error updating activity:", error);
-     
+
     } finally {
       setIsSaving(false);
     }
@@ -1215,10 +1106,6 @@ export function QuestionSettings({
           data.backgroundImage !== undefined
             ? data.backgroundImage
             : activity.backgroundImage,
-        customBackgroundMusic:
-          data.customBackgroundMusic !== undefined
-            ? data.customBackgroundMusic
-            : activity.customBackgroundMusic,
       };
 
       // Only send fields that are actually changing
@@ -1239,14 +1126,6 @@ export function QuestionSettings({
   const handleIsPublishedChange = (checked: boolean) => {
     setIsPublished(checked);
     debouncedUpdateActivity({ isPublished: checked });
-  };
-
-  const handleBackgroundMusicChange = (value: string) => {
-    setCustomBackgroundMusic(value);
-    // Update API immediately
-    if (activity && value !== activity.customBackgroundMusic) {
-      debouncedUpdateActivity({ customBackgroundMusic: value });
-    }
   };
 
   const handlePointTypeChange = (value: string) => {
@@ -1320,17 +1199,15 @@ export function QuestionSettings({
           case 'location':
             // For location quizzes
             const locationData = activeQuestion.location_data || {} as any;
-            const locationPointType = locationData.pointType || "STANDARD";
 
             // Use the correct field name for location answers
             const locationAnswers = activity?.quiz?.quizLocationAnswers ||
               (locationData as any).quizLocationAnswers ||
               (locationData as any).locationAnswers ||
               [{
-                quizLocationAnswerId: "",
-                longitude: (locationData as any).lng || 0,
-                latitude: (locationData as any).lat || 0,
-                radius: (locationData as any).radius || 20
+                longitude: (locationData as any).lng || 105.77803333582227,
+                latitude: (locationData as any).lat || 19.83950812993956,
+                radius: (locationData as any).radius || 10.0
               }];
 
             if (onQuestionLocationChange) {
@@ -1353,7 +1230,24 @@ export function QuestionSettings({
                   latitude: answer.latitude,
                   radius: answer.radius
                 }))
-              });
+              })
+                .then((response) => {
+                  // **NEW**: Dispatch success event for location editor
+                  if (typeof window !== 'undefined') {
+                    const successEvent = new CustomEvent('location:api:success', {
+                      detail: {
+                        source: 'location-quiz-api-success-pointType',
+                        response: response,
+                        timestamp: Date.now()
+                      }
+                    });
+                    window.dispatchEvent(successEvent);
+                  }
+                  console.log('Location quiz point type updated successfully');
+                })
+                .catch((error) => {
+                  console.error('Error updating location quiz point type:', error);
+                });
             }
             break;
           default:
@@ -1552,13 +1446,13 @@ export function QuestionSettings({
       // Check file type
       const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
       if (!allowedTypes.includes(file.type)) {
-       
+
         return;
       }
 
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-      
+
         return;
       }
 
@@ -1599,11 +1493,11 @@ export function QuestionSettings({
             updateActivity({ backgroundImage: fileUrl });
           }
         } else {
-        
+
         }
       } catch (error) {
         console.error('Error uploading file:', error);
-       
+
       } finally {
         setIsUploading(false);
         setUploadProgress(0);
@@ -1760,80 +1654,11 @@ export function QuestionSettings({
                     (e.target as HTMLImageElement).src =
                       'https://via.placeholder.com/300x200?text=Invalid+Image+URL';
 
-                  
+
 
                   }
                 }}
               />
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-3">
-          <Label htmlFor="background-music">Background Music</Label>
-          <div className="relative">
-            <Input
-              id="background-music"
-              placeholder="Audio file URL"
-              value={customBackgroundMusic}
-              onChange={(e) => handleBackgroundMusicChange(e.target.value)}
-              className="pr-10"
-            />
-            {customBackgroundMusic && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute right-1 top-1 h-7 text-xs"
-                onClick={() => {
-                  setCustomBackgroundMusic('');
-                  debouncedUpdateActivity({ customBackgroundMusic: '' });
-                }}
-              >
-                Clear
-              </Button>
-            )}
-          </div>
-
-          <div className="flex gap-3 mt-2">
-            <Button
-              variant="outline"
-              onClick={() => audioFileInputRef.current?.click()}
-              disabled={isUploadingAudio}
-              className="w-full"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Audio
-            </Button>
-            <input
-              type="file"
-              ref={audioFileInputRef}
-              onChange={handleAudioFileUpload}
-              accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg"
-              className="hidden"
-            />
-          </div>
-
-          {isUploadingAudio && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span>Uploading audio...</span>
-                <span>{uploadAudioProgress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                <div
-                  className="bg-blue-600 h-2.5 rounded-full"
-                  style={{ width: `${uploadAudioProgress}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
-
-          {customBackgroundMusic && (
-            <div className="mt-2">
-              <audio controls className="w-full h-10">
-                <source src={customBackgroundMusic} />
-                Your browser does not support the audio element.
-              </audio>
             </div>
           )}
         </div>
@@ -1843,26 +1668,433 @@ export function QuestionSettings({
 
   // Location settings component
   const LocationSettings = () => {
+    // Get the current location data from activity or activeQuestion
+    const locationData = activity?.quiz?.quizLocationAnswers || activeQuestion?.location_data?.quizLocationAnswers || [];
+
+    const [currentLocations, setCurrentLocations] = useState<any[]>(locationData);
+
+    // Update local state when activity changes
+    useEffect(() => {
+      const newLocationData = activity?.quiz?.quizLocationAnswers || activeQuestion?.location_data?.quizLocationAnswers || [];
+      setCurrentLocations(newLocationData);
+    }, [activity?.quiz?.quizLocationAnswers, activeQuestion?.location_data?.quizLocationAnswers]);
+
+    const handleAddLocation = () => {
+      // Default location for new points
+      const newLocation = {
+        longitude: 105.804817,
+        latitude: 21.028511,
+        radius: 10.0
+        // Note: No quizLocationAnswerId - this will be generated by the API
+      };
+
+      const updatedLocations = [...currentLocations, newLocation];
+      setCurrentLocations(updatedLocations);
+
+      // Immediately update lastLocationUpdate to prevent conflicts
+      if (typeof window !== 'undefined') {
+        window.lastLocationUpdate = {
+          timestamp: Date.now(),
+          activityId: activity?.id || '',
+          locationData: [...updatedLocations],
+          source: 'settings-add'
+        };
+      }
+
+      // Immediately dispatch event for location editor to show the new point  
+      if (typeof window !== 'undefined') {
+        const addEvent = new CustomEvent('location:point:added', {
+          detail: {
+            index: updatedLocations.length - 1,
+            longitude: newLocation.longitude,
+            latitude: newLocation.latitude,
+            radius: newLocation.radius,
+            immediate: true
+          }
+        });
+        window.dispatchEvent(addEvent);
+
+        // Also dispatch immediate location update with all points
+        const updateEvent = new CustomEvent('location:answers:updated', {
+          detail: {
+            locationAnswers: updatedLocations,
+            timestamp: Date.now(),
+            source: 'settings-add',
+            immediate: true
+          }
+        });
+        window.dispatchEvent(updateEvent);
+      }
+
+      // Update parent component immediately
+      if (onQuestionLocationChange) {
+        onQuestionLocationChange(activeQuestionIndex, {
+          ...activeQuestion.location_data,
+          quizLocationAnswers: updatedLocations
+        });
+      }
+
+      // **IMMEDIATELY call API with all points (old + new)**
+      if (activity?.id) {
+        const locationPayload = {
+          type: "LOCATION" as const,
+          questionText: activity.quiz?.questionText || activeQuestion.question_text,
+          timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+          pointType: (activity.quiz?.pointType || "STANDARD") as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS",
+          locationAnswers: updatedLocations.map(loc => ({
+            longitude: loc.longitude,
+            latitude: loc.latitude,
+            radius: loc.radius
+          }))
+        };
+
+        console.log("🚀 Adding new point - API payload:", locationPayload);
+
+        activitiesApi.updateLocationQuiz(activity.id, locationPayload)
+          .then(response => {
+            console.log("✅ Location added successfully:", response);
+
+            // Update local state with response data which includes IDs
+            if (response.data?.quiz?.quizLocationAnswers) {
+              setCurrentLocations(response.data.quiz.quizLocationAnswers);
+
+              // Notify location editor of the final update with IDs
+              if (typeof window !== 'undefined') {
+                const finalUpdateEvent = new CustomEvent('location:answers:updated', {
+                  detail: {
+                    locationAnswers: response.data.quiz.quizLocationAnswers,
+                    timestamp: Date.now(),
+                    source: 'settings-api-response'
+                  }
+                });
+                window.dispatchEvent(finalUpdateEvent);
+
+                // **NEW**: Dispatch success event for location editor
+                const successEvent = new CustomEvent('location:api:success', {
+                  detail: {
+                    source: 'location-quiz-api-success-addPoint',
+                    response: response,
+                    timestamp: Date.now()
+                  }
+                });
+                window.dispatchEvent(successEvent);
+              }
+            }
+
+            toast({
+              title: "Point added successfully",
+              description: `Added new location point. Total: ${updatedLocations.length} points`,
+            });
+          })
+          .catch(error => {
+            console.error("❌ Error adding location:", error);
+            // Revert local state on error
+            setCurrentLocations(currentLocations);
+
+            // Dispatch revert event
+            if (typeof window !== 'undefined') {
+              const revertEvent = new CustomEvent('location:answers:updated', {
+                detail: {
+                  locationAnswers: currentLocations,
+                  timestamp: Date.now(),
+                  source: 'settings-revert'
+                }
+              });
+              window.dispatchEvent(revertEvent);
+            }
+
+            toast({
+              title: "Error adding point",
+              description: "Failed to add the new location point. Please try again.",
+              variant: "destructive"
+            });
+          });
+      }
+    };
+
+    const handleDeleteLocation = (indexToDelete: number) => {
+      if (currentLocations.length <= 1) {
+        toast({
+          title: "Cannot delete",
+          description: "At least one location point is required.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const updatedLocations = currentLocations.filter((_, index) => index !== indexToDelete);
+      setCurrentLocations(updatedLocations);
+
+      // Immediately dispatch event for location editor to remove the point
+      if (typeof window !== 'undefined') {
+        const removeEvent = new CustomEvent('location:point:removed', {
+          detail: {
+            index: indexToDelete
+          }
+        });
+        window.dispatchEvent(removeEvent);
+
+        // Also dispatch immediate location update
+        const updateEvent = new CustomEvent('location:answers:updated', {
+          detail: {
+            locationAnswers: updatedLocations,
+            timestamp: Date.now(),
+            source: 'settings'
+          }
+        });
+        window.dispatchEvent(updateEvent);
+      }
+
+      // Update parent component immediately
+      if (onQuestionLocationChange) {
+        onQuestionLocationChange(activeQuestionIndex, {
+          ...activeQuestion.location_data,
+          quizLocationAnswers: updatedLocations
+        });
+      }
+
+      // Update via API afterwards
+      if (activity?.id) {
+        const locationPayload = {
+          type: "LOCATION" as const,
+          questionText: activity.quiz?.questionText || activeQuestion.question_text,
+          timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+          pointType: (activity.quiz?.pointType || "STANDARD") as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS",
+          locationAnswers: updatedLocations.map(loc => ({
+            longitude: loc.longitude,
+            latitude: loc.latitude,
+            radius: loc.radius
+          }))
+        };
+
+        activitiesApi.updateLocationQuiz(activity.id, locationPayload)
+          .then(response => {
+            console.log("Location added successfully:", response);
+
+            // Update local state with response data which includes IDs
+            if (response.data?.quiz?.quizLocationAnswers) {
+              setCurrentLocations(response.data.quiz.quizLocationAnswers);
+
+              // Notify location editor of the final update with IDs
+              if (typeof window !== 'undefined') {
+                const finalUpdateEvent = new CustomEvent('location:answers:updated', {
+                  detail: {
+                    locationAnswers: response.data.quiz.quizLocationAnswers,
+                    timestamp: Date.now(),
+                    source: 'settings'
+                  }
+                });
+                window.dispatchEvent(finalUpdateEvent);
+
+                // **NEW**: Dispatch success event for location editor
+                const successEvent = new CustomEvent('location:api:success', {
+                  detail: {
+                    source: 'location-quiz-api-success-deletePoint',
+                    response: response,
+                    timestamp: Date.now()
+                  }
+                });
+                window.dispatchEvent(successEvent);
+              }
+            }
+          })
+          .catch(error => {
+            console.error("Error adding location:", error);
+            // Revert local state on error
+            setCurrentLocations(currentLocations);
+
+            // Dispatch revert event
+            if (typeof window !== 'undefined') {
+              const revertEvent = new CustomEvent('location:answers:updated', {
+                detail: {
+                  locationAnswers: currentLocations,
+                  timestamp: Date.now(),
+                  source: 'settings'
+                }
+              });
+              window.dispatchEvent(revertEvent);
+            }
+          });
+      }
+    };
+
+    const handleUpdateLocation = (indexToUpdate: number, property: 'longitude' | 'latitude' | 'radius', value: number) => {
+      const updatedLocations = currentLocations.map((location, index) => {
+        if (index === indexToUpdate) {
+          return {
+            ...location,
+            [property]: value
+          };
+        }
+        return location;
+      });
+
+      setCurrentLocations(updatedLocations);
+
+      // Debounce API calls for coordinate/radius updates
+      if (typeof window !== 'undefined') {
+        if (window.locationUpdateTimer) {
+          clearTimeout(window.locationUpdateTimer);
+        }
+
+        window.locationUpdateTimer = setTimeout(() => {
+          if (activity?.id) {
+            const locationPayload = {
+              type: "LOCATION" as const,
+              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+              pointType: (activity.quiz?.pointType || "STANDARD") as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS",
+              locationAnswers: updatedLocations.map(loc => ({
+                longitude: loc.longitude,
+                latitude: loc.latitude,
+                radius: loc.radius
+              }))
+            };
+
+            activitiesApi.updateLocationQuiz(activity.id, locationPayload)
+              .then(response => {
+                console.log("Location updated successfully:", response);
+
+                // Update local state with response data
+                if (response.data?.quiz?.quizLocationAnswers) {
+                  setCurrentLocations(response.data.quiz.quizLocationAnswers);
+                }
+
+                // Notify location editor
+                if (typeof window !== 'undefined') {
+                  const updateEvent = new CustomEvent('location:answers:updated', {
+                    detail: {
+                      locationAnswers: response.data?.quiz?.quizLocationAnswers || updatedLocations,
+                      timestamp: Date.now(),
+                      source: 'settings'
+                    }
+                  });
+                  window.dispatchEvent(updateEvent);
+
+                  // **NEW**: Dispatch success event for location editor
+                  const successEvent = new CustomEvent('location:api:success', {
+                    detail: {
+                      source: 'location-quiz-api-success-updateProperties',
+                      response: response,
+                      timestamp: Date.now()
+                    }
+                  });
+                  window.dispatchEvent(successEvent);
+                }
+              })
+              .catch(error => {
+                console.error("Error updating location:", error);
+              });
+          }
+        }, 500); // 500ms debounce
+      }
+
+      // Update parent component
+      if (onQuestionLocationChange) {
+        onQuestionLocationChange(activeQuestionIndex, {
+          ...activeQuestion.location_data,
+          quizLocationAnswers: updatedLocations
+        });
+      }
+    };
+
     return (
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label>Radius (meters)</Label>
-          <Slider
-            min={10}
-            max={100}
-            step={5}
-            value={[activeQuestion.location_data?.radius || 20]}
-            onValueChange={(value) => {
-              if (onQuestionLocationChange && activeQuestion.location_data) {
-                const updatedData = {
-                  ...activeQuestion.location_data,
-                  radius: value[0],
-                };
-                onQuestionLocationChange(activeQuestionIndex, updatedData);
-              }
-            }}
-          />
+        <div className="flex items-center justify-between">
+          <Label className="text-base font-medium">Location Points</Label>
+          <Button
+            onClick={handleAddLocation}
+            size="sm"
+            variant="outline"
+            className="h-8"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add Point
+          </Button>
         </div>
+
+        <div className="space-y-3">
+          {currentLocations.map((location, index) => (
+            <Card key={index} className="p-3">
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-sm font-medium">Point {index + 1}</Label>
+                {currentLocations.length > 1 && (
+                  <Button
+                    onClick={() => handleDeleteLocation(index)}
+                    size="sm"
+                    variant="destructive"
+                    className="h-6 w-6 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor={`longitude-${index}`} className="text-xs text-gray-600">
+                    Longitude
+                  </Label>
+                  <Input
+                    id={`longitude-${index}`}
+                    type="number"
+                    step="0.000001"
+                    value={location.longitude || 0}
+                    onChange={(e) => handleUpdateLocation(index, 'longitude', parseFloat(e.target.value) || 0)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor={`latitude-${index}`} className="text-xs text-gray-600">
+                    Latitude
+                  </Label>
+                  <Input
+                    id={`latitude-${index}`}
+                    type="number"
+                    step="0.000001"
+                    value={location.latitude || 0}
+                    onChange={(e) => handleUpdateLocation(index, 'latitude', parseFloat(e.target.value) || 0)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <Label htmlFor={`radius-${index}`} className="text-xs text-gray-600">
+                  Radius (km)
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Slider
+                    value={[location.radius || 10]}
+                    onValueChange={(value) => handleUpdateLocation(index, 'radius', value[0])}
+                    min={1}
+                    max={100}
+                    step={1}
+                    className="flex-1"
+                  />
+                  <span className="text-sm font-mono w-10 text-right">
+                    {location.radius || 10}km
+                  </span>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {currentLocations.length === 0 && (
+          <div className="text-center py-6 text-gray-500">
+            <p className="text-sm">No location points set</p>
+            <Button
+              onClick={handleAddLocation}
+              size="sm"
+              variant="outline"
+              className="mt-2"
+            >
+              Add First Point
+            </Button>
+          </div>
+        )}
       </div>
     );
   };

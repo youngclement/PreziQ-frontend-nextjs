@@ -49,6 +49,7 @@ import { CSS } from '@dnd-kit/utilities';
 import axios from 'axios';
 import { activitiesApi } from '@/api-client/activities-api';
 import { ActivityType } from '@/api-client/activities-api';
+import { LoadingIndicator } from '@/components/common/loading-indicator';
 
 // Interface for props
 interface QuestionListProps {
@@ -184,6 +185,7 @@ export function QuestionList({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const addButtonRef = useRef<HTMLDivElement>(null);
   const [renderKey, setRenderKey] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Scroll to the end of the activities list when a new activity is added
   React.useEffect(() => {
@@ -230,6 +232,7 @@ export function QuestionList({
   // Handle add question with scrolling to new question
   const handleAddQuestion = async () => {
     try {
+      setIsLoading(true);
       if (!collectionId) {
         return;
       }
@@ -323,12 +326,15 @@ export function QuestionList({
       }, 100);
     } catch (error) {
       console.error('Error adding question:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Add a specialized function for adding location quizzes
   const handleAddLocationQuestion = async () => {
     try {
+      setIsLoading(true);
       if (!collectionId) {
         return;
       }
@@ -418,6 +424,8 @@ export function QuestionList({
       }, 100);
     } catch (error) {
       console.error('Error adding location question:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -756,10 +764,16 @@ export function QuestionList({
                       className='flex-shrink-0 cursor-pointer transition-all w-[100px] h-[70px] rounded-md overflow-hidden shadow-sm border border-dashed border-gray-300 dark:border-gray-700 hover:border-primary dark:hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800 flex flex-col items-center justify-center gap-1'
                       onClick={handleAddActivity}
                     >
-                      <Plus className='h-5 w-5 text-primary' />
-                      <p className='text-xs font-medium text-primary'>
-                        Add Activity
-                      </p>
+                      {isLoading ? (
+                        <LoadingIndicator size="sm" variant="inline" text="Adding..." />
+                      ) : (
+                        <>
+                          <Plus className='h-5 w-5 text-primary' />
+                          <p className='text-xs font-medium text-primary'>
+                            Add Activity
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
