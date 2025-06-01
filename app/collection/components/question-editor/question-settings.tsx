@@ -25,8 +25,8 @@ interface FileUploadResponse {
   data?: {
     data?: {
       fileUrl?: string;
-    }
-  }
+    };
+  };
 }
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -51,14 +51,13 @@ import {
   Palette,
   AlertCircle,
   Check,
-
   Trash,
   Loader2,
   RefreshCw,
   PlusCircle,
   PaintBucket,
-  ChevronsUpDown
-
+  ChevronsUpDown,
+  Link,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -95,7 +94,6 @@ import {
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-
 import {
   Command,
   CommandEmpty,
@@ -108,14 +106,12 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-
 } from '@/components/ui/popover';
 import { SlideSettings } from '../slide/sidebar/slide-settings';
 import SlideToolbar from '../slide/sidebar/slide-toolbar';
 
-
-import { useToast } from "@/hooks/use-toast";
-
+import { useToast } from '@/hooks/use-toast';
+import { MatchingPairSettings } from './matching-pair-settings';
 
 /**
  * Component that allows editing settings for a quiz question/activity.
@@ -197,6 +193,11 @@ interface QuestionSettingsProps {
   onSlideImageChange?: (value: string, index: number) => void;
   onReorderOptions?: (sourceIndex: number, destinationIndex: number) => void;
   onQuestionLocationChange?: (questionIndex: number, locationData: any) => void;
+  onMatchingPairOptionsChange?: (
+    questionIndex: number,
+    newOptions: QuizOption[]
+  ) => void;
+  onMatchingPairConnectionsChange?: (questionIndex: number) => void;
   activity?: any; // Atividade associada à questão ativa
 }
 const TextAnswerForm = ({
@@ -251,6 +252,8 @@ export function QuestionSettings({
   onSlideImageChange,
   onReorderOptions,
   onQuestionLocationChange,
+  onMatchingPairOptionsChange,
+  onMatchingPairConnectionsChange,
   activity,
 }: QuestionSettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -265,12 +268,20 @@ export function QuestionSettings({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [invalidImageUrl, setInvalidImageUrl] = useState(false);
 
-  const [backgroundColor, setBackgroundColor] = useState(activity?.backgroundColor || "#FFFFFF");
-  const [customBackgroundMusic, setCustomBackgroundMusic] = useState(activity?.customBackgroundMusic || "");
-  const [title, setTitle] = useState(activity?.title || "");
-  const [description, setDescription] = useState(activity?.description || "");
-  const [isPublished, setIsPublished] = useState(activity?.is_published || false);
-  const [pointType, setPointType] = useState(activity?.quiz?.pointType || "STANDARD");
+  const [backgroundColor, setBackgroundColor] = useState(
+    activity?.backgroundColor || '#FFFFFF'
+  );
+  const [customBackgroundMusic, setCustomBackgroundMusic] = useState(
+    activity?.customBackgroundMusic || ''
+  );
+  const [title, setTitle] = useState(activity?.title || '');
+  const [description, setDescription] = useState(activity?.description || '');
+  const [isPublished, setIsPublished] = useState(
+    activity?.is_published || false
+  );
+  const [pointType, setPointType] = useState(
+    activity?.quiz?.pointType || 'STANDARD'
+  );
 
   // Track the activity ID to detect changes
   const [prevActivityId, setPrevActivityId] = useState(activity?.id);
@@ -288,7 +299,7 @@ export function QuestionSettings({
       setTitle(activity.title || '');
       setDescription(activity.description || '');
       setIsPublished(activity.is_published || false);
-      setPointType(activity.quiz?.pointType || "STANDARD");
+      setPointType(activity.quiz?.pointType || 'STANDARD');
 
       // Check if we've switched to a different activity
       if (activity.id !== prevActivityId) {
@@ -305,21 +316,32 @@ export function QuestionSettings({
   // Add listener for activity:updated event
   useEffect(() => {
     const handleActivityUpdated = (event: CustomEvent) => {
-      if (event.detail && event.detail.activity && activity && event.detail.activity.activityId === activity.id) {
+      if (
+        event.detail &&
+        event.detail.activity &&
+        activity &&
+        event.detail.activity.activityId === activity.id
+      ) {
         // Update local background image if it changed
         if (event.detail.activity.backgroundImage !== backgroundImage) {
-          onBackgroundImageChange(event.detail.activity.backgroundImage || "");
+          onBackgroundImageChange(event.detail.activity.backgroundImage || '');
         }
       }
     };
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('activity:updated', handleActivityUpdated as EventListener);
+      window.addEventListener(
+        'activity:updated',
+        handleActivityUpdated as EventListener
+      );
     }
 
     return () => {
       if (typeof window !== 'undefined') {
-        window.removeEventListener('activity:updated', handleActivityUpdated as EventListener);
+        window.removeEventListener(
+          'activity:updated',
+          handleActivityUpdated as EventListener
+        );
       }
     };
   }, [activity, backgroundImage, onBackgroundImageChange]);
@@ -363,9 +385,6 @@ export function QuestionSettings({
         });
       } catch (error) {
         console.error('Error updating text answer quiz:', error);
-
-      
-
       }
     }
   };
@@ -418,6 +437,8 @@ export function QuestionSettings({
       'bg-yellow-100 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-900/40',
     info_slide:
       'bg-indigo-100 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800 text-indigo-800 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/40',
+    matching_pair:
+      'bg-indigo-100 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800 text-indigo-800 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/40',
   };
 
   // Replace the QuestionTypeSelector component with this new combobox version
@@ -465,11 +486,11 @@ export function QuestionSettings({
         label: 'Information Slide',
         icon: <FileText className="h-4 w-4 mr-2 text-yellow-600" />,
       },
-      // {
-      //   value: 'info_slide',
-      //   label: 'Interactive Info Slide',
-      //   icon: <FileText className="h-4 w-4 mr-2 text-indigo-600" />,
-      // },
+      {
+        value: 'matching_pair',
+        label: 'Matching Pairs',
+        icon: <Link className="h-4 w-4 mr-2 text-indigo-600" />,
+      },
     ];
 
     // Find the current question type
@@ -488,7 +509,7 @@ export function QuestionSettings({
             className={cn(
               'w-full justify-between px-3 py-5 h-auto border',
               activeQuestion.question_type &&
-              questionTypeColors[activeQuestion.question_type]
+                questionTypeColors[activeQuestion.question_type]
             )}
           >
             <div className="flex items-center gap-2">
@@ -665,100 +686,114 @@ export function QuestionSettings({
               activitiesApi.updateButtonsQuiz(activity.id, {
                 ...quizPayload,
 
-                type: "CHOICE",
-                questionText: activity.quiz?.questionText || activeQuestion.question_text,
-                pointType: activity.quiz?.pointType || pointType as any,
-                answers: activity.quiz?.quizAnswers || activeQuestion.options?.map(opt => ({
-                  answerText: opt.option_text,
-                  isCorrect: opt.is_correct,
-                  explanation: opt.explanation || ''
-                })) || []
-
+                type: 'CHOICE',
+                questionText:
+                  activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: activity.quiz?.pointType || (pointType as any),
+                answers:
+                  activity.quiz?.quizAnswers ||
+                  activeQuestion.options?.map((opt) => ({
+                    answerText: opt.option_text,
+                    isCorrect: opt.is_correct,
+                    explanation: opt.explanation || '',
+                  })) ||
+                  [],
               });
               break;
             case 'multiple_response':
               activitiesApi.updateCheckboxesQuiz(activity.id, {
                 ...quizPayload,
 
-                type: "CHOICE",
-                questionText: activity.quiz?.questionText || activeQuestion.question_text,
-                pointType: activity.quiz?.pointType || pointType as any,
-                answers: activity.quiz?.quizAnswers || activeQuestion.options?.map(opt => ({
-                  answerText: opt.option_text,
-                  isCorrect: opt.is_correct,
-                  explanation: opt.explanation || ''
-                })) || []
-
+                type: 'CHOICE',
+                questionText:
+                  activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: activity.quiz?.pointType || (pointType as any),
+                answers:
+                  activity.quiz?.quizAnswers ||
+                  activeQuestion.options?.map((opt) => ({
+                    answerText: opt.option_text,
+                    isCorrect: opt.is_correct,
+                    explanation: opt.explanation || '',
+                  })) ||
+                  [],
               });
               break;
             case 'true_false':
               activitiesApi.updateTrueFalseQuiz(activity.id, {
                 ...quizPayload,
 
-                type: "TRUE_FALSE",
-                questionText: activity.quiz?.questionText || activeQuestion.question_text,
-                pointType: activity.quiz?.pointType || pointType as any,
-                correctAnswer: activeQuestion.options?.find(o => o.is_correct)?.option_text.toLowerCase() === 'true'
-
+                type: 'TRUE_FALSE',
+                questionText:
+                  activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: activity.quiz?.pointType || (pointType as any),
+                correctAnswer:
+                  activeQuestion.options
+                    ?.find((o) => o.is_correct)
+                    ?.option_text.toLowerCase() === 'true',
               });
               break;
             case 'text_answer':
               activitiesApi.updateTypeAnswerQuiz(activity.id, {
                 ...quizPayload,
 
-                type: "TYPE_ANSWER",
-                questionText: activity.quiz?.questionText || activeQuestion.question_text,
-                pointType: activity.quiz?.pointType || pointType as any,
-                correctAnswer: activeQuestion.correct_answer_text || ''
-
+                type: 'TYPE_ANSWER',
+                questionText:
+                  activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: activity.quiz?.pointType || (pointType as any),
+                correctAnswer: activeQuestion.correct_answer_text || '',
               });
               break;
             case 'reorder':
               activitiesApi.updateReorderQuiz(activity.id, {
                 ...quizPayload,
 
-                type: "REORDER",
-                questionText: activity.quiz?.questionText || activeQuestion.question_text,
-                pointType: activity.quiz?.pointType || pointType as any,
-                correctOrder: activeQuestion.options?.map(o => o.option_text) || []
-
+                type: 'REORDER',
+                questionText:
+                  activity.quiz?.questionText || activeQuestion.question_text,
+                pointType: activity.quiz?.pointType || (pointType as any),
+                correctOrder:
+                  activeQuestion.options?.map((o) => o.option_text) || [],
               });
               break;
             case 'location':
               // Get the current location data and point type
-              const locationData = activeQuestion.location_data || {} as any;
-              const locationPointType = locationData.pointType || "STANDARD";
+              const locationData = activeQuestion.location_data || ({} as any);
+              const locationPointType = locationData.pointType || 'STANDARD';
 
               // Use the correct field name for location answers
               const locationAnswers = activity?.quiz?.quizLocationAnswers ||
                 (locationData as any).quizLocationAnswers ||
-                (locationData as any).locationAnswers ||
-                [{
-                  quizLocationAnswerId: "",
-                  longitude: (locationData as any).lng || 0,
-                  latitude: (locationData as any).lat || 0,
-                  radius: (locationData as any).radius || 20
-                }];
+                (locationData as any).locationAnswers || [
+                  {
+                    quizLocationAnswerId: '',
+                    longitude: (locationData as any).lng || 0,
+                    latitude: (locationData as any).lat || 0,
+                    radius: (locationData as any).radius || 20,
+                  },
+                ];
 
               // For location quizzes, use the activitiesApi
               if (onQuestionLocationChange) {
                 // Update local state with the new time limit
                 const updatedLocationData = {
                   ...locationData,
-                  timeLimitSeconds: value
+                  timeLimitSeconds: value,
                 };
 
                 // Update via API
                 activitiesApi.updateLocationQuiz(activity.id, {
-                  type: "LOCATION",
+                  type: 'LOCATION',
                   questionText: activeQuestion.question_text,
                   timeLimitSeconds: value,
-                  pointType: locationPointType as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS",
+                  pointType: locationPointType as
+                    | 'STANDARD'
+                    | 'NO_POINTS'
+                    | 'DOUBLE_POINTS',
                   locationAnswers: locationAnswers.map((answer: any) => ({
                     longitude: answer.longitude,
                     latitude: answer.latitude,
-                    radius: answer.radius
-                  }))
+                    radius: answer.radius,
+                  })),
                 });
               }
               break;
@@ -831,17 +866,11 @@ export function QuestionSettings({
     // Check file type
     const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg'];
     if (!allowedTypes.includes(file.type)) {
-
-    
-
       return;
     }
 
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-
-    
-
       return;
     }
 
@@ -861,7 +890,10 @@ export function QuestionSettings({
       }, 300);
 
       // Upload file with flexible type
-      const response = await storageApi.uploadSingleFile(file, 'uploads') as FileUploadResponse;
+      const response = (await storageApi.uploadSingleFile(
+        file,
+        'uploads'
+      )) as FileUploadResponse;
 
       clearInterval(progressInterval);
       setUploadAudioProgress(100);
@@ -880,15 +912,11 @@ export function QuestionSettings({
       if (fileUrl) {
         setCustomBackgroundMusic(fileUrl);
         await updateActivity({ customBackgroundMusic: fileUrl });
-
-     
       } else {
         console.error('No file URL in response:', response);
-    
       }
     } catch (error) {
       console.error('Error uploading audio file:', error);
-   
     } finally {
       setIsUploadingAudio(false);
       setUploadAudioProgress(0);
@@ -913,21 +941,24 @@ export function QuestionSettings({
     setIsSaving(true);
     try {
       // Dispatch an event before making the API call for immediate UI feedback
-      const event = new CustomEvent("activity:updated", {
+      const event = new CustomEvent('activity:updated', {
         detail: {
           activityId: activity.id,
-          data: data
-        }
+          data: data,
+        },
       });
       window.dispatchEvent(event);
 
       // Handle background changes separately through global method if available
-      if (typeof window !== 'undefined' && window.updateActivityBackground && data.backgroundColor) {
+      if (
+        typeof window !== 'undefined' &&
+        window.updateActivityBackground &&
+        data.backgroundColor
+      ) {
         window.updateActivityBackground(activity.id, {
-          backgroundColor: data.backgroundColor
+          backgroundColor: data.backgroundColor,
         });
       }
-
 
       try {
         // Ensure we're sending the correct API payload shape
@@ -963,12 +994,11 @@ export function QuestionSettings({
           const timeLimitEvent = new CustomEvent('activity:timeLimit:updated', {
             detail: {
               activityId: activity.id,
-              timeLimitSeconds: data.timeLimitSeconds
-            }
+              timeLimitSeconds: data.timeLimitSeconds,
+            },
           });
           window.dispatchEvent(timeLimitEvent);
         }
-
 
         // Handle location quiz updates
         if (data.locationAnswers) {
@@ -977,32 +1007,44 @@ export function QuestionSettings({
             window.lastLocationUpdate = {
               timestamp: Date.now(),
               activityId: activity.id,
-              locationData: [...data.locationAnswers]
+              locationData: [...data.locationAnswers],
             };
           }
 
           // Include required fields if they're missing
           const locationPayload = {
-            type: "LOCATION" as "LOCATION",
-            questionText: activity.quiz?.questionText || activeQuestion.question_text,
-            timeLimitSeconds: data.timeLimitSeconds || activity.quiz?.timeLimitSeconds || timeLimit,
-            pointType: data.pointType || activity.quiz?.pointType || "STANDARD",
-            locationAnswers: data.locationAnswers
+            type: 'LOCATION' as 'LOCATION',
+            questionText:
+              activity.quiz?.questionText || activeQuestion.question_text,
+            timeLimitSeconds:
+              data.timeLimitSeconds ||
+              activity.quiz?.timeLimitSeconds ||
+              timeLimit,
+            pointType: data.pointType || activity.quiz?.pointType || 'STANDARD',
+            locationAnswers: data.locationAnswers,
           };
 
-          console.log("Updating location quiz with payload:", locationPayload);
-          const response = await activitiesApi.updateLocationQuiz(activity.id, locationPayload);
-          console.log("Location quiz updated:", response);
+          console.log('Updating location quiz with payload:', locationPayload);
+          const response = await activitiesApi.updateLocationQuiz(
+            activity.id,
+            locationPayload
+          );
+          console.log('Location quiz updated:', response);
 
           // Update local state to reflect the changes - use deep cloning to avoid reference issues
-          const updatedLocationAnswers = data.locationAnswers.map((ans: any, idx: number) => ({
-            ...ans,
-            quizLocationAnswerId: ans.quizLocationAnswerId || `temp-id-${idx}`
-          }));
+          const updatedLocationAnswers = data.locationAnswers.map(
+            (ans: any, idx: number) => ({
+              ...ans,
+              quizLocationAnswerId:
+                ans.quizLocationAnswerId || `temp-id-${idx}`,
+            })
+          );
 
           // Update local refs to prevent override from other components
           if (locationDataRef && locationDataRef.current) {
-            locationDataRef.current = JSON.parse(JSON.stringify(updatedLocationAnswers));
+            locationDataRef.current = JSON.parse(
+              JSON.stringify(updatedLocationAnswers)
+            );
           }
 
           // Dispatch event for background updates
@@ -1011,12 +1053,14 @@ export function QuestionSettings({
               activityId: activity.id,
               properties: { backgroundColor: data.backgroundColor },
               sender: 'questionSettings_api',
-            }
+            },
           });
           window.dispatchEvent(eventBg);
 
           if (previousAnswersRef && previousAnswersRef.current) {
-            previousAnswersRef.current = JSON.parse(JSON.stringify(updatedLocationAnswers));
+            previousAnswersRef.current = JSON.parse(
+              JSON.stringify(updatedLocationAnswers)
+            );
           }
 
           // Update local state if using it
@@ -1026,13 +1070,16 @@ export function QuestionSettings({
 
           // Force parent component update through callback
           if (onQuestionLocationChange) {
-            onQuestionLocationChange(activeQuestionIndex, updatedLocationAnswers);
+            onQuestionLocationChange(
+              activeQuestionIndex,
+              updatedLocationAnswers
+            );
           }
 
           // Show success notification
           toast({
-            title: "Location updated",
-            description: "Location answers have been saved successfully"
+            title: 'Location updated',
+            description: 'Location answers have been saved successfully',
           });
 
           // Dispatch event to update all components
@@ -1041,8 +1088,8 @@ export function QuestionSettings({
               detail: {
                 locationData: updatedLocationAnswers,
                 timestamp: Date.now(),
-                source: 'settings'
-              }
+                source: 'settings',
+              },
             });
             window.dispatchEvent(syncEvent);
           }
@@ -1051,7 +1098,6 @@ export function QuestionSettings({
           return response;
         }
 
-
         toast({
           title: 'Saved successfully',
           description: 'Your changes have been saved.',
@@ -1059,18 +1105,16 @@ export function QuestionSettings({
 
         // For all other updates, use the regular updateActivity endpoint
         return await activitiesApi.updateActivity(activity.id, data);
-
       } catch (error) {
-        console.error("Error in API call:", error);
+        console.error('Error in API call:', error);
         toast({
-          title: "API Error",
-          description: "Could not update activity",
-          variant: "destructive"
+          title: 'API Error',
+          description: 'Could not update activity',
+          variant: 'destructive',
         });
       }
     } catch (error) {
-      console.error("Error updating activity:", error);
-     
+      console.error('Error updating activity:', error);
     } finally {
       setIsSaving(false);
     }
@@ -1230,9 +1274,7 @@ export function QuestionSettings({
       console.log('Silently updating activity with payload:', finalPayload);
       await activitiesApi.updateActivity(activity.id, finalPayload);
     } catch (error) {
-
       console.error('Error silently updating activity:', error);
-
     }
   };
 
@@ -1260,99 +1302,118 @@ export function QuestionSettings({
         const quizPayload = { pointType: value };
 
         // Type assertion for pointType
-        const typedPointType = value as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS";
+        const typedPointType = value as
+          | 'STANDARD'
+          | 'NO_POINTS'
+          | 'DOUBLE_POINTS';
 
         // Update with the appropriate quiz API call based on quiz type
         switch (questionType) {
           case 'multiple_choice':
             activitiesApi.updateButtonsQuiz(activity.id, {
-              type: "CHOICE",
-              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              type: 'CHOICE',
+              questionText:
+                activity.quiz?.questionText || activeQuestion.question_text,
               timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
               pointType: typedPointType,
-              answers: activity.quiz?.quizAnswers || activeQuestion.options?.map(opt => ({
-                answerText: opt.option_text,
-                isCorrect: opt.is_correct,
-                explanation: opt.explanation || ''
-              })) || []
+              answers:
+                activity.quiz?.quizAnswers ||
+                activeQuestion.options?.map((opt) => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || '',
+                })) ||
+                [],
             });
             break;
           case 'multiple_response':
             activitiesApi.updateCheckboxesQuiz(activity.id, {
-              type: "CHOICE",
-              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              type: 'CHOICE',
+              questionText:
+                activity.quiz?.questionText || activeQuestion.question_text,
               timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
               pointType: typedPointType,
-              answers: activity.quiz?.quizAnswers || activeQuestion.options?.map(opt => ({
-                answerText: opt.option_text,
-                isCorrect: opt.is_correct,
-                explanation: opt.explanation || ''
-              })) || []
+              answers:
+                activity.quiz?.quizAnswers ||
+                activeQuestion.options?.map((opt) => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || '',
+                })) ||
+                [],
             });
             break;
           case 'true_false':
             activitiesApi.updateTrueFalseQuiz(activity.id, {
-              type: "TRUE_FALSE",
-              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              type: 'TRUE_FALSE',
+              questionText:
+                activity.quiz?.questionText || activeQuestion.question_text,
               timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
               pointType: typedPointType,
-              correctAnswer: activeQuestion.options?.find(o => o.is_correct)?.option_text.toLowerCase() === 'true'
+              correctAnswer:
+                activeQuestion.options
+                  ?.find((o) => o.is_correct)
+                  ?.option_text.toLowerCase() === 'true',
             });
             break;
           case 'text_answer':
             activitiesApi.updateTypeAnswerQuiz(activity.id, {
-              type: "TYPE_ANSWER",
-              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              type: 'TYPE_ANSWER',
+              questionText:
+                activity.quiz?.questionText || activeQuestion.question_text,
               timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
               pointType: typedPointType,
-              correctAnswer: activeQuestion.correct_answer_text || ''
+              correctAnswer: activeQuestion.correct_answer_text || '',
             });
             break;
           case 'reorder':
             activitiesApi.updateReorderQuiz(activity.id, {
-              type: "REORDER",
-              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              type: 'REORDER',
+              questionText:
+                activity.quiz?.questionText || activeQuestion.question_text,
               timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
               pointType: typedPointType,
-              correctOrder: activeQuestion.options?.map(o => o.option_text) || []
+              correctOrder:
+                activeQuestion.options?.map((o) => o.option_text) || [],
             });
             break;
           case 'location':
             // For location quizzes
-            const locationData = activeQuestion.location_data || {} as any;
-            const locationPointType = locationData.pointType || "STANDARD";
+            const locationData = activeQuestion.location_data || ({} as any);
+            const locationPointType = locationData.pointType || 'STANDARD';
 
             // Use the correct field name for location answers
             const locationAnswers = activity?.quiz?.quizLocationAnswers ||
               (locationData as any).quizLocationAnswers ||
-              (locationData as any).locationAnswers ||
-              [{
-                quizLocationAnswerId: "",
-                longitude: (locationData as any).lng || 0,
-                latitude: (locationData as any).lat || 0,
-                radius: (locationData as any).radius || 20
-              }];
+              (locationData as any).locationAnswers || [
+                {
+                  quizLocationAnswerId: '',
+                  longitude: (locationData as any).lng || 0,
+                  latitude: (locationData as any).lat || 0,
+                  radius: (locationData as any).radius || 20,
+                },
+              ];
 
             if (onQuestionLocationChange) {
               // Update local state
               const updatedData = {
                 ...locationData,
-                pointType: value
+                pointType: value,
               };
 
               onQuestionLocationChange(activeQuestionIndex, updatedData);
 
               // Update via API
               activitiesApi.updateLocationQuiz(activity.id, {
-                type: "LOCATION",
+                type: 'LOCATION',
                 questionText: activeQuestion.question_text,
                 timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
-                pointType: value as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS",
+                pointType: value as 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS',
                 locationAnswers: locationAnswers.map((answer: any) => ({
                   longitude: answer.longitude,
                   latitude: answer.latitude,
-                  radius: answer.radius
-                }))
+                  radius: answer.radius,
+                })),
               });
             }
             break;
@@ -1362,7 +1423,9 @@ export function QuestionSettings({
             break;
         }
 
-        console.log(`Updated point type to ${value} for ${questionType} question`);
+        console.log(
+          `Updated point type to ${value} for ${questionType} question`
+        );
       } catch (error) {
         console.error('Error updating point type:', error);
         // Fall back to general update if specific API fails
@@ -1396,7 +1459,7 @@ export function QuestionSettings({
   // Add PointTypeSelector component
   const PointTypeSelector = ({
     value,
-    onChange
+    onChange,
   }: {
     value: string;
     onChange: (value: string) => void;
@@ -1404,10 +1467,7 @@ export function QuestionSettings({
     return (
       <div className="space-y-2">
         <Label htmlFor="point-type">Point Type</Label>
-        <Select
-          value={value}
-          onValueChange={onChange}
-        >
+        <Select value={value} onValueChange={onChange}>
           <SelectTrigger id="point-type" className="w-full">
             <SelectValue placeholder="Select point type" />
           </SelectTrigger>
@@ -1533,9 +1593,9 @@ export function QuestionSettings({
     // Ưu tiên global storage trước, sau đó mới tới state local
     const currentBackgroundColor =
       typeof window !== 'undefined' &&
-        window.savedBackgroundColors &&
-        activity?.id &&
-        window.savedBackgroundColors[activity.id]
+      window.savedBackgroundColors &&
+      activity?.id &&
+      window.savedBackgroundColors[activity.id]
         ? window.savedBackgroundColors[activity.id]
         : backgroundColor;
 
@@ -1552,13 +1612,11 @@ export function QuestionSettings({
       // Check file type
       const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
       if (!allowedTypes.includes(file.type)) {
-       
         return;
       }
 
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-      
         return;
       }
 
@@ -1578,7 +1636,10 @@ export function QuestionSettings({
         }, 300);
 
         // Upload file
-        const response = await storageApi.uploadSingleFile(file, 'uploads') as FileUploadResponse;
+        const response = (await storageApi.uploadSingleFile(
+          file,
+          'uploads'
+        )) as FileUploadResponse;
 
         clearInterval(progressInterval);
         setUploadProgress(100);
@@ -1599,11 +1660,9 @@ export function QuestionSettings({
             updateActivity({ backgroundImage: fileUrl });
           }
         } else {
-        
         }
       } catch (error) {
         console.error('Error uploading file:', error);
-       
       } finally {
         setIsUploading(false);
         setUploadProgress(0);
@@ -1658,10 +1717,10 @@ export function QuestionSettings({
                   </div>
                   {currentBackgroundColor.toUpperCase() ===
                     pastel.color.toUpperCase() && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
-                      </div>
-                    )}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -1759,9 +1818,6 @@ export function QuestionSettings({
 
                     (e.target as HTMLImageElement).src =
                       'https://via.placeholder.com/300x200?text=Invalid+Image+URL';
-
-                  
-
                   }
                 }}
               />
@@ -1884,23 +1940,31 @@ export function QuestionSettings({
         <div>
           <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
             <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-            {activeQuestion.question_type === 'slide' || activeQuestion.question_type === 'info_slide' ? "Slide Content" : "Answer Options"}
+            {activeQuestion.question_type === 'slide' ||
+            activeQuestion.question_type === 'info_slide'
+              ? 'Slide Content'
+              : 'Answer Options'}
           </h3>
 
           {/* Display different content based on question type */}
-          {activeQuestion.question_type === 'multiple_choice' || activeQuestion.question_type === 'multiple_response' ? (
-            <div className={cn(
-              "p-3 rounded-md border",
-              activeQuestion.question_type === 'multiple_choice'
-                ? "bg-purple-50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-800"
-                : "bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800"
-            )}>
+          {activeQuestion.question_type === 'multiple_choice' ||
+          activeQuestion.question_type === 'multiple_response' ? (
+            <div
+              className={cn(
+                'p-3 rounded-md border',
+                activeQuestion.question_type === 'multiple_choice'
+                  ? 'bg-purple-50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-800'
+                  : 'bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800'
+              )}
+            >
               <OptionList
                 options={activeQuestion.options}
                 activeQuestionIndex={activeQuestionIndex}
                 questionType={activeQuestion.question_type}
                 onAddOption={onAddOption}
-                onOptionChange={(questionIndex, optionIndex, field, value) => onOptionChange(questionIndex, optionIndex, field, value)}
+                onOptionChange={(questionIndex, optionIndex, field, value) =>
+                  onOptionChange(questionIndex, optionIndex, field, value)
+                }
                 onDeleteOption={onDeleteOption}
               />
             </div>
@@ -1917,9 +1981,9 @@ export function QuestionSettings({
               correctAnswerText={correctAnswerText}
               onTextAnswerChange={handleTextAnswerChange}
               onTextAnswerBlur={handleTextAnswerBlur}
-
             />
-          ) : activeQuestion.question_type === 'slide' || activeQuestion.question_type === 'info_slide' ? (
+          ) : activeQuestion.question_type === 'slide' ||
+            activeQuestion.question_type === 'info_slide' ? (
             <SlideSettings
               slideId={activity?.id || ''}
               backgroundColor={backgroundColor}
@@ -1933,7 +1997,9 @@ export function QuestionSettings({
             <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
               <ReorderOptions
                 options={activeQuestion.options}
-                onOptionChange={(index, field, value) => onOptionChange(activeQuestionIndex, index, field, value)}
+                onOptionChange={(index, field, value) =>
+                  onOptionChange(activeQuestionIndex, index, field, value)
+                }
                 onDeleteOption={onDeleteOption}
                 onAddOption={onAddOption}
                 onReorder={onReorderOptions}
@@ -1941,6 +2007,156 @@ export function QuestionSettings({
             </div>
           ) : activeQuestion.question_type === 'location' ? (
             <LocationSettings />
+          ) : activeQuestion.question_type === 'matching_pair' ? (
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-md border border-indigo-100 dark:border-indigo-800">
+              <MatchingPairSettings
+                options={activeQuestion.options || []}
+                onOptionsChange={(newOptions) => {
+                  if (onMatchingPairOptionsChange) {
+                    onMatchingPairOptionsChange(
+                      activeQuestionIndex,
+                      newOptions
+                    );
+                  }
+                }}
+                onAddPair={() => {
+                  const pairId = `pair-${Date.now()}`;
+                  const leftIndex = activeQuestion.options?.length || 0;
+                  const rightIndex = leftIndex + 1;
+
+                  // Add left item
+                  onOptionChange(
+                    activeQuestionIndex,
+                    leftIndex,
+                    'option_text',
+                    'Left item'
+                  );
+                  onOptionChange(
+                    activeQuestionIndex,
+                    leftIndex,
+                    'type',
+                    'left'
+                  );
+                  onOptionChange(
+                    activeQuestionIndex,
+                    leftIndex,
+                    'pair_id',
+                    pairId
+                  );
+                  onOptionChange(
+                    activeQuestionIndex,
+                    leftIndex,
+                    'is_correct',
+                    true
+                  );
+
+                  // Add right item
+                  onOptionChange(
+                    activeQuestionIndex,
+                    rightIndex,
+                    'option_text',
+                    'Right item'
+                  );
+                  onOptionChange(
+                    activeQuestionIndex,
+                    rightIndex,
+                    'type',
+                    'right'
+                  );
+                  onOptionChange(
+                    activeQuestionIndex,
+                    rightIndex,
+                    'pair_id',
+                    pairId
+                  );
+                  onOptionChange(
+                    activeQuestionIndex,
+                    rightIndex,
+                    'is_correct',
+                    true
+                  );
+                }}
+                onDeletePair={(pairIndex) => {
+                  // Calculate the actual indices for the pair
+                  const leftIndex = pairIndex * 2;
+                  const rightIndex = leftIndex + 1;
+
+                  // Validate indices
+                  if (
+                    leftIndex >= (activeQuestion.options?.length || 0) ||
+                    rightIndex >= (activeQuestion.options?.length || 0)
+                  ) {
+                    console.error('Invalid pair index for deletion');
+                    return;
+                  }
+
+                  // Delete both items at once
+                  const newOptions = [...(activeQuestion.options || [])];
+                  newOptions.splice(leftIndex, 2); // Remove 2 items starting at leftIndex
+
+                  // Update all options at once to maintain consistency
+                  newOptions.forEach((option, index) => {
+                    onOptionChange(
+                      activeQuestionIndex,
+                      index,
+                      'option_text',
+                      option.option_text
+                    );
+                    onOptionChange(
+                      activeQuestionIndex,
+                      index,
+                      'is_correct',
+                      option.is_correct
+                    );
+                  });
+                }}
+                onReorderPairs={(startIndex, endIndex) => {
+                  if (!onReorderOptions) return;
+
+                  // Validate indices
+                  const totalPairs = (activeQuestion.options?.length || 0) / 2;
+                  if (
+                    startIndex < 0 ||
+                    startIndex >= totalPairs ||
+                    endIndex < 0 ||
+                    endIndex >= totalPairs
+                  ) {
+                    console.error('Invalid pair indices for reordering');
+                    return;
+                  }
+
+                  // Calculate actual indices for the pairs
+                  const startLeftIndex = startIndex * 2;
+                  const startRightIndex = startLeftIndex + 1;
+                  const endLeftIndex = endIndex * 2;
+                  const endRightIndex = endLeftIndex + 1;
+
+                  // Reorder both items in the pair together
+                  const newOptions = [...(activeQuestion.options || [])];
+                  const [leftItem, rightItem] = newOptions.splice(
+                    startLeftIndex,
+                    2
+                  ); // Get both items
+                  newOptions.splice(endLeftIndex, 0, leftItem, rightItem); // Insert both items
+
+                  // Update all options at once
+                  newOptions.forEach((option, index) => {
+                    onOptionChange(
+                      activeQuestionIndex,
+                      index,
+                      'option_text',
+                      option.option_text
+                    );
+                    onOptionChange(
+                      activeQuestionIndex,
+                      index,
+                      'is_correct',
+                      option.is_correct
+                    );
+                  });
+                }}
+              />
+            </div>
           ) : null}
         </div>
 
@@ -2031,12 +2247,15 @@ export function QuestionSettings({
               <div>
                 <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                  {activeQuestion.question_type === 'slide' || activeQuestion.question_type === 'info_slide' ? "Slide Content" : "Answer Options"}
+                  {activeQuestion.question_type === 'slide' ||
+                  activeQuestion.question_type === 'info_slide'
+                    ? 'Slide Content'
+                    : 'Answer Options'}
                 </h3>
 
                 {/* Display different content based on question type */}
                 {activeQuestion.question_type === 'multiple_choice' ||
-                  activeQuestion.question_type === 'multiple_response' ? (
+                activeQuestion.question_type === 'multiple_response' ? (
                   <div
                     className={cn(
                       'p-3 rounded-md border',
@@ -2100,6 +2319,157 @@ export function QuestionSettings({
                   </div>
                 ) : activeQuestion.question_type === 'location' ? (
                   <LocationSettings />
+                ) : activeQuestion.question_type === 'matching_pair' ? (
+                  <div className="p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-md border border-indigo-100 dark:border-indigo-800">
+                    <MatchingPairSettings
+                      options={activeQuestion.options || []}
+                      onOptionsChange={(newOptions) => {
+                        if (onMatchingPairOptionsChange) {
+                          onMatchingPairOptionsChange(
+                            activeQuestionIndex,
+                            newOptions
+                          );
+                        }
+                      }}
+                      onAddPair={() => {
+                        const pairId = `pair-${Date.now()}`;
+                        const leftIndex = activeQuestion.options?.length || 0;
+                        const rightIndex = leftIndex + 1;
+
+                        // Add left item
+                        onOptionChange(
+                          activeQuestionIndex,
+                          leftIndex,
+                          'option_text',
+                          'Left item'
+                        );
+                        onOptionChange(
+                          activeQuestionIndex,
+                          leftIndex,
+                          'type',
+                          'left'
+                        );
+                        onOptionChange(
+                          activeQuestionIndex,
+                          leftIndex,
+                          'pair_id',
+                          pairId
+                        );
+                        onOptionChange(
+                          activeQuestionIndex,
+                          leftIndex,
+                          'is_correct',
+                          true
+                        );
+
+                        // Add right item
+                        onOptionChange(
+                          activeQuestionIndex,
+                          rightIndex,
+                          'option_text',
+                          'Right item'
+                        );
+                        onOptionChange(
+                          activeQuestionIndex,
+                          rightIndex,
+                          'type',
+                          'right'
+                        );
+                        onOptionChange(
+                          activeQuestionIndex,
+                          rightIndex,
+                          'pair_id',
+                          pairId
+                        );
+                        onOptionChange(
+                          activeQuestionIndex,
+                          rightIndex,
+                          'is_correct',
+                          true
+                        );
+                      }}
+                      onDeletePair={(pairIndex) => {
+                        // Calculate the actual indices for the pair
+                        const leftIndex = pairIndex * 2;
+                        const rightIndex = leftIndex + 1;
+
+                        // Validate indices
+                        if (
+                          leftIndex >= (activeQuestion.options?.length || 0) ||
+                          rightIndex >= (activeQuestion.options?.length || 0)
+                        ) {
+                          console.error('Invalid pair index for deletion');
+                          return;
+                        }
+
+                        // Delete both items at once
+                        const newOptions = [...(activeQuestion.options || [])];
+                        newOptions.splice(leftIndex, 2); // Remove 2 items starting at leftIndex
+
+                        // Update all options at once to maintain consistency
+                        newOptions.forEach((option, index) => {
+                          onOptionChange(
+                            activeQuestionIndex,
+                            index,
+                            'option_text',
+                            option.option_text
+                          );
+                          onOptionChange(
+                            activeQuestionIndex,
+                            index,
+                            'is_correct',
+                            option.is_correct
+                          );
+                        });
+                      }}
+                      onReorderPairs={(startIndex, endIndex) => {
+                        if (!onReorderOptions) return;
+
+                        // Validate indices
+                        const totalPairs =
+                          (activeQuestion.options?.length || 0) / 2;
+                        if (
+                          startIndex < 0 ||
+                          startIndex >= totalPairs ||
+                          endIndex < 0 ||
+                          endIndex >= totalPairs
+                        ) {
+                          console.error('Invalid pair indices for reordering');
+                          return;
+                        }
+
+                        // Calculate actual indices for the pairs
+                        const startLeftIndex = startIndex * 2;
+                        const startRightIndex = startLeftIndex + 1;
+                        const endLeftIndex = endIndex * 2;
+                        const endRightIndex = endLeftIndex + 1;
+
+                        // Reorder both items in the pair together
+                        const newOptions = [...(activeQuestion.options || [])];
+                        const [leftItem, rightItem] = newOptions.splice(
+                          startLeftIndex,
+                          2
+                        ); // Get both items
+                        newOptions.splice(endLeftIndex, 0, leftItem, rightItem); // Insert both items
+
+                        // Update all options at once
+                        newOptions.forEach((option, index) => {
+                          onOptionChange(
+                            activeQuestionIndex,
+                            index,
+                            'option_text',
+                            option.option_text
+                          );
+                          onOptionChange(
+                            activeQuestionIndex,
+                            index,
+                            'is_correct',
+                            option.is_correct
+                          );
+                        });
+                      }}
+                    />
+                  </div>
                 ) : null}
               </div>
 
@@ -2139,7 +2509,7 @@ export function QuestionSettings({
             {/* Design tab: Background, colors, etc */}
 
             {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide' ? (
+            activeQuestion.question_type === 'info_slide' ? (
               <SlideSettings
                 slideId={activity?.id || ''}
                 backgroundColor={backgroundColor}

@@ -1,14 +1,15 @@
-import axiosClient from "./axios-client";
+import axiosClient from './axios-client';
 
 // Activity type definitions
 export type ActivityType =
-  | "QUIZ_BUTTONS"
-  | "QUIZ_CHECKBOXES"
-  | "QUIZ_TRUE_OR_FALSE"
-  | "QUIZ_TYPE_ANSWER"
-  | "QUIZ_REORDER"
-  | "INFO_SLIDE"
-  | "QUIZ_LOCATION";
+  | 'QUIZ_BUTTONS'
+  | 'QUIZ_CHECKBOXES'
+  | 'QUIZ_TRUE_OR_FALSE'
+  | 'QUIZ_TYPE_ANSWER'
+  | 'QUIZ_REORDER'
+  | 'INFO_SLIDE'
+  | 'QUIZ_LOCATION'
+  | 'QUIZ_MATCHING_PAIR';
 
 export interface ActivityTypeInfo {
   key: ActivityType;
@@ -40,10 +41,10 @@ export interface UpdateActivityPayload {
 
 // Quiz types
 export interface ButtonsQuizPayload {
-  type: "CHOICE";
+  type: 'CHOICE';
   questionText: string;
   timeLimitSeconds?: number;
-  pointType?: "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS";
+  pointType?: 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS';
   answers: {
     answerText: string;
     isCorrect: boolean;
@@ -52,10 +53,10 @@ export interface ButtonsQuizPayload {
 }
 
 export interface CheckboxesQuizPayload {
-  type: "CHOICE";
+  type: 'CHOICE';
   questionText: string;
   timeLimitSeconds?: number;
-  pointType?: "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS";
+  pointType?: 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS';
   answers: {
     answerText: string;
     isCorrect: boolean;
@@ -64,23 +65,23 @@ export interface CheckboxesQuizPayload {
 }
 
 export interface TypeAnswerQuizPayload {
-  type: "TYPE_ANSWER";
+  type: 'TYPE_ANSWER';
   questionText: string;
   timeLimitSeconds?: number;
-  pointType?: "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS";
+  pointType?: 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS';
   correctAnswer: string;
 }
 
 export interface TrueFalseQuizPayload {
-  type: "TRUE_FALSE";
+  type: 'TRUE_FALSE';
   questionText: string;
   timeLimitSeconds?: number;
-  pointType?: "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS";
+  pointType?: 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS';
   correctAnswer: boolean;
 }
 
 export interface ReorderQuizPayload {
-  type: "REORDER";
+  type: 'REORDER';
   questionText: string;
   timeLimitSeconds: number;
   pointType: string;
@@ -88,14 +89,26 @@ export interface ReorderQuizPayload {
 }
 
 export interface LocationQuizPayload {
-  type: "LOCATION";
+  type: 'LOCATION';
   questionText: string;
   timeLimitSeconds: number;
-  pointType: "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS";
+  pointType: 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS';
   locationAnswers: {
     longitude: number;
     latitude: number;
     radius: number;
+  }[];
+}
+
+export interface MatchingPairQuizPayload {
+  type: 'MATCHING_PAIR';
+  questionText: string;
+  timeLimitSeconds?: number;
+  pointType?: 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS';
+  pairs: {
+    leftText: string;
+    rightText: string;
+    isCorrect: boolean;
   }[];
 }
 
@@ -105,7 +118,8 @@ export type QuizPayload =
   | TypeAnswerQuizPayload
   | TrueFalseQuizPayload
   | ReorderQuizPayload
-  | LocationQuizPayload;
+  | LocationQuizPayload
+  | MatchingPairQuizPayload;
 
 export interface ActivityResponse {
   success: boolean;
@@ -147,7 +161,7 @@ export const activitiesApi = {
    * @returns Promise with API results
    */
   createActivity(payload: CreateActivityPayload) {
-    return axiosClient.post<ActivityResponse>("/activities", payload);
+    return axiosClient.post<ActivityResponse>('/activities', payload);
   },
 
   /**
@@ -155,7 +169,7 @@ export const activitiesApi = {
    * @returns Promise with the list of activity types
    */
   getActivityTypes() {
-    return axiosClient.get<ActivityTypesResponse>("/activities/types");
+    return axiosClient.get<ActivityTypesResponse>('/activities/types');
   },
 
   /**
@@ -202,16 +216,16 @@ export const activitiesApi = {
     activityId: string,
     payload: CheckboxesQuizPayload
   ) => {
-    console.log("Updating checkboxes quiz with payload:", payload);
+    console.log('Updating checkboxes quiz with payload:', payload);
     try {
       const response = await axiosClient.put(
         `/activities/${activityId}/quiz`,
         payload
       );
-      console.log("Checkboxes quiz update response:", response);
+      console.log('Checkboxes quiz update response:', response);
       return response;
     } catch (error) {
-      console.error("Error updating checkboxes quiz:", error);
+      console.error('Error updating checkboxes quiz:', error);
       throw error;
     }
   },
@@ -270,5 +284,15 @@ export const activitiesApi = {
     return axiosClient.put(`/collections/${collectionId}/activities/reorder`, {
       orderedActivityIds,
     });
+  },
+
+  /**
+   * Update a matching pairs quiz
+   * @param activityId ID of the activity
+   * @param payload Quiz data
+   * @returns Promise with API results
+   */
+  updateMatchingPairQuiz(activityId: string, payload: MatchingPairQuizPayload) {
+    return axiosClient.put(`/activities/${activityId}/quiz`, payload);
   },
 };
