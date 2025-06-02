@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+
+// Add this shuffle function
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
 
 interface Connection {
   columnA: string;
@@ -67,9 +77,26 @@ export function MatchingPairPreview({
   const [score, setScore] = useState(0);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Get column data from question
-  const columnA = question.options.filter((item) => item.type === 'left');
-  const columnB = question.options.filter((item) => item.type === 'right');
+  // Add new state for shuffled columns
+  const [shuffledColumnA, setShuffledColumnA] = useState<
+    typeof question.options
+  >([]);
+  const [shuffledColumnB, setShuffledColumnB] = useState<
+    typeof question.options
+  >([]);
+
+  // Add useEffect to handle initial shuffle and reset
+  useEffect(() => {
+    const columnA = question.options.filter((item) => item.type === 'left');
+    const columnB = question.options.filter((item) => item.type === 'right');
+
+    setShuffledColumnA(shuffleArray(columnA));
+    setShuffledColumnB(shuffleArray(columnB));
+  }, [question.options, showResults]); // Re-shuffle when question changes or quiz is reset
+
+  // Replace the direct column assignments with state values
+  const columnA = shuffledColumnA;
+  const columnB = shuffledColumnB;
 
   // Handle drag and drop
   const handleDragStart = (e: React.DragEvent, itemId: string) => {
@@ -200,6 +227,7 @@ export function MatchingPairPreview({
     setConnections([]);
     setShowResults(false);
     setScore(0);
+    // The useEffect will handle re-shuffling when showResults changes
   };
 
   // Check if item has any connections
@@ -285,11 +313,6 @@ export function MatchingPairPreview({
                       <span className="font-medium text-gray-800 dark:text-gray-200">
                         {item.option_text}
                       </span>
-                      {connectionCount(item.id!) > 0 && (
-                        <Badge variant="secondary" className="ml-2">
-                          {connectionCount(item.id!)}
-                        </Badge>
-                      )}
                     </div>
                   </motion.div>
                 ))
@@ -328,11 +351,6 @@ export function MatchingPairPreview({
                       <span className="font-medium text-gray-800 dark:text-gray-200">
                         {item.option_text}
                       </span>
-                      {connectionCount(item.id!) > 0 && (
-                        <Badge variant="secondary" className="ml-2">
-                          {connectionCount(item.id!)}
-                        </Badge>
-                      )}
                     </div>
                   </motion.div>
                 ))
