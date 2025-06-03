@@ -16,6 +16,10 @@ import {
   FlipHorizontal,
 } from 'lucide-react';
 import { debounce } from 'lodash';
+import { AnimationOrderList } from './animation-order-list';
+import { slidesApi } from '@/api-client/slides-api'; // Giả sử bạn có API để cập nhật slide elements
+import type { SlideElementPayload } from '@/types/slideInterface';
+import { activitiesApi } from '@/api-client/activities-api';
 interface AnimationToolbarProps {
   slideId: string;
 }
@@ -24,6 +28,7 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
   const [selectedAnimation, setSelectedAnimation] = useState<string>('none');
   const [animationMap, setAnimationMap] = useState<Record<string, string>>({});
   const [currentObjectId, setCurrentObjectId] = useState<string | null>(null);
+  const [slideElements, setSlideElements] = useState<SlideElementPayload[]>([]);
 
   const animationOptions = [
     {
@@ -183,6 +188,35 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
   };
 
   useEffect(() => {
+    const fetchSlideElements = async () => {
+      try {
+        const response = await activitiesApi.getActivityById(slideId);
+        console.log('Goi roi ne data', response);
+        setSlideElements(response.data?.data?.slide?.slideElements || []);
+      } catch (error) {
+        console.error('Error fetching slide elements:', error);
+      }
+    };
+    console.log("Goi roi ne", slideElements)
+    fetchSlideElements();
+  }, [slideId]);
+
+  const handleOrderChange = async (updatedElements: SlideElementPayload[]) => {
+    try {
+      // Cập nhật displayOrder cho từng phần tử
+      const event = new CustomEvent('fabric:update-display-order', {
+        detail: {
+          slideId,
+          elements: updatedElements,
+        },
+      });
+      window.dispatchEvent(event);
+    } catch (error) {
+      console.error('Lỗi khi cập nhật thứ tự:', error);
+    }
+  };
+
+  useEffect(() => {
     setCurrentObjectId(null);
     setSelectedAnimation('none');
   }, [slideId]);
@@ -274,6 +308,12 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
           </p>
         </div>
       )}
+
+      <AnimationOrderList
+        slideElements={slideElements}
+        onOrderChange={handleOrderChange}
+        slideId={slideId}
+      />
     </div>
   );
 };

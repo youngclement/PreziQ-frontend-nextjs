@@ -543,6 +543,43 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         console.log('Updated canvas backgroundImage:', e.detail.url);
       }
     };
+
+    const handleUpdateDisplayOrder = async (
+      e: CustomEvent<{
+        slideId: string;
+        elements: SlideElementPayload[];
+      }>
+    ) => {
+      if (e.detail.slideId !== slideId) return;
+    
+      try {
+        for (const element of e.detail.elements) {
+          const obj = fabricCanvas.current?.getObjects().find(
+            (o) => o.get('slideElementId') === element.slideElementId
+          );
+    
+          if (obj) {
+            // Chỉ cần truyền displayOrder, các trường khác sẽ được tự động tính
+            await updateSlideElement(obj, {
+              displayOrder: element.displayOrder
+            });
+          }
+        }
+    
+        // Cập nhật state
+        onUpdate?.({
+          slideElements: e.detail.elements
+        });
+      } catch (error) {
+        console.error('Error updating display order:', error);
+      }
+    };
+
+    window.addEventListener(
+      'fabric:update-display-order',
+      handleUpdateDisplayOrder as unknown as EventListener
+    );
+
     window.addEventListener(
       'fabric:set-background-color',
       handleSetBackgroundColor as EventListener
@@ -779,6 +816,11 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         'fabric:set-animation',
         handleSetAnimation as unknown as EventListener
       );
+      window.removeEventListener(
+        'fabric:update-display-order',
+        handleUpdateDisplayOrder as unknown as EventListener
+      );
+
       cleanupToolbar();
       isLoadingRef.current = false;
       canvas.dispose();
