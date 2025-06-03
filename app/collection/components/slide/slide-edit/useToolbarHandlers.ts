@@ -542,16 +542,16 @@ export const ToolbarHandlers = (
         }
       }
 
-      console.log('Emitting format state:', {
-        bold: boldActive,
-        italic: italicActive,
-        underline: underlineActive,
-        alignment,
-        textTransform,
-        fontFamily,
-        fontSize,
-        fill,
-      });
+      // console.log('Emitting format state:', {
+      //   bold: boldActive,
+      //   italic: italicActive,
+      //   underline: underlineActive,
+      //   alignment,
+      //   textTransform,
+      //   fontFamily,
+      //   fontSize,
+      //   fill,
+      // });
 
       window.dispatchEvent(
         new CustomEvent('toolbar:format-change', {
@@ -987,6 +987,25 @@ export const ToolbarHandlers = (
           'Đã cập nhật hàng loạt layerOrder cho tất cả phần tử:',
           results
         );
+
+         // Tạo mảng slideElements mới với layerOrder đã cập nhật
+      const updatedSlideElements = initialSlideElements.map((el) => {
+        const update = updates.find(u => u.slideElementId === el.slideElementId);
+        if (update) {
+          return {
+            ...el,
+            ...update.payload,
+          } as SlideElementPayload;
+        }
+        return el;
+      });
+
+       // Gọi onUpdate để cập nhật state
+       if (onUpdate) {
+        onUpdate({
+          slideElements: updatedSlideElements
+        });
+      }
       })
       .catch((err) => {
         console.error('Lỗi khi cập nhật hàng loạt layerOrder:', err);

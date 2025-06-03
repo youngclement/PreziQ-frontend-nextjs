@@ -2,7 +2,7 @@
 'use client';
 
 import type React from 'react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import {
   Sparkles,
@@ -22,6 +22,8 @@ interface AnimationToolbarProps {
 
 const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
   const [selectedAnimation, setSelectedAnimation] = useState<string>('none');
+  const [animationMap, setAnimationMap] = useState<Record<string, string>>({});
+  const [currentObjectId, setCurrentObjectId] = useState<string | null>(null);
 
   const animationOptions = [
     {
@@ -94,6 +96,51 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
     },
   ];
 
+  useEffect(() => {
+    const handleSelectionChanged = (
+      e: CustomEvent<{
+        slideId: string;
+        animationName: string;
+        objectId: string | null;
+      }>
+    ) => {
+      if (e.detail.slideId !== slideId) {
+        console.log(
+          `Ignoring fabric:selection-changed because slideId does not match: ${e.detail.slideId} !== ${slideId}`
+        );
+        return;
+      }
+
+      const { animationName, objectId } = e.detail;
+
+      // Cập nhật animation map khi có thay đổi
+      if (objectId) {
+        setAnimationMap((prev) => ({
+          ...prev,
+          [objectId]: animationName,
+        }));
+        setCurrentObjectId(objectId);
+      } else {
+        setCurrentObjectId(null);
+      }
+
+      // Cập nhật selected animation
+      setSelectedAnimation(animationName || 'none');
+    };
+
+    window.addEventListener(
+      'fabric:selection-changed',
+      handleSelectionChanged as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        'fabric:selection-changed',
+        handleSelectionChanged as EventListener
+      );
+    };
+  }, [slideId]);
+
   const handleAnimationPreview = useCallback(
     debounce((animationValue: string) => {
       if (animationValue !== 'none') {
@@ -102,12 +149,21 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
         });
         window.dispatchEvent(event);
       }
-    }, 300),
+    }, 500),
     [slideId]
   );
 
   const handleAnimationSelect = (animationValue: string) => {
     setSelectedAnimation(animationValue);
+
+    // Lưu animation vào map
+    if (currentObjectId) {
+      setAnimationMap((prev) => ({
+        ...prev,
+        [currentObjectId]: animationValue,
+      }));
+    }
+
     if (animationValue !== 'none') {
       const previewEvent = new CustomEvent('fabric:preview-animation', {
         detail: { slideId, animationName: animationValue },
@@ -125,6 +181,11 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
       window.dispatchEvent(setEvent);
     }
   };
+
+  useEffect(() => {
+    setCurrentObjectId(null);
+    setSelectedAnimation('none');
+  }, [slideId]);
 
   return (
     <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg border border-blue-200 dark:border-blue-800 shadow-sm">

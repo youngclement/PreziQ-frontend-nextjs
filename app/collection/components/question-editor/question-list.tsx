@@ -85,7 +85,7 @@ const SortableActivityItem = ({
     transform: CSS.Transform.toString(transform),
     transition,
   };
-console.log("activity", activity);
+
   // Get background color for activity
   const getBackgroundColor = () => {
     // Use savedBackgroundColors from window if available

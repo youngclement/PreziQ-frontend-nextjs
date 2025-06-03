@@ -214,6 +214,15 @@ export function UserProfileForm({
     try {
       setIsSubmitting(true);
 
+      if (data.avatar !== userProfile.avatar && userProfile.avatar) {
+        try {
+          await storageApi.deleteSingleFile(userProfile.avatar);
+        } catch (error) {
+          console.error('Lỗi khi xóa avatar cũ:', error);
+          // Tiếp tục cập nhật ngay cả khi xóa thất bại
+        }
+      }
+
       // Chuyển đổi lại định dạng ngày sinh (nếu có)
       const formattedData = {
         firstName: data.firstName,
@@ -369,6 +378,14 @@ export function UserProfileForm({
 
             // Gọi API cập nhật profile
             const updateResponse = await userApi.updateProfile(updateData);
+            
+            if (userProfile.avatar) {
+              try {
+                await storageApi.deleteSingleFile(userProfile.avatar);
+              } catch (error) {
+                console.error('Lỗi khi xóa avatar cũ:', error);
+              }
+            }
 
             // Kiểm tra kết quả cập nhật
             if (updateResponse.success && updateResponse.data) {

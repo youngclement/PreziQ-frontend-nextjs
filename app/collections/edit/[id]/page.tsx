@@ -9,7 +9,7 @@ import { Form } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { CollectionFormValues, collectionSchema } from './types';
 import { collectionsApi } from '@/api-client';
-
+import { storageApi } from '@/api-client/storage-api';
 // Import các component đã tách
 import { CollectionFormHeader } from './components/collection-form-header';
 import { FormFields } from './components/form-fields';
@@ -102,6 +102,18 @@ export default function EditCollectionPage({
         description:
           'Vui lòng đợi trong khi chúng tôi cập nhật bộ sưu tập của bạn.',
       });
+
+      const currentCollection = await collectionsApi.getCollectionById(collectionId);
+      const currentData = currentCollection.data.data;
+  
+      // Kiểm tra và xóa ảnh cũ nếu có thay đổi
+      if (data.coverImage !== currentData.coverImage && currentData.coverImage) {
+        try {
+          await storageApi.deleteSingleFile(currentData.coverImage);
+        } catch (error) {
+          console.error('Lỗi khi xóa ảnh bìa cũ:', error);
+        }
+      }
 
       // Chuẩn bị dữ liệu cho API
       const payload = {

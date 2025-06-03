@@ -59,10 +59,11 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   const slideElementsRef = useRef<SlideElementPayload[]>(slideElements);
   const [isLoading, setIsLoading] = useState(true);
   const [previewAnimation, setPreviewAnimation] = useState<string | null>(null);
-  const isFirstLoad = useRef(true);
+  
+  const isLoadingRef = useRef(false);
 
-  console.log("bgColor: ", backgroundColor);
-  console.log("bgImage: ", backgroundImage);
+  // console.log("bgColor: ", backgroundColor);
+  // console.log("bgImage: ", backgroundImage);
 
   useEffect(() => {
     slideElementsRef.current = slideElements;
@@ -263,77 +264,111 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   );
 
   const loadSlideElements = async (maxRetries = 5) => {
+
+    if (isLoadingRef.current) {
+      console.log('Already loading elements, skipping...');
+      return;
+    }
+
     if (!fabricCanvas.current) {
       console.warn('Canvas chưa được khởi tạo');
       return;
     }
 
-    const canvas = fabricCanvas.current;
-    // activeObjectRef.current = canvas.getActiveObject();
-    // Xóa canvas và thiết lập lại nền
+    try {
+      isLoadingRef.current = true;
 
-    canvas.getObjects().slice().forEach((o) => canvas.remove(o));
-    // canvas.backgroundImage = undefined;
-    // canvas.backgroundColor = backgroundColor || '#fff';
-    // canvas.renderAll();
-    //await setCanvasBackground(canvas, backgroundColor, backgroundImage);
+      const canvas = fabricCanvas.current;
+      // activeObjectRef.current = canvas.getActiveObject();
+      // Xóa canvas và thiết lập lại nền
 
-    // if (backgroundImage) {
-    //   setBackgroundImageWithCover(canvas, backgroundImage);
-    // } else {
-    //   canvas.backgroundColor = backgroundColor || '#fff';
-    //   canvas.renderAll();
-    // }
+      canvas
+        .getObjects()
+        .slice()
+        .forEach((o) => canvas.remove(o));
+      // canvas.backgroundImage = undefined;
+      // canvas.backgroundColor = backgroundColor || '#fff';
+      // canvas.renderAll();
+      //await setCanvasBackground(canvas, backgroundColor, backgroundImage);
 
-    // Nếu không có slideElements, để canvas trống
-    let elements = slideElementsRef.current;
-    let retries = 0;
+      // if (backgroundImage) {
+      //   setBackgroundImageWithCover(canvas, backgroundImage);
+      // } else {
+      //   canvas.backgroundColor = backgroundColor || '#fff';
+      //   canvas.renderAll();
+      // }
 
-    while ((!elements || elements.length === 0) && retries < maxRetries) {
-      console.log(
-        `Waiting for slideElements, retry ${retries + 1}/${maxRetries}`
-      );
-      await new Promise((resolve) => setTimeout(resolve, 200)); // Chờ 200ms
-      elements = slideElementsRef.current;
-      retries++;
-    }
+      // Nếu không có slideElements, để canvas trống
+      let elements = slideElementsRef.current;
+      let retries = 0;
 
-    if (!elements || elements.length === 0) {
-      console.warn('No slide elements available after retries');
-      saveState();
-      return;
-    }
+      while ((!elements || elements.length === 0) && retries < maxRetries) {
+        console.log(
+          `Waiting for slideElements, retry ${retries + 1}/${maxRetries}`
+        );
+        await new Promise((resolve) => setTimeout(resolve, 200)); // Chờ 200ms
+        elements = slideElementsRef.current;
+        retries++;
+      }
 
-    // Sắp xếp elements theo layerOrder
-    const sortedElements = [...elements].sort(
-      (a, b) => a.layerOrder - b.layerOrder
-    );
+      if (!elements || elements.length === 0) {
+        console.warn('No slide elements available after retries');
+        saveState();
+        return;
+      }
 
-    const imagePromises = sortedElements
-      .filter(
-        (element) => element.slideElementType === 'IMAGE' && element.sourceUrl
-      )
-      .map(
-        (element) =>
-          new Promise<{
-            element: SlideElementPayload;
-            imgElement: HTMLImageElement;
-          }>((resolve, reject) => {
-            const imgElement = new Image();
-            imgElement.onload = () => {
-              resolve({ element, imgElement });
-            };
-            imgElement.onerror = (err) => {
-              reject(err);
-            };
-            imgElement.src = element.sourceUrl!;
-          })
+      // Sắp xếp elements theo layerOrder
+      const sortedElements = [...elements].sort(
+        (a, b) => a.layerOrder - b.layerOrder
       );
 
-    const loadedImages = await Promise.all(imagePromises);
-    for (const el of sortedElements) {
-      const obj = slideElementToFabric(el, canvas, loadedImages);
-      if (obj) canvas.add(obj);
+      const imagePromises = sortedElements
+        .filter(
+          (element) => element.slideElementType === 'IMAGE' && element.sourceUrl
+        )
+        .map(
+          (element) =>
+            new Promise<{
+              element: SlideElementPayload;
+              imgElement: HTMLImageElement;
+            }>((resolve, reject) => {
+              const imgElement = new Image();
+              imgElement.onload = () => {
+                resolve({ element, imgElement });
+              };
+              imgElement.onerror = (err) => {
+                reject(err);
+              };
+              imgElement.src = element.sourceUrl!;
+            })
+        );
+
+      const loadedImages = await Promise.all(imagePromises);
+
+      for (const el of sortedElements) {
+        const obj = slideElementToFabric(el, canvas, loadedImages);
+        if (obj) {
+          // Đảm bảo animation được set khi load
+          if (el.entryAnimation) {
+            obj.set('entryAnimation', el.entryAnimation);
+          }
+          canvas.add(obj);
+        }
+      }
+
+      const activeObject = canvas.getActiveObject();
+      if (activeObject) {
+        const event = new CustomEvent('fabric:selection-changed', {
+          detail: {
+            slideId,
+            animationName: activeObject.get('entryAnimation') || 'none',
+            objectId: activeObject.get('slideElementId'),
+          },
+        });
+        window.dispatchEvent(event);
+      }
+    } finally {
+      isLoadingRef.current = false;
     }
   };
 
@@ -348,9 +383,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     e: CustomEvent<{ slideId: string; animationName: string }>
   ) => {
     if (e.detail.slideId !== slideId) {
-      console.log(
-        `Bỏ qua fabric:preview-animation vì slideId không khớp: ${e.detail.slideId} !== ${slideId}`
-      );
       return;
     }
 
@@ -684,6 +716,49 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       }
     });
 
+    canvas.on('selection:created', (e) => {
+      const activeObject = e.selected?.[0];
+      if (activeObject) {
+        const animationName = activeObject.get('entryAnimation') || 'none';
+        const event = new CustomEvent('fabric:selection-changed', {
+          detail: {
+            slideId,
+            animationName,
+            objectId: activeObject.get('slideElementId'), // Thêm objectId
+          },
+        });
+        window.dispatchEvent(event);
+      }
+    });
+
+    // Trong useEffect setup canvas events, thêm listener này cùng với selection:created và selection:cleared
+
+    canvas.on('selection:updated', (e) => {
+      const activeObject = e.selected?.[0];
+      if (activeObject) {
+        const animationName = activeObject.get('entryAnimation') || 'none';
+        const event = new CustomEvent('fabric:selection-changed', {
+          detail: {
+            slideId,
+            animationName,
+            objectId: activeObject.get('slideElementId'),
+          },
+        });
+        window.dispatchEvent(event);
+      }
+    });
+
+    canvas.on('selection:cleared', () => {
+      const event = new CustomEvent('fabric:selection-changed', {
+        detail: {
+          slideId,
+          animationName: 'none',
+          objectId: null,
+        },
+      });
+      window.dispatchEvent(event);
+    });
+
     document.addEventListener('keydown', handleKeyDown);
 
     // loadSlideElements();
@@ -705,6 +780,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         handleSetAnimation as unknown as EventListener
       );
       cleanupToolbar();
+      isLoadingRef.current = false;
       canvas.dispose();
       document.removeEventListener('keydown', handleKeyDown);
     };
