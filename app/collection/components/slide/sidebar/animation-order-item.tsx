@@ -33,11 +33,20 @@ export const AnimationOrderItem = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 p-2 bg-white rounded border ${
-        isDragging ? 'border-blue-400 shadow-lg' : 'border-gray-200'
-      }`}
+      className={`
+        flex items-center gap-2 p-2 bg-white rounded border
+        ${isDragging ? 'border-blue-400 shadow-lg' : 'border-gray-200'}
+        ${item.displayOrder === 0 ? 'ml-0' : `ml-${item.displayOrder * 4}`}
+        relative
+      `}
       {...attributes}
     >
+      <div
+        className="absolute -left-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-400"
+        style={{
+          opacity: isDragging ? 0 : 1,
+        }}
+      />
       <button className="cursor-move hover:text-blue-500" {...listeners}>
         <GripVertical size={16} />
       </button>

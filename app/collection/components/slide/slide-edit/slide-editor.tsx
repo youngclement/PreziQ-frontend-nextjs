@@ -553,7 +553,21 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       if (e.detail.slideId !== slideId) return;
     
       try {
-        for (const element of e.detail.elements) {
+        const currentElements = slideElementsRef.current;
+        console.log('Current elements:', currentElements);
+        console.log('New elements:', e.detail.elements);
+
+        // Find elements with changed displayOrder
+        const changedElements = e.detail.elements.filter((newElement) => {
+          const currentElement = currentElements.find(
+            (curr) => curr.slideElementId === newElement.slideElementId
+          );
+          return currentElement?.displayOrder !== newElement.displayOrder;
+        });
+
+        console.log('Elements with changed displayOrder:', changedElements);
+
+        for (const element of changedElements) {
           const obj = fabricCanvas.current?.getObjects().find(
             (o) => o.get('slideElementId') === element.slideElementId
           );
