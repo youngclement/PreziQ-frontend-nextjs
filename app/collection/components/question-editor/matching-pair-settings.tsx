@@ -255,14 +255,6 @@ export function MatchingPairSettings({
         is_correct: true,
         display_order: localOptions.length + 1,
       },
-      {
-        id: `right-${pairId}`,
-        option_text: '',
-        type: 'right',
-        pair_id: pairId,
-        is_correct: true,
-        display_order: localOptions.length + 2,
-      },
     ];
     setLocalOptions(newOptions);
     onOptionsChange(newOptions);

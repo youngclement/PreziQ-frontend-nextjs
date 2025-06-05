@@ -3,9 +3,8 @@
 import type React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, RotateCcw, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import type { QuizQuestion } from '../types';
@@ -73,11 +72,9 @@ export function MatchingPairPreview({
 }: MatchingPairPreviewProps) {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [dragged, setDragged] = useState<string | null>(null);
-  const [showResults, setShowResults] = useState(false);
-  const [score, setScore] = useState(0);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Add new state for shuffled columns
+  // Add new state for shuffled columns - only shuffle once
   const [shuffledColumnA, setShuffledColumnA] = useState<
     typeof question.options
   >([]);
@@ -85,18 +82,53 @@ export function MatchingPairPreview({
     typeof question.options
   >([]);
 
-  // Add useEffect to handle initial shuffle and reset
+  // Add useEffect to handle initial shuffle only once
   useEffect(() => {
     const columnA = question.options.filter((item) => item.type === 'left');
     const columnB = question.options.filter((item) => item.type === 'right');
 
     setShuffledColumnA(shuffleArray(columnA));
     setShuffledColumnB(shuffleArray(columnB));
-  }, [question.options, showResults]); // Re-shuffle when question changes or quiz is reset
+  }, [question.options]); // Only re-shuffle when question changes
 
   // Replace the direct column assignments with state values
   const columnA = shuffledColumnA;
   const columnB = shuffledColumnB;
+
+  // Auto-connect matching pairs
+  useEffect(() => {
+    if (columnA.length > 0 && columnB.length > 0) {
+      const autoConnections: Connection[] = [];
+
+      // For each item in column A
+      columnA.forEach((leftItem) => {
+        if (!leftItem.id || !leftItem.pair_id) return;
+
+        const leftPairIds = leftItem.pair_id.split(',');
+
+        // Find matching items in column B
+        columnB.forEach((rightItem) => {
+          if (!rightItem.id || !rightItem.pair_id) return;
+
+          const rightPairIds = rightItem.pair_id.split(',');
+
+          // Check if any pair_id from left matches any pair_id from right
+          const hasMatch = leftPairIds.some((leftId) =>
+            rightPairIds.includes(leftId)
+          );
+
+          if (hasMatch) {
+            autoConnections.push({
+              columnA: leftItem.id,
+              columnB: rightItem.id,
+            });
+          }
+        });
+      });
+
+      setConnections(autoConnections);
+    }
+  }, [columnA, columnB]);
 
   // Handle drag and drop
   const handleDragStart = (e: React.DragEvent, itemId: string) => {
@@ -190,46 +222,6 @@ export function MatchingPairPreview({
     return leftPairIds.some((leftId) => rightPairIds.includes(leftId));
   };
 
-  // Check answers
-  const checkAnswers = () => {
-    let correctCount = 0;
-    let totalPossibleCorrect = 0;
-
-    // Count total possible correct connections
-    columnA.forEach((leftItem) => {
-      const leftPairIds = leftItem.pair_id?.split(',') || [];
-      leftPairIds.forEach((pairId) => {
-        if (
-          columnB.some((rightItem) =>
-            rightItem.pair_id?.split(',').includes(pairId)
-          )
-        ) {
-          totalPossibleCorrect++;
-        }
-      });
-    });
-
-    // Count correct connections made by user
-    connections.forEach((conn) => {
-      if (isConnectionCorrect(conn.columnA, conn.columnB)) {
-        correctCount++;
-      }
-    });
-
-    // Calculate score - can be more than the number of items in either column
-    setScore(correctCount);
-    setShowResults(true);
-    onCorrectAnswerChange?.(correctCount.toString());
-  };
-
-  // Reset quiz
-  const resetQuiz = () => {
-    setConnections([]);
-    setShowResults(false);
-    setScore(0);
-    // The useEffect will handle re-shuffling when showResults changes
-  };
-
   // Check if item has any connections
   const getItemConnections = (itemId: string): Connection[] => {
     return connections.filter(
@@ -260,22 +252,19 @@ export function MatchingPairPreview({
             {question.question_text}
           </h2>
           <div className="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-300 text-sm">
-            <span>
-              Kéo và thả để nối các mục phù hợp. Một mục có thể có nhiều đáp án
-              đúng.
-            </span>
+            <span>Các mục đã được tự động nối với nhau theo cặp phù hợp.</span>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <div className="h-6 w-6 flex items-center justify-center cursor-help">
                     <Info className="h-4 w-4" />
-                  </Button>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
-                    Kéo từ một cột sang cột còn lại để tạo kết nối.
+                    Các cặp đã được tự động nối với nhau.
                     <br />
-                    Kéo lại để xóa kết nối.
+                    Bạn có thể kéo để xóa kết nối và tạo kết nối mới.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -374,16 +363,10 @@ export function MatchingPairPreview({
                 <path
                   key={index}
                   d={getConnectionPath(conn.columnA, conn.columnB)}
-                  stroke={
-                    showResults
-                      ? isCorrect
-                        ? '#10b981'
-                        : '#ef4444'
-                      : '#6366f1'
-                  }
+                  stroke={isCorrect ? '#10b981' : '#ef4444'}
                   strokeWidth="3"
                   fill="none"
-                  strokeDasharray={showResults && !isCorrect ? '5,5' : 'none'}
+                  strokeDasharray={!isCorrect ? '5,5' : 'none'}
                   className="transition-all duration-300"
                 />
               );
@@ -391,72 +374,20 @@ export function MatchingPairPreview({
           </svg>
         </div>
 
-        {/* Control buttons */}
-        <div className="flex justify-center gap-4 mt-8">
-          <Button
-            onClick={checkAnswers}
-            disabled={connections.length === 0}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all"
-          >
-            <Trophy className="w-4 h-4 mr-2" />
-            Kiểm tra đáp án
-          </Button>
-          <Button
-            onClick={resetQuiz}
+        {/* Connection statistics */}
+        <div className="mt-8 flex justify-center">
+          <Badge
             variant="outline"
-            className="px-6 py-2 border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm hover:shadow-md transition-all"
+            className="px-4 py-2 text-sm bg-white/80 dark:bg-gray-800/80"
           >
-            <RotateCcw className="w-4 h-4 mr-2" />
-            Làm lại
-          </Button>
+            {
+              connections.filter((conn) =>
+                isConnectionCorrect(conn.columnA, conn.columnB)
+              ).length
+            }{' '}
+            kết nối chính xác
+          </Badge>
         </div>
-
-        {/* Results card */}
-        {showResults && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Card className="mt-6 border-2 border-blue-100 dark:border-blue-800 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-4">
-                    <Trophy className="w-8 h-8 text-yellow-500" />
-                    <h3 className="text-2xl font-bold text-gray-800 dark:text-white">
-                      Kết quả
-                    </h3>
-                  </div>
-                  <div className="flex justify-center gap-4 mb-4">
-                    <Badge
-                      variant="outline"
-                      className="text-lg px-4 py-2 bg-blue-50 dark:bg-blue-900/50"
-                    >
-                      Điểm: {score}/{connections.length}
-                    </Badge>
-                    <Badge
-                      variant={
-                        score === connections.length ? 'default' : 'secondary'
-                      }
-                      className="text-lg px-4 py-2"
-                    >
-                      {score === connections.length && score > 0
-                        ? 'Hoàn hảo!'
-                        : `${Math.round(
-                            (score / Math.max(connections.length, 1)) * 100
-                          )}%`}
-                    </Badge>
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    {score === connections.length && score > 0
-                      ? 'Chúc mừng! Bạn đã nối tất cả các cặp chính xác!'
-                      : 'Hãy thử lại để đạt điểm cao hơn!'}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
       </CardContent>
     </Card>
   );

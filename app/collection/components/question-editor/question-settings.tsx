@@ -33,7 +33,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   CheckCircle,
   XCircle,
-  Type,
   Radio,
   CheckSquare,
   AlignLeft,
@@ -42,20 +41,12 @@ import {
   MapPin,
   Settings,
   Zap,
-  Image as ImageIcon,
   Upload,
-  Music,
   Info,
   Eye,
   EyeOff,
   Palette,
-  AlertCircle,
   Check,
-  Trash,
-  Loader2,
-  RefreshCw,
-  PlusCircle,
-  PaintBucket,
   ChevronsUpDown,
   Link,
 } from 'lucide-react';
@@ -64,7 +55,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
   SelectContent,
@@ -72,13 +62,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { QuizOption, QuizQuestion } from '../types';
+import type { QuizOption, QuizQuestion } from '../types';
 import { OptionList } from './option-list';
 import { AdvancedSettings } from './advanced-settings';
 import { Textarea } from '@/components/ui/textarea';
-import { FabricToolbar } from '../slide/tool-bar';
 import { ReorderOptions } from './reorder-options';
-import { LocationQuestionEditor } from './location-question-editor';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -1013,7 +1001,7 @@ export function QuestionSettings({
 
           // Include required fields if they're missing
           const locationPayload = {
-            type: 'LOCATION' as 'LOCATION',
+            type: 'LOCATION' as const,
             questionText:
               activity.quiz?.questionText || activeQuestion.question_text,
             timeLimitSeconds:
@@ -1805,7 +1793,7 @@ export function QuestionSettings({
           {backgroundImage && (
             <div className="mt-3 rounded-md overflow-hidden relative h-32 border">
               <Image
-                src={backgroundImage}
+                src={backgroundImage || '/placeholder.svg'}
                 alt="Background preview"
                 className="w-full h-full object-cover"
                 unoptimized
@@ -1815,7 +1803,6 @@ export function QuestionSettings({
                   // Set invalid state to prevent infinite loops
                   if (!invalidImageUrl) {
                     setInvalidImageUrl(true);
-
                     (e.target as HTMLImageElement).src =
                       'https://via.placeholder.com/300x200?text=Invalid+Image+URL';
                   }
@@ -2022,9 +2009,8 @@ export function QuestionSettings({
                 onAddPair={() => {
                   const pairId = `pair-${Date.now()}`;
                   const leftIndex = activeQuestion.options?.length || 0;
-                  const rightIndex = leftIndex + 1;
 
-                  // Add left item
+                  // Add only one item (left item)
                   onOptionChange(
                     activeQuestionIndex,
                     leftIndex,
@@ -2046,32 +2032,6 @@ export function QuestionSettings({
                   onOptionChange(
                     activeQuestionIndex,
                     leftIndex,
-                    'is_correct',
-                    true
-                  );
-
-                  // Add right item
-                  onOptionChange(
-                    activeQuestionIndex,
-                    rightIndex,
-                    'option_text',
-                    'Right item'
-                  );
-                  onOptionChange(
-                    activeQuestionIndex,
-                    rightIndex,
-                    'type',
-                    'right'
-                  );
-                  onOptionChange(
-                    activeQuestionIndex,
-                    rightIndex,
-                    'pair_id',
-                    pairId
-                  );
-                  onOptionChange(
-                    activeQuestionIndex,
-                    rightIndex,
                     'is_correct',
                     true
                   );
@@ -2334,9 +2294,8 @@ export function QuestionSettings({
                       onAddPair={() => {
                         const pairId = `pair-${Date.now()}`;
                         const leftIndex = activeQuestion.options?.length || 0;
-                        const rightIndex = leftIndex + 1;
 
-                        // Add left item
+                        // Add only one item (left item)
                         onOptionChange(
                           activeQuestionIndex,
                           leftIndex,
@@ -2358,32 +2317,6 @@ export function QuestionSettings({
                         onOptionChange(
                           activeQuestionIndex,
                           leftIndex,
-                          'is_correct',
-                          true
-                        );
-
-                        // Add right item
-                        onOptionChange(
-                          activeQuestionIndex,
-                          rightIndex,
-                          'option_text',
-                          'Right item'
-                        );
-                        onOptionChange(
-                          activeQuestionIndex,
-                          rightIndex,
-                          'type',
-                          'right'
-                        );
-                        onOptionChange(
-                          activeQuestionIndex,
-                          rightIndex,
-                          'pair_id',
-                          pairId
-                        );
-                        onOptionChange(
-                          activeQuestionIndex,
-                          rightIndex,
                           'is_correct',
                           true
                         );
