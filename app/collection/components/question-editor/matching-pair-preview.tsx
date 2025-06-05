@@ -51,6 +51,8 @@ interface MatchingPairPreviewProps {
   ) => void;
   onChangeQuestion: (index: number) => void;
   backgroundImage?: string;
+  leftColumnName?: string;
+  rightColumnName?: string;
 }
 
 export function MatchingPairPreview({
@@ -69,9 +71,11 @@ export function MatchingPairPreview({
   onOptionChange,
   onChangeQuestion,
   backgroundImage,
+  leftColumnName = 'Column A',
+  rightColumnName = 'Column B',
 }: MatchingPairPreviewProps) {
   const [connections, setConnections] = useState<Connection[]>([]);
-  const [dragged, setDragged] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Add new state for shuffled columns - only shuffle once
@@ -130,57 +134,93 @@ export function MatchingPairPreview({
     }
   }, [columnA, columnB]);
 
-  // Handle drag and drop
-  const handleDragStart = (e: React.DragEvent, itemId: string) => {
-    setDragged(itemId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
+  // Thêm state để theo dõi kích thước container
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
+  // Thêm state để theo dõi thay đổi của preview
+  const [previewUpdate, setPreviewUpdate] = useState(0);
 
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    if (!dragged) return;
+  // Cập nhật useEffect để theo dõi kích thước và cập nhật preview
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setContainerSize({ width, height });
+        // Kích hoạt cập nhật preview
+        setPreviewUpdate((prev) => prev + 1);
+      }
+    };
 
-    // Check if we're trying to connect items from the same column
-    const draggedIsColumnA = dragged.startsWith('a');
-    const targetIsColumnA = targetId.startsWith('a');
+    // Cập nhật kích thước ban đầu
+    updateSize();
 
-    if (draggedIsColumnA === targetIsColumnA) {
-      // Both items are from the same column, don't allow connection
-      return;
+    // Thêm event listener cho resize
+    window.addEventListener('resize', updateSize);
+
+    // Thêm ResizeObserver để theo dõi thay đổi kích thước của container
+    const resizeObserver = new ResizeObserver(() => {
+      updateSize();
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
     }
 
-    // Determine which is columnA and which is columnB
-    const columnAId = draggedIsColumnA ? dragged : targetId;
-    const columnBId = draggedIsColumnA ? targetId : dragged;
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', updateSize);
+      resizeObserver.disconnect();
+    };
+  }, []);
 
-    // Check if this connection already exists
-    const connectionExists = connections.some(
-      (conn) => conn.columnA === columnAId && conn.columnB === columnBId
-    );
-
-    if (connectionExists) {
-      // Connection already exists, remove it (toggle behavior)
-      const newConnections = connections.filter(
-        (conn) => !(conn.columnA === columnAId && conn.columnB === columnBId)
-      );
-      setConnections(newConnections);
+  const handleItemClick = (itemId: string) => {
+    if (!selectedItem) {
+      // Nếu chưa có item nào được chọn, chọn item này
+      setSelectedItem(itemId);
     } else {
-      // Add new connection
-      setConnections([
-        ...connections,
-        { columnA: columnAId, columnB: columnBId },
-      ]);
-    }
+      // Nếu đã có item được chọn
+      const selectedIsColumnA = selectedItem.startsWith('a');
+      const clickedIsColumnA = itemId.startsWith('a');
 
-    setDragged(null);
+      // Kiểm tra xem có phải click vào cùng một cột không
+      if (selectedIsColumnA === clickedIsColumnA) {
+        // Nếu click vào cùng cột, bỏ chọn item hiện tại
+        setSelectedItem(itemId);
+        return;
+      }
+
+      // Xác định item từ cột A và B
+      const columnAId = selectedIsColumnA ? selectedItem : itemId;
+      const columnBId = selectedIsColumnA ? itemId : selectedItem;
+
+      // Kiểm tra xem kết nối này đã tồn tại chưa
+      const connectionExists = connections.some(
+        (conn) => conn.columnA === columnAId && conn.columnB === columnBId
+      );
+
+      if (connectionExists) {
+        // Nếu kết nối đã tồn tại, xóa nó
+        setConnections(
+          connections.filter(
+            (conn) =>
+              !(conn.columnA === columnAId && conn.columnB === columnBId)
+          )
+        );
+      } else {
+        // Thêm kết nối mới
+        setConnections([
+          ...connections,
+          { columnA: columnAId, columnB: columnBId },
+        ]);
+      }
+
+      // Reset selected item
+      setSelectedItem(null);
+    }
   };
 
-  // Calculate connection path between items
+  // Cập nhật hàm getConnectionPath để tạo đường nối đẹp hơn
   const getConnectionPath = (aId: string, bId: string) => {
     const aElement = document.getElementById(`item-${aId}`);
     const bElement = document.getElementById(`item-${bId}`);
@@ -197,8 +237,10 @@ export function MatchingPairPreview({
     const endX = bRect.left - svgRect.left;
     const endY = bRect.top + bRect.height / 2 - svgRect.top;
 
-    const controlX1 = startX + (endX - startX) * 0.3;
-    const controlX2 = startX + (endX - startX) * 0.7;
+    // Tính toán control points cho đường cong mượt mà hơn
+    const distance = endX - startX;
+    const controlX1 = startX + distance * 0.3;
+    const controlX2 = startX + distance * 0.7;
 
     return `M ${startX} ${startY} C ${controlX1} ${startY} ${controlX2} ${endY} ${endX} ${endY}`;
   };
@@ -237,156 +279,125 @@ export function MatchingPairPreview({
   return (
     <Card
       className={cn(
-        'border-none rounded-xl shadow-lg overflow-hidden transition-all duration-300 mx-auto',
+        'border-none rounded-2xl shadow-xl overflow-hidden transition-all duration-300 mx-auto',
         isActive
-          ? 'ring-2 ring-primary/20 scale-100'
+          ? 'ring-2 ring-primary/30 scale-100'
           : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
-        viewMode === 'desktop' && 'max-w-4xl',
-        viewMode === 'tablet' && 'max-w-2xl',
-        viewMode === 'mobile' && 'max-w-sm'
+        viewMode === 'desktop' && 'max-w-5xl',
+        viewMode === 'tablet' && 'max-w-3xl',
+        viewMode === 'mobile' && 'max-w-md'
       )}
     >
-      <CardContent className="p-6 bg-gradient-to-br from-blue-50 to-purple-100 dark:from-blue-950 dark:to-purple-950">
+      <CardContent className="p-4 sm:p-6 md:p-8 bg-gradient-to-br from-blue-50 to-purple-100 dark:from-blue-950 dark:to-purple-950">
         <div className="mb-6 text-center">
-          <h2 className="text-xl font-bold mb-2 text-gray-800 dark:text-white">
+          <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white leading-snug">
             {question.question_text}
           </h2>
-          <div className="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-300 text-sm">
-            <span>Các mục đã được tự động nối với nhau theo cặp phù hợp.</span>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="h-6 w-6 flex items-center justify-center cursor-help">
-                    <Info className="h-4 w-4" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    Các cặp đã được tự động nối với nhau.
-                    <br />
-                    Bạn có thể kéo để xóa kết nối và tạo kết nối mới.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
         </div>
 
-        <div className="relative">
-          <div className="grid grid-cols-2 gap-8">
+        <div className="relative" ref={containerRef}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-24 gap-y-8 justify-center">
             {/* Column A */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-center mb-4 text-blue-700 dark:text-blue-300">
-                Column A
+            <div className="w-full flex flex-col items-center space-y-3">
+              <h3 className="text-sm md:text-base font-semibold text-blue-600 dark:text-blue-300 text-center">
+                {leftColumnName}
               </h3>
               {columnA.length > 0 ? (
                 columnA.map((item) => (
                   <motion.div
                     key={item.id}
                     id={`item-${item.id}`}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, item.id!)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => item.id && handleDrop(e, item.id)}
+                    onClick={() => handleItemClick(item.id!)}
                     className={cn(
-                      'p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 cursor-move',
-                      connectionCount(item.id!) > 0
-                        ? 'border-blue-500 dark:border-blue-400'
+                      'w-full max-w-[220px] px-3 py-2 min-h-[44px]',
+                      'bg-white dark:bg-gray-800 rounded-lg shadow border-2 cursor-pointer',
+                      'flex items-center justify-center text-center',
+                      selectedItem === item.id
+                        ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/30'
+                        : connectionCount(item.id!) > 0
+                        ? 'border-blue-400 dark:border-blue-300'
                         : 'border-gray-200 dark:border-gray-700',
-                      'hover:shadow-lg transition-all duration-200'
+                      'hover:shadow-md transition-all duration-150 ease-in-out'
                     )}
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-800 dark:text-gray-200">
-                        {item.option_text}
-                      </span>
-                    </div>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                      {item.option_text}
+                    </span>
                   </motion.div>
                 ))
               ) : (
-                <div className="p-4 bg-white/80 dark:bg-gray-800/80 rounded-lg text-center">
-                  Không có dữ liệu cột A
+                <div className="px-4 py-3 bg-white/80 dark:bg-gray-800/80 rounded text-xs text-center text-gray-500">
+                  Không có dữ liệu {leftColumnName.toLowerCase()}
                 </div>
               )}
             </div>
 
             {/* Column B */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-center mb-4 text-purple-700 dark:text-purple-300">
-                Column B
+            <div className="w-full flex flex-col items-center space-y-3">
+              <h3 className="text-sm md:text-base font-semibold text-purple-600 dark:text-purple-300 text-center">
+                {rightColumnName}
               </h3>
               {columnB.length > 0 ? (
                 columnB.map((item) => (
                   <motion.div
                     key={item.id}
                     id={`item-${item.id}`}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, item.id!)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => item.id && handleDrop(e, item.id)}
+                    onClick={() => handleItemClick(item.id!)}
                     className={cn(
-                      'p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 cursor-move',
-                      connectionCount(item.id!) > 0
-                        ? 'border-purple-500 dark:border-purple-400'
+                      'w-full max-w-[220px] px-3 py-2 min-h-[44px]',
+                      'bg-white dark:bg-gray-800 rounded-lg shadow border-2 cursor-pointer',
+                      'flex items-center justify-center text-center',
+                      selectedItem === item.id
+                        ? 'border-purple-500 dark:border-purple-400 ring-2 ring-purple-500/30'
+                        : connectionCount(item.id!) > 0
+                        ? 'border-purple-400 dark:border-purple-300'
                         : 'border-gray-200 dark:border-gray-700',
-                      'hover:shadow-lg transition-all duration-200'
+                      'hover:shadow-md transition-all duration-150 ease-in-out'
                     )}
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-800 dark:text-gray-200">
-                        {item.option_text}
-                      </span>
-                    </div>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                      {item.option_text}
+                    </span>
                   </motion.div>
                 ))
               ) : (
-                <div className="p-4 bg-white/80 dark:bg-gray-800/80 rounded-lg text-center">
-                  Không có dữ liệu cột B
+                <div className="px-4 py-3 bg-white/80 dark:bg-gray-800/80 rounded text-xs text-center text-gray-500">
+                  Không có dữ liệu {rightColumnName.toLowerCase()}
                 </div>
               )}
             </div>
           </div>
 
-          {/* SVG connections */}
+          {/* SVG Connections */}
           <svg
             ref={svgRef}
-            className="absolute inset-0 pointer-events-none w-full h-full"
-            style={{ zIndex: 1 }}
+            className="absolute inset-0 pointer-events-none w-full h-full z-0"
+            width={containerSize.width}
+            height={containerSize.height}
+            key={previewUpdate}
           >
             {connections.map((conn, index) => {
               const isCorrect = isConnectionCorrect(conn.columnA, conn.columnB);
               return (
                 <path
-                  key={index}
+                  key={`${index}-${previewUpdate}`}
                   d={getConnectionPath(conn.columnA, conn.columnB)}
                   stroke={isCorrect ? '#10b981' : '#ef4444'}
-                  strokeWidth="3"
+                  strokeWidth="2"
                   fill="none"
                   strokeDasharray={!isCorrect ? '5,5' : 'none'}
                   className="transition-all duration-300"
+                  style={{
+                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))',
+                  }}
                 />
               );
             })}
           </svg>
-        </div>
-
-        {/* Connection statistics */}
-        <div className="mt-8 flex justify-center">
-          <Badge
-            variant="outline"
-            className="px-4 py-2 text-sm bg-white/80 dark:bg-gray-800/80"
-          >
-            {
-              connections.filter((conn) =>
-                isConnectionCorrect(conn.columnA, conn.columnB)
-              ).length
-            }{' '}
-            kết nối chính xác
-          </Badge>
         </div>
       </CardContent>
     </Card>

@@ -35,6 +35,9 @@ interface MatchingPairSettingsProps {
     questionIndex: number,
     newOptions: QuizOption[]
   ) => void;
+  leftColumnName?: string;
+  rightColumnName?: string;
+  onColumnNamesChange?: (left: string, right: string) => void;
 }
 
 function SortablePairItem({
@@ -42,6 +45,8 @@ function SortablePairItem({
   index,
   onOptionChange,
   onDelete,
+  leftColumnName,
+  rightColumnName,
 }: {
   option: QuizOption;
   index: number;
@@ -51,6 +56,8 @@ function SortablePairItem({
     value: string
   ) => void;
   onDelete: () => void;
+  leftColumnName: string;
+  rightColumnName: string;
 }) {
   const {
     attributes,
@@ -91,11 +98,11 @@ function SortablePairItem({
       {/* Left Column Input */}
       <div className="flex-1 space-y-1">
         <Label className="text-xs text-gray-500 dark:text-gray-400">
-          Left Item
+          {leftColumnName}
         </Label>
         <Input
           id={`left-item-${index}`}
-          placeholder="Enter left item text"
+          placeholder={`Enter ${leftColumnName.toLowerCase()}`}
           value={option.left_text || ''}
           onChange={(e) => onOptionChange(index, 'left_text', e.target.value)}
           className="w-full"
@@ -123,11 +130,11 @@ function SortablePairItem({
       {/* Right Column Input */}
       <div className="flex-1 space-y-1">
         <Label className="text-xs text-gray-500 dark:text-gray-400">
-          Right Item
+          {rightColumnName}
         </Label>
         <Input
           id={`right-item-${index}`}
-          placeholder="Enter right item text"
+          placeholder={`Enter ${rightColumnName.toLowerCase()}`}
           value={option.right_text || ''}
           onChange={(e) => onOptionChange(index, 'right_text', e.target.value)}
           className="w-full"
@@ -154,9 +161,16 @@ export function MatchingPairSettings({
   onDeletePair,
   onReorderPairs,
   onUpdateMatchingPairOptions,
+  leftColumnName = 'Left Item',
+  rightColumnName = 'Right Item',
+  onColumnNamesChange,
 }: MatchingPairSettingsProps) {
   const [localOptions, setLocalOptions] = useState(options);
   const isDraggingRef = useRef(false);
+  const [localLeftColumnName, setLocalLeftColumnName] =
+    useState(leftColumnName);
+  const [localRightColumnName, setLocalRightColumnName] =
+    useState(rightColumnName);
 
   // Chỉ cập nhật localOptions khi options thay đổi từ bên ngoài
   // và KHÔNG đang trong quá trình drag
@@ -272,6 +286,18 @@ export function MatchingPairSettings({
     onOptionsChange(newOptions);
   };
 
+  const handleColumnNameChange = (side: 'left' | 'right', value: string) => {
+    if (side === 'left') {
+      setLocalLeftColumnName(value);
+    } else {
+      setLocalRightColumnName(value);
+    }
+    onColumnNamesChange?.(
+      side === 'left' ? value : localLeftColumnName,
+      side === 'right' ? value : localRightColumnName
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Instructions */}
@@ -309,6 +335,32 @@ export function MatchingPairSettings({
         </div>
       </div>
 
+      {/* Column Names */}
+      <div className="flex gap-3">
+        <div className="flex-1 space-y-1">
+          <Label className="text-xs text-gray-500 dark:text-gray-400">
+            Left Column Name
+          </Label>
+          <Input
+            value={localLeftColumnName}
+            onChange={(e) => handleColumnNameChange('left', e.target.value)}
+            placeholder="Enter left column name"
+            className="w-full"
+          />
+        </div>
+        <div className="flex-1 space-y-1">
+          <Label className="text-xs text-gray-500 dark:text-gray-400">
+            Right Column Name
+          </Label>
+          <Input
+            value={localRightColumnName}
+            onChange={(e) => handleColumnNameChange('right', e.target.value)}
+            placeholder="Enter right column name"
+            className="w-full"
+          />
+        </div>
+      </div>
+
       {/* Pairs Editor */}
       <DndContext
         sensors={sensors}
@@ -328,6 +380,8 @@ export function MatchingPairSettings({
                 index={index}
                 onOptionChange={handleInputChange}
                 onDelete={() => handleDeletePair(index)}
+                leftColumnName={localLeftColumnName}
+                rightColumnName={localRightColumnName}
               />
             ))}
           </div>

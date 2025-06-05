@@ -2115,6 +2115,12 @@ export function QuestionSettings({
                     );
                   });
                 }}
+                leftColumnName="Questions"
+                rightColumnName="Answers"
+                onColumnNamesChange={(left, right) => {
+                  // Handle column name changes here
+                  console.log('Column names changed:', left, right);
+                }}
               />
             </div>
           ) : null}
@@ -2400,6 +2406,12 @@ export function QuestionSettings({
                             option.is_correct
                           );
                         });
+                      }}
+                      leftColumnName=""
+                      rightColumnName=""
+                      onColumnNamesChange={(left, right) => {
+                        // Handle column name changes here
+                        console.log('Column names changed:', left, right);
                       }}
                     />
                   </div>
