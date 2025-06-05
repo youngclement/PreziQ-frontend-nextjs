@@ -9,16 +9,18 @@ import {
 import { Row } from '@tanstack/react-table';
 import { Permission } from '../data/schema';
 import { usePermissions } from '../context/permissions-context';
+import { useLanguage } from '@/contexts/language-context';
 
-interface DataTableRowActionsProps {
-  row: Row<Permission>;
-  onDelete?: (permission: Permission) => void;
+interface DataTableRowActionsProps<TData> {
+  row: Row<TData>;
+  onDelete?: (permission: TData) => void;
 }
 
-export function DataTableRowActions({
+export function DataTableRowActions<TData>({
   row,
   onDelete,
-}: DataTableRowActionsProps) {
+}: DataTableRowActionsProps<TData>) {
+  const { t } = useLanguage();
   const { setOpen, setCurrentRow } = usePermissions();
 
   const handleEdit = () => {
@@ -33,20 +35,33 @@ export function DataTableRowActions({
   };
 
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
           className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
         >
           <DotsHorizontalIcon className="h-4 w-4" />
-          <span className="sr-only">Open menu</span>
+          <span className="sr-only">{t('permissionEdit')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem onClick={handleEdit}>Chỉnh sửa</DropdownMenuItem>
-        <DropdownMenuItem onClick={handleDelete} className="text-red-600">
-          Xóa
+        <DropdownMenuItem
+          onClick={() => {
+            setCurrentRow(row.original);
+            setOpen('edit');
+          }}
+        >
+          {t('permissionEdit')}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => {
+            setCurrentRow(row.original);
+            setOpen('delete');
+          }}
+          className="text-destructive"
+        >
+          {t('permissionDelete')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

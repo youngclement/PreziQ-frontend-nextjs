@@ -10,10 +10,11 @@ import {
 import { NavGroup } from '@/components/dashboard/layout/NavGroup';
 import { NavUser } from '@/components/dashboard/layout/NavUser';
 import Logo from '@/components/common/logo';
-
-import { sidebarData } from '../data/sidebarData';
+import { useSidebarData } from '../data/sidebarData';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const sidebarData = useSidebarData();
+
   return (
     <Sidebar collapsible='icon' variant='floating' {...props}>
       <SidebarHeader className='flex items-left justify-center py-4'>

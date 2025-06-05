@@ -38,6 +38,7 @@ import { Role } from '../data/schema';
 import { permissionsApi } from '@/api-client';
 import { rolesApi } from '@/api-client';
 import { useQueryClient } from '@tanstack/react-query';
+import { useLanguage } from '@/contexts/language-context';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Tên vai trò không được để trống'),
@@ -75,6 +76,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
   const dialogRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
 
   // State để lưu permissions ban đầu
   const [initialPermissions, setInitialPermissions] = useState<string[]>([]);
@@ -333,7 +335,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
     >
       <DialogContent
         ref={dialogRef}
-        className='max-w-2xl h-[90vh] p-0 flex flex-col'
+        className="max-w-2xl h-[90vh] p-0 flex flex-col"
         onPointerDownOutside={(e) => {
           e.preventDefault();
         }}
@@ -347,88 +349,84 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
           e.preventDefault();
         }}
       >
-        <DialogHeader className='px-6 py-4 border-b bg-slate-50 flex-none'>
-          <DialogTitle className='text-xl font-semibold text-slate-900'>
-            {isEdit ? 'Chỉnh sửa vai trò' : 'Thêm vai trò mới'}
+        <DialogHeader className="px-6 py-4 border-b bg-slate-50 flex-none">
+          <DialogTitle className="text-xl font-semibold text-slate-900">
+            {isEdit ? t('editRole') : t('addNewRole')}
           </DialogTitle>
-          <DialogDescription className='text-sm text-slate-500'>
-            {isEdit
-              ? 'Chỉnh sửa thông tin và quyền hạn của vai trò'
-              : 'Tạo vai trò mới với các quyền hạn được chỉ định'}
+          <DialogDescription className="text-sm text-slate-500">
+            {isEdit ? t('editRoleDesc') : t('addNewRoleDesc')}
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className='flex-1'>
+        <ScrollArea className="flex-1">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-              <div className='px-6 py-4 space-y-6'>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="px-6 py-4 space-y-6">
                 {/* Basic Info Section */}
-                <div className='space-y-4 p-4 bg-white rounded-lg border border-slate-200 shadow-sm'>
-                  <h3 className='text-sm font-medium text-slate-900 mb-3'>
-                    Thông tin cơ bản
+                <div className="space-y-4 p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
+                  <h3 className="text-sm font-medium text-slate-900 mb-3">
+                    {t('basicInfo')}
                   </h3>
 
                   <FormField
                     control={form.control}
-                    name='name'
+                    name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className='text-sm font-medium text-slate-700'>
-                          Tên vai trò
+                        <FormLabel className="text-sm font-medium text-slate-700">
+                          {t('roleName')}
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder='Nhập tên vai trò'
-                            className='bg-white border-slate-200 focus:border-slate-300 focus:ring-slate-300'
+                            placeholder={t('enterRoleName')}
+                            className="bg-white border-slate-200 focus:border-slate-300 focus:ring-slate-300"
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className='text-xs text-red-500' />
+                        <FormMessage className="text-xs text-red-500" />
                       </FormItem>
                     )}
                   />
 
                   <FormField
                     control={form.control}
-                    name='description'
+                    name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className='text-sm font-medium text-slate-700'>
-                          Mô tả
+                        <FormLabel className="text-sm font-medium text-slate-700">
+                          {t('description')}
                         </FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder='Nhập mô tả cho vai trò'
-                            className='bg-white resize-none min-h-[100px] border-slate-200 focus:border-slate-300 focus:ring-slate-300'
+                            placeholder={t('enterRoleDescription')}
+                            className="bg-white resize-none min-h-[100px] border-slate-200 focus:border-slate-300 focus:ring-slate-300"
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className='text-xs text-red-500' />
+                        <FormMessage className="text-xs text-red-500" />
                       </FormItem>
                     )}
                   />
 
                   <FormField
                     control={form.control}
-                    name='active'
+                    name="active"
                     render={({ field }) => (
-                      <FormItem className='flex items-center justify-between rounded-lg bg-slate-50 p-4 border border-slate-200'>
-                        <div className='space-y-1'>
-                          <FormLabel className='text-sm font-medium text-slate-700'>
-                            Trạng thái
+                      <FormItem className="flex items-center justify-between rounded-lg bg-slate-50 p-4 border border-slate-200">
+                        <div className="space-y-1">
+                          <FormLabel className="text-sm font-medium text-slate-700">
+                            {t('status')}
                           </FormLabel>
-                          <div className='text-sm text-slate-900'>
-                            Vai trò{' '}
-                            {field.value
-                              ? 'đang hoạt động'
-                              : 'đã bị vô hiệu hóa'}
+                          <div className="text-sm text-slate-900">
+                            {t('role')}{' '}
+                            {field.value ? t('active') : t('inactive')}
                           </div>
                         </div>
                         <FormControl>
                           <Switch
                             checked={field.value}
                             onCheckedChange={field.onChange}
-                            className='data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300'
+                            className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300"
                           />
                         </FormControl>
                       </FormItem>
@@ -439,19 +437,19 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                 {/* Permissions Section */}
                 <FormField
                   control={form.control}
-                  name='permissionIds'
+                  name="permissionIds"
                   render={({ field }) => (
-                    <FormItem className='space-y-4'>
-                      <div className='flex items-center justify-between'>
-                        <FormLabel className='text-base font-semibold text-slate-900'>
-                          Quyền hạn
+                    <FormItem className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="text-base font-semibold text-slate-900">
+                          {t('permissions')}
                         </FormLabel>
                       </div>
                       <FormControl>
-                        <div className='space-y-2'>
+                        <div className="space-y-2">
                           {isLoading ? (
-                            <div className='flex items-center justify-center py-8'>
-                              <Loader2 className='h-6 w-6 animate-spin text-slate-400' />
+                            <div className="flex items-center justify-center py-8">
+                              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
                             </div>
                           ) : (
                             Object.entries(groupedPermissions).map(
@@ -461,16 +459,16 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                                   open={openModules[module]}
                                   onOpenChange={() => toggleModule(module)}
                                 >
-                                  <div className='w-full rounded-t-lg border bg-white hover:bg-slate-50 transition-colors px-4 py-3'>
-                                    <div className='flex items-center justify-between w-full'>
-                                      <CollapseTrigger className='flex items-center gap-3'>
+                                  <div className="w-full rounded-t-lg border bg-white hover:bg-slate-50 transition-colors px-4 py-3">
+                                    <div className="flex items-center justify-between w-full">
+                                      <CollapseTrigger className="flex items-center gap-3">
                                         <IconChevronRight
                                           className={cn(
                                             'h-4 w-4 shrink-0 transition-transform duration-200 text-slate-900',
                                             openModules[module] && 'rotate-90'
                                           )}
                                         />
-                                        <span className='text-sm font-medium text-slate-900 border-b-slate-900'>
+                                        <span className="text-sm font-medium text-slate-900 border-b-slate-900">
                                           {module}
                                         </span>
                                       </CollapseTrigger>
@@ -484,21 +482,21 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                                             checked
                                           )
                                         }
-                                        className='data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300'
+                                        className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300"
                                       />
                                     </div>
                                   </div>
-                                  <CollapseContent className='divide-y divide-slate-100 border-x border-b rounded-b-lg bg-white'>
+                                  <CollapseContent className="divide-y divide-slate-100 border-x border-b rounded-b-lg bg-white">
                                     {modulePermissions.map((permission) => (
                                       <div
                                         key={permission.permissionId}
-                                        className='flex items-center justify-between px-6 py-3 hover:bg-slate-50 transition-colors'
+                                        className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 transition-colors"
                                       >
-                                        <div className='flex flex-col gap-1'>
-                                          <span className='text-sm font-medium text-slate-700'>
+                                        <div className="flex flex-col gap-1">
+                                          <span className="text-sm font-medium text-slate-700">
                                             {permission.name}
                                           </span>
-                                          <span className='text-xs text-slate-900'>
+                                          <span className="text-xs text-slate-900">
                                             {permission.apiPath} (
                                             {permission.httpMethod})
                                           </span>
@@ -514,7 +512,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                                               checked
                                             );
                                           }}
-                                          className='data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300'
+                                          className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100 data-[state=unchecked]:border-slate-300"
                                         />
                                       </div>
                                     ))}
@@ -525,27 +523,27 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                           )}
                         </div>
                       </FormControl>
-                      <FormMessage className='text-xs text-red-500' />
+                      <FormMessage className="text-xs text-red-500" />
                     </FormItem>
                   )}
                 />
               </div>
 
               {/* Footer */}
-              <div className='flex justify-end gap-4 px-6 py-4 border-t bg-slate-50 sticky bottom-0'>
+              <div className="flex justify-end gap-4 px-6 py-4 border-t bg-slate-50 sticky bottom-0">
                 <Button
-                  type='button'
-                  variant='outline'
+                  type="button"
+                  variant="outline"
                   onClick={handleClose}
-                  className='border-slate-200 hover:bg-slate-100'
+                  className="border-slate-200 hover:bg-slate-100"
                 >
-                  Hủy
+                  {t('cancel')}
                 </Button>
                 <Button
-                  type='submit'
-                  className='bg-slate-900 hover:bg-slate-600 text-white'
+                  type="submit"
+                  className="bg-slate-900 hover:bg-slate-600 text-white"
                 >
-                  {isEdit ? 'Cập nhật' : 'Thêm mới'}
+                  {isEdit ? t('update') : t('add')}
                 </Button>
               </div>
             </form>

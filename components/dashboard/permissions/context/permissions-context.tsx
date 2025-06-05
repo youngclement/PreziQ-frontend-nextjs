@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { Permission } from '../data/schema';
 import { permissionsApi } from '@/api-client';
+import { useLanguage } from '@/contexts/language-context';
 
 type DialogType = 'add' | 'edit' | 'delete' | null;
 
@@ -39,6 +40,7 @@ export function PermissionsProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState<DialogType>(null);
   const [currentRow, setCurrentRow] = useState<Permission | null>(null);
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -74,13 +76,11 @@ export function PermissionsProvider({
       }
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : 'Có lỗi xảy ra khi tải dữ liệu';
+        error instanceof Error ? error.message : t('errorLoadingData');
       setError(message);
       toast({
         variant: 'destructive',
-        title: 'Có lỗi xảy ra',
+        title: t('error'),
         description: message,
       });
     } finally {

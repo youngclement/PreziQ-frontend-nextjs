@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { DataTableViewOptions } from '../../users/components/data-table-view-options';
 import { DataTableFacetedFilter } from '../../users/components/data-table-faceted-filter';
 import { Search, X } from 'lucide-react';
+import { useLanguage } from '@/contexts/language-context';
 
 interface AchievementToolbarProps<TData> {
   table: Table<TData>;
@@ -15,6 +16,7 @@ interface AchievementToolbarProps<TData> {
 export function AchievementToolbar<TData>({
   table,
 }: AchievementToolbarProps<TData>) {
+  const { t } = useLanguage();
   const isFiltered = table.getState().columnFilters.length > 0;
 
   return (
@@ -23,7 +25,7 @@ export function AchievementToolbar<TData>({
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Tìm kiếm thành tựu..."
+            placeholder={t('achievementSearchPlaceholder')}
             value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
             onChange={(event) =>
               table.getColumn('name')?.setFilterValue(event.target.value)
@@ -37,7 +39,7 @@ export function AchievementToolbar<TData>({
               className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
             >
               <X className="h-4 w-4" />
-              <span className="sr-only">Xóa tìm kiếm</span>
+              <span className="sr-only">{t('achievementClearSearch')}</span>
             </Button>
           )}
         </div>
@@ -45,12 +47,12 @@ export function AchievementToolbar<TData>({
           {table.getColumn('requiredPoints') && (
             <DataTableFacetedFilter
               column={table.getColumn('requiredPoints')}
-              title="Điểm yêu cầu"
+              title={t('achievementRequiredPoints')}
               options={[
-                { label: '< 100 điểm', value: 'lt100' },
-                { label: '100 - 500 điểm', value: '100-500' },
-                { label: '500 - 1000 điểm', value: '500-1000' },
-                { label: '> 1000 điểm', value: 'gt1000' },
+                { label: t('achievementPointsLt100'), value: 'lt100' },
+                { label: t('achievementPoints100_500'), value: '100-500' },
+                { label: t('achievementPoints500_1000'), value: '500-1000' },
+                { label: t('achievementPointsGt1000'), value: 'gt1000' },
               ]}
             />
           )}
@@ -61,7 +63,7 @@ export function AchievementToolbar<TData>({
               onClick={() => table.resetColumnFilters()}
               className="h-8 px-2 lg:px-3"
             >
-              Xóa bộ lọc
+              {t('achievementClearFilter')}
               <Cross2Icon className="ml-2 h-4 w-4" />
             </Button>
           )}

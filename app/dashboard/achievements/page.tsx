@@ -8,10 +8,13 @@ import { AchievementPrimaryButtons } from '@/components/dashboard/achievements/c
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { useAchievements } from '@/components/dashboard/achievements/context/achievements-context';
+import { useLanguage } from '@/contexts/language-context';
+import { LanguageSwitcher } from '@/components/language-switcher';
 
 function AchievementsContent() {
   const { achievements, isLoading, error } = useAchievements();
-  console.log('achievement', achievements);
+  const { t } = useLanguage();
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-32">
@@ -33,12 +36,13 @@ function AchievementsContent() {
       <div className="mb-2 flex items-center justify-between space-y-2 flex-wrap">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
-            Quản lý thành tựu
+            {t('achievementManagement')}
           </h2>
           <p className="text-muted-foreground">
-            Quản lý thành tựu trong hệ thống tại đây.
+            {t('achievementManagementDesc')}
           </p>
         </div>
+
         <AchievementPrimaryButtons />
       </div>
       <div className="-mx-4 flex-1 overflow-auto px-4 py-1">

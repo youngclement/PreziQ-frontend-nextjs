@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { AudioWaveform, Command, GalleryVerticalEnd } from 'lucide-react';
 import { NavItem, NavGroup } from '@/components/dashboard/layout/NavGroup';
+import { useLanguage } from '@/contexts/language-context';
+
 // TypeScript interface definitions
 interface User {
   name: string;
@@ -44,69 +46,73 @@ interface SidebarData {
   navGroups: NavGroup[];
 }
 
-export const sidebarData: SidebarData = {
-  user: {
-    name: 'người dùng',
-    email: 'user@example.com',
-    avatar: '/avatars/shadcn.jpg',
-  },
-  teams: [
-    {
-      name: 'PreziQ Admin',
-      logo: Command,
-      plan: 'Next + ShadcnUI',
+export const useSidebarData = () => {
+  const { t } = useLanguage();
+
+  return {
+    user: {
+      name: t('user'),
+      email: 'user@example.com',
+      avatar: '/avatars/shadcn.jpg',
     },
-    {
-      name: 'Công ty ABC',
-      logo: GalleryVerticalEnd,
-      plan: 'Doanh nghiệp',
-    },
-    {
-      name: 'Startup XYZ',
-      logo: AudioWaveform,
-      plan: 'Khởi nghiệp',
-    },
-  ],
-  navGroups: [
-    {
-      title: 'Chung',
-      items: [
-        {
-          title: 'Bảng điều khiển',
-          url: '/dashboard',
-          icon: LayoutDashboard,
-        },
-        {
-          title: 'Trò chuyện',
-          url: '/dashboard/chats',
-          icon: MessageSquare,
-        },
-      ],
-    },
-    {
-      title: 'Quản trị',
-      items: [
-        {
-          title: 'Vai trò',
-          url: '/dashboard/roles',
-          icon: Package,
-        },
-        {
-          title: 'Quyền hạn',
-          url: '/dashboard/permissions',
-          icon: ShieldAlert,
-        },
-        {
-          title: 'Người dùng',
-          url: '/dashboard/users',
-          icon: Users,
-        },
-        {
-          title: 'Thành tựu',
-          url: '/dashboard/achievements',
-          icon: Award,
-        },
-      ],
-    },
-  ],
+    teams: [
+      {
+        name: 'PreziQ Admin',
+        logo: Command,
+        plan: 'Next + ShadcnUI',
+      },
+      {
+        name: t('companyABC'),
+        logo: GalleryVerticalEnd,
+        plan: t('enterprise'),
+      },
+      {
+        name: t('startupXYZ'),
+        logo: AudioWaveform,
+        plan: t('startup'),
+      },
+    ],
+    navGroups: [
+      {
+        title: t('general'),
+        items: [
+          {
+            title: t('dashboard'),
+            url: '/dashboard',
+            icon: LayoutDashboard,
+          },
+          {
+            title: t('chat'),
+            url: '/dashboard/chats',
+            icon: MessageSquare,
+          },
+        ],
+      },
+      {
+        title: t('administration'),
+        items: [
+          {
+            title: t('roles'),
+            url: '/dashboard/roles',
+            icon: Package,
+          },
+          {
+            title: t('permissions'),
+            url: '/dashboard/permissions',
+            icon: ShieldAlert,
+          },
+          {
+            title: t('users'),
+            url: '/dashboard/users',
+            icon: Users,
+          },
+          {
+            title: t('achievements'),
+            url: '/dashboard/achievements',
+            icon: Award,
+          },
+        ],
+      },
+    ],
+  };
 };

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useRoles } from '../context/roles-context';
 import { Role } from '../data/schema';
+import { useLanguage } from '@/contexts/language-context';
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
@@ -21,6 +22,7 @@ export function DataTableRowActions<TData>({
 }: DataTableRowActionsProps<TData>) {
   const role = row.original as Role;
   const { setOpen, setCurrentRow } = useRoles();
+  const { t } = useLanguage();
 
   return (
     <DropdownMenu>
@@ -30,7 +32,7 @@ export function DataTableRowActions<TData>({
           className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
         >
           <DotsHorizontalIcon className="h-4 w-4" />
-          <span className="sr-only">Mở menu</span>
+          <span className="sr-only">{t('openMenu')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
@@ -41,7 +43,7 @@ export function DataTableRowActions<TData>({
           }}
         >
           <IconEdit className="mr-2 h-4 w-4" />
-          Chỉnh sửa
+          {t('edit')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -52,7 +54,7 @@ export function DataTableRowActions<TData>({
           className="text-red-600"
         >
           <IconTrash className="mr-2 h-4 w-4" />
-          Xóa
+          {t('delete')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

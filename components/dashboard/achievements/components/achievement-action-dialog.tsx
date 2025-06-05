@@ -32,6 +32,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { storageApi } from '@/api-client/storage-api';
+import { useLanguage } from '@/contexts/language-context';
 
 // Custom hook để xử lý preview URL
 function useIconUrlPreview(
@@ -68,13 +69,15 @@ function IconUrlFormField({
 }) {
   useIconUrlPreview(form.getValues('iconUrl') || '', localFile, setPreviewUrl);
 
+  const { t } = useLanguage();
+
   return (
     <FormField
       control={control}
       name="iconUrl"
       render={({ field }) => (
         <FormItem>
-          <FormLabel>Biểu tượng</FormLabel>
+          <FormLabel>{t('iconUpload.title')}</FormLabel>
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
             <Avatar className="h-20 w-20 rounded-md border-2 border-slate-200">
               <AvatarImage
@@ -83,7 +86,7 @@ function IconUrlFormField({
                   '/placeholder.svg?height=80&width=80' ||
                   '/placeholder.svg'
                 }
-                alt="Icon preview"
+                alt={t('iconUpload.preview')}
               />
               <AvatarFallback className="rounded-md bg-primary/10">
                 <Award className="h-10 w-10 text-primary" />
@@ -92,7 +95,7 @@ function IconUrlFormField({
             <div className="flex-1 space-y-2">
               <FormControl>
                 <Input
-                  placeholder="https://example.com/icon.png"
+                  placeholder={t('iconUpload.urlPlaceholder')}
                   {...field}
                   className="bg-slate-50"
                   onChange={(e) => {
@@ -135,12 +138,12 @@ function IconUrlFormField({
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         ></path>
                       </svg>
-                      <span>Đang tải lên...</span>
+                      <span>{t('iconUpload.uploading')}</span>
                     </>
                   ) : (
                     <>
                       <Award className="h-4 w-4" />
-                      <span>Tải lên biểu tượng</span>
+                      <span>{t('iconUpload.uploadButton')}</span>
                     </>
                   )}
                 </label>
@@ -156,12 +159,13 @@ function IconUrlFormField({
                 {localFile && (
                   <div className="text-xs text-slate-500 flex items-center">
                     <Award className="h-3 w-3 mr-1" />
-                    {localFile.name} ({(localFile.size / 1024).toFixed(1)}KB)
+                    {localFile.name} ({(localFile.size / 1024).toFixed(1)}
+                    {t('iconUpload.fileSize')})
                   </div>
                 )}
 
                 <p className="text-xs text-slate-500">
-                  Định dạng: JPG, JPEG, PNG, SVG (tối đa 5MB)
+                  {t('iconUpload.formatInfo')}
                 </p>
               </div>
             </div>
@@ -216,6 +220,7 @@ export function AchievementActionDialog({
   );
   const [localFile, setLocalFile] = useState<File | null>(null);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const { t } = useLanguage();
 
   const form = useForm<AchievementForm>({
     resolver: zodResolver(formSchema),
@@ -407,12 +412,10 @@ export function AchievementActionDialog({
         >
           <DialogHeader className="p-6 pb-2 border-b bg-slate-50">
             <DialogTitle className="text-xl">
-              {isEdit ? 'Chỉnh sửa thông tin thành tựu' : 'Thêm thành tựu mới'}
+              {isEdit ? t('achievementEditTitle') : t('achievementAddTitle')}
             </DialogTitle>
             <DialogDescription className="text-slate-500">
-              {isEdit
-                ? 'Cập nhật thông tin của thành tựu hiện tại'
-                : 'Điền thông tin đầy đủ để tạo thành tựu mới'}
+              {isEdit ? t('achievementEditDesc') : t('achievementAddDesc')}
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[65vh] px-6 py-4">
@@ -428,7 +431,7 @@ export function AchievementActionDialog({
                   className="bg-white p-5 rounded-md border border-slate-200 shadow-sm"
                 >
                   <h3 className="text-md font-medium text-slate-900 mb-4">
-                    Thông tin cơ bản
+                    {t('achievementBasicInfo')}
                   </h3>
                   <div className="grid grid-cols-1 gap-4">
                     <FormField
@@ -436,10 +439,10 @@ export function AchievementActionDialog({
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Tên thành tựu</FormLabel>
+                          <FormLabel>{t('achievementName')}</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Nhập tên thành tựu"
+                              placeholder={t('achievementNamePlaceholder')}
                               {...field}
                               className="bg-slate-50"
                             />
@@ -453,10 +456,12 @@ export function AchievementActionDialog({
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Mô tả</FormLabel>
+                          <FormLabel>{t('achievementDescription')}</FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Nhập mô tả thành tựu"
+                              placeholder={t(
+                                'achievementDescriptionPlaceholder'
+                              )}
                               {...field}
                               className="bg-slate-50 min-h-[100px]"
                             />
@@ -470,11 +475,15 @@ export function AchievementActionDialog({
                       name="requiredPoints"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Điểm yêu cầu</FormLabel>
+                          <FormLabel>
+                            {t('achievementRequiredPoints')}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="number"
-                              placeholder="Nhập số điểm yêu cầu"
+                              placeholder={t(
+                                'achievementRequiredPointsPlaceholder'
+                              )}
                               {...field}
                               className="bg-slate-50"
                             />
@@ -493,7 +502,7 @@ export function AchievementActionDialog({
                   className="bg-white p-5 rounded-md border border-slate-200 shadow-sm"
                 >
                   <h3 className="text-md font-medium text-slate-900 mb-4">
-                    Biểu tượng thành tựu
+                    {t('achievementIcon')}
                   </h3>
                   <IconUrlFormField
                     control={form.control}
@@ -515,7 +524,7 @@ export function AchievementActionDialog({
               onClick={() => onOpenChange(false)}
               className="transition-all duration-200 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900"
             >
-              Hủy
+              {t('achievementCancel')}
             </Button>
             <Button
               type="submit"
@@ -545,12 +554,12 @@ export function AchievementActionDialog({
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Đang xử lý...
+                  {t('achievementUpdating')}
                 </div>
               ) : isEdit ? (
-                'Cập nhật'
+                t('achievementSubmit')
               ) : (
-                'Thêm thành tựu'
+                t('achievementAdd')
               )}
             </Button>
           </DialogFooter>

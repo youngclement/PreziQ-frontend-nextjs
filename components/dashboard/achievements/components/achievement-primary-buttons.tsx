@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { useAchievements } from '../context/achievements-context';
 import { Plus, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
+import { useLanguage } from '@/contexts/language-context';
 
 export function AchievementPrimaryButtons() {
   const { setOpen, refetch } = useAchievements();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { t } = useLanguage();
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -27,14 +29,14 @@ export function AchievementPrimaryButtons() {
         <RefreshCw
           className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`}
         />
-        Làm mới
+        {t('achievementRefresh')}
       </Button>
       <Button
         onClick={() => setOpen('add')}
         className="h-9 bg-primary hover:bg-primary/90"
       >
         <Plus className="h-4 w-4 mr-2" />
-        Thêm thành tựu
+        {t('achievementAdd')}
       </Button>
     </div>
   );

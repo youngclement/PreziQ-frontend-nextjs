@@ -8,6 +8,7 @@ import { createContext, useContext } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { achievementsApi } from '@/api-client';
+import { useLanguage } from '@/contexts/language-context';
 
 type AchievementsDialogType = 'add' | 'edit' | 'delete';
 
@@ -37,6 +38,7 @@ const AchievementsProvider = ({ children }: Props) => {
   const queryClient = useQueryClient();
   const [open, setOpen] = useDialogState<AchievementsDialogType>(null);
   const [currentRow, setCurrentRow] = useState<Achievement | null>(null);
+  const { t } = useLanguage();
 
   // Fetch achievements with React Query
   const {
@@ -51,9 +53,8 @@ const AchievementsProvider = ({ children }: Props) => {
         const response = await achievementsApi.getAllAchievements();
         console.log('res: ', response);
         return response;
-        
       } catch (error) {
-        throw new Error('Không thể tải danh sách thành tựu');
+        throw new Error(t('achievementLoadError'));
       }
     },
     staleTime: 5 * 60 * 1000, // Cache trong 5 phút
@@ -69,14 +70,14 @@ const AchievementsProvider = ({ children }: Props) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['achievements'] });
       toast({
-        title: 'Thành công',
-        description: 'Tạo thành tựu thành công',
+        title: t('success'),
+        description: t('achievementCreateSuccess'),
       });
       setOpen(null);
     },
     onError: (error: Error) => {
       toast({
-        title: 'Lỗi',
+        title: t('error'),
         description: error.message,
         variant: 'destructive',
       });
@@ -92,15 +93,15 @@ const AchievementsProvider = ({ children }: Props) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['achievements'] });
       toast({
-        title: 'Thành công',
-        description: 'Cập nhật thông tin thành tựu thành công',
+        title: t('success'),
+        description: t('achievementUpdateSuccess'),
       });
       setOpen(null);
       setCurrentRow(null);
     },
     onError: (error: Error) => {
       toast({
-        title: 'Lỗi',
+        title: t('error'),
         description: error.message,
         variant: 'destructive',
       });
@@ -116,15 +117,15 @@ const AchievementsProvider = ({ children }: Props) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['achievements'] });
       toast({
-        title: 'Thành công',
-        description: 'Xóa thành tựu thành công',
+        title: t('success'),
+        description: t('achievementDeleteSuccess'),
       });
       setOpen(null);
       setCurrentRow(null);
     },
     onError: (error: Error) => {
       toast({
-        title: 'Lỗi',
+        title: t('error'),
         description: error.message,
         variant: 'destructive',
       });

@@ -1,9 +1,11 @@
 import { usePermissions } from '../context/permissions-context';
 import { PermissionsFormDialog } from './permissions-form-dialog';
 import { PermissionsDeleteDialog } from './permissions-delete-dialog';
+import { useLanguage } from '@/contexts/language-context';
 
 export function PermissionsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = usePermissions();
+  const { t } = useLanguage();
 
   const handleOpenChange = (dialogType: 'add' | 'edit' | 'delete') => {
     setOpen(dialogType);
@@ -46,7 +48,7 @@ export function PermissionsDialogs() {
               }, 500);
             }
           }}
-          type='permission'
+          type="permission"
           data={{
             permissionId: currentRow.permissionId,
             name: currentRow.name,

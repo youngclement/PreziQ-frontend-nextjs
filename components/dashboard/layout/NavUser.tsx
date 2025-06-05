@@ -25,6 +25,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { useLanguage } from '@/contexts/language-context';
 
 export function NavUser({
   user,
@@ -36,6 +37,7 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const { t } = useLanguage();
 
   return (
     <SidebarMenu>
@@ -79,7 +81,7 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <Sparkles />
-                Nâng cấp lên Pro
+                {t('upgradeToPro')}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -87,30 +89,30 @@ export function NavUser({
               <DropdownMenuItem asChild>
                 <Link href="/settings/account">
                   <BadgeCheck />
-                  Tài khoản
+                  {t('account')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/settings">
                   <CreditCard />
-                  Thanh toán
+                  {t('payment')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/settings/notifications">
                   <Bell />
-                  Thông báo
+                  {t('notifications')}
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <LogOut />
-              Đăng xuất
+              {t('logout')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
   );
-} 
+}
