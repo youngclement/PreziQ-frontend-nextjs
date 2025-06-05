@@ -18,6 +18,7 @@ import { QuizReorderViewer } from './QuizReorderViewer';
 import QuizTrueOrFalseViewer from './QuizTrueOrFalseViewer';
 import QuizLocationViewer from './QuizLocationViewer';
 import CountdownOverlay from './CountdownOverlay';
+import PointTypeOverlay from './PointTypeOverlay';
 import {
   Loader2,
   ArrowRight,
@@ -114,6 +115,12 @@ export default function HostActivities({
     'showing_current' | 'showing_ranking' | 'transitioning_to_next'
   >('showing_current');
 
+  // Thêm state để quản lý PointTypeOverlay
+  const [showPointTypeOverlay, setShowPointTypeOverlay] = useState(false);
+  const [currentPointType, setCurrentPointType] = useState<
+    'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS'
+  >('STANDARD');
+
   // Thêm hàm kiểm tra loại activity là quiz hay không
   const isQuizActivity = (activityType?: string): boolean => {
     return (
@@ -134,6 +141,23 @@ export default function HostActivities({
       }`
     );
     return activityType === 'INFO_SLIDE';
+  };
+
+  // Thêm hàm để lấy pointType từ activity
+  const getActivityPointType = (
+    activity: any
+  ): 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS' => {
+    // Kiểm tra trong quiz data
+    if (activity?.quiz?.pointType) {
+      return activity.quiz.pointType;
+    }
+
+    // Fallback kiểm tra trong activity data trực tiếp
+    if (activity?.pointType) {
+      return activity.pointType;
+    }
+
+    return 'STANDARD';
   };
 
   // Thêm useEffect để ghi log trạng thái tham gia của host khi component khởi tạo
@@ -312,6 +336,7 @@ export default function HostActivities({
       } else {
         // Reset state khi nhận activity mới
         setCanShowRanking(false);
+        setShowPointTypeOverlay(false); // Reset PointTypeOverlay state
         console.log(
           `[SLIDE] Đặt lại trạng thái canShowRanking = false cho activity mới: ${activity.activityId}`
         );
@@ -594,10 +619,39 @@ export default function HostActivities({
   // Cập nhật hàm handleCountdownComplete
   const handleCountdownComplete = () => {
     console.log(
-      `[SLIDE] Countdown hoàn thành, ẩn countdown và đặt trạng thái showing_current`
+      `[SLIDE] Countdown hoàn thành, ẩn countdown và kiểm tra pointType`
     );
     setShowCountdown(false);
-    // Đảm bảo trạng thái luôn được cập nhật khi countdown hoàn thành
+
+    // Kiểm tra pointType của activity hiện tại (chỉ cho quiz activities)
+    if (currentActivity && !isInfoSlideActivity(currentActivity.activityType)) {
+      const pointType = getActivityPointType(currentActivity);
+      console.log(`[SLIDE] PointType của activity hiện tại: ${pointType}`);
+
+      if (pointType === 'DOUBLE_POINTS' || pointType === 'NO_POINTS') {
+        console.log(
+          `[SLIDE] Hiển thị PointTypeOverlay cho pointType: ${pointType}`
+        );
+        setCurrentPointType(pointType);
+        setShowPointTypeOverlay(true);
+      } else {
+        console.log(`[SLIDE] PointType là STANDARD, không hiển thị overlay`);
+        setActivityTransitionState('showing_current');
+      }
+    } else {
+      console.log(
+        `[SLIDE] Activity là slide hoặc không có activity, không kiểm tra pointType`
+      );
+      setActivityTransitionState('showing_current');
+    }
+  };
+
+  // Thêm hàm để xử lý khi PointTypeOverlay hoàn thành
+  const handlePointTypeOverlayComplete = () => {
+    console.log(
+      `[SLIDE] PointTypeOverlay hoàn thành, đặt trạng thái showing_current`
+    );
+    setShowPointTypeOverlay(false);
     setActivityTransitionState('showing_current');
   };
 
@@ -870,6 +924,17 @@ export default function HostActivities({
       {showCountdown && !isFullscreenMode && (
         <div className='fixed inset-0 z-[9999]'>
           <CountdownOverlay onComplete={handleCountdownComplete} />
+        </div>
+      )}
+
+      {/* Hiển thị PointTypeOverlay với z-index cao hơn cả CountdownOverlay */}
+      {showPointTypeOverlay && (
+        <div className='fixed inset-0 z-[10001]'>
+          <PointTypeOverlay
+            pointType={currentPointType}
+            onComplete={handlePointTypeOverlayComplete}
+            duration={3000}
+          />
         </div>
       )}
 
@@ -1302,6 +1367,17 @@ export default function HostActivities({
                 {showCountdown && isFullscreenMode && (
                   <div className='absolute inset-0 z-50'>
                     <CountdownOverlay onComplete={handleCountdownComplete} />
+                  </div>
+                )}
+
+                {/* Hiển thị PointTypeOverlay trong phần nội dung khi ở chế độ toàn màn hình */}
+                {showPointTypeOverlay && isFullscreenMode && (
+                  <div className='absolute inset-0 z-[51]'>
+                    <PointTypeOverlay
+                      pointType={currentPointType}
+                      onComplete={handlePointTypeOverlayComplete}
+                      duration={3000}
+                    />
                   </div>
                 )}
 

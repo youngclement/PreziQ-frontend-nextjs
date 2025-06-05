@@ -1,5 +1,4 @@
 import { Client } from '@stomp/stompjs';
-import { sessionsApi } from '@/api-client';
 import { v4 as uuidv4 } from 'uuid';
 import {
   LeaderboardCalculations,
