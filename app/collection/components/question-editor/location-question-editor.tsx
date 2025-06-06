@@ -806,6 +806,33 @@ export function LocationQuestionEditor({
     }
   }, [locationAnswers]);
 
+  // Add this handler function immediately after the handleApiResponseSuccess function (around line 480)
+
+  const handleMarkerDragEnd = (event: CustomEvent) => {
+    if (event.detail) {
+      const { questionIndex: eventQuestionIndex, locationData, markerIndex, timestamp } = event.detail;
+
+      // Only process if this is for our question index
+      if (eventQuestionIndex === questionIndex && locationData) {
+        console.log(`🎯 Processing marker drag end event for marker ${markerIndex + 1}`);
+
+        // Update our internal state with the new location data
+        setLocationData(locationData);
+        currentLocationAnswersRef.current = locationData;
+
+        // Store latest position to prevent override
+        if (typeof markerIndex === 'number' && markerIndex >= 0) {
+          const location = locationData[markerIndex];
+          if (location) {
+            latestMarkerPositionsRef.current.set(markerIndex, {
+              lng: location.longitude,
+              lat: location.latitude
+            });
+          }
+        }
+      }
+    }
+  };
   // Function to create a GeoJSON circle
   function createGeoJSONCircle(center: [number, number], radiusInKm: number, points: number = 64): Feature<Polygon> {
     // Validate the center coordinates
