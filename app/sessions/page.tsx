@@ -185,18 +185,23 @@ const SessionPage = () => {
               </TabsContent>
             </Tabs>
 
-            <div className="mt-8 text-center">
-              <p className="text-white/60">Muốn tạo collection mới?</p>
+
+            <div className='mt-8 text-center'>
+              <p className='text-white/60'>Xem thêm các collection khác?</p>
+
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="mt-2"
               >
                 <Button
-                  className="bg-gradient-to-r from-[#c5ee4f] to-[#8fe360] text-[#0f2231] hover:shadow-[#aef359]/20 hover:shadow-2xl rounded-xl font-medium transition-all duration-300"
+
+                  variant='outline'
+                  className='border border-white/20 text-black bg-white rounded-xl font-medium transition-all'
+
                   onClick={() => router.push('/collections')}
                 >
-                  Tạo collection mới
+                  Xem collection khác
                 </Button>
               </motion.div>
             </div>

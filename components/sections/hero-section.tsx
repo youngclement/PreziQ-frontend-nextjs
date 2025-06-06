@@ -50,7 +50,7 @@ export function HeroSection() {
               className={cn(
                 dancingScript.className,
                 "relative inline-block text-5xl sm:text-7xl md:text-8xl bg-clip-text text-transparent w-full",
-                "tracking-wide leading-[1.1] mx-auto px-4 py-0 mb-0",
+                "tracking-wide leading-[1.1] mx-auto px-4 py-0 mb-0 pb-8",
                 "whitespace-normal max-w-full overflow-visible",
                 isDark
                   ? "bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300"

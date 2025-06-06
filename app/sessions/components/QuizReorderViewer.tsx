@@ -57,6 +57,9 @@ export const QuizReorderViewer = ({
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [isQuizEnded, setIsQuizEnded] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showCorrectOrder, setShowCorrectOrder] = useState(false);
+  const [chainReactionIndex, setChainReactionIndex] = useState(-1);
+  const [isChainReactionActive, setIsChainReactionActive] = useState(false);
 
   // Đáp án đúng
   const correctOrder = useMemo(() => {
@@ -65,13 +68,259 @@ export const QuizReorderViewer = ({
       .map((a) => a.quizAnswerId);
   }, [activity.quiz.quizAnswers]);
 
-  // Khởi tạo items (shuffle)
+  // Thuật toán shuffle phức tạp để đảm bảo không trùng với đáp án đúng
+  const createComplexShuffle = useCallback(
+    (answers: typeof activity.quiz.quizAnswers) => {
+      const correctOrderIds = answers
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((a) => a.quizAnswerId);
+
+      let shuffled: Item[];
+      let attempts = 0;
+      const maxAttempts = 100;
+      const minDifferencePercentage = Math.max(
+        70,
+        Math.floor(((answers.length - 1) / answers.length) * 100)
+      );
+
+      // Các chiến lược shuffle khác nhau
+      const shuffleStrategies = [
+        // Chiến lược 1: Reverse + Multiple Fisher-Yates
+        () => {
+          const reversed = [...answers]
+            .sort((a, b) => b.orderIndex - a.orderIndex)
+            .map((a) => ({ id: a.quizAnswerId, text: a.answerText }));
+
+          let result = [...reversed];
+          for (let round = 0; round < 3; round++) {
+            for (let i = result.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [result[i], result[j]] = [result[j], result[i]];
+            }
+          }
+          return result;
+        },
+
+        // Chiến lược 2: Block rotation
+        () => {
+          const items = [...answers].map((a) => ({
+            id: a.quizAnswerId,
+            text: a.answerText,
+          }));
+          const blockSize = Math.max(2, Math.floor(items.length / 3));
+
+          // Chia thành các block và xoay vòng
+          for (let i = 0; i < items.length; i += blockSize) {
+            const block = items.slice(i, i + blockSize);
+            const rotateBy = Math.floor(Math.random() * block.length);
+            const rotated = [
+              ...block.slice(rotateBy),
+              ...block.slice(0, rotateBy),
+            ];
+            items.splice(i, blockSize, ...rotated);
+          }
+
+          // Shuffle toàn bộ một lần nữa
+          for (let i = items.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [items[i], items[j]] = [items[j], items[i]];
+          }
+
+          return items;
+        },
+
+        // Chiến lược 3: Interleaving pattern
+        () => {
+          const items = [...answers].map((a) => ({
+            id: a.quizAnswerId,
+            text: a.answerText,
+          }));
+          const result: Item[] = [];
+          const odds: Item[] = [];
+          const evens: Item[] = [];
+
+          // Tách thành chẵn lẻ
+          items.forEach((item, index) => {
+            if (index % 2 === 0) evens.push(item);
+            else odds.push(item);
+          });
+
+          // Shuffle từng nhóm
+          [odds, evens].forEach((group) => {
+            for (let i = group.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [group[i], group[j]] = [group[j], group[i]];
+            }
+          });
+
+          // Interleave ngẫu nhiên
+          while (odds.length > 0 || evens.length > 0) {
+            if (Math.random() > 0.5 && odds.length > 0) {
+              result.push(odds.pop()!);
+            } else if (evens.length > 0) {
+              result.push(evens.pop()!);
+            } else if (odds.length > 0) {
+              result.push(odds.pop()!);
+            }
+          }
+
+          return result;
+        },
+
+        // Chiến lược 4: Spiral shuffle
+        () => {
+          const items = [...answers].map((a) => ({
+            id: a.quizAnswerId,
+            text: a.answerText,
+          }));
+          const result: Item[] = new Array(items.length);
+          const indices = Array.from({ length: items.length }, (_, i) => i);
+
+          // Tạo pattern spiral
+          let left = 0,
+            right = items.length - 1;
+          let itemIndex = 0;
+
+          while (left <= right) {
+            // Từ trái sang phải
+            if (itemIndex < items.length) {
+              result[left] = items[itemIndex++];
+              left++;
+            }
+            // Từ phải sang trái
+            if (itemIndex < items.length && left <= right) {
+              result[right] = items[itemIndex++];
+              right--;
+            }
+          }
+
+          // Shuffle thêm một lần
+          for (let i = result.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [result[i], result[j]] = [result[j], result[i]];
+          }
+
+          return result;
+        },
+      ];
+
+      do {
+        // Chọn ngẫu nhiên một chiến lược
+        const strategyIndex = Math.floor(
+          Math.random() * shuffleStrategies.length
+        );
+        shuffled = shuffleStrategies[strategyIndex]();
+
+        // Kiểm tra độ khác biệt
+        const shuffledIds = shuffled.map((item) => item.id);
+        let differentPositions = 0;
+        for (let i = 0; i < shuffledIds.length; i++) {
+          if (shuffledIds[i] !== correctOrderIds[i]) {
+            differentPositions++;
+          }
+        }
+
+        const differencePercentage =
+          (differentPositions / shuffledIds.length) * 100;
+
+        console.log(
+          `[QuizReorder] Attempt ${attempts + 1}, Strategy ${
+            strategyIndex + 1
+          }, Difference: ${differencePercentage.toFixed(1)}%`
+        );
+
+        // Nếu đủ khác biệt hoặc đã thử quá nhiều lần, dừng lại
+        if (
+          differencePercentage >= minDifferencePercentage ||
+          attempts >= maxAttempts
+        ) {
+          break;
+        }
+
+        attempts++;
+      } while (attempts < maxAttempts);
+
+      // Bước cuối: Nếu vẫn chưa đủ khác biệt, áp dụng thuật toán hoán vị cưỡng bức
+      if (attempts >= maxAttempts) {
+        console.log('[QuizReorder] Applying forced permutation...');
+        shuffled = [...answers].map((a) => ({
+          id: a.quizAnswerId,
+          text: a.answerText,
+        }));
+
+        // Hoán đổi cặp đầu-cuối, giữa với các vị trí khác
+        const length = shuffled.length;
+        if (length >= 2) {
+          // Hoán đổi phần tử đầu và cuối
+          [shuffled[0], shuffled[length - 1]] = [
+            shuffled[length - 1],
+            shuffled[0],
+          ];
+        }
+        if (length >= 4) {
+          // Hoán đổi phần tử thứ 2 với phần tử áp cuối
+          [shuffled[1], shuffled[length - 2]] = [
+            shuffled[length - 2],
+            shuffled[1],
+          ];
+        }
+        if (length >= 3) {
+          // Xoay vòng các phần tử ở giữa
+          const middle = Math.floor(length / 2);
+          for (let i = 2; i < middle; i++) {
+            const targetIndex = (i + middle) % length;
+            if (targetIndex !== i && targetIndex < length - 2) {
+              [shuffled[i], shuffled[targetIndex]] = [
+                shuffled[targetIndex],
+                shuffled[i],
+              ];
+            }
+          }
+        }
+
+        // Thêm một vài hoán đổi ngẫu nhiên nữa
+        for (let i = 0; i < Math.min(5, length); i++) {
+          const idx1 = Math.floor(Math.random() * length);
+          const idx2 = Math.floor(Math.random() * length);
+          if (idx1 !== idx2) {
+            [shuffled[idx1], shuffled[idx2]] = [shuffled[idx2], shuffled[idx1]];
+          }
+        }
+      }
+
+      // Validation cuối cùng
+      const finalShuffledIds = shuffled.map((item) => item.id);
+      let finalDifferentPositions = 0;
+      for (let i = 0; i < finalShuffledIds.length; i++) {
+        if (finalShuffledIds[i] !== correctOrderIds[i]) {
+          finalDifferentPositions++;
+        }
+      }
+      const finalDifferencePercentage =
+        (finalDifferentPositions / finalShuffledIds.length) * 100;
+
+      console.log(
+        '[QuizReorder] Shuffle completed after',
+        attempts,
+        'attempts'
+      );
+      console.log(
+        '[QuizReorder] Final difference:',
+        finalDifferencePercentage.toFixed(1) + '%'
+      );
+      console.log('[QuizReorder] Original order:', correctOrderIds);
+      console.log('[QuizReorder] Shuffled order:', finalShuffledIds);
+
+      return shuffled;
+    },
+    []
+  );
+
+  // Khởi tạo items với thuật toán shuffle phức tạp
   useEffect(() => {
-    const shuffled = [...activity.quiz.quizAnswers]
-      .sort(() => Math.random() - 0.5)
-      .map((a) => ({ id: a.quizAnswerId, text: a.answerText }));
+    const shuffled = createComplexShuffle(activity.quiz.quizAnswers);
     setItems(shuffled);
-  }, [activity.quiz.quizAnswers]);
+  }, [activity.quiz.quizAnswers, createComplexShuffle]);
 
   // Đếm ngược thời gian
   useEffect(() => {
@@ -107,6 +356,78 @@ export const QuizReorderViewer = ({
     isQuizEnded,
     items,
     correctOrder,
+  ]);
+
+  // Thêm useEffect để tự động sắp xếp lại items khi cần hiển thị đáp án
+  useEffect(() => {
+    const shouldShowAnswer =
+      (isSubmitted && isQuizEnded) ||
+      activity.hostShowAnswer ||
+      (isQuizEnded && !isSubmitted);
+
+    if (shouldShowAnswer && !showCorrectOrder) {
+      setShowCorrectOrder(true);
+      setIsChainReactionActive(true);
+
+      // Delay một chút rồi bắt đầu chain reaction
+      setTimeout(() => {
+        const correctItems = correctOrder.map((id) => {
+          const answer = activity.quiz.quizAnswers.find(
+            (a) => a.quizAnswerId === id
+          );
+          return { id, text: answer?.answerText || '' };
+        });
+
+        // Tạo hiệu ứng chain reaction - di chuyển từng phần tử một cách tuần tự
+        let currentItems = [...items];
+
+        correctItems.forEach((correctItem, targetIndex) => {
+          setTimeout(() => {
+            // Cập nhật index hiện tại đang di chuyển
+            setChainReactionIndex(targetIndex);
+
+            // Tìm vị trí hiện tại của phần tử cần di chuyển
+            const currentIndex = currentItems.findIndex(
+              (item) => item.id === correctItem.id
+            );
+
+            if (currentIndex !== -1 && currentIndex !== targetIndex) {
+              // Di chuyển phần tử từ vị trí hiện tại đến vị trí đúng
+              const [movedItem] = currentItems.splice(currentIndex, 1);
+              currentItems.splice(targetIndex, 0, movedItem);
+
+              // Cập nhật state
+              setItems([...currentItems]);
+
+              console.log(
+                `[Chain Reaction] Moving item ${targetIndex + 1}/${
+                  correctItems.length
+                }: "${correctItem.text}" from position ${currentIndex + 1} to ${
+                  targetIndex + 1
+                }`
+              );
+            }
+
+            // Nếu là phần tử cuối cùng, kết thúc chain reaction
+            if (targetIndex === correctItems.length - 1) {
+              setTimeout(() => {
+                setIsChainReactionActive(false);
+                setChainReactionIndex(-1);
+                console.log('[Chain Reaction] Completed!');
+              }, 500);
+            }
+          }, targetIndex * 300); // Tăng delay lên 300ms để hiệu ứng rõ ràng hơn
+        });
+      }, 800); // Tăng delay ban đầu để người dùng có thời gian quan sát
+    }
+  }, [
+    isSubmitted,
+    isQuizEnded,
+    activity.hostShowAnswer,
+    correctOrder,
+    activity.quiz.quizAnswers,
+    showCorrectOrder,
+    items,
   ]);
 
   // Cập nhật participants từ WebSocket
@@ -264,9 +585,10 @@ export const QuizReorderViewer = ({
                 <motion.div
                   key={`${answeredCount}-${totalParticipants}`}
                   className={`
-                    flex items-center gap-1 md:gap-1.5 mr-1 md:mr-2 ${answeredCount >= totalParticipants
-                      ? 'bg-black bg-opacity-30 border-[rgb(198,234,132)]/30 shadow-[rgb(198,234,132)]/10'
-                      : 'bg-black bg-opacity-30 border-[rgb(255,198,121)]/30 shadow-[rgb(255,198,121)]/10'
+                    flex items-center gap-1 md:gap-1.5 mr-1 md:mr-2 ${
+                      answeredCount >= totalParticipants
+                        ? 'bg-black bg-opacity-30 border-[rgb(198,234,132)]/30 shadow-[rgb(198,234,132)]/10'
+                        : 'bg-black bg-opacity-30 border-[rgb(255,198,121)]/30 shadow-[rgb(255,198,121)]/10'
                     } border border-white/10 px-2 py-1 rounded-full text-[10px] md:text-xs font-medium`}
                   animate={{
                     scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
@@ -366,28 +688,29 @@ export const QuizReorderViewer = ({
           </AnimatePresence>
 
           {/* Thông báo đã gửi câu trả lời khi submit nhưng chưa kết thúc quiz */}
-          {isAnswered && !isQuizEnded && (<motion.div
-            className='mt-6 p-4 rounded-xl bg-black bg-opacity-30 border border-[rgb(198,234,132)]/30 text-white/90'
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className='flex items-center gap-2 mb-2 text-[rgb(198,234,132)]'>
-              <CheckCircle className='h-5 w-5' />
-              <span className='font-semibold'>Đã gửi câu trả lời!</span>
-            </div>
-            <p className='text-white/70'>
-              Câu trả lời của bạn đã được ghi nhận. Kết quả sẽ được hiển thị
-              khi tất cả người tham gia đã trả lời hoặc hết thời gian.
-            </p>
-          </motion.div>
+          {isAnswered && !isQuizEnded && (
+            <motion.div
+              className='mt-6 p-4 rounded-xl bg-black bg-opacity-30 border border-[rgb(198,234,132)]/30 text-white/90'
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className='flex items-center gap-2 mb-2 text-[rgb(198,234,132)]'>
+                <CheckCircle className='h-5 w-5' />
+                <span className='font-semibold'>Đã gửi câu trả lời!</span>
+              </div>
+              <p className='text-white/70'>
+                Câu trả lời của bạn đã được ghi nhận. Kết quả sẽ được hiển thị
+                khi tất cả người tham gia đã trả lời hoặc hết thời gian.
+              </p>
+            </motion.div>
           )}
 
           {/* Results */}
           <AnimatePresence>
             {(isSubmitted && isQuizEnded) ||
-              activity.hostShowAnswer ||
-              isQuizEnded ? (
+            activity.hostShowAnswer ||
+            isQuizEnded ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-black bg-opacity-30 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
@@ -395,88 +718,113 @@ export const QuizReorderViewer = ({
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               >
                 {activity.hostShowAnswer && !isSubmitted ? (
-                  <div>
-                    <div className='flex items-center gap-2 mb-3 text-[rgb(198,234,132)]'>
+                  <motion.div
+                    className='flex items-center gap-2 mb-3 text-[rgb(198,234,132)]'
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2, type: 'spring', stiffness: 400 }}
+                  >
+                    <motion.div
+                      animate={{ rotate: [0, 360] }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: 'linear',
+                      }}
+                    >
                       <CheckCircle className='h-5 w-5' />
-                      <span className='font-semibold'>Đáp án chính xác:</span>
-                    </div>
-                    <div className='space-y-2'>
-                      {correctOrder.map((id, idx) => {
-                        const answer = activity.quiz.quizAnswers.find(
-                          (a) => a.quizAnswerId === id
-                        );
-                        return (
-                          <div
-                            key={idx}
-                            className='flex items-start gap-2 text-white/80'
-                          >
-                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[rgb(198,234,132)]'></div>
-                            <p>{answer?.answerText || ''}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                    </motion.div>
+                    <span className='font-semibold'>
+                      {isChainReactionActive
+                        ? `Đáp án chính xác (đang di chuyển phần tử ${
+                            chainReactionIndex + 1
+                          }/${correctOrder.length}):`
+                        : 'Đáp án chính xác (các phần tử đã di chuyển về vị trí đúng):'}
+                    </span>
+                  </motion.div>
                 ) : isQuizEnded && !isSubmitted ? (
-                  <div>
-                    <div className='mt-3'>
-                      <p className='font-medium text-white/90 mb-2'>
-                        Thứ tự đúng:
-                      </p>
-                      {correctOrder.map((id, idx) => {
-                        const answer = activity.quiz.quizAnswers.find(
-                          (a) => a.quizAnswerId === id
-                        );
-                        return (
-                          <div
-                            key={idx}
-                            className='flex items-start gap-2 text-white/80'
-                          >
-                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[rgb(198,234,132)]'></div>
-                            <p>{answer?.answerText || ''}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <motion.div
+                    className='flex items-center gap-2 mb-3 text-[rgb(198,234,132)]'
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2, type: 'spring', stiffness: 400 }}
+                  >
+                    <motion.div
+                      animate={{ rotate: [0, 360] }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: 'linear',
+                      }}
+                    >
+                      <CheckCircle className='h-5 w-5' />
+                    </motion.div>
+                    <span className='font-semibold'>
+                      {isChainReactionActive
+                        ? `Thứ tự đúng (đang di chuyển phần tử ${
+                            chainReactionIndex + 1
+                          }/${correctOrder.length}):`
+                        : 'Thứ tự đúng (các phần tử đã di chuyển về vị trí đúng):'}
+                    </span>
+                  </motion.div>
                 ) : (
-                  <>
-                    <div className='flex items-center gap-2 mb-3'>
-                      <div className='flex items-center gap-2'>
-                        {isCorrect ? (
-                          <CheckCircle className='h-5 w-5 text-[rgb(198,234,132)]' />
-                        ) : (
-                          <XCircle className='h-5 w-5 text-[rgb(255,182,193)]' />
-                        )}
-                        <span
-                          className={`font-semibold ${isCorrect ? 'text-[rgb(198,234,132)]' : 'text-[rgb(255,182,193)]'
-                            }`}
+                  <motion.div
+                    className='flex items-center gap-2 mb-3'
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2, type: 'spring', stiffness: 400 }}
+                  >
+                    <div className='flex items-center gap-2'>
+                      {isCorrect ? (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{
+                            delay: 0.3,
+                            type: 'spring',
+                            stiffness: 500,
+                          }}
                         >
-                          {isCorrect ? 'Đúng' : 'Sai'}
-                        </span>
-                      </div>
+                          <CheckCircle className='h-5 w-5 text-[rgb(198,234,132)]' />
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{
+                            delay: 0.3,
+                            type: 'spring',
+                            stiffness: 500,
+                          }}
+                        >
+                          <XCircle className='h-5 w-5 text-[rgb(255,182,193)]' />
+                        </motion.div>
+                      )}
+                      <span
+                        className={`font-semibold ${
+                          isCorrect
+                            ? 'text-[rgb(198,234,132)]'
+                            : 'text-[rgb(255,182,193)]'
+                        }`}
+                      >
+                        {isCorrect ? 'Đúng' : 'Sai'}
+                      </span>
                     </div>
-
-                    <div className='space-y-2'>
-                      <p className='font-medium text-white/90 mb-2'>
-                        Thứ tự đúng:
-                      </p>
-                      {correctOrder.map((id, idx) => {
-                        const answer = activity.quiz.quizAnswers.find(
-                          (a) => a.quizAnswerId === id
-                        );
-                        return (
-                          <div
-                            key={idx}
-                            className='flex items-start gap-2 text-white/80'
-                          >
-                            <div className='mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[rgb(198,234,132)]'></div>
-                            <p>{answer?.answerText || ''}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
+                    {!isCorrect && (
+                      <motion.span
+                        className='text-white/70 ml-2'
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.5 }}
+                      >
+                        {isChainReactionActive
+                          ? `(Đang di chuyển phần tử ${
+                              chainReactionIndex + 1
+                            }/${correctOrder.length} về vị trí đúng)`
+                          : '(Các phần tử đã di chuyển về vị trí đúng)'}
+                      </motion.span>
+                    )}
+                  </motion.div>
                 )}
               </motion.div>
             ) : null}
@@ -489,13 +837,37 @@ export const QuizReorderViewer = ({
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             {/* DnD list */}
-            <div className='bg-black bg-opacity-30 p-1 md:p-2 rounded-xl border border-white/5'>
+            <motion.div
+              className={`bg-black bg-opacity-30 p-1 md:p-2 rounded-xl border ${
+                showCorrectOrder
+                  ? 'border-[rgb(198,234,132)]/30 shadow-lg shadow-[rgb(198,234,132)]/10'
+                  : 'border-white/5'
+              }`}
+              animate={
+                showCorrectOrder
+                  ? {
+                      boxShadow: [
+                        '0 0 0 rgba(198,234,132,0.1)',
+                        '0 0 20px rgba(198,234,132,0.3)',
+                        '0 0 0 rgba(198,234,132,0.1)',
+                      ],
+                    }
+                  : {}
+              }
+              transition={{
+                duration: 2,
+                repeat: showCorrectOrder ? Infinity : 0,
+              }}
+            >
               <SortableList
                 items={items}
                 onChange={setItems}
-                disabled={isAnswered || isQuizEnded}
+                disabled={isAnswered || isQuizEnded || showCorrectOrder}
+                showAnimation={showCorrectOrder}
+                chainReactionIndex={chainReactionIndex}
+                isChainReactionActive={isChainReactionActive}
               />
-            </div>
+            </motion.div>
 
             {/* Submit Button */}
             {!isSubmitted && isParticipating && (

@@ -83,12 +83,9 @@ export const collectionsApi = {
    * @returns Promise với kết quả từ API
    */
   getMyCollections(params: GetCollectionsParams = { page: 1, size: 100 }) {
-    return axiosClient.get('/collections', {
-      params: {
-        ...params,
-        owner: 'current',
-      },
-    });
+
+    return axiosClient.get('/collections/me', { params });
+
   },
 
   /**
@@ -127,5 +124,16 @@ export const collectionsApi = {
     params: GetGroupedCollectionsByTopicParams = { page: 1, size: 10 }
   ) {
     return axiosClient.get('/collections/grouped/topics', { params });
+
+  },
+
+  /**
+   * Copy một collection
+   * @param id ID của collection cần copy
+   * @returns Promise với kết quả từ API
+   */
+  copyCollection(id: string) {
+    return axiosClient.post(`/collections/${id}/copy`);
+
   },
 };
