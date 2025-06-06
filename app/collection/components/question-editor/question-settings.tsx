@@ -186,6 +186,9 @@ interface QuestionSettingsProps {
     newOptions: QuizOption[]
   ) => void;
   onMatchingPairConnectionsChange?: (questionIndex: number) => void;
+  onMatchingPairColumnNamesChange?: (left: string, right: string) => void;
+  leftColumnName?: string;
+  rightColumnName?: string;
   activity?: any; // Atividade associada à questão ativa
 }
 const TextAnswerForm = ({
@@ -243,6 +246,9 @@ export function QuestionSettings({
   onMatchingPairOptionsChange,
   onMatchingPairConnectionsChange,
   activity,
+  leftColumnName,
+  rightColumnName,
+  onMatchingPairColumnNamesChange,
 }: QuestionSettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeType, setActiveType] = useState(
@@ -497,7 +503,7 @@ export function QuestionSettings({
             className={cn(
               'w-full justify-between px-3 py-5 h-auto border',
               activeQuestion.question_type &&
-                questionTypeColors[activeQuestion.question_type]
+              questionTypeColors[activeQuestion.question_type]
             )}
           >
             <div className="flex items-center gap-2">
@@ -1581,9 +1587,9 @@ export function QuestionSettings({
     // Ưu tiên global storage trước, sau đó mới tới state local
     const currentBackgroundColor =
       typeof window !== 'undefined' &&
-      window.savedBackgroundColors &&
-      activity?.id &&
-      window.savedBackgroundColors[activity.id]
+        window.savedBackgroundColors &&
+        activity?.id &&
+        window.savedBackgroundColors[activity.id]
         ? window.savedBackgroundColors[activity.id]
         : backgroundColor;
 
@@ -1705,10 +1711,10 @@ export function QuestionSettings({
                   </div>
                   {currentBackgroundColor.toUpperCase() ===
                     pastel.color.toUpperCase() && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
-                    </div>
-                  )}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
+                      </div>
+                    )}
                 </button>
               ))}
             </div>
@@ -1928,14 +1934,14 @@ export function QuestionSettings({
           <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
             <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
             {activeQuestion.question_type === 'slide' ||
-            activeQuestion.question_type === 'info_slide'
+              activeQuestion.question_type === 'info_slide'
               ? 'Slide Content'
               : 'Answer Options'}
           </h3>
 
           {/* Display different content based on question type */}
           {activeQuestion.question_type === 'multiple_choice' ||
-          activeQuestion.question_type === 'multiple_response' ? (
+            activeQuestion.question_type === 'multiple_response' ? (
             <div
               className={cn(
                 'p-3 rounded-md border',
@@ -2007,120 +2013,69 @@ export function QuestionSettings({
                   }
                 }}
                 onAddPair={() => {
+                  if (!onMatchingPairOptionsChange) return;
                   const pairId = `pair-${Date.now()}`;
-                  const leftIndex = activeQuestion.options?.length || 0;
-
-                  // Add only one item (left item)
-                  onOptionChange(
-                    activeQuestionIndex,
-                    leftIndex,
-                    'option_text',
-                    'Left item'
-                  );
-                  onOptionChange(
-                    activeQuestionIndex,
-                    leftIndex,
-                    'type',
-                    'left'
-                  );
-                  onOptionChange(
-                    activeQuestionIndex,
-                    leftIndex,
-                    'pair_id',
-                    pairId
-                  );
-                  onOptionChange(
-                    activeQuestionIndex,
-                    leftIndex,
-                    'is_correct',
-                    true
-                  );
+                  const currentOptions = activeQuestion.options || [];
+                  const newPair: QuizOption[] = [
+                    {
+                      id: `left-${pairId}`,
+                      option_text: 'Left item',
+                      type: 'left',
+                      pair_id: pairId,
+                      is_correct: true,
+                      display_order: currentOptions.length,
+                      quiz_question_id: activeQuestion.id,
+                    },
+                    {
+                      id: `right-${pairId}`,
+                      option_text: 'Right item',
+                      type: 'right',
+                      pair_id: pairId,
+                      is_correct: true,
+                      display_order: currentOptions.length + 1,
+                      quiz_question_id: activeQuestion.id,
+                    },
+                  ];
+                  onMatchingPairOptionsChange(activeQuestionIndex, [
+                    ...currentOptions,
+                    ...newPair,
+                  ]);
                 }}
-                onDeletePair={(pairIndex) => {
-                  // Calculate the actual indices for the pair
-                  const leftIndex = pairIndex * 2;
-                  const rightIndex = leftIndex + 1;
-
-                  // Validate indices
-                  if (
-                    leftIndex >= (activeQuestion.options?.length || 0) ||
-                    rightIndex >= (activeQuestion.options?.length || 0)
-                  ) {
-                    console.error('Invalid pair index for deletion');
-                    return;
-                  }
-
-                  // Delete both items at once
-                  const newOptions = [...(activeQuestion.options || [])];
-                  newOptions.splice(leftIndex, 2); // Remove 2 items starting at leftIndex
-
-                  // Update all options at once to maintain consistency
-                  newOptions.forEach((option, index) => {
-                    onOptionChange(
-                      activeQuestionIndex,
-                      index,
-                      'option_text',
-                      option.option_text
-                    );
-                    onOptionChange(
-                      activeQuestionIndex,
-                      index,
-                      'is_correct',
-                      option.is_correct
-                    );
-                  });
+                onDeletePair={(pairId) => {
+                  if (!onMatchingPairOptionsChange) return;
+                  const currentOptions = activeQuestion.options || [];
+                  const newOptions = currentOptions.filter(
+                    (opt) => opt.pair_id !== pairId
+                  );
+                  onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
                 }}
                 onReorderPairs={(startIndex, endIndex) => {
-                  if (!onReorderOptions) return;
+                  if (!onMatchingPairOptionsChange) return;
 
-                  // Validate indices
-                  const totalPairs = (activeQuestion.options?.length || 0) / 2;
-                  if (
-                    startIndex < 0 ||
-                    startIndex >= totalPairs ||
-                    endIndex < 0 ||
-                    endIndex >= totalPairs
-                  ) {
-                    console.error('Invalid pair indices for reordering');
-                    return;
-                  }
+                  const currentOptions = [...(activeQuestion.options || [])];
 
-                  // Calculate actual indices for the pairs
-                  const startLeftIndex = startIndex * 2;
-                  const startRightIndex = startLeftIndex + 1;
-                  const endLeftIndex = endIndex * 2;
-                  const endRightIndex = endLeftIndex + 1;
+                  const pairs = currentOptions
+                    .filter((o) => o.type === 'left')
+                    .map((left) => {
+                      const right = currentOptions.find(
+                        (r) => r.type === 'right' && r.pair_id === left.pair_id
+                      );
+                      return { id: left.pair_id, left, right };
+                    })
+                    .filter((p) => p.right);
 
-                  // Reorder both items in the pair together
-                  const newOptions = [...(activeQuestion.options || [])];
-                  const [leftItem, rightItem] = newOptions.splice(
-                    startLeftIndex,
-                    2
-                  ); // Get both items
-                  newOptions.splice(endLeftIndex, 0, leftItem, rightItem); // Insert both items
+                  const [reorderedPair] = pairs.splice(startIndex, 1);
+                  pairs.splice(endIndex, 0, reorderedPair);
 
-                  // Update all options at once
-                  newOptions.forEach((option, index) => {
-                    onOptionChange(
-                      activeQuestionIndex,
-                      index,
-                      'option_text',
-                      option.option_text
-                    );
-                    onOptionChange(
-                      activeQuestionIndex,
-                      index,
-                      'is_correct',
-                      option.is_correct
-                    );
-                  });
+                  const newOptions = pairs
+                    .flatMap((p) => [p.left, p.right])
+                    .map((opt, index) => ({ ...opt, display_order: index })) as QuizOption[];
+
+                  onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
                 }}
-                leftColumnName="Questions"
-                rightColumnName="Answers"
-                onColumnNamesChange={(left, right) => {
-                  // Handle column name changes here
-                  console.log('Column names changed:', left, right);
-                }}
+                leftColumnName={leftColumnName}
+                rightColumnName={rightColumnName}
+                onColumnNamesChange={onMatchingPairColumnNamesChange}
               />
             </div>
           ) : null}
@@ -2214,14 +2169,14 @@ export function QuestionSettings({
                 <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
                   {activeQuestion.question_type === 'slide' ||
-                  activeQuestion.question_type === 'info_slide'
+                    activeQuestion.question_type === 'info_slide'
                     ? 'Slide Content'
                     : 'Answer Options'}
                 </h3>
 
                 {/* Display different content based on question type */}
                 {activeQuestion.question_type === 'multiple_choice' ||
-                activeQuestion.question_type === 'multiple_response' ? (
+                  activeQuestion.question_type === 'multiple_response' ? (
                   <div
                     className={cn(
                       'p-3 rounded-md border',
@@ -2298,121 +2253,69 @@ export function QuestionSettings({
                         }
                       }}
                       onAddPair={() => {
+                        if (!onMatchingPairOptionsChange) return;
                         const pairId = `pair-${Date.now()}`;
-                        const leftIndex = activeQuestion.options?.length || 0;
-
-                        // Add only one item (left item)
-                        onOptionChange(
-                          activeQuestionIndex,
-                          leftIndex,
-                          'option_text',
-                          'Left item'
-                        );
-                        onOptionChange(
-                          activeQuestionIndex,
-                          leftIndex,
-                          'type',
-                          'left'
-                        );
-                        onOptionChange(
-                          activeQuestionIndex,
-                          leftIndex,
-                          'pair_id',
-                          pairId
-                        );
-                        onOptionChange(
-                          activeQuestionIndex,
-                          leftIndex,
-                          'is_correct',
-                          true
-                        );
+                        const currentOptions = activeQuestion.options || [];
+                        const newPair: QuizOption[] = [
+                          {
+                            id: `left-${pairId}`,
+                            option_text: 'Left item',
+                            type: 'left',
+                            pair_id: pairId,
+                            is_correct: true,
+                            display_order: currentOptions.length,
+                            quiz_question_id: activeQuestion.id,
+                          },
+                          {
+                            id: `right-${pairId}`,
+                            option_text: 'Right item',
+                            type: 'right',
+                            pair_id: pairId,
+                            is_correct: true,
+                            display_order: currentOptions.length + 1,
+                            quiz_question_id: activeQuestion.id,
+                          },
+                        ];
+                        onMatchingPairOptionsChange(activeQuestionIndex, [
+                          ...currentOptions,
+                          ...newPair,
+                        ]);
                       }}
-                      onDeletePair={(pairIndex) => {
-                        // Calculate the actual indices for the pair
-                        const leftIndex = pairIndex * 2;
-                        const rightIndex = leftIndex + 1;
-
-                        // Validate indices
-                        if (
-                          leftIndex >= (activeQuestion.options?.length || 0) ||
-                          rightIndex >= (activeQuestion.options?.length || 0)
-                        ) {
-                          console.error('Invalid pair index for deletion');
-                          return;
-                        }
-
-                        // Delete both items at once
-                        const newOptions = [...(activeQuestion.options || [])];
-                        newOptions.splice(leftIndex, 2); // Remove 2 items starting at leftIndex
-
-                        // Update all options at once to maintain consistency
-                        newOptions.forEach((option, index) => {
-                          onOptionChange(
-                            activeQuestionIndex,
-                            index,
-                            'option_text',
-                            option.option_text
-                          );
-                          onOptionChange(
-                            activeQuestionIndex,
-                            index,
-                            'is_correct',
-                            option.is_correct
-                          );
-                        });
+                      onDeletePair={(pairId) => {
+                        if (!onMatchingPairOptionsChange) return;
+                        const currentOptions = activeQuestion.options || [];
+                        const newOptions = currentOptions.filter(
+                          (opt) => opt.pair_id !== pairId
+                        );
+                        onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
                       }}
                       onReorderPairs={(startIndex, endIndex) => {
-                        if (!onReorderOptions) return;
+                        if (!onMatchingPairOptionsChange) return;
 
-                        // Validate indices
-                        const totalPairs =
-                          (activeQuestion.options?.length || 0) / 2;
-                        if (
-                          startIndex < 0 ||
-                          startIndex >= totalPairs ||
-                          endIndex < 0 ||
-                          endIndex >= totalPairs
-                        ) {
-                          console.error('Invalid pair indices for reordering');
-                          return;
-                        }
+                        const currentOptions = [...(activeQuestion.options || [])];
 
-                        // Calculate actual indices for the pairs
-                        const startLeftIndex = startIndex * 2;
-                        const startRightIndex = startLeftIndex + 1;
-                        const endLeftIndex = endIndex * 2;
-                        const endRightIndex = endLeftIndex + 1;
+                        const pairs = currentOptions
+                          .filter((o) => o.type === 'left')
+                          .map((left) => {
+                            const right = currentOptions.find(
+                              (r) => r.type === 'right' && r.pair_id === left.pair_id
+                            );
+                            return { id: left.pair_id, left, right };
+                          })
+                          .filter((p) => p.right);
 
-                        // Reorder both items in the pair together
-                        const newOptions = [...(activeQuestion.options || [])];
-                        const [leftItem, rightItem] = newOptions.splice(
-                          startLeftIndex,
-                          2
-                        ); // Get both items
-                        newOptions.splice(endLeftIndex, 0, leftItem, rightItem); // Insert both items
+                        const [reorderedPair] = pairs.splice(startIndex, 1);
+                        pairs.splice(endIndex, 0, reorderedPair);
 
-                        // Update all options at once
-                        newOptions.forEach((option, index) => {
-                          onOptionChange(
-                            activeQuestionIndex,
-                            index,
-                            'option_text',
-                            option.option_text
-                          );
-                          onOptionChange(
-                            activeQuestionIndex,
-                            index,
-                            'is_correct',
-                            option.is_correct
-                          );
-                        });
+                        const newOptions = pairs
+                          .flatMap((p) => [p.left, p.right])
+                          .map((opt, index) => ({ ...opt, display_order: index })) as QuizOption[];
+
+                        onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
                       }}
-                      leftColumnName=""
-                      rightColumnName=""
-                      onColumnNamesChange={(left, right) => {
-                        // Handle column name changes here
-                        console.log('Column names changed:', left, right);
-                      }}
+                      leftColumnName={leftColumnName}
+                      rightColumnName={rightColumnName}
+                      onColumnNamesChange={onMatchingPairColumnNamesChange}
                     />
                   </div>
                 ) : null}
@@ -2454,7 +2357,7 @@ export function QuestionSettings({
             {/* Design tab: Background, colors, etc */}
 
             {activeQuestion.question_type === 'slide' ||
-            activeQuestion.question_type === 'info_slide' ? (
+              activeQuestion.question_type === 'info_slide' ? (
               <SlideSettings
                 slideId={activity?.id || ''}
                 backgroundColor={backgroundColor}

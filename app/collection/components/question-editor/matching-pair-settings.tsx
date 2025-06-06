@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
@@ -25,37 +25,39 @@ import { CSS } from '@dnd-kit/utilities';
 import type { QuizOption } from '../types';
 import { Label } from '@/components/ui/label';
 
+interface MatchingPair {
+  id: string;
+  left: QuizOption;
+  right: QuizOption;
+}
+
 interface MatchingPairSettingsProps {
   options: QuizOption[];
   onOptionsChange: (options: QuizOption[]) => void;
   onAddPair: () => void;
-  onDeletePair: (index: number) => void;
+  onDeletePair: (pairId: string) => void;
   onReorderPairs: (startIndex: number, endIndex: number) => void;
-  onUpdateMatchingPairOptions?: (
-    questionIndex: number,
-    newOptions: QuizOption[]
-  ) => void;
   leftColumnName?: string;
   rightColumnName?: string;
   onColumnNamesChange?: (left: string, right: string) => void;
 }
 
 function SortablePairItem({
-  option,
+  pair,
   index,
   onOptionChange,
   onDelete,
   leftColumnName,
   rightColumnName,
 }: {
-  option: QuizOption;
+  pair: MatchingPair;
   index: number;
   onOptionChange: (
-    index: number,
-    field: 'left_text' | 'right_text',
+    optionId: string,
+    field: 'option_text',
     value: string
   ) => void;
-  onDelete: () => void;
+  onDelete: (pairId: string) => void;
   leftColumnName: string;
   rightColumnName: string;
 }) {
@@ -67,7 +69,7 @@ function SortablePairItem({
     transition,
     isDragging,
   } = useSortable({
-    id: option.id || `pair-${index}`,
+    id: pair.id,
   });
 
   const style = {
@@ -103,8 +105,12 @@ function SortablePairItem({
         <Input
           id={`left-item-${index}`}
           placeholder={`Enter ${leftColumnName.toLowerCase()}`}
-          value={option.left_text || ''}
-          onChange={(e) => onOptionChange(index, 'left_text', e.target.value)}
+          value={pair.left?.option_text || ''}
+          onChange={(e) => {
+            if (pair.left.id) {
+              onOptionChange(pair.left.id, 'option_text', e.target.value);
+            }
+          }}
           className="w-full"
         />
       </div>
@@ -135,8 +141,12 @@ function SortablePairItem({
         <Input
           id={`right-item-${index}`}
           placeholder={`Enter ${rightColumnName.toLowerCase()}`}
-          value={option.right_text || ''}
-          onChange={(e) => onOptionChange(index, 'right_text', e.target.value)}
+          value={pair.right?.option_text || ''}
+          onChange={(e) => {
+            if (pair.right.id) {
+              onOptionChange(pair.right.id, 'option_text', e.target.value);
+            }
+          }}
           className="w-full"
         />
       </div>
@@ -146,7 +156,7 @@ function SortablePairItem({
         variant="ghost"
         size="icon"
         className="flex-shrink-0 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/20"
-        onClick={onDelete}
+        onClick={() => onDelete(pair.id)}
       >
         <Trash2 className="h-4 w-4 text-red-500" />
       </Button>
@@ -160,48 +170,45 @@ export function MatchingPairSettings({
   onAddPair,
   onDeletePair,
   onReorderPairs,
-  onUpdateMatchingPairOptions,
   leftColumnName = 'Left Item',
   rightColumnName = 'Right Item',
   onColumnNamesChange,
 }: MatchingPairSettingsProps) {
-  const [localOptions, setLocalOptions] = useState(options);
   const isDraggingRef = useRef(false);
   const [localLeftColumnName, setLocalLeftColumnName] =
     useState(leftColumnName);
   const [localRightColumnName, setLocalRightColumnName] =
     useState(rightColumnName);
 
-  // Chỉ cập nhật localOptions khi options thay đổi từ bên ngoài
-  // và KHÔNG đang trong quá trình drag
-  useEffect(() => {
-    if (isDraggingRef.current) {
-      return; // Không cập nhật khi đang drag
-    }
+  const matchingPairs = useMemo(() => {
+    const pairs: MatchingPair[] = [];
+    const leftItems = options.filter((opt) => opt.type === 'left');
+    const rightItems = options.filter((opt) => opt.type === 'right');
 
-    // Kiểm tra xem có thay đổi thực sự không
-    const hasChanged =
-      options.length !== localOptions.length ||
-      options.some((opt, index) => {
-        const localOpt = localOptions[index];
-        return (
-          !localOpt ||
-          opt.id !== localOpt.id ||
-          opt.left_text !== localOpt.left_text ||
-          opt.right_text !== localOpt.right_text ||
-          opt.display_order !== localOpt.display_order
+    // Sort left items by display_order to maintain visual order
+    leftItems.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+    leftItems.forEach((leftItem) => {
+      if (leftItem.pair_id) {
+        const rightItem = rightItems.find(
+          (item) => item.pair_id === leftItem.pair_id
         );
-      });
-
-    if (hasChanged) {
-      setLocalOptions(options);
-    }
-  }, [options]); // Loại bỏ localOptions khỏi dependency array
+        if (rightItem) {
+          pairs.push({
+            id: leftItem.pair_id,
+            left: leftItem,
+            right: rightItem,
+          });
+        }
+      }
+    });
+    return pairs;
+  }, [options]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // Yêu cầu kéo ít nhất 8px để bắt đầu drag
+        distance: 8,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -218,71 +225,26 @@ export function MatchingPairSettings({
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = localOptions.findIndex(
-        (opt) => (opt.id || `pair-${localOptions.indexOf(opt)}`) === active.id
-      );
-      const newIndex = localOptions.findIndex(
-        (opt) => (opt.id || `pair-${localOptions.indexOf(opt)}`) === over.id
-      );
+      const oldIndex = matchingPairs.findIndex((p) => p.id === active.id);
+      const newIndex = matchingPairs.findIndex((p) => p.id === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
-        const newOptions = arrayMove(localOptions, oldIndex, newIndex).map(
-          (opt, index) => ({
-            ...opt,
-            display_order: index + 1,
-          })
-        );
-
-        setLocalOptions(newOptions);
-        onOptionsChange(newOptions);
+        onReorderPairs(oldIndex, newIndex);
       }
     }
   };
 
   const handleInputChange = (
-    index: number,
-    field: 'left_text' | 'right_text',
+    optionId: string,
+    field: 'option_text',
     value: string
   ) => {
-    const newOptions = [...localOptions];
-    if (newOptions[index]) {
-      newOptions[index] = {
-        ...newOptions[index],
-        [field]: value,
-      };
-      setLocalOptions(newOptions);
-      onOptionsChange(newOptions);
-    }
-  };
-
-  const handleAddPair = () => {
-    const pairId = `pair-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-    const newOptions = [
-      ...localOptions,
-      {
-        id: `left-${pairId}`,
-        option_text: '',
-        type: 'left',
-        pair_id: pairId,
-        is_correct: true,
-        display_order: localOptions.length + 1,
-      },
-    ];
-    setLocalOptions(newOptions);
-    onOptionsChange(newOptions);
-  };
-
-  const handleDeletePair = (index: number) => {
-    const newOptions = localOptions
-      .filter((_, i) => i !== index)
-      .map((opt, index) => ({
-        ...opt,
-        display_order: index + 1,
-      }));
-
-    setLocalOptions(newOptions);
+    const newOptions = options.map((opt) => {
+      if (opt.id === optionId) {
+        return { ...opt, [field]: value };
+      }
+      return opt;
+    });
     onOptionsChange(newOptions);
   };
 
@@ -292,76 +254,34 @@ export function MatchingPairSettings({
     } else {
       setLocalRightColumnName(value);
     }
-    onColumnNamesChange?.(
-      side === 'left' ? value : localLeftColumnName,
-      side === 'right' ? value : localRightColumnName
-    );
+    if (onColumnNamesChange) {
+      onColumnNamesChange(
+        side === 'left' ? value : localLeftColumnName,
+        side === 'right' ? value : localRightColumnName
+      );
+    }
   };
 
   return (
     <div className="space-y-4">
-      {/* Instructions */}
-      <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-md border border-blue-100 dark:border-blue-800">
-        <div className="flex items-start gap-2 text-sm text-blue-800 dark:text-blue-300">
-          <div className="mt-0.5">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-          </div>
-          <div className="space-y-1">
-            <p>
-              Create pairs by adding items to both columns. Students will need
-              to match items from the left column with their corresponding items
-              in the right column.
-            </p>
-            <ul className="list-disc list-inside space-y-0.5 text-blue-700 dark:text-blue-400">
-              <li>Each pair must have both a left and right item</li>
-              <li>Drag and drop to reorder pairs</li>
-              <li>All pairs are automatically marked as correct matches</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Column Names */}
-      <div className="flex gap-3">
-        <div className="flex-1 space-y-1">
-          <Label className="text-xs text-gray-500 dark:text-gray-400">
-            Left Column Name
-          </Label>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <Label>Left Column Title</Label>
           <Input
             value={localLeftColumnName}
             onChange={(e) => handleColumnNameChange('left', e.target.value)}
-            placeholder="Enter left column name"
-            className="w-full"
+            placeholder="e.g. Countries"
           />
         </div>
-        <div className="flex-1 space-y-1">
-          <Label className="text-xs text-gray-500 dark:text-gray-400">
-            Right Column Name
-          </Label>
+        <div className="space-y-1">
+          <Label>Right Column Title</Label>
           <Input
             value={localRightColumnName}
             onChange={(e) => handleColumnNameChange('right', e.target.value)}
-            placeholder="Enter right column name"
-            className="w-full"
+            placeholder="e.g. Capitals"
           />
         </div>
       </div>
-
-      {/* Pairs Editor */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -369,17 +289,17 @@ export function MatchingPairSettings({
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={localOptions.map((opt, index) => opt.id || `pair-${index}`)}
+          items={matchingPairs.map((p) => p.id)}
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-3">
-            {localOptions.map((option, index) => (
+            {matchingPairs.map((pair, index) => (
               <SortablePairItem
-                key={option.id || `pair-${index}`}
-                option={option}
+                key={pair.id}
+                pair={pair}
                 index={index}
                 onOptionChange={handleInputChange}
-                onDelete={() => handleDeletePair(index)}
+                onDelete={onDeletePair}
                 leftColumnName={localLeftColumnName}
                 rightColumnName={localRightColumnName}
               />
@@ -387,26 +307,16 @@ export function MatchingPairSettings({
           </div>
         </SortableContext>
       </DndContext>
-
-      {/* Add Pair Button */}
-      <Button
-        variant="outline"
-        className="w-full border-dashed hover:bg-gray-50 dark:hover:bg-gray-800/50"
-        onClick={handleAddPair}
-      >
-        <Plus className="h-4 w-4 mr-2" />
-        Add Matching Pair
-      </Button>
-
-      {/* Empty State */}
-      {localOptions.length === 0 && (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          <p className="text-sm">No matching pairs yet.</p>
-          <p className="text-xs mt-1">
-            Click &quol;Add Matching Pair&quol; to get started.
-          </p>
-        </div>
-      )}
+      <div className="mt-4">
+        <Button
+          onClick={onAddPair}
+          variant="outline"
+          className="w-full"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Pair
+        </Button>
+      </div>
     </div>
   );
 }
