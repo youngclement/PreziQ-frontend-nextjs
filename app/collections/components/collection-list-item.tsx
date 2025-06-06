@@ -12,14 +12,17 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { getTopicImageUrl } from '../constants/topic-images';
+import { Switch } from '@/components/ui/switch';
 
 interface CollectionListItemProps {
   collection: Collection;
-  activities: Activity[];
-  onEdit?: (id: string) => void;
-  onView: (id: string) => void;
-  onViewCollection?: (id: string) => void;
+  activities?: Activity[];
+  onEdit?: () => void;
+  onView?: () => void;
+  onViewCollection?: () => void;
   onDelete?: (id: string) => void;
+  onTogglePublish?: (e: React.MouseEvent) => void;
+  showPublishToggle?: boolean;
 }
 
 export function CollectionListItem({
@@ -29,6 +32,8 @@ export function CollectionListItem({
   onView,
   onViewCollection,
   onDelete,
+  onTogglePublish,
+  showPublishToggle = false,
 }: CollectionListItemProps) {
   const router = useRouter();
 
@@ -48,14 +53,14 @@ export function CollectionListItem({
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onEdit) {
-      onEdit(collection.collectionId);
+      onEdit();
     }
   };
 
   const handleViewCollection = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onViewCollection) {
-      onViewCollection(collection.collectionId);
+      onViewCollection();
     }
   };
 
@@ -175,6 +180,23 @@ export function CollectionListItem({
               </DeleteButton>
             )}
           </div>
+
+          {/* Publish toggle */}
+          {showPublishToggle && onTogglePublish && (
+            <div className='flex items-center gap-2 mt-2' onClick={(e) => e.stopPropagation()}>
+              <span className='text-sm text-gray-600 dark:text-gray-400'>
+                {collection.isPublished ? 'Đã xuất bản' : 'Chưa xuất bản'}
+              </span>
+              <Switch
+                checked={collection.isPublished}
+                onCheckedChange={(checked, e) => {
+                  e?.stopPropagation();
+                  onTogglePublish(e as React.MouseEvent);
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
