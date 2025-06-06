@@ -25,7 +25,11 @@ import {
 } from 'lucide-react';
 import { AudioWaveform, Command, GalleryVerticalEnd } from 'lucide-react';
 import { NavItem, NavGroup } from '@/components/dashboard/layout/NavGroup';
+
+import { useLanguage } from '@/contexts/language-context';
+
 import { User } from '@/models/auth';
+
 
 // TypeScript interface definitions
 interface SidebarUser {
@@ -45,6 +49,16 @@ interface SidebarData {
   teams: Team[];
   navGroups: NavGroup[];
 }
+
+export const useSidebarData = () => {
+  const { t } = useLanguage();
+
+  return {
+    user: {
+      name: t('user'),
+      email: 'user@example.com',
+      avatar: '/avatars/shadcn.jpg',
+    },
 
 // Function to generate sidebar data based on user from API
 export const generateSidebarData = (user: User | null): SidebarData => {
@@ -66,6 +80,7 @@ export const generateSidebarData = (user: User | null): SidebarData => {
 
   return {
     user: sidebarUser,
+
     teams: [
       {
         name: 'PreziQ Admin',
@@ -73,52 +88,67 @@ export const generateSidebarData = (user: User | null): SidebarData => {
         plan: 'Next + ShadcnUI',
       },
       {
-        name: 'Công ty ABC',
+
+        name: t('companyABC'),
         logo: GalleryVerticalEnd,
-        plan: 'Doanh nghiệp',
+        plan: t('enterprise'),
       },
       {
-        name: 'Startup XYZ',
+        name: t('startupXYZ'),
         logo: AudioWaveform,
-        plan: 'Khởi nghiệp',
+        plan: t('startup'),
+
       },
     ],
     navGroups: [
       {
-        title: 'Chung',
+
+        title: t('general'),
         items: [
           {
-            title: 'Bảng điều khiển',
+            title: t('dashboard'),
+
             url: '/dashboard',
             icon: LayoutDashboard,
           },
           {
-            title: 'Trò chuyện',
+
+            title: t('chat'),
+
+
             url: '/dashboard/chats',
             icon: MessageSquare,
           },
         ],
       },
       {
-        title: 'Quản trị',
+
+        title: t('administration'),
         items: [
           {
-            title: 'Vai trò',
+            title: t('roles'),
+
             url: '/dashboard/roles',
             icon: Package,
           },
           {
-            title: 'Quyền hạn',
+
+            title: t('permissions'),
+
             url: '/dashboard/permissions',
             icon: ShieldAlert,
           },
           {
-            title: 'Người dùng',
+
+            title: t('users'),
+
             url: '/dashboard/users',
             icon: Users,
           },
           {
-            title: 'Thành tựu',
+
+            title: t('achievements'),
+
             url: '/dashboard/achievements',
             icon: Award,
           },

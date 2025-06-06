@@ -25,11 +25,15 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+
+import { useLanguage } from '@/contexts/language-context';
+
 import { useAuth } from '@/contexts/auth-context';
 import { authApi } from '@/api-client/auth-api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
+
 
 export function NavUser({
   user,
@@ -41,6 +45,9 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+
+  const { t } = useLanguage();
+
   const { logout } = useAuth();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -78,6 +85,7 @@ export function NavUser({
       .toUpperCase()
       .slice(0, 2);
   };
+
 
   return (
     <SidebarMenu>
@@ -125,7 +133,7 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <Sparkles />
-                Nâng cấp lên Pro
+                {t('upgradeToPro')}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -133,19 +141,19 @@ export function NavUser({
               <DropdownMenuItem asChild>
                 <Link href='/settings/account'>
                   <BadgeCheck />
-                  Tài khoản
+                  {t('account')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href='/settings'>
                   <CreditCard />
-                  Thanh toán
+                  {t('payment')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href='/settings/notifications'>
                   <Bell />
-                  Thông báo
+                  {t('notifications')}
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -156,7 +164,9 @@ export function NavUser({
               className='cursor-pointer'
             >
               <LogOut />
-              {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
+
+              {t('logout')}
+
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

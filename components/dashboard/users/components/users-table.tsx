@@ -29,7 +29,7 @@ import { DataTablePagination } from './data-table-pagination';
 import { DataTableToolbar } from './data-table-toolbar';
 import { DataTableViewOptions } from './data-table-view-options';
 import { useUsers } from '../context/users-context';
-import { columns } from './users-columns';
+import { useColumns } from './users-columns';
 import { cn } from '@/lib/utils';
 
 declare module '@tanstack/react-table' {
@@ -95,6 +95,8 @@ export function UsersTable({ data }: { data: User[] }) {
     return filtered;
   }, [data]);
 
+  const columns = useColumns();
+
   const table = useReactTable({
     data: validData,
     columns: columns as ColumnDef<User, any>[],
@@ -118,25 +120,25 @@ export function UsersTable({ data }: { data: User[] }) {
   });
 
   return (
-    <div className='space-y-4'>
+    <div className="space-y-4">
       <DataTableToolbar table={table} />
-      <div className='rounded-md border border-slate-300 shadow-sm overflow-hidden'>
+      <div className="rounded-md border border-slate-300 shadow-sm overflow-hidden">
         {(() => {
           try {
             console.log('Table rows length:', table.getRowModel().rows?.length);
             return (
               <Table>
-                <TableHeader className='bg-slate-50'>
+                <TableHeader className="bg-slate-50">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow
                       key={headerGroup.id}
-                      className='border-b border-slate-300'
+                      className="border-b border-slate-300"
                     >
                       {headerGroup.headers.map((header) => (
                         <TableHead
                           key={header.id}
                           colSpan={header.colSpan}
-                          className='font-semibold text-slate-700 truncate'
+                          className="font-semibold text-slate-700 truncate"
                         >
                           {header.isPlaceholder
                             ? null
@@ -149,13 +151,13 @@ export function UsersTable({ data }: { data: User[] }) {
                     </TableRow>
                   ))}
                 </TableHeader>
-                <TableBody className='overflow-hidden'>
+                <TableBody className="overflow-hidden">
                   {table.getRowModel().rows?.length ? (
                     table.getRowModel().rows.map((row) => (
                       <TableRow
                         key={row.id}
                         data-state={row.getIsSelected() && 'selected'}
-                        className='border-b border-slate-200 hover:bg-slate-50 transition-colors cursor-default'
+                        className="border-b border-slate-200 hover:bg-slate-50 transition-colors cursor-default"
                       >
                         {row.getVisibleCells().map((cell) => (
                           <TableCell
@@ -188,7 +190,7 @@ export function UsersTable({ data }: { data: User[] }) {
                     <TableRow>
                       <TableCell
                         colSpan={columns.length}
-                        className='h-24 text-center text-slate-500'
+                        className="h-24 text-center text-slate-500"
                       >
                         Không tìm thấy kết quả
                       </TableCell>
@@ -200,9 +202,9 @@ export function UsersTable({ data }: { data: User[] }) {
           } catch (error) {
             console.error('Lỗi khi hiển thị bảng:', error);
             return (
-              <div className='p-8 text-center text-red-500'>
+              <div className="p-8 text-center text-red-500">
                 <p>Đã xảy ra lỗi khi hiển thị dữ liệu.</p>
-                <p className='mt-2 text-sm text-slate-500'>
+                <p className="mt-2 text-sm text-slate-500">
                   Vui lòng thử làm mới trang.
                 </p>
               </div>

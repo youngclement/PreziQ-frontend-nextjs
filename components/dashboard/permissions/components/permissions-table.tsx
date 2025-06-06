@@ -30,6 +30,10 @@ import { SortableTreeItem } from './sortable-tree';
 import { toast } from 'react-toastify';
 import { permissionsApi } from '@/api-client';
 import Loading from '@/components/common/loading';
+import { useLanguage } from '@/contexts/language-context';
+import { Input } from '@/components/ui/input';
+import { PermissionsPrimaryButtons } from './permissions-primary-buttons';
+import { Table, TableHeader, TableRow, TableHead } from '@/components/ui/table';
 
 // Component cho mỗi permission item có thể kéo thả
 function SortablePermissionItem({
@@ -58,20 +62,20 @@ function SortablePermissionItem({
     <div
       ref={setNodeRef}
       style={style}
-      className='flex items-center justify-between rounded-md border px-4 py-2'
+      className="flex items-center justify-between rounded-md border px-4 py-2"
     >
-      <div className='flex items-center gap-4'>
+      <div className="flex items-center gap-4">
         <button
-          className='cursor-grab touch-none'
+          className="cursor-grab touch-none"
           {...attributes}
           {...listeners}
         >
-          <IconGripVertical className='h-4 w-4 text-muted-foreground' />
+          <IconGripVertical className="h-4 w-4 text-muted-foreground" />
         </button>
-        <div className='space-y-1'>
-          <div className='font-medium'>{permission.name}</div>
-          <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-            <Badge variant='secondary'>{permission.httpMethod}</Badge>
+        <div className="space-y-1">
+          <div className="font-medium">{permission.name}</div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Badge variant="secondary">{permission.httpMethod}</Badge>
             <span>{permission.apiPath}</span>
           </div>
         </div>
@@ -88,6 +92,7 @@ function DroppableArea({ children }: { children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'other-permissions',
   });
+  const { t } = useLanguage();
 
   return (
     <div
@@ -96,11 +101,11 @@ function DroppableArea({ children }: { children: React.ReactNode }) {
         'space-y-2 p-4 rounded-lg border-2 border-dashed transition-colors duration-200',
         isOver && 'border-primary bg-muted/60 scale-[1.02]',
         !children &&
-        'min-h-[100px] flex items-center justify-center text-muted-foreground'
+          'min-h-[100px] flex items-center justify-center text-muted-foreground'
       )}
     >
-      <h3 className='text-lg font-medium'>Permissions khác</h3>
-      {children || <p>Kéo permission vào đây để xóa khỏi module</p>}
+      <h3 className="text-lg font-medium">{t('otherPermissions')}</h3>
+      {children || <p>{t('dragPermissionHere')}</p>}
     </div>
   );
 }
@@ -135,6 +140,7 @@ export function PermissionsTable() {
     }, {} as Record<string, boolean>);
   });
   const [isDragging, setIsDragging] = useState(false);
+  const { t } = useLanguage();
 
   // Cập nhật collapsedModules khi modules thay đổi
   useEffect(() => {
@@ -192,19 +198,14 @@ export function PermissionsTable() {
     if (!draggedPermission) return;
 
     try {
-      // Xác định module mới
       let newModule: string | null = null;
 
-      // Nếu thả vào module
       if (modules.includes(over.id as string)) {
         newModule = over.id as string;
-      }
-      // Nếu thả vào khu vực "Permissions khác" hoặc không phải module
-      else {
+      } else {
         newModule = null;
       }
 
-      // Chỉ gọi API nếu module thực sự thay đổi
       if (newModule !== draggedPermission.module) {
         const response = await permissionsApi.updatePermission(
           draggedPermission.permissionId,
@@ -214,22 +215,21 @@ export function PermissionsTable() {
         );
 
         if (!response.data.success) {
-          toast.error(
-            response.data.message || 'Không thể cập nhật module cho permission'
-          );
+          toast.error(response.data.message || t('updateModuleError'));
           return;
         }
 
         await refetch();
-        toast.success(response.data.message || 'Cập nhật module thành công');
+        toast.success(response.data.message || t('updateModuleSuccess'));
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Có lỗi xảy ra';
+      const message =
+        error instanceof Error ? error.message : t('errorOccurred');
       toast.error(message);
     }
   };
 
-  const columns = createColumns(expandedModules, handleDelete);
+  const columns = createColumns(expandedModules, handleDelete, t);
 
   if (isLoading) {
     return <Loading />;
@@ -241,23 +241,23 @@ export function PermissionsTable() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className='space-y-4'>
-        <div className='flex justify-between items-center'>
-          <h2 className='text-lg font-medium'>Danh sách Modules</h2>
-          <div className='flex gap-2'>
-            <Button size='sm' onClick={() => setOpenCreatePermission(true)}>
-              <IconPlus className='mr-2 h-3 w-3' />
-              Tạo Permission
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-medium">{t('moduleList')}</h2>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setOpenCreatePermission(true)}>
+              <IconPlus className="mr-2 h-3 w-3" />
+              {t('createPermission')}
             </Button>
-            <Button size='sm' onClick={() => setOpenCreateModule(true)}>
-              <IconPlus className='mr-2 h-3 w-3' />
-              Tạo Module
+            <Button size="sm" onClick={() => setOpenCreateModule(true)}>
+              <IconPlus className="mr-2 h-3 w-3" />
+              {t('createModule')}
             </Button>
           </div>
         </div>
 
         {/* Modules và Permissions */}
-        <div className='grid gap-2 max-h-[calc(100vh-12rem)] overflow-y-auto pr-2'>
+        <div className="grid gap-2 max-h-[calc(100vh-12rem)] overflow-y-auto pr-2">
           {modules.map((moduleName) => {
             const modulePermissions = permissions.filter(
               (p) => p.module === moduleName
@@ -315,7 +315,7 @@ export function PermissionsTable() {
                 .filter((p) => !p.module)
                 .map((p) => p.permissionId)}
             >
-              <div className='grid gap-2'>
+              <div className="grid gap-2">
                 {permissions
                   .filter((p) => !p.module)
                   .map((permission) => (
@@ -358,7 +358,7 @@ export function PermissionsTable() {
           }}
         >
           {activeId ? (
-            <div className='rounded-md border bg-background px-4 py-2 shadow-lg scale-105'>
+            <div className="rounded-md border bg-background px-4 py-2 shadow-lg scale-105">
               {permissions.find((p) => p.permissionId === activeId)?.name}
             </div>
           ) : null}

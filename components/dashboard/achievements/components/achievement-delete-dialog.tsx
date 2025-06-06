@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { storageApi } from '@/api-client/storage-api';
+import { useLanguage } from '@/contexts/language-context';
 
 interface Props {
   currentRow: Achievement;
@@ -29,14 +30,15 @@ export function AchievementDeleteDialog({
 }: Props) {
   const { deleteAchievement } = useAchievements();
   const [isDeleting, setIsDeleting] = useState(false);
+  const { t } = useLanguage();
 
   const handleDelete = async () => {
     try {
       setIsDeleting(true);
 
-      const imageUrl = currentRow.iconUrl; 
+      const imageUrl = currentRow.iconUrl;
       if (imageUrl && imageUrl.includes('s3.amazonaws.com')) {
-        const filePath = imageUrl.split('s3.amazonaws.com/')[1]; 
+        const filePath = imageUrl.split('s3.amazonaws.com/')[1];
         await storageApi.deleteSingleFile(filePath);
         console.log(`Ảnh ${filePath} đã được xóa từ AWS S3`);
       }
@@ -63,23 +65,21 @@ export function AchievementDeleteDialog({
           <DialogHeader className="p-6 pb-2 border-b bg-slate-50">
             <DialogTitle className="text-xl flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />
-              Xác nhận xóa thành tựu
+              {t('achievementConfirmDelete')}
             </DialogTitle>
             <DialogDescription className="text-slate-500">
-              Hành động này không thể hoàn tác. Thành tựu sẽ bị xóa vĩnh viễn
-              khỏi hệ thống.
+              {t('achievementDeleteDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="p-6">
             <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
               <p className="text-sm text-red-700">
-                Bạn có chắc chắn muốn xóa thành tựu{' '}
+                {t('achievementDeleteWarn')}{' '}
                 <span className="font-semibold">{currentRow.name}</span>?
               </p>
             </div>
             <p className="text-sm text-slate-600">
-              Khi xóa thành tựu, tất cả dữ liệu liên quan đến thành tựu này sẽ
-              bị mất.
+              {t('achievementDeleteWarn2')}
             </p>
           </div>
           <DialogFooter className="p-6 border-t flex gap-2">
@@ -88,7 +88,7 @@ export function AchievementDeleteDialog({
               onClick={() => onOpenChange(false)}
               className="transition-all duration-200 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900"
             >
-              Hủy
+              {t('achievementCancel')}
             </Button>
             <Button
               variant="destructive"
@@ -118,10 +118,10 @@ export function AchievementDeleteDialog({
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Đang xóa...
+                  {t('achievementDeleting')}
                 </div>
               ) : (
-                'Xóa thành tựu'
+                t('achievementDeleteBtn')
               )}
             </Button>
           </DialogFooter>

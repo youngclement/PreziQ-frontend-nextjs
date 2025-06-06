@@ -10,14 +10,21 @@ import {
 import { NavGroup } from '@/components/dashboard/layout/NavGroup';
 import { NavUser } from '@/components/dashboard/layout/NavUser';
 import Logo from '@/components/common/logo';
+
+import { useSidebarData } from '../data/sidebarData';
+
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const sidebarData = useSidebarData();
+
 import { useAuth } from '@/contexts/auth-context';
 import { generateSidebarData } from '../data/sidebarData';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useAuth();
+  const sidebarData = useSidebarData();
 
   // Generate sidebar data based on current user
   const sidebarData = generateSidebarData(user);
+
 
   return (
     <Sidebar collapsible='icon' variant='floating' {...props}>

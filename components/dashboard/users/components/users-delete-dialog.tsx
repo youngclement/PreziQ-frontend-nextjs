@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { User } from '../data/schema';
 import { useUsers } from '../context/users-context';
+import { useLanguage } from '@/contexts/language-context';
 
 interface Props {
   currentRow: User | null;
@@ -23,6 +24,7 @@ interface Props {
 export function UsersDeleteDialog({ currentRow, open, onOpenChange }: Props) {
   const [value, setValue] = useState('');
   const { deleteUser } = useUsers();
+  const { t } = useLanguage();
 
   const handleDelete = async () => {
     if (!currentRow || value.trim() !== currentRow.email) return;
@@ -33,29 +35,28 @@ export function UsersDeleteDialog({ currentRow, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-[425px]'>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Xóa người dùng</DialogTitle>
+          <DialogTitle>{t('userManagement.deleteUser')}</DialogTitle>
           <DialogDescription>
-            Hành động này sẽ xoá vĩnh viễn người dùng này. Vui lòng nhập email{' '}
-            <span className='font-medium'>{currentRow?.email}</span> để xác nhận
-            xóa.
+            {t('userManagement.deleteConfirmation')}{' '}
+            <span className="font-medium">{currentRow?.email}</span>
           </DialogDescription>
         </DialogHeader>
-        <div className='py-4'>
+        <div className="py-4">
           <Input
-            placeholder='Nhập email để xác nhận'
+            placeholder={t('userManagement.enterEmailToConfirm')}
             value={value}
             onChange={(e) => setValue(e.target.value)}
           />
         </div>
         <DialogFooter>
           <Button
-            variant='destructive'
+            variant="destructive"
             onClick={handleDelete}
             disabled={value.trim() !== currentRow?.email}
           >
-            Xóa
+            {t('userManagement.delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

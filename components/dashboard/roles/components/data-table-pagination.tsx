@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useLanguage } from '@/contexts/language-context';
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
@@ -25,15 +26,20 @@ export function DataTablePagination<TData>({
   totalPages,
   onPageChange,
 }: DataTablePaginationProps<TData>) {
+  const { t } = useLanguage();
+
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex-1 text-sm text-muted-foreground">
-        {table.getFilteredSelectedRowModel().rows.length} trong{' '}
-        {table.getFilteredRowModel().rows.length} dòng được chọn.
+        {table.getFilteredSelectedRowModel().rows.length}{' '}
+        {t('tablePagination.of')} {table.getFilteredRowModel().rows.length}{' '}
+        {t('tablePagination.entries')} {t('selectedCount')}.
       </div>
       <div className="flex items-center space-x-6 lg:space-x-8">
         <div className="flex items-center space-x-2">
-          <p className="text-sm font-medium">Số dòng mỗi trang</p>
+          <p className="text-sm font-medium">
+            {t('tablePagination.rowsPerPage')}
+          </p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {
@@ -53,7 +59,8 @@ export function DataTablePagination<TData>({
           </Select>
         </div>
         <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-          Trang {table.getState().pagination.pageIndex + 1} / {totalPages}
+          {t('tablePagination.page')}{' '}
+          {table.getState().pagination.pageIndex + 1} / {totalPages}
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -62,7 +69,7 @@ export function DataTablePagination<TData>({
             onClick={() => onPageChange(1)}
             disabled={table.getState().pagination.pageIndex === 0}
           >
-            <span className="sr-only">Đến trang đầu</span>
+            <span className="sr-only">{t('tablePagination.first')}</span>
             <DoubleArrowLeftIcon className="h-4 w-4" />
           </Button>
           <Button
@@ -71,7 +78,7 @@ export function DataTablePagination<TData>({
             onClick={() => onPageChange(table.getState().pagination.pageIndex)}
             disabled={table.getState().pagination.pageIndex === 0}
           >
-            <span className="sr-only">Đến trang trước</span>
+            <span className="sr-only">{t('tablePagination.previous')}</span>
             <ChevronLeftIcon className="h-4 w-4" />
           </Button>
           <Button
@@ -82,7 +89,7 @@ export function DataTablePagination<TData>({
             }
             disabled={table.getState().pagination.pageIndex + 1 === totalPages}
           >
-            <span className="sr-only">Đến trang sau</span>
+            <span className="sr-only">{t('tablePagination.next')}</span>
             <ChevronRightIcon className="h-4 w-4" />
           </Button>
           <Button
@@ -91,7 +98,7 @@ export function DataTablePagination<TData>({
             onClick={() => onPageChange(totalPages)}
             disabled={table.getState().pagination.pageIndex + 1 === totalPages}
           >
-            <span className="sr-only">Đến trang cuối</span>
+            <span className="sr-only">{t('tablePagination.last')}</span>
             <DoubleArrowRightIcon className="h-4 w-4" />
           </Button>
         </div>

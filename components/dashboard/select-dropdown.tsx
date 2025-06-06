@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useLanguage } from '@/contexts/language-context'
 
 interface SelectDropdownProps {
   onValueChange?: (value: string) => void
@@ -30,6 +31,7 @@ export function SelectDropdown({
   className = '',
   isControlled = false,
 }: SelectDropdownProps) {
+  const { t } = useLanguage()
   const defaultState = isControlled
     ? { value: defaultValue, onValueChange }
     : { defaultValue, onValueChange }
@@ -37,7 +39,7 @@ export function SelectDropdown({
     <Select {...defaultState}>
       <FormControl>
         <SelectTrigger disabled={disabled} className={cn(className)}>
-          <SelectValue placeholder={placeholder ?? 'Select'} />
+          <SelectValue placeholder={placeholder ?? t('select')} />
         </SelectTrigger>
       </FormControl>
       <SelectContent>
@@ -46,7 +48,7 @@ export function SelectDropdown({
             <div className='flex items-center justify-center gap-2'>
               <IconLoader className='h-5 w-5 animate-spin' />
               {'  '}
-              Loading...
+              {t('loading')}
             </div>
           </SelectItem>
         ) : (

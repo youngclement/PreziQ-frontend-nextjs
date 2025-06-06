@@ -10,20 +10,22 @@ import { Loader2 } from 'lucide-react';
 import { useUsers } from '@/components/dashboard/users/context/users-context';
 import RolesProvider from '@/components/dashboard/roles/context/roles-context';
 import Loading from '@/components/common/loading';
+import { useLanguage } from '@/contexts/language-context';
 
 function UsersContent() {
   const { users, isLoading, error } = useUsers();
+  const { t } = useLanguage();
 
   console.log('UsersContent - Dữ liệu từ context:', users);
 
-	if (isLoading) {
-		return <Loading />;
-	}
+  if (isLoading) {
+    return <Loading />;
+  }
 
   if (error) {
     console.error('UsersContent - Error:', error);
     return (
-      <Alert variant='destructive'>
+      <Alert variant="destructive">
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
@@ -31,18 +33,18 @@ function UsersContent() {
 
   return (
     <>
-      <div className='mb-2 flex items-center justify-between space-y-2 flex-wrap'>
+      <div className="mb-2 flex items-center justify-between space-y-2 flex-wrap">
         <div>
-          <h2 className='text-2xl font-bold tracking-tight'>
-            Quản lý người dùng
+          <h2 className="text-2xl font-bold tracking-tight">
+            {t('userManagement.title')}
           </h2>
-          <p className='text-muted-foreground'>
-            Quản lý người dùng trong hệ thống tại đây.
+          <p className="text-muted-foreground">
+            {t('userManagement.description')}
           </p>
         </div>
         <UsersPrimaryButtons />
       </div>
-      <div className='-mx-4 flex-1 overflow-auto px-4 py-1'>
+      <div className="-mx-4 flex-1 overflow-auto px-4 py-1">
         <UsersTable data={users} />
       </div>
       <UsersDialogs />

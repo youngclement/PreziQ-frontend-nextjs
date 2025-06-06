@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -28,6 +29,7 @@ import { usePermissions } from '../context/permissions-context';
 import { toast } from 'react-toastify';
 import { permissionsApi } from '@/api-client';
 import { motion } from 'framer-motion';
+import { useLanguage } from '@/contexts/language-context';
 
 const formSchema = z.object({
   moduleName: z
@@ -48,6 +50,7 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const { t } = useLanguage();
 
   // Lọc ra các permission chưa có module
   const availablePermissions = permissions.filter(
@@ -132,22 +135,23 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-md p-6'>
+      <DialogContent className="max-w-md p-6">
         <DialogHeader>
-          <DialogTitle>Tạo Module Mới</DialogTitle>
+          <DialogTitle>{t('moduleAdd')}</DialogTitle>
+          <DialogDescription>{t('moduleAddDesc')}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-5'>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
-              name='moduleName'
+              name="moduleName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tên Module</FormLabel>
+                  <FormLabel>{t('moduleName')}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder='Nhập tên module (viết hoa)'
+                      placeholder={t('moduleNamePlaceholder')}
                       {...field}
                       onChange={(e) =>
                         field.onChange(e.target.value.toUpperCase())
@@ -159,31 +163,31 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
               )}
             />
 
-            <div className='space-y-3'>
-              <div className='flex items-center justify-between'>
-                <FormLabel>Permissions</FormLabel>
-                <div className='flex items-center gap-2'>
-                  <Search className='h-4 w-4' />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <FormLabel>{t('permissions')}</FormLabel>
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4" />
                   <Input
-                    placeholder='Tìm kiếm...'
+                    placeholder={t('searchPlaceholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className='h-8 w-48'
+                    className="h-8 w-48"
                   />
-                  <Badge variant='secondary' className='font-medium'>
-                    {selectedPermissions.length} đã chọn
+                  <Badge variant="secondary" className="font-medium">
+                    {selectedPermissions.length} {t('selectedCount')}
                   </Badge>
                 </div>
               </div>
 
-              <div className='border rounded-md overflow-hidden'>
-                <ScrollArea className='h-[300px]'>
+              <div className="border rounded-md overflow-hidden">
+                <ScrollArea className="h-[300px]">
                   {filteredPermissions.length === 0 ? (
-                    <div className='flex items-center justify-center h-full p-4 text-center text-muted-foreground'>
-                      <p>Không có permission phù hợp</p>
+                    <div className="flex items-center justify-center h-full p-4 text-center text-muted-foreground">
+                      <p>{t('noPermissionsFound')}</p>
                     </div>
                   ) : (
-                    <div className='divide-y'>
+                    <div className="divide-y">
                       {filteredPermissions.map((permission) => {
                         const isSelected = selectedPermissions.includes(
                           permission.permissionId
@@ -205,10 +209,10 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
                               damping: 30,
                             }}
                           >
-                            <div className='flex-1'>
-                              <div className='flex items-start gap-2'>
+                            <div className="flex-1">
+                              <div className="flex items-start gap-2">
                                 <Badge
-                                  variant='outline'
+                                  variant="outline"
                                   className={`mt-0.5 text-xs whitespace-nowrap ${
                                     isSelected
                                       ? 'border-primary/50 bg-primary/5 text-primary'
@@ -225,13 +229,13 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
                                   >
                                     {permission.name}
                                   </p>
-                                  <p className='text-xs text-muted-foreground mt-0.5'>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
                                     {permission.apiPath}
                                   </p>
                                 </div>
                               </div>
                             </div>
-                            <div className='pl-2'>
+                            <div className="pl-2">
                               <motion.div
                                 initial={false}
                                 animate={{ scale: isSelected ? 1 : 0.85 }}
@@ -242,9 +246,9 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
                                 }}
                               >
                                 {isSelected ? (
-                                  <CheckCircle2 className='h-5 w-5 text-primary' />
+                                  <CheckCircle2 className="h-5 w-5 text-primary" />
                                 ) : (
-                                  <Circle className='h-5 w-5 text-muted-foreground/70 hover:text-muted-foreground' />
+                                  <Circle className="h-5 w-5 text-muted-foreground/70 hover:text-muted-foreground" />
                                 )}
                               </motion.div>
                             </div>
@@ -257,16 +261,16 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
               </div>
             </div>
 
-            <DialogFooter className='pt-2'>
+            <DialogFooter className="pt-2">
               <Button
-                type='button'
-                variant='outline'
+                type="button"
+                variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                Hủy
+                {t('cancel')}
               </Button>
-              <Button type='submit' disabled={isLoading}>
-                {isLoading ? 'Đang xử lý...' : 'Tạo module'}
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? t('submitting') : t('submit')}
               </Button>
             </DialogFooter>
           </form>

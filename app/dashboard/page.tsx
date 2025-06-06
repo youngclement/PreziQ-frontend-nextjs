@@ -13,16 +13,19 @@ import { Main } from '@/components/dashboard/layout/MainDB';
 import { Overview } from '@/components/dashboard/dashboard/components/overview';
 import { RecentSales } from '@/components/dashboard/dashboard/components/recent-sales';
 import { RoleGuard } from '@/components/auth/role-guard';
+import { useLanguage } from '@/contexts/language-context';
 
 export default function Dashboard() {
+	const { t } = useLanguage();
+
 	return (
 		<RoleGuard allowedRoles={['ADMIN']}>
 			{/* ===== Main ===== */}
 			<Main>
 				<div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-					<h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+					<h1 className="text-2xl font-bold tracking-tight">{t('dashboard')}</h1>
 					<div className="flex items-center space-x-2">
-						<Button>Download</Button>
+						<Button>{t('download')}</Button>
 					</div>
 				</div>
 				<Tabs
@@ -32,15 +35,15 @@ export default function Dashboard() {
 				>
 					<div className="w-full overflow-x-auto pb-2">
 						<TabsList className="w-full sm:w-auto">
-							<TabsTrigger value="overview">Overview</TabsTrigger>
+							<TabsTrigger value="overview">{t('overview')}</TabsTrigger>
 							<TabsTrigger value="analytics" disabled>
-								Analytics
+								{t('analytics')}
 							</TabsTrigger>
 							<TabsTrigger value="reports" disabled>
-								Reports
+								{t('reports')}
 							</TabsTrigger>
 							<TabsTrigger value="notifications" disabled>
-								Notifications
+								{t('notifications')}
 							</TabsTrigger>
 						</TabsList>
 					</div>
@@ -49,7 +52,7 @@ export default function Dashboard() {
 							<Card>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle className="text-sm font-medium">
-										Total Revenue
+										{t('totalRevenue')}
 									</CardTitle>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
@@ -67,14 +70,14 @@ export default function Dashboard() {
 								<CardContent>
 									<div className="text-2xl font-bold">$45,231.89</div>
 									<p className="text-xs text-muted-foreground">
-										+20.1% from last month
+										+20.1% {t('fromLastMonth')}
 									</p>
 								</CardContent>
 							</Card>
 							<Card>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle className="text-sm font-medium">
-										Subscriptions
+										{t('subscriptions')}
 									</CardTitle>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
@@ -94,13 +97,13 @@ export default function Dashboard() {
 								<CardContent>
 									<div className="text-2xl font-bold">+2350</div>
 									<p className="text-xs text-muted-foreground">
-										+180.1% from last month
+										+180.1% {t('fromLastMonth')}
 									</p>
 								</CardContent>
 							</Card>
 							<Card>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-									<CardTitle className="text-sm font-medium">Sales</CardTitle>
+									<CardTitle className="text-sm font-medium">{t('sales')}</CardTitle>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
 										viewBox="0 0 24 24"
@@ -118,14 +121,14 @@ export default function Dashboard() {
 								<CardContent>
 									<div className="text-2xl font-bold">+12,234</div>
 									<p className="text-xs text-muted-foreground">
-										+19% from last month
+										+19% {t('fromLastMonth')}
 									</p>
 								</CardContent>
 							</Card>
 							<Card>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle className="text-sm font-medium">
-										Active Now
+										{t('activeNow')}
 									</CardTitle>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
@@ -143,7 +146,7 @@ export default function Dashboard() {
 								<CardContent>
 									<div className="text-2xl font-bold">+573</div>
 									<p className="text-xs text-muted-foreground">
-										+201 since last hour
+										+201 {t('sinceLastHour')}
 									</p>
 								</CardContent>
 							</Card>
@@ -151,7 +154,7 @@ export default function Dashboard() {
 						<div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
 							<Card className="col-span-1 lg:col-span-4">
 								<CardHeader>
-									<CardTitle>Overview</CardTitle>
+									<CardTitle>{t('overview')}</CardTitle>
 								</CardHeader>
 								<CardContent className="pl-2">
 									<div className="h-[350px]">
@@ -161,9 +164,9 @@ export default function Dashboard() {
 							</Card>
 							<Card className="col-span-1 lg:col-span-3">
 								<CardHeader>
-									<CardTitle>Recent Sales</CardTitle>
+									<CardTitle>{t('recentSales')}</CardTitle>
 									<CardDescription>
-										You made 265 sales this month.
+										{t('salesThisMonth')}
 									</CardDescription>
 								</CardHeader>
 								<CardContent>

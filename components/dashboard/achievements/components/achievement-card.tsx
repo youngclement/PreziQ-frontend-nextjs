@@ -15,6 +15,7 @@ import { useAchievements } from '../context/achievements-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { useLanguage } from '@/contexts/language-context';
 
 interface AchievementCardProps {
   achievement: Achievement;
@@ -27,9 +28,8 @@ export function AchievementCard({
   isSelected,
   onSelect,
 }: AchievementCardProps) {
-
-
   const { setOpen, setCurrentRow } = useAchievements();
+  const { t } = useLanguage();
 
   const handleEdit = () => {
     setCurrentRow(achievement);
@@ -135,7 +135,9 @@ export function AchievementCard({
         <CardContent className="space-y-3">
           <div className="min-h-[60px] text-sm text-slate-600">
             {achievement.description || (
-              <span className="text-slate-400 italic">Không có mô tả</span>
+              <span className="text-slate-400 italic">
+                {t('achievementDescriptionPlaceholder')}
+              </span>
             )}
           </div>
           <div className="flex items-center justify-between">
@@ -144,7 +146,9 @@ export function AchievementCard({
               className="bg-amber-50 text-amber-700 hover:bg-amber-100 flex items-center gap-1"
             >
               <Star className="h-3 w-3" />
-              <span>{achievement.requiredPoints} điểm</span>
+              <span>
+                {achievement.requiredPoints} {t('achievementRequiredPoints')}
+              </span>
             </Badge>
             <Badge
               variant="outline"
@@ -162,7 +166,7 @@ export function AchievementCard({
             className="text-slate-600 hover:text-slate-900 hover:bg-slate-100"
           >
             <Edit className="h-4 w-4 mr-1" />
-            Sửa
+            {t('achievementEdit')}
           </Button>
           <Button
             variant="ghost"
@@ -171,7 +175,7 @@ export function AchievementCard({
             className="text-red-600 hover:text-red-700 hover:bg-red-50"
           >
             <Trash2 className="h-4 w-4 mr-1" />
-            Xóa
+            {t('achievementDelete')}
           </Button>
         </CardFooter>
       </Card>
