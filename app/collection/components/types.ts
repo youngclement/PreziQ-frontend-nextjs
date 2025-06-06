@@ -7,7 +7,7 @@ export interface SlideItem {
 }
 export interface ContentItem {
   id: string;
-  type: "quiz" | "slide";
+  type: 'quiz' | 'slide';
   content: QuizQuestion | SlideItem;
   order: number; // for explicit ordering
 }
@@ -19,6 +19,11 @@ export interface QuizOption {
   is_correct: boolean;
   display_order: number;
   explanation?: string;
+  left_text?: string;
+  right_text?: string;
+  pair_id?: string;
+  matched_with?: string;
+  type?: string;
 }
 
 export interface QuizQuestion {
@@ -26,14 +31,15 @@ export interface QuizQuestion {
   activity_id: string;
   question_text: string;
   question_type:
-    | "multiple_choice"
-    | "multiple_response"
-    | "true_false"
-    | "text_answer"
-    | "slide"
-    | "info_slide"
-    | "location"
-    | "reorder";
+    | 'multiple_choice'
+    | 'multiple_response'
+    | 'true_false'
+    | 'text_answer'
+    | 'slide'
+    | 'info_slide'
+    | 'location'
+    | 'reorder'
+    | 'matching_pair';
   correct_answer_text?: string;
   options: QuizOption[];
   explanation?: string;

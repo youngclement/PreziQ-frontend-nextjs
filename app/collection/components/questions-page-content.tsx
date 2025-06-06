@@ -75,6 +75,10 @@ export default function QuestionsPageContent() {
     const [backgroundImage, setBackgroundImage] = useState("");
     const [previewMode, setPreviewMode] = useState(false);
     const [isQuestionListCollapsed, setIsQuestionListCollapsed] = useState(false);
+    const [matchingPairColumnNames, setMatchingPairColumnNames] = useState({
+        left: 'Questions',
+        right: 'Answers',
+    });
 
     // Use question operations hook
     const {
@@ -504,6 +508,25 @@ export default function QuestionsPageContent() {
         }
     };
 
+    const handleMatchingPairColumnNamesChange = (left: string, right: string) => {
+        setMatchingPairColumnNames({ left, right });
+        // Here you might want to debounce an API call to save these names
+        // For now, it just updates the local state
+    };
+
+    // Function to handle changes in matching pair options
+    const handleMatchingPairOptionsChange = (questionIndex: number, newOptions: any[]) => {
+        const updatedQuestions = [...questions];
+        if (updatedQuestions[questionIndex]) {
+            updatedQuestions[questionIndex].options = newOptions;
+            setQuestions(updatedQuestions);
+
+            // TODO: Add API call to persist changes for matching pair options
+            // This would typically involve calling a function from useQuestionOperations
+            // that is designed to update the entire options array for a question.
+        }
+    };
+
     // Display loading state
     if (isLoading) {
         return (
@@ -638,6 +661,8 @@ export default function QuestionsPageContent() {
                                             }, 50);
                                         }
                                     }}
+                                    leftColumnName={matchingPairColumnNames.left}
+                                    rightColumnName={matchingPairColumnNames.right}
                                 />
                             )}
                         </div>
@@ -654,7 +679,7 @@ export default function QuestionsPageContent() {
                                 questionTypeLabels={questionTypeLabels}
                                 onTabChange={setActiveTab}
                                 onQuestionTypeChange={(value: string) => {
-                                    handleQuestionTypeChange(value as any);
+                                    handleQuestionTypeChange(value as any, activeQuestionIndex);
                                 }}
                                 onTimeLimitChange={handleSetTimeLimit}
                                 onBackgroundImageChange={(value: string) => handleBackgroundImageChange(value)}
@@ -668,6 +693,10 @@ export default function QuestionsPageContent() {
                                 onReorderOptions={handleReorderOptions}
                                 onQuestionLocationChange={handleQuestionLocationChange}
                                 activity={activity}
+                                onMatchingPairColumnNamesChange={handleMatchingPairColumnNamesChange}
+                                onMatchingPairOptionsChange={handleMatchingPairOptionsChange}
+                                leftColumnName={matchingPairColumnNames.left}
+                                rightColumnName={matchingPairColumnNames.right}
                             />
                         </div>
                     </div>

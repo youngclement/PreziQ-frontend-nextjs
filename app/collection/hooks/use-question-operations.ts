@@ -319,14 +319,8 @@ export function useQuestionOperations(
    * Handle changing the question type
    */
   const handleQuestionTypeChange = async (
-    value:
-      | "true_false"
-      | "text_answer"
-      | "multiple_choice"
-      | "multiple_response"
-      | "reorder"
-      | "slide"
-      | "info_slide"
+    value: string,
+    questionIndex: number
   ) => {
     // Get the activity ID directly from the active question
     const activeQuestionActivityId =
@@ -357,9 +351,13 @@ export function useQuestionOperations(
       console.log(
         `Updating activity type for ${targetActivity.id} to ${activityType}`
       );
-      await activitiesApi.updateActivity(targetActivity.id, {
-        activityType: activityType as any,
-      });
+
+      // Chỉ gọi API update activity type nếu không phải matching pair
+      if (value !== "matching_pair") {
+        await activitiesApi.updateActivity(targetActivity.id, {
+          activityType: activityType as any,
+        });
+      }
 
       // Update our local state
       setActivity({
@@ -374,7 +372,9 @@ export function useQuestionOperations(
       const currentType = currentQuestion.question_type;
 
       // Handle option structure based on the new question type
-      if (value === "true_false") {
+      if (value === "matching_pair") {
+        updatedQuestions[questionIndex].options = [];
+      } else if (value === "true_false") {
         options = [
           { option_text: "True", is_correct: true, display_order: 0 },
           { option_text: "False", is_correct: false, display_order: 1 },
@@ -548,7 +548,16 @@ export function useQuestionOperations(
       // Update the question with new type and options
       updatedQuestions[activeQuestionIndex] = {
         ...updatedQuestions[activeQuestionIndex],
-        question_type: value,
+        question_type: value as
+          | "multiple_choice"
+          | "multiple_response"
+          | "true_false"
+          | "text_answer"
+          | "slide"
+          | "info_slide"
+          | "location"
+          | "reorder"
+          | "matching_pair",
         options,
       };
 
