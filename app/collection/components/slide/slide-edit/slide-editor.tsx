@@ -14,6 +14,7 @@ import { FabricImage } from 'fabric';
 import { slideElementToFabric } from './slideElementToFabric';
 import { gsap } from 'gsap';
 import { animationMap } from '../utils/animationMap';
+import { ro } from '@faker-js/faker';
 const ORIGINAL_CANVAS_WIDTH = 812;
 
 export interface FabricEditorProps {
@@ -400,6 +401,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         scaleX: activeObject.scaleX,
         scaleY: activeObject.scaleY,
         angle: activeObject.angle,
+        rotation: activeObject.angle,
       };
 
       animationMap[animationName](activeObject, fabricCanvas.current, () => {
@@ -411,6 +413,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           scaleX: initialState.scaleX ?? 1,
           scaleY: initialState.scaleY ?? 1,
           angle: initialState.angle ?? 0,
+          rotation: initialState.rotation ?? 0,
         });
 
        if (fabricCanvas.current) {
@@ -426,9 +429,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     e: CustomEvent<{ slideId: string; animationName: string }>
   ) => {
     if (e.detail.slideId !== slideId) {
-      console.log(
-        `Bỏ qua fabric:set-animation vì slideId không khớp: ${e.detail.slideId} !== ${slideId}`
-      );
       return;
     }
 
@@ -436,11 +436,24 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     if (!activeObject || !activeObject.get('slideElementId')) return;
 
     const slideElementId = activeObject.get('slideElementId');
+    console.log('slideElementId:', slideElementId);
     activeObject.set('entryAnimation', e.detail.animationName);
+
+    const event = new CustomEvent('fabric:selection-changed', {
+      detail: {
+        slideId,
+        animationName: e.detail.animationName,
+        objectId: slideElementId,
+      },
+    });
+    window.dispatchEvent(event);
 
     await updateSlideElement(activeObject, {
       entryAnimation: e.detail.animationName,
     });
+
+    
+
     saveState();
   };
 
@@ -676,6 +689,17 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
               console.error('Lỗi xóa element:', err);
             }
           }
+
+          slideElementsRef.current = updatedElements; 
+          
+          window.dispatchEvent(
+            new CustomEvent('slide:elements:changed', {
+              detail: {
+                slideId,
+                elements: updatedElements,
+              },
+            })
+          );
 
           // Cập nhật slideElements thông qua onUpdate
           onUpdate({
@@ -956,6 +980,11 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       const w = img.getScaledWidth();
       const h = img.getScaledHeight();
 
+      const maxDisplayOrder = Math.max(
+        -1,
+        ...slideElementsRef.current.map((el) => el.displayOrder)
+      );
+
       const payload: SlideElementPayload = {
         positionX: (img.left! / cw) * 100,
         positionY: (img.top! / ch) * 100,
@@ -964,6 +993,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         rotation: img.angle || 0,
         layerOrder: canvas.getObjects().indexOf(img),
         slideElementType: 'IMAGE',
+        displayOrder: maxDisplayOrder + 1,
         sourceUrl: url,
       };
       slidesApi
@@ -972,6 +1002,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           // console.log('Tạo image element thành công:', res.data);
           img.set('slideElementId', res.data.data.slideElementId);
           img.set('isNew', false);
+          img.set('displayOrder', maxDisplayOrder + 1);
 
           // Tạo object element mới để gửi lên parent
           const newElement: SlideElementPayload = {
@@ -1005,11 +1036,15 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
             slideElements: merged,
           });
 
-          console.log('Data đã gửi: ', {
-            title: slideTitle,
-            content: slideContent,
-            slideElements: [...slideElements, newElement],
+          // Thông báo thay đổi selection để cập nhật sidebar
+          const event = new CustomEvent('fabric:selection-changed', {
+            detail: {
+              slideId,
+              objectId: res.data.data.slideElementId,
+              animationName: 'none',
+            },
           });
+          window.dispatchEvent(event);
         })
         .catch((err) => {
           console.error('Lỗi khi tạo image element:', err);

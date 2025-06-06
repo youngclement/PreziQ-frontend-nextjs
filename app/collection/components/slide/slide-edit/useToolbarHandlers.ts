@@ -177,6 +177,15 @@ export const ToolbarHandlers = (
           ...payload,
         };
 
+        window.dispatchEvent(
+          new CustomEvent('slide:element:created', {
+            detail: {
+              slideId,
+              element: newElement,
+            },
+          })
+        );
+
         // Cập nhật slideElements và gọi onUpdate
         if (onUpdate) {
           onUpdate({ slideElements: [...initialSlideElements, newElement] });
@@ -244,6 +253,15 @@ export const ToolbarHandlers = (
               slideElementId: res.data.data.slideElementId,
               ...payload,
             };
+
+            window.dispatchEvent(
+              new CustomEvent('slide:element:created', {
+                detail: {
+                  slideId,
+                  element: newElement,
+                },
+              })
+            );
 
             const updatedSlideElements = [...initialSlideElements, newElement];
 

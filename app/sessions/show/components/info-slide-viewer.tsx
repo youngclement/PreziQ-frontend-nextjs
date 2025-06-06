@@ -15,6 +15,7 @@ export type SlideElement = {
   height: number; // %
   rotation: number; // deg
   layerOrder: number;
+  displayOrder: number;
   content: string | null;
   sourceUrl: string | null;
   entryAnimation: string | null;
@@ -59,6 +60,7 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [currentDisplayOrder, setCurrentDisplayOrder] = useState(0);
   const fabricCanvas = useRef<fabric.Canvas | null>(null);
   const isMobile = useIsMobile();
   const { backgroundColor, backgroundImage, slide } = activity;
@@ -66,6 +68,8 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
   // Kích thước chuẩn
   const STANDARD_CANVAS_WIDTH = 812;
   const STANDARD_CANVAS_HEIGHT = (STANDARD_CANVAS_WIDTH * height) / width;
+
+  console.log('Rendering InfoSlideViewer with activity:', activity);
 
   // Tính toán kích thước canvas responsive
   const getCanvasDimensions = () => {
@@ -360,7 +364,7 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
         fabricCanvas.current?.renderAll();
       });
       // Ghi đè duration và delay
-      if(element.entryAnimation){
+      if (element.entryAnimation) {
         if (!['Typewriter', 'FadeInChar'].includes(element.entryAnimation)) {
           gsap.to(obj, { duration, delay });
         }
@@ -368,8 +372,30 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     }, delay * 1000);
   };
 
+  // Group elements by displayOrder
+  const groupElementsByDisplayOrder = (elements: SlideElement[]) => {
+    const groups: { [key: number]: SlideElement[] } = {};
+    elements.forEach((element) => {
+      const order = element.displayOrder;
+      if (!groups[order]) {
+        groups[order] = [];
+      }
+      groups[order].push(element);
+    });
+    return groups;
+  };
+
+  // Get the highest displayOrder
+  const getMaxDisplayOrder = (elements: SlideElement[]) => {
+    return Math.max(...elements.map((e) => e.displayOrder), -1);
+  };
+
   // Hàm render slide
-  const renderSlide = async (activity: Activity) => {
+  const renderSlide = async (
+    elements: SlideElement[],
+    maxOrder: number,
+    currentOrder: number
+  ) => {
     const canvas = fabricCanvas.current;
     if (!canvas) return;
 
@@ -379,20 +405,27 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     canvas.backgroundColor = backgroundColor || '#fff';
     canvas.renderAll();
 
-    // Thiết lập hình ảnh nền nếu có
-    if (backgroundImage) {
-      try {
-        const img = await FabricImage.fromURL(backgroundImage);
-        img.set({
-          scaleX: canvas.getWidth() / img.width,
-          scaleY: canvas.getHeight() / img.height,
-          originX: 'left',
-          originY: 'top',
-        });
-        canvas.backgroundImage = img;
-        canvas.renderAll();
-      } catch (err) {
-        console.error('Lỗi tải hình nền:', err);
+    // Clear canvas only on initial render
+    if (currentOrder === 0) {
+      canvas.clear();
+      canvas.backgroundImage = undefined;
+      canvas.backgroundColor = backgroundColor || '#fff';
+      canvas.renderAll();
+
+      if (backgroundImage) {
+        try {
+          const img = await FabricImage.fromURL(backgroundImage);
+          img.set({
+            scaleX: canvas.getWidth() / img.width,
+            scaleY: canvas.getHeight() / img.height,
+            originX: 'left',
+            originY: 'top',
+          });
+          canvas.backgroundImage = img;
+          canvas.renderAll();
+        } catch (err) {
+          console.error('Error loading background image:', err);
+        }
       }
     }
 
@@ -401,51 +434,75 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     const scaleY = canvas.getHeight() / STANDARD_CANVAS_HEIGHT;
 
     // Sắp xếp elements theo layerOrder
-    const sortedElements = [...activity.slide.slideElements].sort(
+    const sortedElements = [...elements].sort(
       (a, b) => a.layerOrder - b.layerOrder
     );
+    const groups = groupElementsByDisplayOrder(sortedElements);
 
     // Load tất cả ảnh trước
-    const imagePromises = sortedElements
-      .filter(
-        (element) => element.slideElementType === 'IMAGE' && element.sourceUrl
-      )
-      .map(
-        (element) =>
-          new Promise<{ element: SlideElement; imgElement: HTMLImageElement }>(
-            (resolve, reject) => {
-              const imgElement = new Image();
-              imgElement.onload = () => resolve({ element, imgElement });
-              imgElement.onerror = (err) => reject(err);
-              imgElement.src = element.sourceUrl!;
-            }
+    const imagePromises = Object.keys(groups)
+      .filter((order) => parseInt(order) <= currentOrder)
+      .flatMap((order) =>
+        groups[parseInt(order)]
+          .filter(
+            (element) =>
+              element.slideElementType === 'IMAGE' && element.sourceUrl
+          )
+          .map(
+            (element) =>
+              new Promise<{
+                element: SlideElement;
+                imgElement: HTMLImageElement;
+              }>((resolve, reject) => {
+                const imgElement = new Image();
+                imgElement.onload = () => resolve({ element, imgElement });
+                imgElement.onerror = (err) => reject(err);
+                imgElement.src = element.sourceUrl!;
+              })
           )
       );
 
     try {
       const loadedImages = await Promise.all(imagePromises);
+      
+      canvas.remove(...canvas.getObjects());
 
-      // Thêm các elements vào canvas
-      sortedElements.forEach((element) => {
-        const fabricObject = slideElementToFabric(
-          element,
-          canvas,
-          loadedImages,
-          scaleX,
-          scaleY
-        );
-        if (fabricObject) {
-          canvas.add(fabricObject);
-          applyEntryAnimation(fabricObject, element, scaleX, scaleY);
+      // Render all elements from displayOrder 0 up to currentOrder
+      for (let order = 0; order <= currentOrder; order++) {
+        if (groups[order]) {
+          groups[order].forEach((element) => {
+            const fabricObject = slideElementToFabric(element, canvas, loadedImages, scaleX, scaleY);
+            if (fabricObject) {
+              canvas.add(fabricObject);
+              // Chỉ áp dụng animation cho elements của currentOrder hiện tại
+              if (order === currentOrder) {
+                applyEntryAnimation(fabricObject, element, scaleX, scaleY);
+              }
+            }
+          });
         }
-      });
-
+      }
       canvas.renderAll();
     } catch (err) {
       console.error('Lỗi tải ảnh:', err);
     }
   };
 
+  // Handle mouse click to advance displayOrder
+  const handleCanvasClick = () => {
+    console.log('Canvas clicked, currentDisplayOrder:', currentDisplayOrder);
+    console.log(
+      'Max display order:',
+      getMaxDisplayOrder(activity.slide.slideElements)
+    );
+    const maxDisplayOrder = getMaxDisplayOrder(activity.slide.slideElements);
+    if (currentDisplayOrder < maxDisplayOrder) {
+      console.log('đk ok');
+      setCurrentDisplayOrder((prev) => prev + 1);
+      console.log(currentDisplayOrder);
+    }
+    // Stop at maxDisplayOrder + 1 (no further clicks needed)
+  };
   // Khởi tạo canvas và render slide hiện tại
   useEffect(() => {
     if (
@@ -462,14 +519,26 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       activity.backgroundColor || '#fff',
       activity.backgroundImage
     );
-    renderSlide(activity);
+
+    // Add click event listener
+    canvas.on('mouse:down', handleCanvasClick);
+
+    renderSlide(
+      activity.slide.slideElements,
+      getMaxDisplayOrder(activity.slide.slideElements),
+      currentDisplayOrder
+    );
 
     // Cập nhật lại kích thước canvas khi thay đổi kích thước cửa sổ
     const handleResize = () => {
       const { canvasWidth, canvasHeight } = getCanvasDimensions();
       if (canvas) {
         canvas.setDimensions({ width: canvasWidth, height: canvasHeight });
-        renderSlide(activity); // Render lại slide với kích thước mới
+        renderSlide(
+          activity.slide.slideElements,
+          getMaxDisplayOrder(activity.slide.slideElements),
+          currentDisplayOrder
+        ); // Render lại slide với kích thước mới
       }
     };
 
@@ -478,7 +547,13 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       window.removeEventListener('resize', handleResize);
       canvas.dispose();
     };
-  }, [activity, currentSlideIndex, canvasWidth, canvasHeight]);
+  }, [
+    activity,
+    currentSlideIndex,
+    canvasWidth,
+    canvasHeight,
+    currentDisplayOrder,
+  ]);
 
   return (
     <div
@@ -488,6 +563,8 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
         width: `${canvasWidth}px`,
         height: `${canvasHeight}px`,
         maxWidth: '100%',
+        pointerEvents: 'auto',
+        zIndex: 20,
       }}
     >
       {!activity ||

@@ -8,11 +8,13 @@ import type { SlideElementPayload } from '@/types/slideInterface';
 interface AnimationOrderItemProps {
   item: SlideElementPayload;
   slideId: string;
+  isSelected?: boolean;
 }
 
 export const AnimationOrderItem = ({
   item,
   slideId,
+  isSelected,
 }: AnimationOrderItemProps) => {
   const {
     attributes,
@@ -29,6 +31,8 @@ export const AnimationOrderItem = ({
     marginLeft: `${item.displayOrder * 12}px`, // Thụt lề theo displayOrder
   };
 
+  console.log('itemmmmmmmmm', item);
+
   return (
     <div
       ref={setNodeRef}
@@ -37,6 +41,7 @@ export const AnimationOrderItem = ({
         flex items-center gap-2 p-2 bg-white rounded border
         ${isDragging ? 'border-blue-400 shadow-lg' : 'border-gray-200'}
         ${item.displayOrder === 0 ? 'ml-0' : `ml-${item.displayOrder * 4}`}
+        ${isSelected ? 'border-red-500 bg-blue-50' : 'border-gray-200 bg-white'}
         relative
       `}
       {...attributes}

@@ -1,5 +1,21 @@
 // src/components/AnimationToolbar.tsx
 'use client';
+  export interface SlideElementEvent extends CustomEvent {
+    detail: {
+      slideId: string;
+      element: SlideElementPayload;
+      elements?: SlideElementPayload[];
+      objectId: string;
+    };
+  }
+
+  declare global {
+    interface WindowEventMap {
+      'slide:element:created': SlideElementEvent;
+      'slide:element:updated': SlideElementEvent;
+      'slide:elements:changed': SlideElementEvent;
+    }
+  }
 
 import type React from 'react';
 import { useState, useCallback, useEffect } from 'react';
@@ -176,12 +192,12 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
       window.dispatchEvent(previewEvent);
 
       const setEvent = new CustomEvent('fabric:set-animation', {
-        detail: { slideId, animationName: animationValue },
+        detail: { slideId, animationName: animationValue, objectId: currentObjectId },
       });
       window.dispatchEvent(setEvent);
     } else {
       const setEvent = new CustomEvent('fabric:set-animation', {
-        detail: { slideId, animationName: null },
+        detail: { slideId, animationName: null, objectId: currentObjectId },
       });
       window.dispatchEvent(setEvent);
     }
@@ -191,14 +207,76 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
     const fetchSlideElements = async () => {
       try {
         const response = await activitiesApi.getActivityById(slideId);
-        console.log('Goi roi ne data', response);
         setSlideElements(response.data?.data?.slide?.slideElements || []);
       } catch (error) {
         console.error('Error fetching slide elements:', error);
       }
     };
-    console.log("Goi roi ne", slideElements)
+
+    // Thêm listeners cho các events
+    const handleElementCreated = (e: SlideElementEvent) => {
+      if (e.detail.slideId !== slideId) return;
+      setSlideElements((prev) => {
+        const newElements = [...prev, e.detail.element];
+        return newElements.sort((a, b) => a.displayOrder - b.displayOrder);
+      });
+    };
+
+    const handleElementsChanged = (e: SlideElementEvent) => {
+      if (e.detail.slideId !== slideId) return;
+      if (e.detail.elements) {
+        console.log(
+          'AnimationToolbar received slide:elements:changed:',
+          e.detail.elements
+        );
+        setSlideElements(e.detail.elements);
+      }
+    };
+
+    const handleSelectionChanged = (
+      e: CustomEvent<{
+        slideId: string;
+        objectId: string | null;
+        animationName: string;
+      }>
+    ) => {
+      if (e.detail.slideId !== slideId) return;
+      console.log(
+        'AnimationToolbar received fabric:selection-changed:',
+        e.detail
+      );
+
+      const { objectId, animationName } = e.detail;
+      if (objectId) {
+        setSlideElements((prev) =>
+          prev.map((item) =>
+            item.slideElementId === objectId
+              ? { ...item, entryAnimation: animationName }
+              : item
+          )
+        );
+        setAnimationMap((prev) => ({
+          ...prev,
+          [objectId]: animationName,
+        }));
+        setCurrentObjectId(objectId);
+      } else {
+        setCurrentObjectId(null);
+      }
+      setSelectedAnimation(animationName || 'none');
+    };
+
     fetchSlideElements();
+
+  window.addEventListener('slide:element:created', handleElementCreated as EventListener);
+  window.addEventListener('slide:elements:changed', handleElementsChanged as EventListener);
+  window.addEventListener('fabric:selection-changed', handleSelectionChanged as EventListener);
+
+  return () => {
+    window.removeEventListener('slide:element:created', handleElementCreated as EventListener);
+    window.removeEventListener('slide:elements:changed', handleElementsChanged as EventListener);
+    window.removeEventListener('fabric:selection-changed', handleSelectionChanged as EventListener);
+  };
   }, [slideId]);
 
   const handleOrderChange = async (updatedElements: SlideElementPayload[]) => {

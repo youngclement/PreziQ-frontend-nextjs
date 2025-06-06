@@ -124,6 +124,14 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
   };
 
   const onBackgroundImageChange = async (url: string) => {
+    if (backgroundImage) {
+      try {
+        await storageApi.deleteSingleFile(backgroundImage);
+      } catch (error) {
+        console.error('Error deleting old background image:', error);
+        // Continue with the update even if delete fails
+      }
+    }
     handleSlideBackgroundImageChange(url, activeQuestionIndex);
     handleSlideBackgroundChange('', activeQuestionIndex);
 

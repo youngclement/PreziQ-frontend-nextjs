@@ -1566,6 +1566,16 @@ export function QuestionSettings({
       setUploadProgress(10);
 
       try {
+
+        if (activity.backgroundImage) {
+          try {
+            await storageApi.deleteSingleFile(activity.backgroundImage);
+          } catch (error) {
+            console.error('Error deleting old background image:', error);
+            // Continue with upload even if delete fails
+          }
+        }
+        
         // Simulate upload progress
         const progressInterval = setInterval(() => {
           setUploadProgress((prev) => {
