@@ -27,15 +27,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Switch } from '@/components/ui/switch';
 
 interface CollectionGridItemProps {
   collection: Collection;
-  activities: Activity[];
-  onEdit?: (id: string) => void;
-  onView: (id: string) => void;
-  onViewCollection?: (id: string) => void;
+  activities?: Activity[];
+  onEdit?: () => void;
+  onView?: () => void;
+  onViewCollection?: () => void;
   onDelete?: (id: string) => void;
+
   onCopy?: (id: string) => void;
+
 }
 
 export function CollectionGridItem({
@@ -45,7 +48,10 @@ export function CollectionGridItem({
   onView,
   onViewCollection,
   onDelete,
+
   onCopy,
+
+
 }: CollectionGridItemProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -91,14 +97,14 @@ export function CollectionGridItem({
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onEdit) {
-      onEdit(collection.collectionId);
+      onEdit();
     }
   };
 
   const handleViewCollection = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onViewCollection) {
-      onViewCollection(collection.collectionId);
+      onViewCollection();
     }
   };
 
@@ -287,6 +293,23 @@ export function CollectionGridItem({
                 </EditButton>
               )}
             </div>
+
+            {/* Publish toggle */}
+            {showPublishToggle && onTogglePublish && (
+              <div className='flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-gray-700'>
+                <span className='text-sm text-gray-600 dark:text-gray-400'>
+                  {collection.isPublished ? 'Đã xuất bản' : 'Chưa xuất bản'}
+                </span>
+                <Switch
+                  checked={collection.isPublished}
+                  onCheckedChange={(checked, e) => {
+                    e?.stopPropagation();
+                    onTogglePublish(e as React.MouseEvent);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
