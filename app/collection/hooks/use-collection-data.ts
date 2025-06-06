@@ -25,7 +25,6 @@ export function useCollectionData(collectionId: string, activityId?: string) {
       const response = await collectionsApi.getCollectionById(collectionId);
 
       if (response && response.data) {
-        console.log("Collection data loaded:", response.data);
 
         // Store the complete collection data
         setCollectionData(response.data.data);
@@ -36,10 +35,6 @@ export function useCollectionData(collectionId: string, activityId?: string) {
           response.data.data.activities.length > 0
         ) {
           const apiActivities = response.data.data.activities;
-          console.log(
-            `Found ${apiActivities.length} activities in collection:`,
-            apiActivities
-          );
 
           // Ensure orderIndex is treated as a number and properly sorted
           const mappedActivities = apiActivities
@@ -104,13 +99,6 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                 const questionType = mapActivityTypeToQuestionType(
                   act.activity_type_id
                 );
-                console.log(
-                  `[DEBUG] Mapping activity_type_id=${
-                    act.activity_type_id
-                  } to question_type=${questionType} for activity id=${
-                    act.id
-                  }, title=${act.title || "Untitled"}`
-                );
 
                 // Create base question
                 const question: QuizQuestion = {
@@ -125,7 +113,6 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                 // Handle slides and info slides
                 if (questionType === "slide" || questionType === "info_slide") {
                   // For slide types, use specific slide data or defaults
-                  console.log("actttttttt:   ", act);
                   if (act.quiz) {
                     question.question_text = act.quiz.title || "Slide";
                     question.slide_content = act.quiz.content || "";

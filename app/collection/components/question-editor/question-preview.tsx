@@ -242,15 +242,34 @@ export function QuestionPreview({
     >
   >({});
 
-  const [slideBackgrounds, setSlideBackgrounds] = useState<
-    Record<string, { backgroundImage: string; backgroundColor: string }>
-  >({});
-
   // Add this state to track when we need to force re-render
   const [renderKey, setRenderKey] = useState(0);
 
   // Add toast hook
   const { toast } = useToast();
+
+  const saveBackgroundToServer = async (
+    activityId: string,
+    backgroundData: { backgroundImage: string; backgroundColor: string }
+  ) => {
+    try {
+      setIsSaving(true);
+      await activitiesApi.updateActivity(activityId, {
+        backgroundColor: backgroundData.backgroundColor,
+        backgroundImage: backgroundData.backgroundImage,
+      });
+
+      // Cập nhật global storage
+      if (typeof window !== 'undefined') {
+        if (!window.savedBackgroundColors) window.savedBackgroundColors = {};
+        window.savedBackgroundColors[activityId] = backgroundData.backgroundColor;
+      }
+    } catch (error) {
+      console.error("Error saving background:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     const fetchActivityData = async (
@@ -319,6 +338,13 @@ export function QuestionPreview({
         // ) {
         //   onSlideContentChange(activityData.description);
         // }
+        if (typeof window !== 'undefined') {
+          if (!window.savedBackgroundColors) {
+            window.savedBackgroundColors = {};
+          }
+          window.savedBackgroundColors[activityId] = activityData.backgroundColor || '#FFFFFF';
+        }
+
       } catch (error) {
         console.error('Error fetching activity data:', error);
       }
@@ -381,12 +407,6 @@ export function QuestionPreview({
       backgroundColor?: string;
     }
   ) => {
-    console.log(
-      'QuestionPreview: Updating background for activity:',
-      activityId,
-      properties
-    );
-
     // Lưu vào global storage ngay lập tức để đảm bảo đồng bộ
     if (typeof window !== 'undefined' && properties.backgroundColor) {
       // Đảm bảo object đã được khởi tạo
@@ -555,7 +575,6 @@ export function QuestionPreview({
   // Expose the function to parent component through the prop callback
   useEffect(() => {
     if (onUpdateActivityBackground) {
-      console.log('Registering updateActivityBackground with parent component');
       onUpdateActivityBackground(updateActivityBackground);
     }
   }, [onUpdateActivityBackground]);
@@ -787,10 +806,11 @@ export function QuestionPreview({
     const slideData = question.activity_id
       ? slidesData[question.activity_id]
       : undefined;
+
     const slideElements = question.activity_id
       ? slidesElements[question.activity_id] ||
-      slidesData[question.activity_id]?.slide?.slideElements ||
-      []
+        slidesData[question.activity_id]?.slide?.slideElements ||
+        []
       : [];
 
     // Find activity specific background for this question
@@ -804,7 +824,11 @@ export function QuestionPreview({
     // 4. Từ activity hiện tại
 
     // 1. Ưu tiên lấy từ slidesBackgrounds trước nếu đây là slide
-    if (isSlideType && question.activity_id && slidesBackgrounds[question.activity_id]) {
+    if (
+      isSlideType &&
+      question.activity_id &&
+      slidesBackgrounds[question.activity_id]
+    ) {
       const slideBg = slidesBackgrounds[question.activity_id];
       actualBackgroundImage = slideBg.backgroundImage;
       actualBackgroundColor = slideBg.backgroundColor;
@@ -827,7 +851,10 @@ export function QuestionPreview({
       }
     }
     // 3. Sau đó mới kiểm tra trong activityBackgrounds
-    else if (question.activity_id && activityBackgrounds[question.activity_id]) {
+    else if (
+      question.activity_id &&
+      activityBackgrounds[question.activity_id]
+    ) {
       const actBg = activityBackgrounds[question.activity_id];
       actualBackgroundImage = actBg.backgroundImage || '';
       actualBackgroundColor = actBg.backgroundColor;
@@ -855,23 +882,9 @@ export function QuestionPreview({
     const hasBackgroundImage =
       actualBackgroundImage && actualBackgroundImage.trim() !== '';
 
-    // console.log(`Rendering slide ${question.activity_id}:`, {
-    //   actualBackgroundColor,
-    //   actualBackgroundImage,
-    //   fromGlobal: window.savedBackgroundColors?.[question.activity_id],
-    //   fromActivityBackgrounds: activityBackgrounds[question.activity_id],
-    //   fromSlidesBackgrounds: slidesBackgrounds[question.activity_id],
-    // });
-
     if (isSlideType) {
       const slideTypeText =
         question.question_type === 'info_slide' ? 'Info Slide' : 'Slide';
-
-      // console.log(
-      //   'activityBackgrounds[question.activity_id]',
-      //   activityBackgrounds[question.activity_id],
-      //   question.activity_id
-      // );
 
       return (
         <div
@@ -923,27 +936,38 @@ export function QuestionPreview({
                   if (data.slideElements && question.activity_id) {
                     setSlidesElements((prev) => {
                       const id = question.activity_id!;
-                      const oldList = prev[id] || [];
-                      const incoming = data.slideElements ?? [];
-
-                      // ghép và loại bỏ trùng
-                      const merged = [...oldList];
-                      incoming.forEach((el) => {
-                        if (
-                          !merged.find(
-                            (x) => x.slideElementId === el.slideElementId
-                          )
-                        ) {
-                          merged.push(el);
-                        }
-                      });
-
-                      return {
-                        ...prev,
-                        [id]: merged,
-                      };
+                      const updatedElements = data.slideElements ?? [];
+                      // Lưu slide elements lên server ngay lập tức
+                      // saveSlideElementsToServer(id, updatedElements);
+                      return { ...prev, [id]: updatedElements };
                     });
-                    console.log('data nhậnnnn: ', data.slideElements);
+                  }
+
+                  if (
+                    data.backgroundImage !== undefined ||
+                    data.backgroundColor !== undefined
+                  ) {
+                    const updatedBackground = {
+                      backgroundImage:
+                        data.backgroundColor !== undefined
+                          ? ''
+                          : data.backgroundImage ?? '',
+                      backgroundColor:
+                        data.backgroundImage !== undefined
+                          ? ''
+                          : data.backgroundColor ?? '',
+                    };
+                    setSlidesBackgrounds((prev) => ({
+                      ...prev,
+                      [question.activity_id!]: updatedBackground,
+                    }));
+                    if (question.activity_id) {
+                      console.log('updatedBackground', updatedBackground);
+                      saveBackgroundToServer(
+                        question.activity_id,
+                        updatedBackground
+                      );
+                    }
                   }
                 }}
                 width={
@@ -951,20 +975,20 @@ export function QuestionPreview({
                     ? viewMode === 'mobile'
                       ? 300
                       : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                      ? 650
+                      : 812
                     : viewMode === 'mobile'
-                      ? 300
-                      : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                    ? 300
+                    : viewMode === 'tablet'
+                    ? 650
+                    : 812
                 }
                 height={460}
                 zoom={1}
                 slideId={question.activity_id}
                 slideElements={slideElements}
-                backgroundImage={actualBackgroundImage}
                 backgroundColor={actualBackgroundColor}
+                backgroundImage={actualBackgroundImage}
               />
             </div>
           </div>
@@ -973,7 +997,7 @@ export function QuestionPreview({
     }
 
     // Simplified location question type
-    if (question.question_type === "location") {
+    if (question.question_type === 'location') {
       return (
         <Card
           className={cn(
@@ -987,13 +1011,12 @@ export function QuestionPreview({
           )}
           key={`question-card-location-${questionIndex}-${renderKey}`}
         >
-
           <motion.div
             className={cn(
               'aspect-[16/5] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
             )}
             style={{
-              backgroundColor: actualBackgroundColor // Always apply background color
+              backgroundColor: actualBackgroundColor, // Always apply background color
             }}
             initial={{ opacity: 0.8 }}
             whileInView={{ opacity: 1 }}
@@ -1006,10 +1029,12 @@ export function QuestionPreview({
             {/* Simplified Status Bar */}
             <div className="absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10">
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  "h-7 w-7 rounded-full flex items-center justify-center shadow-sm",
-                  getQuestionTypeColor(question.question_type)
-                )}>
+                <div
+                  className={cn(
+                    'h-7 w-7 rounded-full flex items-center justify-center shadow-sm',
+                    getQuestionTypeColor(question.question_type)
+                  )}
+                >
                   {getQuestionTypeIcon(question.question_type)}
                 </div>
                 <div>
@@ -1025,7 +1050,10 @@ export function QuestionPreview({
                 <div className="flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium">
                   <Clock className="h-3.5 w-3.5" />
                   <span className="time-limit-display">
-                    {(activity && activity.quiz?.timeLimitSeconds) || question.time_limit_seconds || timeLimit}s
+                    {(activity && activity.quiz?.timeLimitSeconds) ||
+                      question.time_limit_seconds ||
+                      timeLimit}
+                    s
                   </span>
                 </div>
               </div>
@@ -1036,15 +1064,21 @@ export function QuestionPreview({
               {editMode !== null ? (
                 <div className="w-full max-w-2xl">
                   <Textarea
-                    value={question.question_text || `Location Question ${questionIndex + 1}`}
-                    onChange={(e) => onQuestionTextChange(e.target.value, questionIndex)}
+                    value={
+                      question.question_text ||
+                      `Location Question ${questionIndex + 1}`
+                    }
+                    onChange={(e) =>
+                      onQuestionTextChange(e.target.value, questionIndex)
+                    }
                     className="text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
                   />
                 </div>
               ) : (
                 <div className="relative w-full max-w-2xl">
                   <h2 className="text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4">
-                    {question.question_text || `Location Question ${questionIndex + 1}`}
+                    {question.question_text ||
+                      `Location Question ${questionIndex + 1}`}
                   </h2>
                 </div>
               )}
@@ -1060,22 +1094,25 @@ export function QuestionPreview({
               <div className="w-full mt-2">
                 {!previewMode ? (
                   <DynamicLocationQuestionEditor
-                    questionText={question.question_text || ""}
+                    questionText={question.question_text || ''}
                     locationAnswers={getLocationAnswers(question, activity)}
-                    onLocationChange={handleQuestionLocationChange}
+
+                    onLocationChange={(questionIndex, locationData) =>
+                      onQuestionLocationChange?.(questionIndex, locationData)
+                    }
+
                     questionIndex={questionIndex}
                   />
                 ) : (
                   <DynamicLocationQuestionPlayer
-                    questionText={question.question_text || ""}
+                    questionText={question.question_text || ''}
                     locationData={getLocationData(question, activity)}
-                    onAnswer={(isCorrect) => console.log("Answer:", isCorrect)}
+                    onAnswer={(isCorrect) => console.log('Answer:', isCorrect)}
                   />
                 )}
               </div>
             </div>
           </CardContent>
-
         </Card>
       );
     }
@@ -1200,8 +1237,8 @@ export function QuestionPreview({
                         option.is_correct
                           ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                           : isTrue
-                            ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                            : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                          ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                          : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
                         // Only show pointer cursor when edit mode is enabled
                         editMode !== null
                           ? 'cursor-pointer hover:shadow-md'
@@ -1225,9 +1262,7 @@ export function QuestionPreview({
                             );
                           });
 
-
-                          console.log("Correct answer updated");
-
+                          console.log('Correct answer updated');
                         }
                       }}
                     >
@@ -1286,7 +1321,9 @@ export function QuestionPreview({
                 <div className="mt-2 text-sm text-gray-600 dark:text-white italic relative group">
                   {editMode !== null ? (
                     <div className="flex items-center">
-                      <span className="font-medium mr-2 text-gray-700 dark:text-white">Correct answer:</span>
+                      <span className="font-medium mr-2 text-gray-700 dark:text-white">
+                        Correct answer:
+                      </span>
                       <Input
                         value={
                           question.correct_answer_text ||
@@ -1651,12 +1688,12 @@ export function QuestionPreview({
                   question.options.length <= 2
                     ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
                     : question.options.length <= 4
-                      ? 'grid grid-cols-2 gap-3'
-                      : 'grid grid-cols-2 gap-3 md:grid-cols-3',
+                    ? 'grid grid-cols-2 gap-3'
+                    : 'grid grid-cols-2 gap-3 md:grid-cols-3',
                   viewMode === 'mobile' && 'grid-cols-1',
                   viewMode === 'tablet' &&
-                  question.options.length > 4 &&
-                  'grid-cols-2'
+                    question.options.length > 4 &&
+                    'grid-cols-2'
                 )}
               >
                 {/* Direct rendering of choice options */}

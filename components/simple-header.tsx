@@ -42,7 +42,7 @@ const SimpleHeader = ({ showBackButton = false, title }: SimpleHeaderProps) => {
                         </Button>
                     )}
                     <Link href="/">
-                        <Logo variant="minimal" size="sm" />
+                        <Logo variant="default" size="sm" />
                     </Link>
                     {title && (
                         <div className="h-5 w-px bg-gray-300 dark:bg-gray-700 mx-2" />

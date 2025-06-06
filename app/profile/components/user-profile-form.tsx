@@ -202,9 +202,74 @@ export function UserProfileForm({
     },
   });
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
+
+  async function onSubmit(data: ProfileFormValues) {
+    try {
+      setIsSubmitting(true);
+
+      if (data.avatar !== userProfile.avatar && userProfile.avatar) {
+        try {
+          await storageApi.deleteSingleFile(userProfile.avatar);
+        } catch (error) {
+          console.error('Lỗi khi xóa avatar cũ:', error);
+          // Tiếp tục cập nhật ngay cả khi xóa thất bại
+        }
+      }
+
+      // Chuyển đổi lại định dạng ngày sinh (nếu có)
+      const formattedData = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        nickname: data.nickname || '',
+        avatar: data.avatar || '',
+        gender: data.gender || '',
+        nationality: data.nationality || '',
+        phoneNumber: data.phoneNumber || '',
+        birthDate: data.birthDate
+          ? format(new Date(data.birthDate), "yyyy-MM-dd'T'HH:mm:ssXXX")
+          : '',
+      };
+
+      // Gọi API cập nhật thông tin
+      const response = await userApi.updateProfile(formattedData);
+      console.log('API Response:', response);
+
+      // Cập nhật state nếu API trả về thành công
+      if (response && response.data && response.success) {
+        // Ép kiểu response data
+        const profileData = response.data as ProfileResponse;
+        console.log('Profile Data:', profileData);
+
+        // Cập nhật UserProfile trong parent component
+        onProfileUpdated({
+          ...userProfile,
+          firstName: profileData.firstName,
+          lastName: profileData.lastName,
+          nickname: profileData.nickname || '',
+          avatar: profileData.avatar || '',
+          birthDate: profileData.birthDate || '',
+          gender: profileData.gender || '',
+          nationality: profileData.nationality || '',
+          phoneNumber: profileData.phoneNumber || '',
+        });
+      }
+
+      toast({
+        title: 'Thành công',
+        description: 'Thông tin cá nhân đã được cập nhật',
+      });
+    } catch (error) {
+      console.error('Lỗi khi cập nhật thông tin:', error);
+      toast({
+        title: 'Lỗi',
+        description: 'Không thể cập nhật thông tin. Vui lòng thử lại sau.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -277,15 +342,69 @@ export function UserProfileForm({
         payload.firstName = data.firstName;
       }
 
-      if (data.lastName !== userProfile?.lastName) {
-        payload.lastName = data.lastName;
-      }
+      // Tạo preview URL cho hình ảnh đã cắt
+      const croppedPreviewUrl = URL.createObjectURL(croppedImageBlob);
+      setPreviewUrl(croppedPreviewUrl);
 
-      if (data.nickname !== userProfile?.nickname) {
-        if (userProfile?.nickname && data.nickname === '') {
-          payload.nickname = data.nickname;
-        } else if (data.nickname !== '') {
-          payload.nickname = data.nickname;
+      // Upload file đã cắt
+      const response = await storageApi.uploadSingleFile(croppedFile, 'users');
+
+      const responseData = response.data as any;
+
+      if (responseData && responseData.success === true && responseData.data) {
+        // Lấy URL từ ảnh đã upload
+        const fileUrl = responseData.data.fileUrl;
+
+        if (fileUrl) {
+          // Cập nhật trường avatar trong form
+          form.setValue('avatar', fileUrl);
+
+          // Gọi API cập nhật thông tin avatar người dùng
+          try {
+            // Tạo payload chỉ bao gồm avatar mới cần cập nhật
+            const updateData = {
+              avatar: fileUrl // Chỉ cập nhật URL avatar mới
+            };
+
+            // Gọi API cập nhật profile
+            const updateResponse = await userApi.updateProfile(updateData);
+            
+            if (userProfile.avatar) {
+              try {
+                await storageApi.deleteSingleFile(userProfile.avatar);
+              } catch (error) {
+                console.error('Lỗi khi xóa avatar cũ:', error);
+              }
+            }
+
+            // Kiểm tra kết quả cập nhật
+            if (updateResponse.success && updateResponse.data) {
+              // Cập nhật UserProfile trong parent component
+              onProfileUpdated({
+                ...userProfile,
+                avatar: fileUrl,
+              });
+            }
+          } catch (updateError) {
+            console.error('Lỗi khi cập nhật thông tin avatar:', updateError);
+            // Vẫn giữ URL ảnh đã tải lên dù có lỗi khi cập nhật profile
+          }
+
+          // Hiển thị thông báo thành công
+          toast({
+            title: 'Thành công',
+            description: 'Đã tải lên và cập nhật ảnh đại diện',
+          });
+
+          // Đóng cropper
+          setShowCropper(false);
+        } else {
+          toast({
+            title: 'Lỗi',
+            description: 'Không tìm thấy URL file trong phản hồi',
+            variant: 'destructive',
+          });
+
         }
       }
 

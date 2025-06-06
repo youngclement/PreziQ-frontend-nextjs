@@ -22,7 +22,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible='icon' variant='floating' {...props}>
       <SidebarHeader className='flex items-left justify-center py-4'>
-        <Logo variant='minimal' size='md' />
+        <Logo variant='default' size='md' />
       </SidebarHeader>
       <SidebarContent>
         {sidebarData.navGroups.map((props) => (

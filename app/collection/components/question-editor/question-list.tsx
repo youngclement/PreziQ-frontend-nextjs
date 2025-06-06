@@ -140,19 +140,23 @@ const SortableActivityItem = ({
           : 'border-transparent hover:border-gray-300'
       )}
     >
-      <div className='absolute top-1 left-1 bg-black/40 text-white text-[8px] px-1 py-0.5 rounded-full z-10'>
+      <div className="absolute top-1 left-1 bg-black/40 text-white text-[8px] px-1 py-0.5 rounded-full z-10">
         {index + 1}
       </div>
       <div
-        className='absolute top-1 right-1 cursor-grab opacity-70 hover:opacity-100 grip-handle'
+        className="absolute top-1 right-1 cursor-grab opacity-70 hover:opacity-100 grip-handle"
         {...attributes}
         {...listeners}
       >
-        <GripVertical className='h-3 w-3 text-white drop-shadow-md grip-handle' />
+        <GripVertical className="h-3 w-3 text-white drop-shadow-md grip-handle" />
       </div>
-      <div className='p-2 h-full bg-black/30 flex flex-col justify-end'>
-        <h3 className='text-[9px] font-medium line-clamp-2 text-white drop-shadow-sm'>
-          {displayTitle}
+
+      <div className="p-2 h-full bg-black/30 flex flex-col justify-end">
+        <h3 className="text-[9px] font-medium line-clamp-2 text-white drop-shadow-sm">
+          {activity.activity_type_id === 'INFO_SLIDE'
+            ? 'Slide ' + (index + 1)
+            : activity.title || `Activity ${index + 1}`}
+
         </h3>
       </div>
     </div>
