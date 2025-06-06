@@ -94,6 +94,7 @@ export interface LocationQuizPayload {
   timeLimitSeconds: number;
   pointType: 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS';
   locationAnswers: {
+    quizLocationAnswerId?: string;
     longitude: number;
     latitude: number;
     radius: number;

@@ -25,10 +25,14 @@ import {
 } from 'lucide-react';
 import { AudioWaveform, Command, GalleryVerticalEnd } from 'lucide-react';
 import { NavItem, NavGroup } from '@/components/dashboard/layout/NavGroup';
+
 import { useLanguage } from '@/contexts/language-context';
 
+import { User } from '@/models/auth';
+
+
 // TypeScript interface definitions
-interface User {
+interface SidebarUser {
   name: string;
   email: string;
   avatar: string;
@@ -41,7 +45,7 @@ interface Team {
 }
 
 interface SidebarData {
-  user: User;
+  user: SidebarUser;
   teams: Team[];
   navGroups: NavGroup[];
 }
@@ -55,6 +59,28 @@ export const useSidebarData = () => {
       email: 'user@example.com',
       avatar: '/avatars/shadcn.jpg',
     },
+
+// Function to generate sidebar data based on user from API
+export const generateSidebarData = (user: User | null): SidebarData => {
+  // Default user data if no user is provided
+  const defaultUser: SidebarUser = {
+    name: 'Người dùng',
+    email: 'user@example.com',
+    avatar: '/avatars/shadcn.jpg',
+  };
+
+  // Generate user data from API user
+  const sidebarUser: SidebarUser = user
+    ? {
+        name: `${user.firstName} ${user.lastName}`.trim() || 'Người dùng',
+        email: user.email || 'user@example.com',
+        avatar: '/avatars/shadcn.jpg', // Có thể thêm avatar URL từ API sau
+      }
+    : defaultUser;
+
+  return {
+    user: sidebarUser,
+
     teams: [
       {
         name: 'PreziQ Admin',
@@ -62,6 +88,7 @@ export const useSidebarData = () => {
         plan: 'Next + ShadcnUI',
       },
       {
+
         name: t('companyABC'),
         logo: GalleryVerticalEnd,
         plan: t('enterprise'),
@@ -70,44 +97,58 @@ export const useSidebarData = () => {
         name: t('startupXYZ'),
         logo: AudioWaveform,
         plan: t('startup'),
+
       },
     ],
     navGroups: [
       {
+
         title: t('general'),
         items: [
           {
             title: t('dashboard'),
+
             url: '/dashboard',
             icon: LayoutDashboard,
           },
           {
+
             title: t('chat'),
+
+
             url: '/dashboard/chats',
             icon: MessageSquare,
           },
         ],
       },
       {
+
         title: t('administration'),
         items: [
           {
             title: t('roles'),
+
             url: '/dashboard/roles',
             icon: Package,
           },
           {
+
             title: t('permissions'),
+
             url: '/dashboard/permissions',
             icon: ShieldAlert,
           },
           {
+
             title: t('users'),
+
             url: '/dashboard/users',
             icon: Users,
           },
           {
+
             title: t('achievements'),
+
             url: '/dashboard/achievements',
             icon: Award,
           },
@@ -116,3 +157,6 @@ export const useSidebarData = () => {
     ],
   };
 };
+
+// Export static data for backward compatibility (deprecated)
+export const sidebarData: SidebarData = generateSidebarData(null);

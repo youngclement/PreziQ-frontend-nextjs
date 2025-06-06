@@ -76,63 +76,79 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
     }
   }, [backgroundColor, customColor]);
 
-  const updateSlideBackground = async (
-    slideId: string,
-    backgroundColor: string,
-    backgroundImage: string
-  ) => {
-    try {
-      await activitiesApi.updateActivity(slideId, {
-        backgroundColor,
-        backgroundImage,
-      });
+  // const updateSlideBackground = async (
+  //   slideId: string,
+  //   backgroundColor: string,
+  //   backgroundImage: string
+  // ) => {
+  //   try {
+  //     await activitiesApi.updateActivity(slideId, {
+  //       backgroundColor,
+  //       backgroundImage,
+  //     });
 
-      if (typeof window !== 'undefined') {
-        window.savedBackgroundColors = window.savedBackgroundColors || {};
-        window.savedBackgroundColors[slideId] = backgroundColor;
-      }
+  //     if (typeof window !== 'undefined') {
+  //       window.savedBackgroundColors = window.savedBackgroundColors || {};
+  //       window.savedBackgroundColors[slideId] = backgroundColor;
+  //     }
 
-      if (window.updateActivityBackground) {
-        window.updateActivityBackground(slideId, {
-          backgroundColor,
-          backgroundImage,
-        });
-      }
-    } catch (error: any) {
-      console.error('Error updating slide background:', error);
-    }
-  };
+  //     if (window.updateActivityBackground) {
+  //       window.updateActivityBackground(slideId, {
+  //         backgroundColor,
+  //         backgroundImage,
+  //       });
+  //     }
+  //   } catch (error: any) {
+  //     console.error('Error updating slide background:', error);
+  //   }
+  // };
 
   const onBackgroundColorChange = async (color: string) => {
     setCustomColor(color);
     handleSlideBackgroundChange(color, activeQuestionIndex);
 
+    // Khi chọn color, xóa background image
+    if (typeof window !== 'undefined' && window.updateActivityBackground) {
+      window.updateActivityBackground(slideId, {
+        backgroundColor: color,
+        backgroundImage: '', // Xóa background image
+      });
+    }
+
+    // Dispatch event cho Fabric canvas
     window.dispatchEvent(
       new CustomEvent('fabric:set-background-color', {
-        detail: { color, slideId: slideId },
+        detail: { color, slideId },
       })
     );
-
-    if (slideId) {
-      await updateSlideBackground(slideId, color, '');
-      console.log('Mới update nè bro');
-    }
   };
 
   const onBackgroundImageChange = async (url: string) => {
+    if (backgroundImage) {
+      try {
+        await storageApi.deleteSingleFile(backgroundImage);
+      } catch (error) {
+        console.error('Error deleting old background image:', error);
+        // Continue with the update even if delete fails
+      }
+    }
     handleSlideBackgroundImageChange(url, activeQuestionIndex);
     handleSlideBackgroundChange('', activeQuestionIndex);
 
+    // Khi chọn image, xóa background color
+    if (typeof window !== 'undefined' && window.updateActivityBackground) {
+      window.updateActivityBackground(slideId, {
+        backgroundImage: url,
+        backgroundColor: '', // Xóa background color
+      });
+    }
+
+    // Dispatch event cho Fabric canvas
     window.dispatchEvent(
       new CustomEvent('fabric:set-background-image', {
-        detail: { url, slideId: slideId },
+        detail: { url, slideId },
       })
     );
-
-    if (slideId) {
-      await updateSlideBackground(slideId, '', url);
-      console.log('Mới update nè bro');
-    }
   };
 
   // Handle file upload for background
