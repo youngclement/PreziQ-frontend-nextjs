@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useLanguage } from '@/contexts/language-context';
+import { MusicSelector } from './music-selector';
 
 interface FormFieldsProps {
   control: Control<CollectionFormValues>;
@@ -120,11 +121,7 @@ export function FormFields({ control }: FormFieldsProps) {
                 {t('collectionForm.backgroundMusicLabel')}
               </FormLabel>
               <FormControl>
-                <Input
-                  placeholder={t('collectionForm.backgroundMusicPlaceholder')}
-                  className="border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 rounded-md"
-                  {...field}
-                />
+                <MusicSelector value={field.value} onChange={field.onChange} />
               </FormControl>
               <FormDescription className="text-xs text-gray-500 dark:text-gray-400">
                 {t('collectionForm.backgroundMusicDescription')}
