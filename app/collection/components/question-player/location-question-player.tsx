@@ -31,6 +31,8 @@ interface LocationQuestionPlayerProps {
   useGlobe?: boolean;
   showCorrectLocation?: boolean;
   disabled?: boolean;
+  userSelectedLocations?: { lat: number; lng: number; radius: number }[];
+  correctAnswers?: { lat: number; lng: number; radius: number }[];
 }
 
 export function LocationQuestionPlayer({
@@ -42,19 +44,16 @@ export function LocationQuestionPlayer({
   useGlobe = false,
   showCorrectLocation = false,
   disabled = false,
+  userSelectedLocations = [],
+  correctAnswers = [],
 }: LocationQuestionPlayerProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const correctLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const correctMarkersRef = useRef<mapboxgl.Marker[]>([]); // Ref cho multiple correct markers
+  const userMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
-  const [hasAnswered, setHasAnswered] = useState(false);
-  const [isCorrect, setIsCorrect] = useState(false);
-  const [distance, setDistance] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const [isBrowser, setIsBrowser] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -152,26 +151,50 @@ export function LocationQuestionPlayer({
         setMapLoaded(true);
 
         try {
-          // Add a marker that will be placed when user clicks
-          const marker = new mapboxgl.Marker({
-            color: '#FF0000',
-            draggable: true,
-          });
-
-          markerRef.current = marker;
-
-          // Add click handler to place marker
+          // Add click handler to place marker for multiple selection
           map.on('click', (e) => {
-            if (hasAnswered || disabled) return; // Prevent changes after answering or when disabled
+            if (disabled) return; // Prevent changes when disabled
 
             const { lng, lat } = e.lngLat;
-            marker.setLngLat([lng, lat]).addTo(map);
-            setSelectedLocation({ lat, lng });
 
-            // Automatically call onAnswer when user selects a location
+            console.log('[LocationQuestionPlayer] Map clicked:', {
+              lng,
+              lat,
+              disabled,
+            });
+
+            // Tạo marker mới cho selection này
+            const newMarker = new mapboxgl.Marker({
+              color: '#FF0000',
+              draggable: false, // Không cho drag để tránh confusion với multiple markers
+            })
+              .setLngLat([lng, lat])
+              .addTo(map);
+
+            console.log(
+              '[LocationQuestionPlayer] Created new user marker:',
+              newMarker
+            );
+
+            // Lưu marker vào userMarkersRef để có thể quản lý
+            if (!userMarkersRef.current) {
+              userMarkersRef.current = [];
+            }
+            userMarkersRef.current.push(newMarker);
+
+            console.log(
+              '[LocationQuestionPlayer] Total user markers now:',
+              userMarkersRef.current.length
+            );
+
+            // Call onAnswer callback without causing rerender
             if (onAnswer) {
               const userLocation = { lat, lng, radius: locationData.radius };
-              onAnswer(false, 0, userLocation); // We'll calculate distance later if needed
+              console.log(
+                '[LocationQuestionPlayer] Calling onAnswer with:',
+                userLocation
+              );
+              onAnswer(false, 0, userLocation);
             }
           });
         } catch (error) {
@@ -193,7 +216,7 @@ export function LocationQuestionPlayer({
       console.error('Error initializing map:', error);
       return () => {};
     }
-  }, [mapStyle, use3D, useGlobe, hasAnswered, isBrowser, disabled, onAnswer]);
+  }, [mapStyle, use3D, useGlobe, disabled, isBrowser]);
 
   // Effect to show correct location when showCorrectLocation is true
   useEffect(() => {
@@ -205,20 +228,38 @@ export function LocationQuestionPlayer({
         delete mapRef.current.getContainer().dataset.hasFlownToCorrect;
       }
 
-      // Remove correct location marker và circle khi ẩn đáp án
+      // Remove correct location markers và circles khi ẩn đáp án
       if (correctLocationMarkerRef.current) {
         correctLocationMarkerRef.current.remove();
         correctLocationMarkerRef.current = null;
       }
 
-      // Remove radius circle
+      // Remove multiple correct markers
+      correctMarkersRef.current.forEach((marker) => marker.remove());
+      correctMarkersRef.current = [];
+
+      // Remove radius circles (có thể có nhiều)
+      for (let i = 0; i < 10; i++) {
+        // Giả sử tối đa 10 answers
+        try {
+          if (mapRef.current.getSource(`radius-circle-${i}`)) {
+            mapRef.current.removeLayer(`radius-circle-outline-${i}`);
+            mapRef.current.removeLayer(`radius-circle-${i}`);
+            mapRef.current.removeSource(`radius-circle-${i}`);
+          }
+        } catch (error) {
+          // Layer đã bị xóa hoặc không tồn tại
+        }
+      }
+
+      // Remove legacy single radius circle
       if (mapRef.current.getSource('radius-circle')) {
         try {
           mapRef.current.removeLayer('radius-circle-outline');
           mapRef.current.removeLayer('radius-circle');
           mapRef.current.removeSource('radius-circle');
         } catch (error) {
-          console.log('Layers already removed');
+          console.log('Legacy layers already removed');
         }
       }
 
@@ -226,19 +267,99 @@ export function LocationQuestionPlayer({
     }
 
     try {
-      // Show the correct location with a green marker
+      // Sử dụng correctAnswers nếu có, ngược lại fallback về locationData
+      const answersToShow =
+        correctAnswers.length > 0 ? correctAnswers : [locationData];
+
+      // Xóa old markers trước khi tạo mới
       if (correctLocationMarkerRef.current) {
         correctLocationMarkerRef.current.remove();
+        correctLocationMarkerRef.current = null;
       }
+      correctMarkersRef.current.forEach((marker) => marker.remove());
+      correctMarkersRef.current = [];
 
-      correctLocationMarkerRef.current = new mapboxgl.Marker({
-        color: '#00FF00',
-      })
-        .setLngLat([locationData.lng, locationData.lat])
-        .addTo(mapRef.current);
+      // Hiển thị tất cả correct locations
+      answersToShow.forEach((answer, index) => {
+        // Tạo green marker cho mỗi correct answer
+        const correctMarker = new mapboxgl.Marker({
+          color: '#00FF00',
+        })
+          .setLngLat([answer.lng, answer.lat])
+          .addTo(mapRef.current!);
+
+        correctMarkersRef.current.push(correctMarker);
+
+        // Tạo radius circle cho mỗi answer
+        const circleId = `radius-circle-${index}`;
+        const outlineId = `radius-circle-outline-${index}`;
+
+        // Xóa circle cũ nếu có
+        if (mapRef.current!.getSource(circleId)) {
+          mapRef.current!.removeLayer(outlineId);
+          mapRef.current!.removeLayer(circleId);
+          mapRef.current!.removeSource(circleId);
+        }
+
+        // Tạo circle data
+        const center = [answer.lng, answer.lat];
+        const radiusInKm = answer.radius;
+        const points = 64;
+        const coordinates = [];
+
+        for (let i = 0; i < points; i++) {
+          const angle = (i / points) * 2 * Math.PI;
+          const dx = radiusInKm * Math.cos(angle);
+          const dy = radiusInKm * Math.sin(angle);
+
+          // Convert km to degrees (approximate)
+          const deltaLat = dy / 111.32;
+          const deltaLng =
+            dx / (111.32 * Math.cos((answer.lat * Math.PI) / 180));
+
+          coordinates.push([center[0] + deltaLng, center[1] + deltaLat]);
+        }
+        coordinates.push(coordinates[0]); // Close the circle
+
+        mapRef.current!.addSource(circleId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'Polygon',
+              coordinates: [coordinates],
+            },
+          },
+        });
+
+        mapRef.current!.addLayer({
+          id: circleId,
+          type: 'fill',
+          source: circleId,
+          paint: {
+            'fill-color': '#00FF00',
+            'fill-opacity': 0.15, // Giảm opacity khi có nhiều circle
+          },
+        });
+
+        mapRef.current!.addLayer({
+          id: outlineId,
+          type: 'line',
+          source: circleId,
+          paint: {
+            'line-color': '#00FF00',
+            'line-width': 2,
+          },
+        });
+
+        console.log(
+          `[LocationQuestionPlayer] Hiển thị correct answer ${index + 1}:`,
+          answer
+        );
+      });
 
       // Chỉ flyTo một lần khi showCorrectLocation được bật lần đầu
-      // Sử dụng flag để tránh flyTo liên tục
       const hasFlownToCorrectLocation =
         mapRef.current.getContainer().dataset.hasFlownToCorrect;
 
@@ -250,86 +371,111 @@ export function LocationQuestionPlayer({
         '[LocationQuestionPlayer] hasFlownToCorrectLocation:',
         hasFlownToCorrectLocation
       );
-      console.log('[LocationQuestionPlayer] locationData:', locationData);
+      console.log('[LocationQuestionPlayer] answersToShow:', answersToShow);
+      console.log(
+        '[LocationQuestionPlayer] userSelectedLocations:',
+        userSelectedLocations
+      );
 
-      if (!hasFlownToCorrectLocation) {
+      // Đảm bảo user markers được hiển thị khi show correct location
+      if (userSelectedLocations && userSelectedLocations.length > 0) {
+        console.log(
+          '[LocationQuestionPlayer] Ensuring user markers are visible with correct markers'
+        );
+
+        // Xóa user markers cũ nếu có
+        userMarkersRef.current.forEach((marker) => marker.remove());
+        userMarkersRef.current = [];
+
+        // Tạo lại user markers
+        userSelectedLocations.forEach((location, index) => {
+          const userMarker = new mapboxgl.Marker({
+            color: '#FF0000', // Màu đỏ cho user selection
+            draggable: false,
+          })
+            .setLngLat([location.lng, location.lat])
+            .addTo(mapRef.current!);
+
+          userMarkersRef.current.push(userMarker);
+          console.log(
+            `[LocationQuestionPlayer] Tạo user marker ${
+              index + 1
+            } cùng với correct markers:`,
+            location
+          );
+        });
+      }
+
+      // Reset flag nếu userSelectedLocations đã thay đổi để auto zoom lại
+      const shouldResetFlag =
+        userSelectedLocations.length > 0 && hasFlownToCorrectLocation;
+      if (shouldResetFlag) {
+        delete mapRef.current.getContainer().dataset.hasFlownToCorrect;
+        console.log(
+          '[LocationQuestionPlayer] Reset flag để auto zoom lại với user selections'
+        );
+      }
+
+      if (!mapRef.current.getContainer().dataset.hasFlownToCorrect) {
         // Đánh dấu đã flyTo để tránh gọi lại
         mapRef.current.getContainer().dataset.hasFlownToCorrect = 'true';
 
-        console.log('[LocationQuestionPlayer] Flying to correct location...');
-        // Zoom to the correct location một lần duy nhất
-        mapRef.current.flyTo({
-          center: [locationData.lng, locationData.lat],
-          zoom: 12,
-          duration: 2000,
+        console.log('[LocationQuestionPlayer] Flying to show all locations...');
+
+        // Tạo bounds để hiển thị tất cả locations (correct answers + user selections)
+        const bounds = new mapboxgl.LngLatBounds();
+
+        // Thêm tất cả correct answers vào bounds
+        answersToShow.forEach((answer) => {
+          bounds.extend([answer.lng, answer.lat]);
         });
+
+        // Thêm tất cả user selected locations vào bounds
+        if (userSelectedLocations.length > 0) {
+          userSelectedLocations.forEach((location) => {
+            bounds.extend([location.lng, location.lat]);
+          });
+        }
+
+        // Kiểm tra xem bounds có hợp lệ không (có ít nhất 1 điểm)
+        const boundsValid =
+          answersToShow.length > 0 || userSelectedLocations.length > 0;
+
+        if (boundsValid) {
+          // Sử dụng fitBounds để hiển thị tất cả markers
+          mapRef.current.fitBounds(bounds, {
+            padding: 100, // Tăng padding để có khoảng trống tốt hơn
+            duration: 2000,
+            maxZoom: 15, // Giới hạn zoom tối đa để không zoom quá gần
+          });
+
+          console.log(
+            '[LocationQuestionPlayer] Fitted bounds to show all locations:',
+            {
+              correctAnswers: answersToShow.length,
+              userSelections: userSelectedLocations.length,
+            }
+          );
+        } else {
+          // Fallback nếu không có location nào
+          console.log(
+            '[LocationQuestionPlayer] No locations to show, using default view'
+          );
+        }
       } else {
         console.log(
           '[LocationQuestionPlayer] Đã flyTo trước đó, bỏ qua để cho phép zoom tự do'
         );
       }
-
-      // Add a circle to show the acceptable radius
-      if (mapRef.current.getSource('radius-circle')) {
-        mapRef.current.removeLayer('radius-circle-outline');
-        mapRef.current.removeLayer('radius-circle');
-        mapRef.current.removeSource('radius-circle');
-      }
-
-      // Create circle data
-      const center = [locationData.lng, locationData.lat];
-      const radiusInKm = locationData.radius;
-      const points = 64;
-      const coordinates = [];
-
-      for (let i = 0; i < points; i++) {
-        const angle = (i / points) * 2 * Math.PI;
-        const dx = radiusInKm * Math.cos(angle);
-        const dy = radiusInKm * Math.sin(angle);
-
-        // Convert km to degrees (approximate)
-        const deltaLat = dy / 111.32;
-        const deltaLng =
-          dx / (111.32 * Math.cos((locationData.lat * Math.PI) / 180));
-
-        coordinates.push([center[0] + deltaLng, center[1] + deltaLat]);
-      }
-      coordinates.push(coordinates[0]); // Close the circle
-
-      mapRef.current.addSource('radius-circle', {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          geometry: {
-            type: 'Polygon',
-            coordinates: [coordinates],
-          },
-        },
-      });
-
-      mapRef.current.addLayer({
-        id: 'radius-circle',
-        type: 'fill',
-        source: 'radius-circle',
-        paint: {
-          'fill-color': '#00FF00',
-          'fill-opacity': 0.2,
-        },
-      });
-
-      mapRef.current.addLayer({
-        id: 'radius-circle-outline',
-        type: 'line',
-        source: 'radius-circle',
-        paint: {
-          'line-color': '#00FF00',
-          'line-width': 2,
-        },
-      });
     } catch (error) {
-      console.error('Error showing correct location:', error);
+      console.error('Error showing correct locations:', error);
     }
-  }, [showCorrectLocation, locationData]);
+  }, [
+    showCorrectLocation,
+    locationData,
+    correctAnswers,
+    userSelectedLocations,
+  ]);
 
   // Function to calculate distance between two points in km
   function calculateDistance(
@@ -386,22 +532,19 @@ export function LocationQuestionPlayer({
 
     const [lng, lat] = result.center;
 
-    // Remove existing marker
-    if (markerRef.current) {
-      markerRef.current.remove();
-    }
-
-    // Add new marker
-    const marker = new mapboxgl.Marker({
+    // Tạo marker mới thay vì replace existing marker
+    const newMarker = new mapboxgl.Marker({
       color: '#FF0000',
-      draggable: true,
-    });
+      draggable: false,
+    })
+      .setLngLat([lng, lat])
+      .addTo(mapRef.current);
 
-    marker.setLngLat([lng, lat]).addTo(mapRef.current);
-    markerRef.current = marker;
-
-    // Update selected location
-    setSelectedLocation({ lat, lng });
+    // Thêm vào userMarkersRef để quản lý
+    if (!userMarkersRef.current) {
+      userMarkersRef.current = [];
+    }
+    userMarkersRef.current.push(newMarker);
 
     // Fly to the selected location
     mapRef.current.flyTo({
@@ -432,92 +575,113 @@ export function LocationQuestionPlayer({
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  // Function to submit answer
-  const handleSubmitAnswer = () => {
-    if (!selectedLocation || !mapRef.current) return;
+  // Effect để hiển thị user selected locations khi có userSelectedLocations
+  useEffect(() => {
+    if (!mapRef.current) {
+      return;
+    }
 
-    try {
-      // Calculate distance between selected location and correct location
-      const calculatedDistance = calculateDistance(
-        selectedLocation.lat,
-        selectedLocation.lng,
-        locationData.lat,
-        locationData.lng
+    console.log('[LocationQuestionPlayer] User selected locations effect:', {
+      userSelectedLocations,
+      currentMarkersCount: userMarkersRef.current.length,
+    });
+
+    // Nếu không có userSelectedLocations, không xóa markers ngay lập tức
+    // vì có thể markers đang được tạo từ click handler
+    if (!userSelectedLocations?.length) {
+      console.log(
+        '[LocationQuestionPlayer] No userSelectedLocations, keeping existing markers for now'
       );
+      return;
+    }
 
-      setDistance(calculatedDistance);
+    // Chỉ cập nhật khi userSelectedLocations khác với số lượng markers hiện tại
+    if (userMarkersRef.current.length === userSelectedLocations.length) {
+      // Kiểm tra xem vị trí có khác nhau không
+      let needUpdate = false;
+      for (let i = 0; i < userSelectedLocations.length; i++) {
+        const marker = userMarkersRef.current[i];
+        const location = userSelectedLocations[i];
+        const lngLat = marker.getLngLat();
 
-      // Check if answer is within acceptable radius
-      const answerIsCorrect = calculatedDistance <= locationData.radius;
-      setIsCorrect(answerIsCorrect);
-      setHasAnswered(true);
-
-      // Show the correct location with a green marker
-      correctLocationMarkerRef.current = new mapboxgl.Marker({
-        color: '#00FF00',
-      })
-        .setLngLat([locationData.lng, locationData.lat])
-        .addTo(mapRef.current);
-
-      // Draw a line between the two points
-      if (mapRef.current.getSource('route')) {
-        (mapRef.current.getSource('route') as mapboxgl.GeoJSONSource).setData({
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'LineString',
-            coordinates: [
-              [selectedLocation.lng, selectedLocation.lat],
-              [locationData.lng, locationData.lat],
-            ],
-          },
-        });
-      } else {
-        mapRef.current.addSource('route', {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'LineString',
-              coordinates: [
-                [selectedLocation.lng, selectedLocation.lat],
-                [locationData.lng, locationData.lat],
-              ],
-            },
-          },
-        });
-
-        mapRef.current.addLayer({
-          id: 'route',
-          type: 'line',
-          source: 'route',
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round',
-          },
-          paint: {
-            'line-color': '#888',
-            'line-width': 2,
-          },
-        });
+        // Kiểm tra sự khác biệt trong tọa độ
+        if (
+          Math.abs(lngLat.lng - location.lng) > 0.000001 ||
+          Math.abs(lngLat.lat - location.lat) > 0.000001
+        ) {
+          needUpdate = true;
+          break;
+        }
       }
 
-      // Adjust the map to show both points
-      const bounds = new mapboxgl.LngLatBounds()
-        .extend([selectedLocation.lng, selectedLocation.lat])
-        .extend([locationData.lng, locationData.lat]);
-
-      mapRef.current.fitBounds(bounds, {
-        padding: 80,
-      });
-
-      // Call the onAnswer callback
-      onAnswer(answerIsCorrect, calculatedDistance, selectedLocation);
-    } catch (error) {
-      console.error('Error submitting answer:', error);
+      if (!needUpdate) {
+        console.log('[LocationQuestionPlayer] User markers đã đồng bộ, bỏ qua');
+        return; // Đã đồng bộ, không cần làm gì
+      }
     }
-  };
+
+    // Chỉ cập nhật nếu số lượng markers khác với userSelectedLocations
+    // hoặc có sự khác biệt về vị trí
+    console.log(
+      '[LocationQuestionPlayer] Updating user markers to match userSelectedLocations'
+    );
+
+    // Xóa tất cả markers cũ trước khi tạo mới
+    userMarkersRef.current.forEach((marker) => marker.remove());
+    userMarkersRef.current = [];
+
+    // Tạo markers mới cho tất cả userSelectedLocations
+    userSelectedLocations.forEach((location, index) => {
+      const userMarker = new mapboxgl.Marker({
+        color: '#FF0000', // Màu đỏ cho user selection
+        draggable: false,
+      })
+        .setLngLat([location.lng, location.lat])
+        .addTo(mapRef.current!);
+
+      userMarkersRef.current.push(userMarker);
+
+      console.log(
+        `[LocationQuestionPlayer] Tạo user marker ${index + 1}:`,
+        location
+      );
+    });
+  }, [userSelectedLocations]);
+
+  // Effect riêng để đảm bảo user markers luôn được hiển thị khi showCorrectLocation changes
+  useEffect(() => {
+    if (!mapRef.current || !userSelectedLocations?.length) {
+      return;
+    }
+
+    console.log(
+      '[LocationQuestionPlayer] Ensuring user markers are visible after showCorrectLocation change'
+    );
+
+    // Kiểm tra và tái tạo user markers nếu cần
+    if (userMarkersRef.current.length !== userSelectedLocations.length) {
+      // Xóa markers cũ
+      userMarkersRef.current.forEach((marker) => marker.remove());
+      userMarkersRef.current = [];
+
+      // Tạo lại markers
+      userSelectedLocations.forEach((location, index) => {
+        const userMarker = new mapboxgl.Marker({
+          color: '#FF0000',
+          draggable: false,
+        })
+          .setLngLat([location.lng, location.lat])
+          .addTo(mapRef.current!);
+
+        userMarkersRef.current.push(userMarker);
+        console.log(
+          `[LocationQuestionPlayer] Re-created user marker ${
+            index + 1
+          } after showCorrectLocation change`
+        );
+      });
+    }
+  }, [showCorrectLocation, userSelectedLocations]);
 
   return (
     <Card className='w-full'>
@@ -598,58 +762,18 @@ export function LocationQuestionPlayer({
         </div>
 
         {/* Selected coordinates display */}
-        {selectedLocation && !hasAnswered && (
-          <div className='bg-muted/30 p-3 rounded-md text-sm text-center'>
-            <p>
-              Vị trí đã chọn: {selectedLocation.lat.toFixed(6)},{' '}
-              {selectedLocation.lng.toFixed(6)}
-            </p>
-            <p className='text-muted-foreground text-xs mt-1'>
-              Kéo ghim đỏ để điều chỉnh vị trí chính xác hơn
-            </p>
-          </div>
-        )}
-
-        {/* Result display */}
-        {hasAnswered && (
-          <div
-            className={`p-4 rounded-md ${
-              isCorrect
-                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-            }`}
-          >
-            <div className='flex items-center'>
-              {isCorrect ? (
-                <Check className='h-5 w-5 text-green-600 dark:text-green-400 mr-2' />
-              ) : (
-                <X className='h-5 w-5 text-red-600 dark:text-red-400 mr-2' />
-              )}
-              <h4 className='font-medium'>
-                {isCorrect ? 'Chính xác!' : 'Chưa chính xác'}
-              </h4>
+        {userSelectedLocations &&
+          userSelectedLocations.length > 0 &&
+          !disabled && (
+            <div className='bg-muted/30 p-3 rounded-md text-sm text-center'>
+              <p>Đã chọn {userSelectedLocations.length} vị trí</p>
+              <p className='text-muted-foreground text-xs mt-1'>
+                Nhấp vào bản đồ để thêm vị trí mới
+              </p>
             </div>
-            <p className='mt-1 text-sm'>
-              Bạn đã chọn cách vị trí đúng {distance.toFixed(1)} km.
-              {isCorrect
-                ? ' Trong phạm vi cho phép!'
-                : ` (Vượt quá phạm vi cho phép ${locationData.radius} km)`}
-            </p>
-          </div>
-        )}
+          )}
 
-        {/* Submit button */}
-        {selectedLocation && !hasAnswered && (
-          <Button
-            className='w-full bg-gradient-to-r from-blue-500 to-indigo-600'
-            onClick={handleSubmitAnswer}
-          >
-            <MapPin className='mr-2 h-4 w-4' />
-            Gửi câu trả lời
-          </Button>
-        )}
-
-        {hasAnswered && (
+        {showCorrectLocation && (
           <div className='text-sm text-center text-muted-foreground'>
             Vị trí chính xác: {locationData.lat.toFixed(6)},{' '}
             {locationData.lng.toFixed(6)}
