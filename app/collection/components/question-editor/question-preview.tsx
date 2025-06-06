@@ -125,6 +125,8 @@ interface QuestionPreviewProps {
   onAddOption?: () => void;
   onDeleteOption?: (index: number) => void;
   onReorderOptions?: (fromIndex: number, toIndex: number) => void;
+  leftColumnName?: string;
+  rightColumnName?: string;
 }
 
 interface SlideData {
@@ -153,7 +155,7 @@ export function QuestionPreview({
   timeLimit,
   backgroundImage,
   previewMode = true,
-  onQuestionLocationChange = () => {},
+  onQuestionLocationChange = () => { },
   onQuestionTextChange,
   onOptionChange,
   onChangeQuestion,
@@ -166,9 +168,11 @@ export function QuestionPreview({
   onUpdateActivityBackground,
   onAddQuestion,
   onDeleteActivity,
-  onAddOption = () => {},
-  onDeleteOption = () => {},
+  onAddOption = () => { },
+  onDeleteOption = () => { },
   onReorderOptions,
+  leftColumnName,
+  rightColumnName,
 }: QuestionPreviewProps) {
   const [viewMode, setViewMode] = React.useState('desktop');
   const [showScrollTop, setShowScrollTop] = React.useState(false);
@@ -221,120 +225,11 @@ export function QuestionPreview({
 
   // Add toast hook
   const { toast } = useToast();
-  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([
-    {
-      id: '1',
-      activity_id: '1',
-      question_type: 'matching_pair',
-      question_text:
-        'Nối các thủ đô với quốc gia tương ứng (một thủ đô có thể thuộc nhiều quốc gia)',
-      options: [
-        {
-          id: 'a1',
-          option_text: 'Hà Nội',
-          type: 'left',
-          pair_id: '1',
-          is_correct: true,
-          display_order: 1,
-        },
-        {
-          id: 'a2',
-          option_text: 'Tokyo',
-          type: 'left',
-          pair_id: '2',
-          is_correct: true,
-          display_order: 2,
-        },
-        {
-          id: 'a3',
-          option_text: 'Jerusalem',
-          type: 'left',
-          // Multiple pair_ids separated by commas
-          pair_id: '3,4',
-          is_correct: true,
-          display_order: 3,
-        },
-        {
-          id: 'a4',
-          option_text: 'Brussels',
-          type: 'left',
-          // Multiple pair_ids separated by commas
-          pair_id: '5,6',
-          is_correct: true,
-          display_order: 4,
-        },
-        {
-          id: 'b1',
-          option_text: 'Việt Nam',
-          type: 'right',
-          pair_id: '1',
-          is_correct: true,
-          display_order: 1,
-        },
-        {
-          id: 'b2',
-          option_text: 'Nhật Bản',
-          type: 'right',
-          pair_id: '2',
-          is_correct: true,
-          display_order: 2,
-        },
-        {
-          id: 'b3',
-          option_text: 'Israel',
-          type: 'right',
-          pair_id: '3',
-          is_correct: true,
-          display_order: 3,
-        },
-        {
-          id: 'b4',
-          option_text: 'Palestine',
-          type: 'right',
-          pair_id: '4',
-          is_correct: true,
-          display_order: 4,
-        },
-        {
-          id: 'b5',
-          option_text: 'Bỉ',
-          type: 'right',
-          pair_id: '5',
-          is_correct: true,
-          display_order: 5,
-        },
-        {
-          id: 'b6',
-          option_text: 'Liên minh Châu Âu',
-          type: 'right',
-          pair_id: '6',
-          is_correct: true,
-          display_order: 6,
-        },
-      ],
-    },
-  ]);
+
+  const activeQuestion = questions[activeQuestionIndex];
+  const [currentQuestion, setCurrentQuestion] = useState(activeQuestion);
 
   // Handler functions
-  const handleQuestionTextChange = (value: string, questionIndex: number) => {
-    const updatedQuestions = [...quizQuestions];
-    updatedQuestions[questionIndex].question_text = value;
-    setQuizQuestions(updatedQuestions);
-  };
-
-  const handleOptionChange = (
-    questionIndex: number,
-    optionIndex: number,
-    field: string,
-    value: any
-  ) => {
-    const updatedQuestions = [...quizQuestions];
-    const options = [...updatedQuestions[questionIndex].options];
-    options[optionIndex] = { ...options[optionIndex], [field]: value };
-    updatedQuestions[questionIndex].options = options;
-    setQuizQuestions(updatedQuestions);
-  };
-
   const handleCorrectAnswerChange = (value: string) => {
     console.log('Correct answers:', value);
     // You can implement logic to save the score or update state
@@ -525,8 +420,8 @@ export function QuestionPreview({
       // Luôn ưu tiên sử dụng màu từ global storage trước
       const savedColor =
         typeof window !== 'undefined' &&
-        window.savedBackgroundColors &&
-        activity.id
+          window.savedBackgroundColors &&
+          activity.id
           ? window.savedBackgroundColors[activity.id]
           : null;
 
@@ -877,8 +772,8 @@ export function QuestionPreview({
       : undefined;
     const slideElements = question.activity_id
       ? slidesElements[question.activity_id] ||
-        slidesData[question.activity_id]?.slide?.slideElements ||
-        []
+      slidesData[question.activity_id]?.slide?.slideElements ||
+      []
       : [];
 
     // Find activity specific background for this question
@@ -1046,13 +941,13 @@ export function QuestionPreview({
                     ? viewMode === 'mobile'
                       ? 300
                       : viewMode === 'tablet'
-                      ? 650
-                      : 812
+                        ? 650
+                        : 812
                     : viewMode === 'mobile'
-                    ? 300
-                    : viewMode === 'tablet'
-                    ? 650
-                    : 812
+                      ? 300
+                      : viewMode === 'tablet'
+                        ? 650
+                        : 812
                 }
                 height={460}
                 zoom={1}
@@ -1283,28 +1178,27 @@ export function QuestionPreview({
 
           {/* Matching Pair Content */}
           <CardContent className="p-0 bg-white dark:bg-gray-800">
-            {quizQuestions.map((question, index) => (
-              <div className="w-full" key={question.id}>
-                <MatchingPairPreview
-                  question={question}
-                  questionIndex={index}
-                  isActive={true}
-                  viewMode={viewMode as 'desktop' | 'tablet' | 'mobile'}
-                  onCorrectAnswerChange={handleCorrectAnswerChange}
-                  editMode={editMode}
-                  setEditMode={setEditMode}
-                  editingText={editingText}
-                  setEditingText={setEditingText}
-                  editingOptionIndex={editingOptionIndex}
-                  setEditingOptionIndex={setEditingOptionIndex}
-                  onQuestionTextChange={handleQuestionTextChange}
-                  onOptionChange={handleOptionChange}
-                  onChangeQuestion={(index) =>
-                    setActiveQuestionPairIndex(index)
-                  }
-                />
-              </div>
-            ))}
+            <div className="w-full" key={question.id}>
+              <MatchingPairPreview
+                question={question}
+                questionIndex={questionIndex}
+                isActive={isActive}
+                viewMode={viewMode as 'desktop' | 'tablet' | 'mobile'}
+                onCorrectAnswerChange={handleCorrectAnswerChange}
+                editMode={editMode}
+                setEditMode={setEditMode}
+                editingText={editingText}
+                setEditingText={setEditingText}
+                editingOptionIndex={editingOptionIndex}
+                setEditingOptionIndex={setEditingOptionIndex}
+                onQuestionTextChange={onQuestionTextChange}
+                onOptionChange={onOptionChange}
+                onChangeQuestion={onChangeQuestion}
+                leftColumnName={leftColumnName}
+                rightColumnName={rightColumnName}
+                previewMode={previewMode}
+              />
+            </div>
           </CardContent>
         </Card>
       );
@@ -1430,8 +1324,8 @@ export function QuestionPreview({
                         option.is_correct
                           ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                           : isTrue
-                          ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                          : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                            ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                            : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
                         // Only show pointer cursor when edit mode is enabled
                         editMode !== null
                           ? 'cursor-pointer hover:shadow-md'
@@ -1881,12 +1775,12 @@ export function QuestionPreview({
                   question.options.length <= 2
                     ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
                     : question.options.length <= 4
-                    ? 'grid grid-cols-2 gap-3'
-                    : 'grid grid-cols-2 gap-3 md:grid-cols-3',
+                      ? 'grid grid-cols-2 gap-3'
+                      : 'grid grid-cols-2 gap-3 md:grid-cols-3',
                   viewMode === 'mobile' && 'grid-cols-1',
                   viewMode === 'tablet' &&
-                    question.options.length > 4 &&
-                    'grid-cols-2'
+                  question.options.length > 4 &&
+                  'grid-cols-2'
                 )}
               >
                 {/* Direct rendering of choice options */}
@@ -2203,7 +2097,7 @@ export function QuestionPreview({
       // Call the API
       activitiesApi
         .updateTypeAnswerQuiz(question.activity_id, payload)
-        .then(() => {})
+        .then(() => { })
         .catch((error) => {
           console.error('Error updating correct answer:', error);
         })
@@ -2843,14 +2737,14 @@ interface OptionItemProps {
   option: QuizOption;
   index: number;
   questionType:
-    | 'multiple_choice'
-    | 'multiple_response'
-    | 'true_false'
-    | 'text_answer'
-    | 'slide'
-    | 'info_slide'
-    | 'reorder'
-    | 'location';
+  | 'multiple_choice'
+  | 'multiple_response'
+  | 'true_false'
+  | 'text_answer'
+  | 'slide'
+  | 'info_slide'
+  | 'reorder'
+  | 'location';
   questionIndex: number;
   onOptionEdit?: (
     questionIndex: number,

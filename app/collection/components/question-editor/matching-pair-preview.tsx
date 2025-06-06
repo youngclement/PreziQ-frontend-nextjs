@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Info } from 'lucide-react';
@@ -14,6 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTranslation } from 'react-i18next';
 
 // Add this shuffle function
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -24,6 +25,16 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   }
   return newArray;
 };
+
+const PAIR_COLORS = [
+  '#3b82f6', // blue
+  '#a855f7', // purple
+  '#eab308', // yellow
+  '#f97316', // orange
+  '#06b6d4', // cyan
+  '#ec4899', // pink
+  '#6366f1', // indigo
+];
 
 interface Connection {
   columnA: string;
@@ -53,6 +64,7 @@ interface MatchingPairPreviewProps {
   backgroundImage?: string;
   leftColumnName?: string;
   rightColumnName?: string;
+  previewMode?: boolean;
 }
 
 export function MatchingPairPreview({
@@ -73,10 +85,28 @@ export function MatchingPairPreview({
   backgroundImage,
   leftColumnName = 'Column A',
   rightColumnName = 'Column B',
+  previewMode = true,
 }: MatchingPairPreviewProps) {
+  const { t } = useTranslation();
   const [connections, setConnections] = useState<Connection[]>([]);
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{ id: string, type: 'left' | 'right' } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Create a color map for pairs
+  const pairColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const pairIds = new Set<string>();
+    question.options.forEach(opt => {
+      if (opt.pair_id) {
+        pairIds.add(opt.pair_id);
+      }
+    });
+
+    Array.from(pairIds).forEach((pairId, index) => {
+      map.set(pairId, PAIR_COLORS[index % PAIR_COLORS.length]);
+    });
+    return map;
+  }, [question.options]);
 
   // Add new state for shuffled columns - only shuffle once
   const [shuffledColumnA, setShuffledColumnA] = useState<
@@ -91,48 +121,46 @@ export function MatchingPairPreview({
     const columnA = question.options.filter((item) => item.type === 'left');
     const columnB = question.options.filter((item) => item.type === 'right');
 
-    setShuffledColumnA(shuffleArray(columnA));
-    setShuffledColumnB(shuffleArray(columnB));
-  }, [question.options]); // Only re-shuffle when question changes
+    // Sort both columns by display_order to maintain the correct order
+    columnA.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    columnB.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+    // Only shuffle if in player mode
+    if (previewMode) {
+      setShuffledColumnA(shuffleArray(columnA));
+      setShuffledColumnB(shuffleArray(columnB));
+    } else {
+      setShuffledColumnA(columnA);
+      setShuffledColumnB(columnB);
+    }
+  }, [question.options, previewMode]); // Re-evaluate when options or previewMode change
 
   // Replace the direct column assignments with state values
   const columnA = shuffledColumnA;
   const columnB = shuffledColumnB;
 
-  // Auto-connect matching pairs
+  // Auto-connect matching pairs based on pair_id
   useEffect(() => {
+    const newConnections: Connection[] = [];
     if (columnA.length > 0 && columnB.length > 0) {
-      const autoConnections: Connection[] = [];
+      const rightOptionsWithPairId = columnB.filter(item => item.pair_id);
 
-      // For each item in column A
-      columnA.forEach((leftItem) => {
-        if (!leftItem.id || !leftItem.pair_id) return;
-
-        const leftPairIds = leftItem.pair_id.split(',');
-
-        // Find matching items in column B
-        columnB.forEach((rightItem) => {
-          if (!rightItem.id || !rightItem.pair_id) return;
-
-          const rightPairIds = rightItem.pair_id.split(',');
-
-          // Check if any pair_id from left matches any pair_id from right
-          const hasMatch = leftPairIds.some((leftId) =>
-            rightPairIds.includes(leftId)
+      columnA.forEach(leftItem => {
+        if (leftItem.pair_id) {
+          const matchingRightItem = rightOptionsWithPairId.find(
+            rightItem => rightItem.pair_id === leftItem.pair_id
           );
-
-          if (hasMatch) {
-            autoConnections.push({
+          if (matchingRightItem) {
+            newConnections.push({
               columnA: leftItem.id,
-              columnB: rightItem.id,
+              columnB: matchingRightItem.id,
             });
           }
-        });
+        }
       });
-
-      setConnections(autoConnections);
     }
-  }, [columnA, columnB]);
+    setConnections(newConnections);
+  }, [question.options, columnA, columnB]);
 
   // Thêm state để theo dõi kích thước container
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -174,49 +202,68 @@ export function MatchingPairPreview({
     };
   }, []);
 
-  const handleItemClick = (itemId: string) => {
-    if (!selectedItem) {
-      // Nếu chưa có item nào được chọn, chọn item này
-      setSelectedItem(itemId);
-    } else {
-      // Nếu đã có item được chọn
-      const selectedIsColumnA = selectedItem.startsWith('a');
-      const clickedIsColumnA = itemId.startsWith('a');
+  const handleItemClick = (type: 'left' | 'right', itemId: string) => {
+    // Only allow connections in edit mode, not in player/preview mode
+    if (previewMode || !editMode) {
+      return;
+    }
 
-      // Kiểm tra xem có phải click vào cùng một cột không
-      if (selectedIsColumnA === clickedIsColumnA) {
-        // Nếu click vào cùng cột, bỏ chọn item hiện tại
-        setSelectedItem(itemId);
-        return;
-      }
+    // Editor logic
+    const clickedOption = question.options.find(opt => opt.id === itemId);
+    if (!clickedOption) return;
 
-      // Xác định item từ cột A và B
-      const columnAId = selectedIsColumnA ? selectedItem : itemId;
-      const columnBId = selectedIsColumnA ? itemId : selectedItem;
+    if (selectedItem) {
+      // An item is already selected
+      if (selectedItem.type !== type) {
+        // A different column item was clicked, form a pair
+        const leftOption = type === 'right' ? question.options.find(o => o.id === selectedItem.id) : clickedOption;
+        const rightOption = type === 'left' ? question.options.find(o => o.id === selectedItem.id) : clickedOption;
 
-      // Kiểm tra xem kết nối này đã tồn tại chưa
-      const connectionExists = connections.some(
-        (conn) => conn.columnA === columnAId && conn.columnB === columnBId
-      );
+        if (!leftOption || !rightOption) {
+          setSelectedItem(null);
+          return;
+        }
 
-      if (connectionExists) {
-        // Nếu kết nối đã tồn tại, xóa nó
-        setConnections(
-          connections.filter(
-            (conn) =>
-              !(conn.columnA === columnAId && conn.columnB === columnBId)
-          )
-        );
+        const leftOptionIndex = question.options.findIndex(o => o.id === leftOption.id);
+        const rightOptionIndex = question.options.findIndex(o => o.id === rightOption.id);
+
+        // If they are already connected, disconnect them
+        if (leftOption.pair_id && rightOption.pair_id && leftOption.pair_id === rightOption.pair_id) {
+          onOptionChange(questionIndex, leftOptionIndex, 'pair_id', null);
+          onOptionChange(questionIndex, rightOptionIndex, 'pair_id', null);
+        } else {
+          // Check if right option is already paired, if so, break that pair
+          if (rightOption.pair_id) {
+            const previouslyPairedLeftOption = question.options.find(o => o.pair_id === rightOption.pair_id && o.type === 'left');
+            if (previouslyPairedLeftOption) {
+              const prevIndex = question.options.findIndex(o => o.id === previouslyPairedLeftOption.id);
+              onOptionChange(questionIndex, prevIndex, 'pair_id', null);
+            }
+          }
+          // Check if left option is already paired, if so, break that pair
+          if (leftOption.pair_id) {
+            const previouslyPairedRightOption = question.options.find(o => o.pair_id === leftOption.pair_id && o.type === 'right');
+            if (previouslyPairedRightOption) {
+              const prevIndex = question.options.findIndex(o => o.id === previouslyPairedRightOption.id);
+              onOptionChange(questionIndex, prevIndex, 'pair_id', null);
+            }
+          }
+
+          // Create new connection
+          const newPairId = crypto.randomUUID();
+          onOptionChange(questionIndex, leftOptionIndex, 'pair_id', newPairId);
+          onOptionChange(questionIndex, rightOptionIndex, 'pair_id', newPairId);
+        }
+
+        setSelectedItem(null);
+
       } else {
-        // Thêm kết nối mới
-        setConnections([
-          ...connections,
-          { columnA: columnAId, columnB: columnBId },
-        ]);
+        // Same column item was clicked, change selection
+        setSelectedItem({ id: itemId, type });
       }
-
-      // Reset selected item
-      setSelectedItem(null);
+    } else {
+      // No item selected, select this one
+      setSelectedItem({ id: itemId, type });
     }
   };
 
@@ -238,168 +285,189 @@ export function MatchingPairPreview({
     const endY = bRect.top + bRect.height / 2 - svgRect.top;
 
     // Tính toán control points cho đường cong mượt mà hơn
-    const distance = endX - startX;
-    const controlX1 = startX + distance * 0.3;
-    const controlX2 = startX + distance * 0.7;
+    const controlY = startY + (endY - startY) / 2;
+    const controlX1 = startX + (endX - startX) * 0.25;
+    const controlX2 = startX + (endX - startX) * 0.75;
 
-    return `M ${startX} ${startY} C ${controlX1} ${startY} ${controlX2} ${endY} ${endX} ${endY}`;
+    return `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
   };
 
-  // Check if a connection is correct
   const isConnectionCorrect = (
     columnAId: string,
     columnBId: string
   ): boolean => {
-    const leftItem = columnA.find((item) => item.id === columnAId);
-    const rightItem = columnB.find((item) => item.id === columnBId);
+    const itemA = question.options.find((item) => item.id === columnAId);
+    const itemB = question.options.find((item) => item.id === columnBId);
 
-    if (!leftItem || !rightItem) return false;
+    if (!itemA || !itemB) return false;
 
-    // Check if this is a valid match based on pair_ids
-    // For multi-answer support, pair_id can be a comma-separated string of IDs
-    const leftPairIds = leftItem.pair_id?.split(',') || [];
-    const rightPairIds = rightItem.pair_id?.split(',') || [];
-
-    // Check if any pair_id from left matches any pair_id from right
-    return leftPairIds.some((leftId) => rightPairIds.includes(leftId));
+    // A connection is correct if their pair_ids match and are not null/empty
+    return !!(itemA.pair_id && itemB.pair_id && itemA.pair_id === itemB.pair_id);
   };
 
-  // Check if item has any connections
   const getItemConnections = (itemId: string): Connection[] => {
     return connections.filter(
-      (conn) => conn.columnA === itemId || conn.columnB === itemId
+      (c) => c.columnA === itemId || c.columnB === itemId
     );
   };
 
-  // Count how many connections an item has
   const connectionCount = (itemId: string): number => {
-    return getItemConnections(itemId).length;
+    return connections.filter(
+      (c) => c.columnA === itemId || c.columnB === itemId
+    ).length;
   };
 
   return (
-    <Card
+    <div
+      ref={containerRef}
       className={cn(
-        'border-none rounded-2xl shadow-xl overflow-hidden transition-all duration-300 mx-auto',
-        isActive
-          ? 'ring-2 ring-primary/30 scale-100'
-          : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
-        viewMode === 'desktop' && 'max-w-5xl',
-        viewMode === 'tablet' && 'max-w-3xl',
-        viewMode === 'mobile' && 'max-w-md'
+        'matching-pair-preview relative',
+        viewMode === 'desktop' && 'p-8',
+        viewMode === 'tablet' && 'p-6',
+        viewMode === 'mobile' && 'p-4'
       )}
     >
-      <CardContent className="p-4 sm:p-6 md:p-8 bg-gradient-to-br from-blue-50 to-purple-100 dark:from-blue-950 dark:to-purple-950">
-        <div className="mb-6 text-center">
-          <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white leading-snug">
-            {question.question_text}
-          </h2>
-        </div>
+      <div className="flex justify-between items-start gap-4 md:gap-8">
+        {/* Column A */}
+        <div className="w-1/2 flex flex-col items-center gap-2 md:gap-3">
+          <h3 className="font-bold text-lg text-center text-gray-700 dark:text-gray-300">
+            {leftColumnName}
+          </h3>
+          <div className="w-full space-y-2">
+            {columnA.map((item, index) => {
+              const pairId = item.pair_id;
+              const connectionColor = pairId ? pairColorMap.get(pairId) : undefined;
 
-        <div className="relative" ref={containerRef}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-24 gap-y-8 justify-center">
-            {/* Column A */}
-            <div className="w-full flex flex-col items-center space-y-3">
-              <h3 className="text-sm md:text-base font-semibold text-blue-600 dark:text-blue-300 text-center">
-                {leftColumnName}
-              </h3>
-              {columnA.length > 0 ? (
-                columnA.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    id={`item-${item.id}`}
-                    onClick={() => handleItemClick(item.id!)}
-                    className={cn(
-                      'w-full max-w-[220px] px-3 py-2 min-h-[44px]',
-                      'bg-white dark:bg-gray-800 rounded-lg shadow border-2 cursor-pointer',
-                      'flex items-center justify-center text-center',
-                      selectedItem === item.id
-                        ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/30'
-                        : connectionCount(item.id!) > 0
-                        ? 'border-blue-400 dark:border-blue-300'
-                        : 'border-gray-200 dark:border-gray-700',
-                      'hover:shadow-md transition-all duration-150 ease-in-out'
-                    )}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                      {item.option_text}
-                    </span>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="px-4 py-3 bg-white/80 dark:bg-gray-800/80 rounded text-xs text-center text-gray-500">
-                  Không có dữ liệu {leftColumnName.toLowerCase()}
-                </div>
-              )}
-            </div>
-
-            {/* Column B */}
-            <div className="w-full flex flex-col items-center space-y-3">
-              <h3 className="text-sm md:text-base font-semibold text-purple-600 dark:text-purple-300 text-center">
-                {rightColumnName}
-              </h3>
-              {columnB.length > 0 ? (
-                columnB.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    id={`item-${item.id}`}
-                    onClick={() => handleItemClick(item.id!)}
-                    className={cn(
-                      'w-full max-w-[220px] px-3 py-2 min-h-[44px]',
-                      'bg-white dark:bg-gray-800 rounded-lg shadow border-2 cursor-pointer',
-                      'flex items-center justify-center text-center',
-                      selectedItem === item.id
-                        ? 'border-purple-500 dark:border-purple-400 ring-2 ring-purple-500/30'
-                        : connectionCount(item.id!) > 0
-                        ? 'border-purple-400 dark:border-purple-300'
-                        : 'border-gray-200 dark:border-gray-700',
-                      'hover:shadow-md transition-all duration-150 ease-in-out'
-                    )}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                      {item.option_text}
-                    </span>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="px-4 py-3 bg-white/80 dark:bg-gray-800/80 rounded text-xs text-center text-gray-500">
-                  Không có dữ liệu {rightColumnName.toLowerCase()}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* SVG Connections */}
-          <svg
-            ref={svgRef}
-            className="absolute inset-0 pointer-events-none w-full h-full z-0"
-            width={containerSize.width}
-            height={containerSize.height}
-            key={previewUpdate}
-          >
-            {connections.map((conn, index) => {
-              const isCorrect = isConnectionCorrect(conn.columnA, conn.columnB);
               return (
-                <path
-                  key={`${index}-${previewUpdate}`}
-                  d={getConnectionPath(conn.columnA, conn.columnB)}
-                  stroke={isCorrect ? '#10b981' : '#ef4444'}
-                  strokeWidth="2"
-                  fill="none"
-                  strokeDasharray={!isCorrect ? '5,5' : 'none'}
-                  className="transition-all duration-300"
-                  style={{
-                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))',
-                  }}
-                />
-              );
+                <motion.div
+                  key={item.id || `a-${index}`}
+                  id={`item-${item.id}`}
+                  className={cn(
+                    'p-2 md:p-3 rounded-lg text-center transition-all duration-200 w-full border-2',
+                    !previewMode && editMode && 'cursor-pointer',
+                    selectedItem?.id === item.id
+                      ? 'ring-2 ring-blue-500'
+                      : '',
+                    connectionColor
+                      ? 'text-white'
+                      : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
+                  )}
+                  style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
+                  onClick={() => handleItemClick('left', item.id)}
+                  whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
+                  layout
+                >
+                  <p className="text-sm md:text-base">
+                    {item.option_text}
+                  </p>
+                </motion.div>
+              )
             })}
-          </svg>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Column B */}
+        <div className="w-1/2 flex flex-col items-center gap-2 md:gap-3">
+          <h3 className="font-bold text-lg text-center text-gray-700 dark:text-gray-300">
+            {rightColumnName}
+          </h3>
+          <div className="w-full space-y-2">
+            {columnB.map((item, index) => {
+              const pairId = item.pair_id;
+              const connectionColor = pairId ? pairColorMap.get(pairId) : undefined;
+
+              return (
+                <motion.div
+                  key={item.id || `b-${index}`}
+                  id={`item-${item.id}`}
+                  className={cn(
+                    'p-2 md:p-3 rounded-lg text-center transition-all duration-200 w-full border-2',
+                    !previewMode && editMode && 'cursor-pointer',
+                    selectedItem?.id === item.id
+                      ? 'ring-2 ring-purple-500'
+                      : '',
+                    connectionColor
+                      ? 'text-white'
+                      : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
+                  )}
+                  style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
+                  onClick={() => handleItemClick('right', item.id)}
+                  whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
+                  layout
+                >
+                  <p className="text-sm md:text-base">
+                    {item.option_text}
+                  </p>
+                </motion.div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* SVG for drawing lines */}
+      <svg
+        ref={svgRef}
+        className="absolute top-0 left-0 w-full h-full pointer-events-none"
+        style={{ zIndex: 1 }}
+        key={previewUpdate}
+      >
+        <defs>
+          {PAIR_COLORS.map(color => (
+            <marker key={color} id={`marker-${color.replace('#', '')}`} markerWidth="8" markerHeight="8" refX="4" refY="4">
+              <circle cx="4" cy="4" r="3" stroke={color} className="fill-white" strokeWidth="1.5" />
+            </marker>
+          ))}
+        </defs>
+        <g>
+          {connections.map((conn, index) => {
+            const leftItem = question.options.find(o => o.id === conn.columnA);
+            const pairId = leftItem?.pair_id;
+            const pathColor = pairId ? pairColorMap.get(pairId) : '#3b82f6';
+
+            return (
+              <motion.path
+                key={`${conn.columnA}-${conn.columnB}-${index}`}
+                d={getConnectionPath(conn.columnA, conn.columnB)}
+                className='stroke-2 transition-all duration-300'
+                stroke={pathColor}
+                strokeWidth="2.5"
+                fill="none"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                markerStart={pathColor ? `url(#marker-${pathColor.replace('#', '')})` : undefined}
+                markerEnd={pathColor ? `url(#marker-${pathColor.replace('#', '')})` : undefined}
+              />
+            )
+          })}
+        </g>
+      </svg>
+
+      {!previewMode && (
+        <div className="absolute top-2 right-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="flex items-center gap-1.5 py-1 px-2.5 bg-background/80 backdrop-blur-sm">
+                  <Info className="h-3.5 w-3.5" />
+                  <span>Edit Mode</span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-left">
+                  <p className="font-bold">{t('matchingPair.title')}</p>
+                  <ul className="list-disc list-inside">
+                    <li>{t('matchingPair.step1')}</li>
+                    <li>{t('matchingPair.step2')}</li>
+                  </ul>
+                  <p>{t('matchingPair.disconnect')}</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
+    </div>
   );
 }
