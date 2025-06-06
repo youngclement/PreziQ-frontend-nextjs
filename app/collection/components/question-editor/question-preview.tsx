@@ -10,7 +10,12 @@ declare global {
       activityId: string,
       properties: { backgroundImage?: string; backgroundColor?: string }
     ) => void;
-    lastLocationUpdate?: { timestamp: number };
+    lastLocationUpdate?: {
+      timestamp: number;
+      activityId: string;
+      locationData: any[];
+      source?: string;
+    };
   }
 }
 
@@ -161,6 +166,15 @@ interface SlideData {
   slide?: {
     slideElements: SlideElementPayload[];
   };
+}
+
+interface LocationAnswer {
+  quizLocationAnswerId?: string;
+  longitude: number;
+  latitude: number;
+  radius: number;
+  lng?: number;
+  lat?: number;
 }
 
 // Update the QuestionPreview component to include a hardcoded location quiz
@@ -2543,7 +2557,7 @@ export function QuestionPreview({
 
   // Add debounced version for location updates
   const debouncedUpdateLocationQuiz = React.useCallback(
-    debounce(async (activityId: string, locationPayload: import('../../../api-client/activities-api').LocationQuizPayload) => {
+    debounce(async (activityId: string, locationPayload: import('@/api-client/activities-api').LocationQuizPayload) => {
       try {
         setIsSaving(true);
         const response = await activitiesApi.updateLocationQuiz(activityId, locationPayload);
@@ -2665,7 +2679,7 @@ export function QuestionPreview({
       // Check if locationData is an array (direct markers data)
       if (Array.isArray(locationData)) {
         console.log('Detected array format for location data');
-        locationAnswers = locationData.map(loc => ({
+        locationAnswers = locationData.map((loc: LocationAnswer) => ({
           longitude: loc.longitude || loc.lng,
           latitude: loc.latitude || loc.lat,
           radius: loc.radius || 10
@@ -2674,7 +2688,7 @@ export function QuestionPreview({
       // Check if locationData has quizLocationAnswers property
       else if (locationData.quizLocationAnswers) {
         console.log('Detected object with quizLocationAnswers property');
-        locationAnswers = locationData.quizLocationAnswers.map(loc => ({
+        locationAnswers = locationData.quizLocationAnswers.map((loc: LocationAnswer) => ({
           longitude: loc.longitude || loc.lng,
           latitude: loc.latitude || loc.lat,
           radius: loc.radius || 10
@@ -2693,7 +2707,7 @@ export function QuestionPreview({
       else {
         console.log('Using existing location data from question');
         const existingData = getLocationAnswers(question, activity);
-        locationAnswers = existingData.map(loc => ({
+        locationAnswers = existingData.map((loc: LocationAnswer) => ({
           longitude: loc.longitude,
           latitude: loc.latitude,
           radius: loc.radius || 10
@@ -3187,7 +3201,7 @@ function getLocationData(question: any, activity: any) {
   const locationAnswers = getLocationAnswers(question, activity);
 
   // Return all location answers for the map to display
-  return locationAnswers.map(answer => ({
+  return locationAnswers.map((answer: LocationAnswer) => ({
     lat: answer.latitude,
     lng: answer.longitude,
     radius: answer.radius,
