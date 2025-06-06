@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import {
-    Collection,
-    Activity,
-    ApiCollectionResponse,
+  Collection,
+  Activity,
+  ApiCollectionResponse,
 } from '../collections/components/types';
 import { collectionsApi } from '@/api-client';
 import ClientOnly from '@/components/ClientOnly';
@@ -21,6 +21,7 @@ import { CollectionListItem } from '../collections/components/collection-list-it
 import { CollectionPreviewDialog } from '../collections/components/collection-preview-dialog';
 
 export default function MyCollectionsPage() {
+
     const router = useRouter();
     const { toast } = useToast();
     const [collections, setCollections] = useState<Collection[]>([]);
@@ -435,3 +436,4 @@ export default function MyCollectionsPage() {
         </ClientOnly>
     );
 }
+

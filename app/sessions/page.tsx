@@ -186,7 +186,7 @@ const SessionPage = () => {
             </Tabs>
 
             <div className='mt-8 text-center'>
-              <p className='text-white/60'>Muốn tạo collection mới?</p>
+              <p className='text-white/60'>Xem thêm các collection khác?</p>
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -194,10 +194,10 @@ const SessionPage = () => {
               >
                 <Button
                   variant='outline'
-                  className='border border-white/20 text-white hover:bg-white/10 rounded-xl font-medium transition-all'
+                  className='border border-white/20 text-black bg-white rounded-xl font-medium transition-all'
                   onClick={() => router.push('/collections')}
                 >
-                  Tạo collection mới
+                  Xem collection khác
                 </Button>
               </motion.div>
             </div>
