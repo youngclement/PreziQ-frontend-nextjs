@@ -7,6 +7,7 @@ interface BaseSlideElementPayload {
   rotation: number;
   layerOrder: number;
 
+  displayOrder: number;
   entryAnimation?: string;
   entryAnimationDuration?: number;
   entryAnimationDelay?: number;

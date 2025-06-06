@@ -268,6 +268,15 @@ export function AchievementActionDialog({
           changedFields.description = values.description;
         }
         if (iconUrl !== currentRow.iconUrl) {
+          if (currentRow.iconUrl) {
+            try {
+              await storageApi.deleteSingleFile(currentRow.iconUrl);
+              console.log('Old icon deleted successfully', currentRow.iconUrl);
+            } catch (error) {
+              console.error('Error deleting old icon:', error);
+              // Continue with update even if delete fails
+            }
+          }
           changedFields.iconUrl = iconUrl;
         }
         if (values.requiredPoints !== currentRow.requiredPoints) {

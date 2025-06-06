@@ -18,6 +18,12 @@ interface UploadResponse {
   };
 }
 
+const extractRelativePath = (fullUrl: string): string => {
+  // Extract everything after the S3 bucket name
+  const match = fullUrl.match(/[^/]+\/[^/]+$/);
+  return match ? match[0] : fullUrl;
+};
+
 export const storageApi = {
   /**
    * Upload a single file
@@ -63,9 +69,10 @@ export const storageApi = {
   },
 
   deleteSingleFile(filePath: string): Promise<UploadResponse> {
-    return axiosClient.delete("/storage/aws-s3/delete/single", {
+    const relativePath = extractRelativePath(filePath);
+    return axiosClient.delete('/storage/aws-s3/delete/single', {
       params: {
-        filePath,
+        filePath: relativePath,
       },
     });
   },

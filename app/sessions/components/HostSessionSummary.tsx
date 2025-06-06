@@ -363,8 +363,8 @@ export default function HostSessionSummary({
               className='bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
               asChild
             >
-              <Link href='/dashboard'>
-                <CheckCircle className='mr-2 h-4 w-4' /> Quay về Bảng điều khiển
+              <Link href='/collections'>
+                <CheckCircle className='mr-2 h-4 w-4' /> Quay lại
               </Link>
             </Button>
           </div>

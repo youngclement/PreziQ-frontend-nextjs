@@ -318,7 +318,7 @@ export default function HeroGeometric({
               Start for free
             </a>
             <a
-              href='/membership'
+              href='/collections'
               className={cn(
                 'px-6 py-3 rounded-lg font-medium',
                 isDark
@@ -328,7 +328,7 @@ export default function HeroGeometric({
                 'flex items-center justify-center'
               )}
             >
-              Xem các gói membership
+              Xem các bộ sưu tập
             </a>
           </motion.div>
 

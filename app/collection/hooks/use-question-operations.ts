@@ -231,6 +231,20 @@ export function useQuestionOperations(
 
     // Only call API if we have an activity ID
     if (questionActivityId) {
+      // Check if another component just made an update to avoid conflicts
+      if (typeof window !== "undefined" && window.lastLocationUpdate) {
+        const lastUpdate = window.lastLocationUpdate;
+        const timeSinceLastUpdate = Date.now() - lastUpdate.timestamp;
+
+        // If another component made an update within the last 2 seconds, skip this API call
+        if (timeSinceLastUpdate < 2000) {
+          console.log(
+            "[DEBUG] Skipping use-question-operations API call - recent update detected"
+          );
+          return;
+        }
+      }
+
       console.log("Updating location quiz with:", locationAnswers);
       activitiesApi
         .updateLocationQuiz(questionActivityId, {

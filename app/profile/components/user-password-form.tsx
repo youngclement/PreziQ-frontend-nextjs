@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-
+import { toast as sonnerToast } from 'sonner';
 // Schema validation
 const passwordFormSchema = z
 	.object({
@@ -105,16 +105,14 @@ export function UserPasswordForm() {
 				await logout();
 				router.push('/auth/login');
 			}
-		} catch (error) {
-			console.error('Lỗi khi cập nhật mật khẩu:', error);
-
-			// Display error
-			toast({
-				title: 'Lỗi',
-				description:
-					'Không thể cập nhật mật khẩu. Vui lòng kiểm tra lại thông tin.',
-				variant: 'destructive',
-			});
+		} catch (error: any) {
+			console.error('Lỗi khi cập nhật email:', error);
+	  
+			sonnerToast.error(
+			  error.message ||
+				error.errors?.[0]?.message ||
+				'Không thể cập nhật email. Vui lòng thử lại sau.',
+			);
 		} finally {
 			setIsSubmitting(false);
 		}

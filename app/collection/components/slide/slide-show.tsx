@@ -9,6 +9,7 @@ import { SlideElementPayload } from '@/types/slideInterface';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import LoadingIndicator from '@/components/common/loading-indicator';
 
 interface SlideElement {
     slideElementId: string;
@@ -493,8 +494,8 @@ const SlideShow: React.FC<SlideShowProps> = ({ activities, editMode = false }) =
                 }}
             >
                 {loading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
-                        <Spinner />
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10">
+                        <LoadingIndicator variant="default" size="lg" />
                     </div>
                 )}
                 <canvas ref={canvasRef} />
@@ -533,4 +534,4 @@ const SlideShow: React.FC<SlideShowProps> = ({ activities, editMode = false }) =
     );
 };
 
-export default SlideShow; 
+export default SlideShow;

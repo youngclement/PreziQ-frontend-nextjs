@@ -25,6 +25,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { useAuth } from '@/contexts/auth-context';
+import { authApi } from '@/api-client/auth-api';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { toast } from '@/hooks/use-toast';
 
 export function NavUser({
   user,
@@ -36,6 +41,43 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const { logout } = useAuth();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    try {
+      await authApi.logout();
+      logout();
+      toast({
+        title: 'Đăng xuất thành công',
+        description: 'Bạn đã đăng xuất khỏi hệ thống.',
+      });
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast({
+        title: 'Lỗi đăng xuất',
+        description: 'Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  // Generate initials from user name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((word) => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   return (
     <SidebarMenu>
@@ -43,35 +85,39 @@ export function NavUser({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              size='lg'
+              className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
             >
-              <Avatar className="h-8 w-8 rounded-lg">
+              <Avatar className='h-8 w-8 rounded-lg'>
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">SN</AvatarFallback>
+                <AvatarFallback className='rounded-lg'>
+                  {getInitials(user.name)}
+                </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
-                <span className="truncate text-xs">{user.email}</span>
+              <div className='grid flex-1 text-left text-sm leading-tight'>
+                <span className='truncate font-semibold'>{user.name}</span>
+                <span className='truncate text-xs'>{user.email}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
+              <ChevronsUpDown className='ml-auto size-4' />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+            className='w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg'
             side={isMobile ? 'bottom' : 'right'}
-            align="end"
+            align='end'
             sideOffset={4}
           >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
+            <DropdownMenuLabel className='p-0 font-normal'>
+              <div className='flex items-center gap-2 px-1 py-1.5 text-left text-sm'>
+                <Avatar className='h-8 w-8 rounded-lg'>
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">SN</AvatarFallback>
+                  <AvatarFallback className='rounded-lg'>
+                    {getInitials(user.name)}
+                  </AvatarFallback>
                 </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{user.name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
+                <div className='grid flex-1 text-left text-sm leading-tight'>
+                  <span className='truncate font-semibold'>{user.name}</span>
+                  <span className='truncate text-xs'>{user.email}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
@@ -85,32 +131,36 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/settings/account">
+                <Link href='/settings/account'>
                   <BadgeCheck />
                   Tài khoản
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/settings">
+                <Link href='/settings'>
                   <CreditCard />
                   Thanh toán
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/settings/notifications">
+                <Link href='/settings/notifications'>
                   <Bell />
                   Thông báo
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className='cursor-pointer'
+            >
               <LogOut />
-              Đăng xuất
+              {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
   );
-} 
+}

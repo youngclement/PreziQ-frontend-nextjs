@@ -10,6 +10,12 @@ declare global {
       activityId: string,
       properties: { backgroundImage?: string; backgroundColor?: string }
     ) => void;
+    lastLocationUpdate?: {
+      timestamp: number;
+      activityId: string;
+      locationData: any[];
+      source?: string;
+    };
   }
 }
 
@@ -147,6 +153,15 @@ interface SlideData {
   };
 }
 
+interface LocationAnswer {
+  quizLocationAnswerId?: string;
+  longitude: number;
+  latitude: number;
+  radius: number;
+  lng?: number;
+  lat?: number;
+}
+
 // Update the QuestionPreview component to include a hardcoded location quiz
 
 export function QuestionPreview({
@@ -216,15 +231,12 @@ export function QuestionPreview({
     >
   >({});
 
-  const [slideBackgrounds, setSlideBackgrounds] = useState<
-    Record<string, { backgroundImage: string; backgroundColor: string }>
-  >({});
-
   // Add this state to track when we need to force re-render
   const [renderKey, setRenderKey] = useState(0);
 
   // Add toast hook
   const { toast } = useToast();
+
 
   const activeQuestion = questions[activeQuestionIndex];
   const [currentQuestion, setCurrentQuestion] = useState(activeQuestion);
@@ -234,6 +246,31 @@ export function QuestionPreview({
     console.log('Correct answers:', value);
     // You can implement logic to save the score or update state
   };
+
+  const saveBackgroundToServer = async (
+    activityId: string,
+    backgroundData: { backgroundImage: string; backgroundColor: string }
+  ) => {
+    try {
+      setIsSaving(true);
+      await activitiesApi.updateActivity(activityId, {
+        backgroundColor: backgroundData.backgroundColor,
+        backgroundImage: backgroundData.backgroundImage,
+      });
+
+      // Cập nhật global storage
+      if (typeof window !== 'undefined') {
+        if (!window.savedBackgroundColors) window.savedBackgroundColors = {};
+        window.savedBackgroundColors[activityId] = backgroundData.backgroundColor;
+      }
+    } catch (error) {
+      console.error("Error saving background:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+
   useEffect(() => {
     const fetchActivityData = async (
       activityId: string,
@@ -301,6 +338,13 @@ export function QuestionPreview({
         // ) {
         //   onSlideContentChange(activityData.description);
         // }
+        if (typeof window !== 'undefined') {
+          if (!window.savedBackgroundColors) {
+            window.savedBackgroundColors = {};
+          }
+          window.savedBackgroundColors[activityId] = activityData.backgroundColor || '#FFFFFF';
+        }
+
       } catch (error) {
         console.error('Error fetching activity data:', error);
       }
@@ -363,12 +407,6 @@ export function QuestionPreview({
       backgroundColor?: string;
     }
   ) => {
-    console.log(
-      'QuestionPreview: Updating background for activity:',
-      activityId,
-      properties
-    );
-
     // Lưu vào global storage ngay lập tức để đảm bảo đồng bộ
     if (typeof window !== 'undefined' && properties.backgroundColor) {
       // Đảm bảo object đã được khởi tạo
@@ -536,7 +574,6 @@ export function QuestionPreview({
   // Expose the function to parent component through the prop callback
   useEffect(() => {
     if (onUpdateActivityBackground) {
-      console.log('Registering updateActivityBackground with parent component');
       onUpdateActivityBackground(updateActivityBackground);
     }
   }, [onUpdateActivityBackground]);
@@ -770,10 +807,11 @@ export function QuestionPreview({
     const slideData = question.activity_id
       ? slidesData[question.activity_id]
       : undefined;
+
     const slideElements = question.activity_id
       ? slidesElements[question.activity_id] ||
-      slidesData[question.activity_id]?.slide?.slideElements ||
-      []
+        slidesData[question.activity_id]?.slide?.slideElements ||
+        []
       : [];
 
     // Find activity specific background for this question
@@ -845,23 +883,9 @@ export function QuestionPreview({
     const hasBackgroundImage =
       actualBackgroundImage && actualBackgroundImage.trim() !== '';
 
-    // console.log(`Rendering slide ${question.activity_id}:`, {
-    //   actualBackgroundColor,
-    //   actualBackgroundImage,
-    //   fromGlobal: window.savedBackgroundColors?.[question.activity_id],
-    //   fromActivityBackgrounds: activityBackgrounds[question.activity_id],
-    //   fromSlidesBackgrounds: slidesBackgrounds[question.activity_id],
-    // });
-
     if (isSlideType) {
       const slideTypeText =
         question.question_type === 'info_slide' ? 'Info Slide' : 'Slide';
-
-      // console.log(
-      //   'activityBackgrounds[question.activity_id]',
-      //   activityBackgrounds[question.activity_id],
-      //   question.activity_id
-      // );
 
       return (
         <div
@@ -913,27 +937,38 @@ export function QuestionPreview({
                   if (data.slideElements && question.activity_id) {
                     setSlidesElements((prev) => {
                       const id = question.activity_id!;
-                      const oldList = prev[id] || [];
-                      const incoming = data.slideElements ?? [];
-
-                      // ghép và loại bỏ trùng
-                      const merged = [...oldList];
-                      incoming.forEach((el) => {
-                        if (
-                          !merged.find(
-                            (x) => x.slideElementId === el.slideElementId
-                          )
-                        ) {
-                          merged.push(el);
-                        }
-                      });
-
-                      return {
-                        ...prev,
-                        [id]: merged,
-                      };
+                      const updatedElements = data.slideElements ?? [];
+                      // Lưu slide elements lên server ngay lập tức
+                      // saveSlideElementsToServer(id, updatedElements);
+                      return { ...prev, [id]: updatedElements };
                     });
-                    console.log('data nhậnnnn: ', data.slideElements);
+                  }
+
+                  if (
+                    data.backgroundImage !== undefined ||
+                    data.backgroundColor !== undefined
+                  ) {
+                    const updatedBackground = {
+                      backgroundImage:
+                        data.backgroundColor !== undefined
+                          ? ''
+                          : data.backgroundImage ?? '',
+                      backgroundColor:
+                        data.backgroundImage !== undefined
+                          ? ''
+                          : data.backgroundColor ?? '',
+                    };
+                    setSlidesBackgrounds((prev) => ({
+                      ...prev,
+                      [question.activity_id!]: updatedBackground,
+                    }));
+                    if (question.activity_id) {
+                      console.log('updatedBackground', updatedBackground);
+                      saveBackgroundToServer(
+                        question.activity_id,
+                        updatedBackground
+                      );
+                    }
                   }
                 }}
                 width={
@@ -941,20 +976,20 @@ export function QuestionPreview({
                     ? viewMode === 'mobile'
                       ? 300
                       : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                      ? 650
+                      : 812
                     : viewMode === 'mobile'
-                      ? 300
-                      : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                    ? 300
+                    : viewMode === 'tablet'
+                    ? 650
+                    : 812
                 }
                 height={460}
                 zoom={1}
                 slideId={question.activity_id}
                 slideElements={slideElements}
-                backgroundImage={actualBackgroundImage}
                 backgroundColor={actualBackgroundColor}
+                backgroundImage={actualBackgroundImage}
               />
             </div>
           </div>
@@ -1062,9 +1097,11 @@ export function QuestionPreview({
                   <DynamicLocationQuestionEditor
                     questionText={question.question_text || ''}
                     locationAnswers={getLocationAnswers(question, activity)}
+
                     onLocationChange={(questionIndex, locationData) =>
                       onQuestionLocationChange?.(questionIndex, locationData)
                     }
+
                     questionIndex={questionIndex}
                   />
                 ) : (
@@ -1077,6 +1114,7 @@ export function QuestionPreview({
               </div>
             </div>
           </CardContent>
+
         </Card>
       );
     }
@@ -1200,6 +1238,7 @@ export function QuestionPreview({
               />
             </div>
           </CardContent>
+
         </Card>
       );
     }
@@ -1324,8 +1363,8 @@ export function QuestionPreview({
                         option.is_correct
                           ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                           : isTrue
-                            ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                            : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                          ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                          : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
                         // Only show pointer cursor when edit mode is enabled
                         editMode !== null
                           ? 'cursor-pointer hover:shadow-md'
@@ -1775,12 +1814,12 @@ export function QuestionPreview({
                   question.options.length <= 2
                     ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
                     : question.options.length <= 4
-                      ? 'grid grid-cols-2 gap-3'
-                      : 'grid grid-cols-2 gap-3 md:grid-cols-3',
+                    ? 'grid grid-cols-2 gap-3'
+                    : 'grid grid-cols-2 gap-3 md:grid-cols-3',
                   viewMode === 'mobile' && 'grid-cols-1',
                   viewMode === 'tablet' &&
-                  question.options.length > 4 &&
-                  'grid-cols-2'
+                    question.options.length > 4 &&
+                    'grid-cols-2'
                 )}
               >
                 {/* Direct rendering of choice options */}
@@ -1892,6 +1931,7 @@ export function QuestionPreview({
           title: text,
         },
         questions[questionIndex].activity_id
+
       )
         .then(() => {
           // Dispatch an event to notify other components about the title change
@@ -1912,6 +1952,7 @@ export function QuestionPreview({
         .finally(() => {
           setIsSaving(false);
         });
+
     }
   };
 
@@ -2032,9 +2073,11 @@ export function QuestionPreview({
         });
       }
 
+
       return response;
     } catch (error) {
       console.error('Error updating activity:', error);
+
 
       throw error;
     } finally {
@@ -2095,11 +2138,13 @@ export function QuestionPreview({
       };
 
       // Call the API
+
       activitiesApi
         .updateTypeAnswerQuiz(question.activity_id, payload)
         .then(() => { })
         .catch((error) => {
           console.error('Error updating correct answer:', error);
+
         })
         .finally(() => {
           setIsSaving(false);
@@ -2498,23 +2543,125 @@ export function QuestionPreview({
         });
       }
 
+
       // Force re-render bằng cách cập nhật renderKey
       setRenderKey((prev) => prev + 1);
     } catch (error) {
       console.error('Error updating slide background:', error);
+
     }
   };
 
+  // Add debounced version for location updates
+  const debouncedUpdateLocationQuiz = React.useCallback(
+    debounce(async (activityId: string, locationPayload: import('@/api-client/activities-api').LocationQuizPayload) => {
+      try {
+        setIsSaving(true);
+        const response = await activitiesApi.updateLocationQuiz(activityId, locationPayload);
+        console.log('Location quiz updated successfully:', response);
+
+        // **ENHANCED**: Properly extract and format location data from response
+        if (response.data?.quiz?.quizLocationAnswers) {
+          const updatedLocationAnswers = response.data.quiz.quizLocationAnswers;
+
+          // Update the question's location data directly to ensure UI reflects new points
+          const questionIndex = questions.findIndex(q => q.activity_id === activityId);
+          if (questionIndex >= 0 && onQuestionLocationChange) {
+            // Format location data to match expected structure
+            const formattedLocationData = {
+              quizLocationAnswers: updatedLocationAnswers.map((answer: any) => ({
+                quizLocationAnswerId: answer.quizLocationAnswerId || "",
+                longitude: answer.longitude,
+                latitude: answer.latitude,
+                radius: answer.radius
+              }))
+            };
+
+            // Update parent state
+            onQuestionLocationChange(questionIndex, formattedLocationData);
+          }
+
+          // Dispatch multiple events to ensure all components update
+          if (typeof window !== 'undefined') {
+            // Event for keeping UI position updated
+            const keepUIEvent = new CustomEvent('location:keep:ui:position', {
+              detail: {
+                locationAnswers: updatedLocationAnswers,
+                timestamp: Date.now(),
+                source: 'preview-debounced-success'
+              }
+            });
+            window.dispatchEvent(keepUIEvent);
+
+            // Additional event specifically for new points added
+            const pointsUpdatedEvent = new CustomEvent('location:points:updated', {
+              detail: {
+                activityId,
+                locationAnswers: updatedLocationAnswers,
+                timestamp: Date.now()
+              }
+            });
+            window.dispatchEvent(pointsUpdatedEvent);
+
+            // Force editor to refresh markers
+            const refreshMarkersEvent = new CustomEvent('location:refresh:markers', {
+              detail: {
+                activityId,
+                locationAnswers: updatedLocationAnswers
+              }
+            });
+            window.dispatchEvent(refreshMarkersEvent);
+          }
+        }
+
+        // Show success toast
+        toast({
+          title: "Location saved",
+          description: "The location has been updated successfully.",
+          duration: 2000
+        });
+      } catch (error) {
+        console.error('Error updating location quiz:', error);
+
+        // On error, revert to original position
+        if (typeof window !== 'undefined') {
+          const revertEvent = new CustomEvent('location:revert:position', {
+            detail: {
+              error: true,
+              timestamp: Date.now()
+            }
+          });
+          window.dispatchEvent(revertEvent);
+        }
+
+        // Show error toast
+        toast({
+          title: "Error saving location",
+          description: "Failed to save the location. Position reverted.",
+          variant: "destructive",
+          duration: 3000
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    }, 1000), // 1 second debounce
+    [toast, questions, onQuestionLocationChange]
+  );
+
   // Add or update the handleQuestionLocationChange function:
+
 
   const handleQuestionLocationChange = (
     questionIndex: number,
     locationData: any
   ) => {
+
     console.log('Handling location change:', questionIndex, locationData);
 
     // Clone questions array to avoid direct state mutation
     const updatedQuestions = [...questions];
+    const question = updatedQuestions[questionIndex];
+
 
     // For multiple location answers format
     if (Array.isArray(locationData)) {
@@ -2530,11 +2677,12 @@ export function QuestionPreview({
         },
       };
 
-      // Call the parent's onQuestionLocationChange if available
-      if (onQuestionLocationChange) {
-        onQuestionLocationChange(questionIndex, locationData);
-      }
+
+    // Pass the locationData to the parent component's handler
+    if (onQuestionLocationChange) {
+      onQuestionLocationChange(questionIndex, locationData);
     }
+
     // For backward compatibility with single location format
     else {
       updatedQuestions[questionIndex] = {
@@ -2542,10 +2690,87 @@ export function QuestionPreview({
         location_data: locationData,
       };
 
-      // Call the parent's onQuestionLocationChange if available
-      if (onQuestionLocationChange) {
-        onQuestionLocationChange(questionIndex, locationData);
+
+    try {
+      setIsSaving(true);
+
+      // Handle different data formats
+      let locationAnswers;
+
+      // Check if locationData is an array (direct markers data)
+      if (Array.isArray(locationData)) {
+        console.log('Detected array format for location data');
+        locationAnswers = locationData.map((loc: LocationAnswer) => ({
+          longitude: loc.longitude || loc.lng,
+          latitude: loc.latitude || loc.lat,
+          radius: loc.radius || 10
+        }));
       }
+
+      // Check if locationData has quizLocationAnswers property
+      else if (locationData.quizLocationAnswers) {
+        console.log('Detected object with quizLocationAnswers property');
+        locationAnswers = locationData.quizLocationAnswers.map((loc: LocationAnswer) => ({
+          longitude: loc.longitude || loc.lng,
+          latitude: loc.latitude || loc.lat,
+          radius: loc.radius || 10
+        }));
+      }
+      // Handle legacy format where locationData might contain direct coordinates
+      else if (locationData.longitude || locationData.lat) {
+        console.log('Detected legacy format with direct coordinates');
+        locationAnswers = [{
+          longitude: locationData.longitude || locationData.lng,
+          latitude: locationData.latitude || locationData.lat,
+          radius: locationData.radius || 10
+        }];
+      }
+      // If we still don't have valid data, try to get it from the question
+      else {
+        console.log('Using existing location data from question');
+        const existingData = getLocationAnswers(question, activity);
+        locationAnswers = existingData.map((loc: LocationAnswer) => ({
+          longitude: loc.longitude,
+          latitude: loc.latitude,
+          radius: loc.radius || 10
+        }));
+      }
+
+      // Make sure we have valid location answers
+      if (!locationAnswers || locationAnswers.length === 0) {
+        throw new Error('No valid location answers found');
+      }
+
+      console.log('Calling API with location answers:', locationAnswers);
+
+      // Prepare API payload with the required format - omit quizLocationAnswerId
+      const locationPayload = {
+        type: "LOCATION" as const,
+        questionText: question.question_text || "Location Question",
+        timeLimitSeconds: question.time_limit_seconds || timeLimit || 60,
+        pointType: "STANDARD" as const,
+        locationAnswers: locationAnswers // Only include required fields for API
+      };
+
+      // Use debounced function to update the quiz via API
+      debouncedUpdateLocationQuiz(question.activity_id, locationPayload);
+
+      // Show pending toast while updating
+      toast({
+        title: "Updating location",
+        description: "Saving new coordinates...",
+        duration: 2000
+      });
+    } catch (error) {
+      console.error('Error preparing location update:', error);
+      toast({
+        title: "Error updating location",
+        description: "Failed to update the location data",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+
     }
   };
 
@@ -2586,6 +2811,13 @@ export function QuestionPreview({
       }
     };
   }, [questions, onQuestionTextChange]);
+
+  // Cleanup debounced function on unmount
+  useEffect(() => {
+    return () => {
+      debouncedUpdateLocationQuiz.cancel();
+    };
+  }, [debouncedUpdateLocationQuiz]);
 
   return (
     <Card
@@ -2974,6 +3206,7 @@ function getLocationAnswers(question: any, activity: any) {
   // For backward compatibility, handle the old location_answer format
   if (question.location_answer) {
     const locationData = question.location_answer;
+
     return [
       {
         longitude: locationData.lng,
@@ -2981,10 +3214,12 @@ function getLocationAnswers(question: any, activity: any) {
         radius: locationData.radius || 10,
       },
     ];
+
   }
 
   // For even older format with location_data
   if (question.location_data) {
+
     return [
       {
         longitude: question.location_data.lng || 0,
@@ -2992,15 +3227,34 @@ function getLocationAnswers(question: any, activity: any) {
         radius: question.location_data.radius || 10,
       },
     ];
+
   }
 
-  // Default empty array, should never reach here because we initialize with defaults
-  return [];
+  // Default single location if nothing is found
+  return [{
+    quizLocationAnswerId: "",
+    longitude: 105.804817,
+    latitude: 21.028511,
+    radius: 10
+  }];
 }
 
-// Helper function to get a single location for the player view
-// In preview mode, we just use the first location answer
+// Helper function to get location data for the map component
+// This now supports multiple locations
 function getLocationData(question: any, activity: any) {
+  const locationAnswers = getLocationAnswers(question, activity);
+
+  // Return all location answers for the map to display
+  return locationAnswers.map((answer: LocationAnswer) => ({
+    lat: answer.latitude,
+    lng: answer.longitude,
+    radius: answer.radius,
+    id: answer.quizLocationAnswerId
+  }));
+}
+
+// Helper function to get the first location for preview display
+function getFirstLocationData(question: any, activity: any) {
   const locationAnswers = getLocationAnswers(question, activity);
 
   if (locationAnswers.length > 0) {

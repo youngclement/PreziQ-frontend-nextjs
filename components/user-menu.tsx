@@ -9,10 +9,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { User as UserIcon, LogOut, FolderOpen, UserCircle, Settings, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { authApi } from '@/api-client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useRoles } from '@/hooks/use-roles';
+import { authApi } from '@/api-client/auth-api';
 
 export default function UserMenu() {
 	const router = useRouter();
@@ -86,7 +86,7 @@ export default function UserMenu() {
 					<span className="text-gray-700 dark:text-gray-200">My profile</span>
 				</DropdownMenuItem>
 				<DropdownMenuItem
-					onClick={() => router.push('/collections')}
+					onClick={() => router.push('/my-collections')}
 					className="flex items-center px-2 py-2 text-sm cursor-pointer rounded-md hover:bg-primary/5 focus:bg-primary/5 transition-colors duration-200"
 				>
 					<FolderOpen className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
