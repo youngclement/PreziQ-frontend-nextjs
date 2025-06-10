@@ -1,4 +1,4 @@
-import axiosClient from "./axios-client";
+import axiosClient from './axios-client';
 
 interface UploadResponse {
   success: boolean;
@@ -6,6 +6,10 @@ interface UploadResponse {
   data:
     | {
         fileName: string;
+        fileUrl: string;
+      }
+    | {
+        name: string;
         fileUrl: string;
       }
     | {
@@ -33,12 +37,12 @@ export const storageApi = {
    */
   uploadSingleFile(file: File, folderName: string): Promise<UploadResponse> {
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("folderName", folderName);
+    formData.append('file', file);
+    formData.append('folderName', folderName);
 
-    return axiosClient.post("/storage/aws-s3/upload/single", formData, {
+    return axiosClient.post('/storage/aws-s3/upload/single', formData, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        'Content-Type': 'multipart/form-data',
       },
     });
   },
@@ -56,14 +60,14 @@ export const storageApi = {
     const formData = new FormData();
 
     files.forEach((file) => {
-      formData.append("files", file);
+      formData.append('files', file);
     });
 
-    formData.append("folderName", folderName);
+    formData.append('folderName', folderName);
 
-    return axiosClient.post("/storage/aws-s3/upload/multiple", formData, {
+    return axiosClient.post('/storage/aws-s3/upload/multiple', formData, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        'Content-Type': 'multipart/form-data',
       },
     });
   },

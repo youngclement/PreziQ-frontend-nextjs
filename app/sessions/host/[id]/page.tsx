@@ -88,6 +88,8 @@ export default function HostSessionPage() {
   const volumeControlRef = useRef<HTMLDivElement>(null);
   const [isParticipating, setIsParticipating] = useState(true);
   const [currentActivity, setCurrentActivity] = useState<any>(null);
+  //luật
+  const [musicBackground, setMusicBackground] = useState<string>('');
 
   // Lấy thông tin tài khoản người dùng khi component mount
   useEffect(() => {
@@ -144,6 +146,8 @@ export default function HostSessionPage() {
         const responseSessionId = response.data.sessionId;
         const responseSessionCode = response.data.sessionCode;
         const responseQrCodeUrl = response.data.joinSessionQrUrl;
+        const responseMusicBackground =
+          response.data.collection.defaultBackgroundMusic;
 
         localStorage.setItem('sessionCode', responseSessionCode);
         localStorage.setItem('sessionId', responseSessionId);
@@ -151,6 +155,7 @@ export default function HostSessionPage() {
         setSessionCode(responseSessionCode);
         setSessionId(responseSessionId);
         setQrCodeUrl(responseQrCodeUrl);
+        setMusicBackground(responseMusicBackground || '/sounds/background.mp3');
       } catch (err: any) {
         console.error('Error creating session:', err);
         setError(err.response?.data?.message || 'Failed to create session');
@@ -239,7 +244,7 @@ export default function HostSessionPage() {
         setError('Failed to connect to session');
       });
 
-    return () => { };
+    return () => {};
   }, [
     sessionCode,
     sessionId,
@@ -247,12 +252,15 @@ export default function HostSessionPage() {
     participantName,
     willParticipate,
   ]);
-
+  console.log(musicBackground);
   // Xử lý âm thanh nền
   useEffect(() => {
     // Tạo audio element
+
     if (typeof window !== 'undefined' && !audioRef.current) {
-      const audio = new Audio('/sounds/background.mp3');
+      // const audio = new Audio('/sounds/background.mp3');
+      const audio = new Audio(musicBackground);
+
       audio.loop = true;
       audio.volume = volume / 100; // Âm lượng từ 0-100 chuyển sang 0-1
       audioRef.current = audio;
@@ -374,19 +382,19 @@ export default function HostSessionPage() {
   const getVolumeIcon = () => {
     if (isMuted || volume === 0) {
       return (
-        <VolumeX className='w-5 h-5 text-white/70 group-hover:text-white' />
+        <VolumeX className="w-5 h-5 text-white/70 group-hover:text-white" />
       );
     } else if (volume < 30) {
       return (
-        <Volume className='w-5 h-5 text-[#aef359] group-hover:text-[#e4f88d]' />
+        <Volume className="w-5 h-5 text-[#aef359] group-hover:text-[#e4f88d]" />
       );
     } else if (volume < 70) {
       return (
-        <Volume1 className='w-5 h-5 text-[#aef359] group-hover:text-[#e4f88d]' />
+        <Volume1 className="w-5 h-5 text-[#aef359] group-hover:text-[#e4f88d]" />
       );
     } else {
       return (
-        <Volume2 className='w-5 h-5 text-[#aef359] group-hover:text-[#e4f88d]' />
+        <Volume2 className="w-5 h-5 text-[#aef359] group-hover:text-[#e4f88d]" />
       );
     }
   };
@@ -489,7 +497,7 @@ export default function HostSessionPage() {
     }
   };
 
-  const handleSessionEnd = () => { };
+  const handleSessionEnd = () => {};
 
   const handleCopy = () => {
     if (sessionCode) {
@@ -524,15 +532,15 @@ export default function HostSessionPage() {
 
   if (isLoading) {
     return (
-      <div className='min-h-screen bg-gradient-to-b from-[#0a1b25] to-[#0f2231] flex flex-col items-center justify-center p-4'>
+      <div className="min-h-screen bg-gradient-to-b from-[#0a1b25] to-[#0f2231] flex flex-col items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className='text-center text-white px-4 sm:px-6 relative'
+          className="text-center text-white px-4 sm:px-6 relative"
         >
           <motion.div
-            className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-r from-[#aef359]/20 to-[#e4f88d]/20 rounded-full'
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-r from-[#aef359]/20 to-[#e4f88d]/20 rounded-full"
             animate={{
               scale: [1, 1.2, 1],
               opacity: [0.3, 0.5, 0.3],
@@ -543,11 +551,11 @@ export default function HostSessionPage() {
               ease: 'easeInOut',
             }}
           />
-          <div className='relative'>
-            <Loader2 className='h-12 w-12 sm:h-16 sm:w-16 animate-spin mx-auto mb-4 sm:mb-6 text-[#aef359]' />
+          <div className="relative">
+            <Loader2 className="h-12 w-12 sm:h-16 sm:w-16 animate-spin mx-auto mb-4 sm:mb-6 text-[#aef359]" />
           </div>
           <motion.h2
-            className='text-xl sm:text-2xl font-bold mb-2 bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text'
+            className="text-xl sm:text-2xl font-bold mb-2 bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text"
             animate={{
               opacity: [0.5, 1, 0.5],
             }}
@@ -559,7 +567,7 @@ export default function HostSessionPage() {
           >
             Đang thiết lập phiên
           </motion.h2>
-          <p className='text-white/70 text-sm sm:text-base'>
+          <p className="text-white/70 text-sm sm:text-base">
             PreziQ đang chuẩn bị phòng chờ của bạn...
           </p>
         </motion.div>
@@ -571,7 +579,7 @@ export default function HostSessionPage() {
   if (isSessionStarted && sessionId && sessionCode && sessionWsRef.current) {
     console.log('Rendering host activities with session ID:', sessionId);
     return (
-      <div className='min-h-screen w-full max-w-full overflow-hidden'>
+      <div className="min-h-screen w-full max-w-full overflow-hidden">
         <HostActivities
           sessionId={sessionId}
           sessionCode={sessionCode}
@@ -589,7 +597,7 @@ export default function HostSessionPage() {
 
   // Hiển thị giao diện phòng chờ theo mẫu quiz.com
   return (
-    <div className='min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#0a1b25] to-[#0f2231] p-4 sm:p-6 relative overflow-hidden'>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#0a1b25] to-[#0f2231] p-4 sm:p-6 relative overflow-hidden">
       {/* CSS cho volume slider */}
       <style jsx global>{`
         .volume-slider .slider-thumb {
@@ -624,12 +632,12 @@ export default function HostSessionPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.5, duration: 0.5 }}
-        className='fixed bottom-4 right-4 z-50'
+        className="fixed bottom-4 right-4 z-50"
         onMouseEnter={showVolumeControl}
         onMouseMove={resetHideTimeout}
         ref={volumeControlRef}
       >
-        <div className='flex items-center gap-2 relative'>
+        <div className="flex items-center gap-2 relative">
           <AnimatePresence>
             {showVolumeSlider && (
               <motion.div
@@ -642,7 +650,7 @@ export default function HostSessionPage() {
                   damping: 20,
                   mass: 0.8,
                 }}
-                className='mr-2'
+                className="mr-2"
               >
                 <Slider
                   value={[volume]}
@@ -650,7 +658,7 @@ export default function HostSessionPage() {
                   max={100}
                   step={1}
                   onValueChange={handleVolumeChange}
-                  className='w-24 volume-slider'
+                  className="w-24 volume-slider"
                   onPointerDown={handleVolumeDragStart}
                   onPointerUp={handleVolumeDragEnd}
                 />
@@ -659,7 +667,7 @@ export default function HostSessionPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -5 }}
                   transition={{ duration: 0.2 }}
-                  className='text-[10px] text-white/60 mt-1 text-center'
+                  className="text-[10px] text-white/60 mt-1 text-center"
                 >
                   {volume}%
                 </motion.div>
@@ -668,7 +676,7 @@ export default function HostSessionPage() {
           </AnimatePresence>
 
           <motion.button
-            className='bg-[#0e1c26]/70 backdrop-blur-md p-2 rounded-full border border-white/10 shadow-md flex items-center justify-center group transition-colors hover:bg-[#0e1c26]/90'
+            className="bg-[#0e1c26]/70 backdrop-blur-md p-2 rounded-full border border-white/10 shadow-md flex items-center justify-center group transition-colors hover:bg-[#0e1c26]/90"
             onClick={toggleMute}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -678,8 +686,8 @@ export default function HostSessionPage() {
               animate={
                 !isMuted
                   ? {
-                    scale: [1, 1.2, 1],
-                  }
+                      scale: [1, 1.2, 1],
+                    }
                   : {}
               }
               transition={{
@@ -696,14 +704,14 @@ export default function HostSessionPage() {
 
       {/* Animated background elements */}
       <motion.div
-        className='absolute inset-0 opacity-20'
+        className="absolute inset-0 opacity-20"
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.2 }}
         transition={{ duration: 1 }}
       >
         {/* Gradient orbs with reduced opacity */}
         <motion.div
-          className='absolute top-10 left-10 w-32 h-32 bg-[#aef359] rounded-full filter blur-[80px]'
+          className="absolute top-10 left-10 w-32 h-32 bg-[#aef359] rounded-full filter blur-[80px]"
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.15, 0.25, 0.15],
@@ -715,7 +723,7 @@ export default function HostSessionPage() {
           }}
         />
         <motion.div
-          className='absolute bottom-10 right-10 w-32 h-32 bg-[#e4f88d] rounded-full filter blur-[80px]'
+          className="absolute bottom-10 right-10 w-32 h-32 bg-[#e4f88d] rounded-full filter blur-[80px]"
           animate={{
             scale: [1.2, 1, 1.2],
             opacity: [0.15, 0.25, 0.15],
@@ -728,7 +736,7 @@ export default function HostSessionPage() {
           }}
         />
         <motion.div
-          className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-500 rounded-full filter blur-[120px]'
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-500 rounded-full filter blur-[120px]"
           animate={{
             scale: [1, 1.3, 1],
             opacity: [0.05, 0.1, 0.05],
@@ -742,13 +750,13 @@ export default function HostSessionPage() {
       </motion.div>
 
       {/* Background patterns */}
-      <div className='absolute inset-0 overflow-hidden'>
+      <div className="absolute inset-0 overflow-hidden">
         {/* Dotted grid */}
-        <div className='absolute inset-0 bg-[radial-gradient(rgba(174,243,89,0.03)_1px,transparent_1px)] bg-[size:20px_20px]' />
+        <div className="absolute inset-0 bg-[radial-gradient(rgba(174,243,89,0.03)_1px,transparent_1px)] bg-[size:20px_20px]" />
 
         {/* Hexagon grid */}
         <div
-          className='absolute inset-0'
+          className="absolute inset-0"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill-opacity='0.02' fill='%23aef359'/%3E%3C/svg%3E")`,
             backgroundSize: '60px 60px',
@@ -756,11 +764,11 @@ export default function HostSessionPage() {
         />
 
         {/* Animated lines */}
-        <div className='absolute inset-0'>
+        <div className="absolute inset-0">
           {[...Array(3)].map((_, i) => (
             <motion.div
               key={`line-${i}`}
-              className='absolute h-[1px] w-full bg-gradient-to-r from-transparent via-[#aef359]/5 to-transparent'
+              className="absolute h-[1px] w-full bg-gradient-to-r from-transparent via-[#aef359]/5 to-transparent"
               style={{ top: `${33 * (i + 1)}%` }}
               animate={{
                 x: ['-100%', '100%'],
@@ -777,7 +785,7 @@ export default function HostSessionPage() {
 
         {/* Moving light beam with reduced opacity */}
         <motion.div
-          className='absolute top-0 left-0 w-[200vw] h-[200vh] bg-[radial-gradient(circle,rgba(174,243,89,0.03)_0%,transparent_20%)] pointer-events-none'
+          className="absolute top-0 left-0 w-[200vw] h-[200vh] bg-[radial-gradient(circle,rgba(174,243,89,0.03)_0%,transparent_20%)] pointer-events-none"
           animate={{
             x: ['-50%', '0%'],
             y: ['-50%', '0%'],
@@ -791,11 +799,11 @@ export default function HostSessionPage() {
       </div>
 
       {/* Constellation effect */}
-      <div className='absolute inset-0 overflow-hidden'>
+      <div className="absolute inset-0 overflow-hidden">
         {[...Array(20)].map((_, i) => (
           <motion.div
             key={`star-${i}`}
-            className='absolute w-1 h-1 bg-[#aef359]/10 rounded-full'
+            className="absolute w-1 h-1 bg-[#aef359]/10 rounded-full"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
@@ -814,11 +822,11 @@ export default function HostSessionPage() {
       </div>
 
       {/* Floating code symbols */}
-      <div className='absolute inset-0 overflow-hidden pointer-events-none'>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {['{ }', '< >', '//', '[]', '()', '&&', '=>'].map((symbol, i) => (
           <motion.div
             key={`symbol-${i}`}
-            className='absolute text-[#aef359]/10 font-mono text-sm'
+            className="absolute text-[#aef359]/10 font-mono text-sm"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
@@ -844,11 +852,11 @@ export default function HostSessionPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className='w-[90%] max-w-[90%] sm:max-w-xl md:max-w-3xl lg:max-w-4xl bg-[#0e1c26]/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-8 md:p-12 flex flex-col items-center shadow-2xl shadow-black/30 border border-white/5 relative'
+        className="w-[90%] max-w-[90%] sm:max-w-xl md:max-w-3xl lg:max-w-4xl bg-[#0e1c26]/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-8 md:p-12 flex flex-col items-center shadow-2xl shadow-black/30 border border-white/5 relative"
       >
         {/* Container glow effect với độ sáng giảm */}
         <motion.div
-          className='absolute -inset-px rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#aef359]/10 to-[#e4f88d]/10 z-[-1]'
+          className="absolute -inset-px rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#aef359]/10 to-[#e4f88d]/10 z-[-1]"
           animate={{
             opacity: [0.3, 0.5, 0.3],
           }}
@@ -860,11 +868,11 @@ export default function HostSessionPage() {
         />
 
         {/* Container inner shadow */}
-        <div className='absolute inset-0 rounded-2xl sm:rounded-3xl shadow-inner pointer-events-none' />
+        <div className="absolute inset-0 rounded-2xl sm:rounded-3xl shadow-inner pointer-events-none" />
 
         {/* Floating particles with reduced opacity */}
         <motion.div
-          className='absolute inset-0 overflow-hidden pointer-events-none'
+          className="absolute inset-0 overflow-hidden pointer-events-none"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
@@ -872,12 +880,13 @@ export default function HostSessionPage() {
           {[...Array(30)].map((_, i) => (
             <motion.div
               key={i}
-              className={`absolute w-1 h-1 ${i % 3 === 0
-                ? 'bg-[#aef359]/20 w-1.5 h-1.5'
-                : i % 3 === 1
+              className={`absolute w-1 h-1 ${
+                i % 3 === 0
+                  ? 'bg-[#aef359]/20 w-1.5 h-1.5'
+                  : i % 3 === 1
                   ? 'bg-[#e4f88d]/15 w-1 h-1'
                   : 'bg-white/10 w-0.5 h-0.5'
-                } rounded-full`}
+              } rounded-full`}
               initial={{
                 x: Math.random() * 100 + '%',
                 y: Math.random() * 100 + '%',
@@ -902,16 +911,16 @@ export default function HostSessionPage() {
         </motion.div>
 
         {/* Top Section - Join at, PIN code, QR Code */}
-        <div className='w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-10 md:mb-14'>
+        <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-10 md:mb-14">
           {/* Left - Join at */}
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.4 }}
-            className='flex flex-col items-center sm:items-start'
+            className="flex flex-col items-center sm:items-start"
           >
             <motion.h2
-              className='text-white/80 mb-2 text-xl font-medium flex items-center gap-2'
+              className="text-white/80 mb-2 text-xl font-medium flex items-center gap-2"
               whileHover={{ scale: 1.05 }}
               transition={{ type: 'spring', stiffness: 400 }}
             >
@@ -929,9 +938,9 @@ export default function HostSessionPage() {
                 👋
               </motion.div>
             </motion.h2>
-            <div className='mb-2 relative'>
+            <div className="mb-2 relative">
               <motion.div
-                className='absolute -inset-1 bg-gradient-to-r from-[#aef359]/20 to-[#e4f88d]/20 rounded-lg blur'
+                className="absolute -inset-1 bg-gradient-to-r from-[#aef359]/20 to-[#e4f88d]/20 rounded-lg blur"
                 animate={{
                   opacity: [0.5, 1, 0.5],
                 }}
@@ -941,7 +950,7 @@ export default function HostSessionPage() {
                   ease: 'easeInOut',
                 }}
               />
-              <span className='relative text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-pink-300 via-yellow-300 to-green-200 text-transparent bg-clip-text drop-shadow-md'>
+              <span className="relative text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-pink-300 via-yellow-300 to-green-200 text-transparent bg-clip-text drop-shadow-md">
                 preziq.com
               </span>
             </div>
@@ -952,10 +961,10 @@ export default function HostSessionPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.5 }}
-            className='flex flex-col items-center col-span-1 md:col-span-1 order-first sm:order-none'
+            className="flex flex-col items-center col-span-1 md:col-span-1 order-first sm:order-none"
           >
             <motion.h2
-              className='text-white/80 mb-2 text-xl font-medium flex items-center gap-2'
+              className="text-white/80 mb-2 text-xl font-medium flex items-center gap-2"
               whileHover={{ scale: 1.05 }}
               transition={{ type: 'spring', stiffness: 400 }}
             >
@@ -974,7 +983,7 @@ export default function HostSessionPage() {
               </motion.div>
             </motion.h2>
             <motion.div
-              className='relative'
+              className="relative"
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               transition={{
@@ -985,7 +994,7 @@ export default function HostSessionPage() {
               }}
             >
               <motion.div
-                className='absolute -inset-4 bg-gradient-to-r from-[#aef359]/20 to-[#e4f88d]/20 rounded-2xl blur-lg'
+                className="absolute -inset-4 bg-gradient-to-r from-[#aef359]/20 to-[#e4f88d]/20 rounded-2xl blur-lg"
                 animate={{
                   opacity: [0.5, 1, 0.5],
                   scale: [0.95, 1.05, 0.95],
@@ -996,25 +1005,25 @@ export default function HostSessionPage() {
                   ease: 'easeInOut',
                 }}
               />
-              <AnimatePresence mode='wait'>
+              <AnimatePresence mode="wait">
                 {!hidePin ? (
                   <motion.h1
-                    key='visible-pin'
+                    key="visible-pin"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className='relative mb-4 pb-4 text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
+                    className="relative mb-4 pb-4 text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg"
                     style={{ letterSpacing: '0.05em' }}
                   >
                     {sessionCode ? formatSessionCode(sessionCode) : 'XXXXXX'}
                   </motion.h1>
                 ) : (
                   <motion.h1
-                    key='hidden-pin'
+                    key="hidden-pin"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className='relative mb-4 pb-4 text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg'
+                    className="relative mb-4 pb-4 text-4xl sm:text-5xl md:text-6xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#aef359] to-[#e4f88d] drop-shadow-lg"
                     style={{ letterSpacing: '0.05em' }}
                   >
                     XXXXXX
@@ -1022,23 +1031,23 @@ export default function HostSessionPage() {
                 )}
               </AnimatePresence>
             </motion.div>
-            <div className='flex gap-6 mt-3'>
+            <div className="flex gap-6 mt-3">
               <motion.button
                 onClick={handleCopy}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className='text-white/80 hover:text-white flex items-center gap-1.5 text-sm transition-colors duration-200'
+                className="text-white/80 hover:text-white flex items-center gap-1.5 text-sm transition-colors duration-200"
               >
-                <LinkIcon className='w-4 h-4' />
+                <LinkIcon className="w-4 h-4" />
                 Copy
               </motion.button>
               <motion.button
                 onClick={toggleHidePin}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className='text-white/80 hover:text-white flex items-center gap-1.5 text-sm transition-colors duration-200'
+                className="text-white/80 hover:text-white flex items-center gap-1.5 text-sm transition-colors duration-200"
               >
-                <EyeOff className='w-4 h-4' />
+                <EyeOff className="w-4 h-4" />
                 Hide
               </motion.button>
               <AnimatePresence>
@@ -1047,7 +1056,7 @@ export default function HostSessionPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className='text-white/90 text-sm flex items-center gap-1'
+                    className="text-white/90 text-sm flex items-center gap-1"
                   >
                     <motion.div
                       animate={{
@@ -1057,7 +1066,7 @@ export default function HostSessionPage() {
                         duration: 0.3,
                       }}
                     >
-                      <CheckCircle2 className='w-3.5 h-3.5 text-green-400' />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
                     </motion.div>
                     Copied!
                   </motion.div>
@@ -1071,15 +1080,15 @@ export default function HostSessionPage() {
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4, duration: 0.4 }}
-            className='flex justify-center sm:justify-end'
+            className="flex justify-center sm:justify-end"
           >
             <motion.div
               whileHover={{ scale: 1.05 }}
               transition={{ type: 'spring', stiffness: 400 }}
-              className='relative'
+              className="relative"
             >
               <motion.div
-                className='absolute -inset-2 bg-gradient-to-r from-[#aef359]/20 to-[#e4f88d]/20 rounded-xl blur'
+                className="absolute -inset-2 bg-gradient-to-r from-[#aef359]/20 to-[#e4f88d]/20 rounded-xl blur"
                 animate={{
                   opacity: [0.5, 1, 0.5],
                 }}
@@ -1089,21 +1098,21 @@ export default function HostSessionPage() {
                   ease: 'easeInOut',
                 }}
               />
-              <div className='relative bg-[#f0f1e1] p-3 md:p-4 rounded-xl shadow-lg border border-white/10'>
+              <div className="relative bg-[#f0f1e1] p-3 md:p-4 rounded-xl shadow-lg border border-white/10">
                 {qrCodeUrl ? (
                   <motion.img
                     src={qrCodeUrl}
-                    alt='QR Code'
+                    alt="QR Code"
                     width={120}
                     height={120}
-                    className='w-[110px] h-[110px] sm:w-[130px] sm:h-[130px] md:w-[150px] md:h-[150px]'
+                    className="w-[110px] h-[110px] sm:w-[130px] sm:h-[130px] md:w-[150px] md:h-[150px]"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}
                   />
                 ) : (
-                  <div className='w-[110px] h-[110px] sm:w-[130px] sm:h-[130px] md:w-[150px] md:h-[150px] bg-gray-200 flex items-center justify-center'>
-                    <QrCode className='w-8 h-8 md:w-10 md:h-10 text-gray-400' />
+                  <div className="w-[110px] h-[110px] sm:w-[130px] sm:h-[130px] md:w-[150px] md:h-[150px] bg-gray-200 flex items-center justify-center">
+                    <QrCode className="w-8 h-8 md:w-10 md:h-10 text-gray-400" />
                   </div>
                 )}
               </div>
@@ -1113,13 +1122,13 @@ export default function HostSessionPage() {
 
         {/* Middle line with animated gradient */}
         <motion.div
-          className='w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8 md:mb-10 relative overflow-hidden'
+          className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8 md:mb-10 relative overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
           <motion.div
-            className='absolute inset-0 bg-gradient-to-r from-transparent via-[#aef359]/30 to-transparent'
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-[#aef359]/30 to-transparent"
             animate={{
               x: ['-100%', '100%'],
             }}
@@ -1136,29 +1145,29 @@ export default function HostSessionPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.5 }}
-          className='w-full flex flex-col items-center mb-10 md:mb-14'
+          className="w-full flex flex-col items-center mb-10 md:mb-14"
         >
           <motion.h2
-            className='text-xl md:text-2xl font-semibold text-white mb-6 text-center'
+            className="text-xl md:text-2xl font-semibold text-white mb-6 text-center"
             whileHover={{ scale: 1.05 }}
             transition={{ type: 'spring', stiffness: 400 }}
           >
             <motion.div
-              className='px-4 py-1.5 md:px-5 md:py-2 rounded-full bg-gradient-to-r from-[#0e2838]/50 to-[#183244]/50 border border-white/10 shadow-inner flex items-center justify-center gap-2 relative group'
+              className="px-4 py-1.5 md:px-5 md:py-2 rounded-full bg-gradient-to-r from-[#0e2838]/50 to-[#183244]/50 border border-white/10 shadow-inner flex items-center justify-center gap-2 relative group"
               whileHover={{ scale: 1.05 }}
               transition={{ type: 'spring', stiffness: 400 }}
             >
-              <motion.div className='absolute inset-0 bg-gradient-to-r from-[#aef359]/5 to-[#e4f88d]/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
+              <motion.div className="absolute inset-0 bg-gradient-to-r from-[#aef359]/5 to-[#e4f88d]/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <motion.span
                 key={participants.length}
                 initial={{ scale: 1.2, rotate: 10 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', stiffness: 200 }}
-                className='text-[#aef359] font-bold relative'
+                className="text-[#aef359] font-bold relative"
               >
                 {participants.length}
                 <motion.div
-                  className='absolute -top-1 -right-1 w-2 h-2 bg-[#aef359] rounded-full'
+                  className="absolute -top-1 -right-1 w-2 h-2 bg-[#aef359] rounded-full"
                   animate={{
                     scale: [1, 1.5, 1],
                     opacity: [1, 0, 1],
@@ -1170,7 +1179,7 @@ export default function HostSessionPage() {
                   }}
                 />
               </motion.span>
-              <span className='relative'>of 300 players:</span>
+              <span className="relative">of 300 players:</span>
             </motion.div>
           </motion.h2>
 
@@ -1186,20 +1195,20 @@ export default function HostSessionPage() {
                 repeatType: 'reverse',
                 duration: 2,
               }}
-              className='flex justify-center items-center p-6 md:p-8 mt-2 md:mt-4'
+              className="flex justify-center items-center p-6 md:p-8 mt-2 md:mt-4"
             >
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className='flex items-center gap-2 text-white/70 hover:text-white/90 transition-colors duration-300 relative group'
+                className="flex items-center gap-2 text-white/70 hover:text-white/90 transition-colors duration-300 relative group"
               >
-                <motion.div className='absolute -inset-2 bg-gradient-to-r from-[#aef359]/10 to-[#e4f88d]/10 rounded-lg blur opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
-                <Users className='w-5 h-5 relative' />
-                <span className='relative'>Join on this device</span>
+                <motion.div className="absolute -inset-2 bg-gradient-to-r from-[#aef359]/10 to-[#e4f88d]/10 rounded-lg blur opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <Users className="w-5 h-5 relative" />
+                <span className="relative">Join on this device</span>
               </motion.button>
             </motion.div>
           ) : (
-            <div className='grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 md:gap-4 lg:gap-6 justify-items-center max-w-full overflow-y-auto max-h-[300px] md:max-h-[360px] pr-2 pb-2 w-full'>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 md:gap-4 lg:gap-6 justify-items-center max-w-full overflow-y-auto max-h-[300px] md:max-h-[360px] pr-2 pb-2 w-full">
               <AnimatePresence>
                 {participants.map((participant, index) => (
                   <motion.div
@@ -1212,15 +1221,15 @@ export default function HostSessionPage() {
                       type: 'spring',
                       stiffness: 200,
                     }}
-                    className='relative'
+                    className="relative"
                   >
                     <motion.div
                       whileHover={{ y: -5 }}
                       transition={{ type: 'spring', stiffness: 300 }}
-                      className='relative w-16 sm:w-18 md:w-20 h-20 md:h-24 flex flex-col items-center'
+                      className="relative w-16 sm:w-18 md:w-20 h-20 md:h-24 flex flex-col items-center"
                     >
                       <motion.div
-                        className='relative'
+                        className="relative"
                         initial={{ y: -20 }}
                         animate={{ y: 0 }}
                         transition={{
@@ -1231,7 +1240,7 @@ export default function HostSessionPage() {
                         }}
                       >
                         <motion.div
-                          className='absolute inset-0 bg-gradient-to-br from-[#aef359]/30 to-[#e4f88d]/30 rounded-full blur-md -z-10'
+                          className="absolute inset-0 bg-gradient-to-br from-[#aef359]/30 to-[#e4f88d]/30 rounded-full blur-md -z-10"
                           animate={{
                             scale: [1, 1.2, 1],
                             opacity: [0.3, 0.6, 0.3],
@@ -1243,13 +1252,13 @@ export default function HostSessionPage() {
                             delay: index * 0.2,
                           }}
                         />
-                        <Avatar className='h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 border-white/20 shadow-lg relative group'>
+                        <Avatar className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 border-white/20 shadow-lg relative group">
                           <AvatarImage
                             src={participant.guestAvatar}
                             alt={participant.guestName}
-                            className='group-hover:scale-110 transition-transform duration-300'
+                            className="group-hover:scale-110 transition-transform duration-300"
                           />
-                          <AvatarFallback className='bg-gradient-to-br from-green-500 to-green-700 text-white text-base md:text-lg'>
+                          <AvatarFallback className="bg-gradient-to-br from-green-500 to-green-700 text-white text-base md:text-lg">
                             {participant.guestName
                               .substring(0, 2)
                               .toUpperCase()}
@@ -1264,7 +1273,7 @@ export default function HostSessionPage() {
                               type: 'spring',
                               stiffness: 200,
                             }}
-                            className='absolute -bottom-1 -right-1 bg-green-500 p-1 rounded-full border-2 border-[#0e1c26] shadow-lg'
+                            className="absolute -bottom-1 -right-1 bg-green-500 p-1 rounded-full border-2 border-[#0e1c26] shadow-lg"
                           >
                             <motion.div
                               animate={{
@@ -1276,7 +1285,7 @@ export default function HostSessionPage() {
                                 duration: 2,
                                 ease: 'easeInOut',
                               }}
-                              className='w-1.5 h-1.5 md:w-2 md:h-2 bg-white rounded-full'
+                              className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white rounded-full"
                             />
                           </motion.div>
                         )}
@@ -1288,10 +1297,10 @@ export default function HostSessionPage() {
                           delay: 0.3 + 0.1 * Math.min(index, 10),
                           duration: 0.3,
                         }}
-                        className='mt-2 text-center'
+                        className="mt-2 text-center"
                       >
                         <motion.span
-                          className='text-xs sm:text-sm text-white/90 font-medium tracking-tight block'
+                          className="text-xs sm:text-sm text-white/90 font-medium tracking-tight block"
                           whileHover={{ scale: 1.05 }}
                         >
                           {participant.guestName}
@@ -1310,13 +1319,13 @@ export default function HostSessionPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2, duration: 0.8 }}
-          className='mt-4 sm:mt-6 text-white/40 text-xs relative group cursor-pointer'
+          className="mt-4 sm:mt-6 text-white/40 text-xs relative group cursor-pointer"
           whileHover={{ scale: 1.05 }}
         >
-          <motion.div className='absolute inset-0 bg-gradient-to-r from-[#aef359]/5 to-[#e4f88d]/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
-          <span className='relative'>PreziQ v1.0</span>
+          <motion.div className="absolute inset-0 bg-gradient-to-r from-[#aef359]/5 to-[#e4f88d]/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <span className="relative">PreziQ v1.0</span>
           <motion.div
-            className='absolute -top-1 -right-1 w-1 h-1 bg-[#aef359] rounded-full'
+            className="absolute -top-1 -right-1 w-1 h-1 bg-[#aef359] rounded-full"
             animate={{
               scale: [1, 1.5, 1],
               opacity: [1, 0, 1],
@@ -1335,21 +1344,21 @@ export default function HostSessionPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8, duration: 0.5 }}
-            className='w-full flex justify-center'
+            className="w-full flex justify-center"
           >
             <Button
-              className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-semibold text-lg px-8 py-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3'
+              className="bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-semibold text-lg px-8 py-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3"
               onClick={handleStartSession}
               disabled={isJoining}
             >
               {isJoining ? (
                 <>
-                  <Loader2 className='w-5 h-5 animate-spin' />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                   <span>Đang khởi động...</span>
                 </>
               ) : (
                 <>
-                  <Settings className='w-5 h-5' />
+                  <Settings className="w-5 h-5" />
                   <span>Bắt đầu phiên</span>
                 </>
               )}
@@ -1359,29 +1368,29 @@ export default function HostSessionPage() {
 
         {/* Dialog chọn vai trò */}
         <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
-          <DialogContent className='sm:max-w-[425px] bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white border border-white/10'>
-            <DialogHeader className='space-y-4'>
-              <DialogTitle className='text-2xl font-bold text-center bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text'>
+          <DialogContent className="sm:max-w-[425px] bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white border border-white/10">
+            <DialogHeader className="space-y-4">
+              <DialogTitle className="text-2xl font-bold text-center bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text">
                 Thiết lập vai trò
               </DialogTitle>
-              <DialogDescription className='text-center text-white/70'>
+              <DialogDescription className="text-center text-white/70">
                 Chọn cách bạn muốn tham gia vào phiên này
               </DialogDescription>
             </DialogHeader>
 
-            <div className='space-y-6 py-6'>
-              <div className='flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10'>
-                <div className='flex items-center space-x-3'>
-                  <Settings className='w-5 h-5 text-[#aef359]' />
-                  <Label htmlFor='participate-mode' className='font-medium'>
+            <div className="space-y-6 py-6">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex items-center space-x-3">
+                  <Settings className="w-5 h-5 text-[#aef359]" />
+                  <Label htmlFor="participate-mode" className="font-medium">
                     Tham gia trả lời
                   </Label>
                 </div>
                 <Switch
-                  id='participate-mode'
+                  id="participate-mode"
                   checked={willParticipate}
                   onCheckedChange={setWillParticipate}
-                  className='data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-[#aef359] data-[state=checked]:to-[#e4f88d] data-[state=unchecked]:bg-white/10'
+                  className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-[#aef359] data-[state=checked]:to-[#e4f88d] data-[state=unchecked]:bg-white/10"
                 />
               </div>
 
@@ -1392,51 +1401,51 @@ export default function HostSessionPage() {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.2 }}
-                    className='space-y-4'
+                    className="space-y-4"
                   >
-                    <div className='flex flex-col items-center gap-4'>
+                    <div className="flex flex-col items-center gap-4">
                       <motion.div
                         initial={{ scale: 0.8 }}
                         animate={{ scale: 1 }}
-                        className='relative group cursor-pointer'
+                        className="relative group cursor-pointer"
                         onClick={handleChangeAvatar}
                       >
-                        <div className='absolute inset-0 bg-gradient-to-br from-[#aef359]/30 to-[#e4f88d]/30 rounded-full blur-xl -z-10'></div>
-                        <Avatar className='w-24 h-24 border-2 border-white/20 shadow-xl transition-transform duration-300 group-hover:scale-105'>
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#aef359]/30 to-[#e4f88d]/30 rounded-full blur-xl -z-10"></div>
+                        <Avatar className="w-24 h-24 border-2 border-white/20 shadow-xl transition-transform duration-300 group-hover:scale-105">
                           <AvatarImage
                             src={participantAvatar}
                             className={isChangingAvatar ? 'animate-pulse' : ''}
                           />
-                          <AvatarFallback className='bg-white/5'>
+                          <AvatarFallback className="bg-white/5">
                             {participantName
                               ? participantName.substring(0, 2).toUpperCase()
                               : '?'}
                           </AvatarFallback>
                         </Avatar>
-                        <div className='absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center'>
+                        <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                           <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className='text-white/90 text-sm font-medium'
+                            className="text-white/90 text-sm font-medium"
                           >
                             Đổi avatar
                           </motion.div>
                         </div>
                       </motion.div>
 
-                      <div className='w-full space-y-2'>
+                      <div className="w-full space-y-2">
                         <Label
-                          htmlFor='participant-name'
-                          className='text-sm text-white/70'
+                          htmlFor="participant-name"
+                          className="text-sm text-white/70"
                         >
                           Tên của bạn
                         </Label>
                         <Input
-                          id='participant-name'
+                          id="participant-name"
                           value={participantName}
                           onChange={(e) => setParticipantName(e.target.value)}
-                          placeholder='Nhập tên của bạn'
-                          className='bg-white/5 border-white/10 focus:border-[#aef359]/50 focus:ring-[#aef359]/20 placeholder:text-white/30'
+                          placeholder="Nhập tên của bạn"
+                          className="bg-white/5 border-white/10 focus:border-[#aef359]/50 focus:ring-[#aef359]/20 placeholder:text-white/30"
                         />
                       </div>
                     </div>
@@ -1445,22 +1454,22 @@ export default function HostSessionPage() {
               </AnimatePresence>
             </div>
 
-            <div className='flex justify-end gap-3 pt-4 border-t border-white/10'>
+            <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
               <Button
-                variant='outline'
+                variant="outline"
                 onClick={() => setShowRoleDialog(false)}
-                className='bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white'
+                className="bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
               >
                 Hủy
               </Button>
               <Button
                 onClick={handleRoleConfirm}
                 disabled={willParticipate && !participantName}
-                className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium disabled:opacity-50'
+                className="bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium disabled:opacity-50"
               >
                 {isJoining ? (
                   <>
-                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Đang xử lý...
                   </>
                 ) : (
@@ -1478,11 +1487,11 @@ export default function HostSessionPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className='mt-4 sm:mt-6 w-full px-2 sm:px-0'
+              className="mt-4 sm:mt-6 w-full px-2 sm:px-0"
             >
               <Alert
-                variant='destructive'
-                className='bg-red-500/20 border border-red-500 text-white text-sm'
+                variant="destructive"
+                className="bg-red-500/20 border border-red-500 text-white text-sm"
               >
                 <AlertDescription>{error}</AlertDescription>
               </Alert>

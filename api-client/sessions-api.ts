@@ -1,4 +1,3 @@
-
 import axiosClient from './axios-client';
 
 export interface CreateSessionRequest {
@@ -22,6 +21,7 @@ export interface SessionResponse {
       description: string;
       isPublished: boolean;
       coverImage: string;
+      defaultBackgroundMusic?: string; //luật
     };
     hostUser: {
       createdAt: string;
@@ -58,6 +58,7 @@ export interface SessionHistoryResponse {
       title: string;
       description: string;
       coverImage: string;
+      defaultBackroundMusic?: string;
     };
     hostUser: {
       userId: string;
@@ -71,6 +72,66 @@ export interface SessionHistoryResponse {
     timestamp: string;
     instance: string;
   };
+}
+
+export interface SessionHistoryResponseByCode {
+  success: boolean;
+  message: string;
+  data: {
+    meta: PaginationMeta;
+    content: Session[];
+  };
+  meta: {
+    timestamp: string;
+    instance: string;
+  };
+}
+
+interface PaginationMeta {
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
+  totalElements: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
+interface Session {
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
+  sessionId: string;
+  sessionCode: string;
+  joinSessionQrUrl: string;
+  sessionStatus: string;
+  collection: Collection;
+  hostUser: HostUser;
+  startTime: string;
+}
+
+interface Collection {
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  collectionId: string;
+  title: string;
+  description: string;
+  isPublished: boolean;
+  coverImage: string;
+  defaultBackgroundMusic: string;
+  topic: string;
+}
+
+interface HostUser {
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
 }
 
 export const sessionsApi = {
@@ -88,6 +149,13 @@ export const sessionsApi = {
       `/sessions/${sessionId}/history`
     );
     return response.data;
-
+  },
+  getSessionHistoryByCode: async (
+    sessionCode: string
+  ): Promise<SessionHistoryResponseByCode> => {
+    const response = await axiosClient.get<SessionHistoryResponseByCode>(
+      `/sessions/me?filter=sessionCode~'${sessionCode}'`
+    );
+    return response.data;
   },
 };

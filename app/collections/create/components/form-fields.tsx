@@ -121,7 +121,10 @@ export function FormFields({ control }: FormFieldsProps) {
                 {t('collectionForm.backgroundMusicLabel')}
               </FormLabel>
               <FormControl>
-                <MusicSelector value={field.value} onChange={field.onChange} />
+                <MusicSelector
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                />
               </FormControl>
               <FormDescription className="text-xs text-gray-500 dark:text-gray-400">
                 {t('collectionForm.backgroundMusicDescription')}
