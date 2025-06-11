@@ -850,6 +850,40 @@ i18next
             processing: 'Processing...',
             websiteUrl: 'preziq.com',
           },
+
+          // Collections Page
+          collections: {
+            title: 'Collections',
+            searchPlaceholder: 'Search collections...',
+            allTopics: 'All Topics',
+            searchResults: 'Search Results',
+            scrollLeft: 'Scroll left',
+            scrollRight: 'Scroll right',
+            tryAgain: 'Try Again',
+            errorLoadingTopics:
+              'Could not load topics. Please try again later.',
+            errorLoadingCollections:
+              'Could not load collections. Please try again later.',
+            deleteSuccess: 'Collection deleted successfully.',
+            deleteError: 'Unable to delete collection. Please try again later.',
+            deleteErrorGeneric: 'An error occurred while deleting',
+            // Join Session Banner
+            joinSession: 'Join Session',
+            enterPinToParticipate: 'Enter PIN code to',
+            participateAndAnswer: 'participate and answer questions',
+            enterPinCode: 'Enter PIN code',
+            joinNow: 'Join Now',
+            pleaseEnterSessionCode: 'Please enter a session code',
+            createCollection: 'Create Collection',
+            createYourOwn: 'Create your own',
+            questionCollection: 'question collection',
+            // Empty Collections
+            noCollectionsFound: 'No collections found',
+            tryDifferentSearch:
+              'Try a different search term or clear your search to see all collections.',
+            createFirstCollection:
+              'Create your first collection to start building interactive learning experiences.',
+          },
         },
       },
       vi: {
@@ -1659,6 +1693,39 @@ i18next
             confirm: 'Xác nhận',
             processing: 'Đang xử lý...',
             websiteUrl: 'preziq.com',
+          },
+
+          // Collections Page
+          collections: {
+            title: 'Bộ sưu tập',
+            searchPlaceholder: 'Tìm kiếm bộ sưu tập...',
+            allTopics: 'Tất cả chủ đề',
+            searchResults: 'Kết quả tìm kiếm',
+            scrollLeft: 'Cuộn trái',
+            scrollRight: 'Cuộn phải',
+            tryAgain: 'Thử lại',
+            errorLoadingTopics: 'Không thể tải chủ đề. Vui lòng thử lại sau.',
+            errorLoadingCollections:
+              'Không thể tải bộ sưu tập. Vui lòng thử lại sau.',
+            deleteSuccess: 'Đã xóa bộ sưu tập thành công.',
+            deleteError: 'Không thể xóa bộ sưu tập. Vui lòng thử lại sau.',
+            deleteErrorGeneric: 'Có lỗi xảy ra khi xóa',
+            // Join Session Banner
+            joinSession: 'Tham gia phiên',
+            enterPinToParticipate: 'Nhập mã PIN để',
+            participateAndAnswer: 'tham gia và trả lời câu hỏi',
+            enterPinCode: 'Nhập mã PIN',
+            joinNow: 'Tham gia ngay',
+            pleaseEnterSessionCode: 'Vui lòng nhập mã phiên',
+            createCollection: 'Tạo bộ sưu tập',
+            createYourOwn: 'Tạo bộ sưu tập',
+            questionCollection: 'câu hỏi của riêng bạn',
+            // Empty Collections
+            noCollectionsFound: 'Không tìm thấy bộ sưu tập',
+            tryDifferentSearch:
+              'Thử từ khóa tìm kiếm khác hoặc xóa tìm kiếm để xem tất cả bộ sưu tập.',
+            createFirstCollection:
+              'Tạo bộ sưu tập đầu tiên của bạn để bắt đầu xây dựng trải nghiệm học tập tương tác.',
           },
         },
       },
