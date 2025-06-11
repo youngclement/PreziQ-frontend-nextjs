@@ -1,12 +1,12 @@
 /**
  * Custom hook for fetching and managing collection data
  */
-import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { collectionsApi } from "@/api-client";
-import { Activity, QuizQuestion } from "../components/types";
-import { createEmptyQuestion } from "../utils/question-helpers";
-import { mapActivityTypeToQuestionType } from "../utils/question-type-mapping";
+import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { collectionsApi } from '@/api-client';
+import { Activity, QuizQuestion } from '../components/types';
+import { createEmptyQuestion } from '../utils/question-helpers';
+import { mapActivityTypeToQuestionType } from '../utils/question-type-mapping';
 
 export function useCollectionData(collectionId: string, activityId?: string) {
   const { toast } = useToast();
@@ -25,7 +25,6 @@ export function useCollectionData(collectionId: string, activityId?: string) {
       const response = await collectionsApi.getCollectionById(collectionId);
 
       if (response && response.data) {
-
         // Store the complete collection data
         setCollectionData(response.data.data);
 
@@ -49,7 +48,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
               backgroundImage: act.backgroundImage,
               customBackgroundMusic: act.customBackgroundMusic,
               orderIndex:
-                typeof act.orderIndex === "number"
+                typeof act.orderIndex === 'number'
                   ? act.orderIndex
                   : Number.MAX_SAFE_INTEGER,
               createdAt: act.createdAt,
@@ -62,7 +61,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
             );
 
           console.log(
-            "Activities after sorting by orderIndex:",
+            'Activities after sorting by orderIndex:',
             mappedActivities.map(
               (a: {
                 title: string;
@@ -104,28 +103,28 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                 const question: QuizQuestion = {
                   id: act.id, // Use activity ID as question ID
                   activity_id: act.id,
-                  question_text: "",
+                  question_text: '',
                   question_type: questionType as any,
-                  correct_answer_text: "",
+                  correct_answer_text: '',
                   options: [],
                 };
 
                 // Handle slides and info slides
-                if (questionType === "slide" || questionType === "info_slide") {
+                if (questionType === 'slide' || questionType === 'info_slide') {
                   // For slide types, use specific slide data or defaults
                   if (act.quiz) {
-                    question.question_text = act.quiz.title || "Slide";
-                    question.slide_content = act.quiz.content || "";
-                    question.slide_image = act.quiz.image || "";
+                    question.question_text = act.quiz.title || 'Slide';
+                    question.slide_content = act.quiz.content || '';
+                    question.slide_image = act.quiz.image || '';
                   } else {
-                    question.question_text = act.title || "Slide";
-                    question.slide_content = "Add content here...";
+                    question.question_text = act.title || 'Slide';
+                    question.slide_content = 'Add content here...';
                   }
                   return question;
                 }
 
                 // Handle location questions
-                if (act.activity_type_id === "QUIZ_LOCATION") {
+                if (act.activity_type_id === 'QUIZ_LOCATION') {
                   if (
                     act.quiz &&
                     act.quiz.quizLocationAnswers &&
@@ -136,70 +135,70 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                     question.question_text =
                       act.quiz.questionText ||
                       act.title ||
-                      "Where is this location?";
-                    question.question_type = "location";
+                      'Where is this location?';
+                    question.question_type = 'location';
                     question.location_data = {
                       lat: locationAnswer.latitude,
                       lng: locationAnswer.longitude,
                       radius: locationAnswer.radius || 10,
-                      hint: act.quiz.hint || "",
-                      pointType: act.quiz.pointType || "STANDARD",
+                      hint: act.quiz.hint || '',
+                      pointType: act.quiz.pointType || 'STANDARD',
                     };
                     console.log(
-                      "Found location question with data:",
+                      'Found location question with data:',
                       question.location_data
                     );
                   } else {
                     // Create default location data if not present
                     question.question_text =
-                      act.title || "Where is this location?";
-                    question.question_type = "location";
+                      act.title || 'Where is this location?';
+                    question.question_type = 'location';
                     question.location_data = {
                       lat: 21.0285, // Default to Hanoi
                       lng: 105.8048,
                       radius: 10,
-                      hint: "",
-                      pointType: "STANDARD",
+                      hint: '',
+                      pointType: 'STANDARD',
                     };
-                    console.log("Created default location question data");
+                    console.log('Created default location question data');
                   }
                   return question;
                 }
 
                 // Handle matching pair questions - FOR MOCKING
-                if (act.activity_type_id === "QUIZ_MATCHING_PAIR") {
-                  question.question_type = "matching_pair";
-                  question.question_text = act.title || "Match the pairs";
+                if (act.activity_type_id === 'QUIZ_MATCHING_PAIR') {
+                  question.question_type = 'matching_pair';
+                  question.question_text = act.title || 'Match the pairs';
                   question.options = [
                     {
-                      id: "left-1",
-                      pair_id: "pair-1",
-                      type: "left",
-                      option_text: "Hanoi",
+                      id: 'left-1',
+                      pair_id: 'pair-1',
+                      type: 'left',
+                      option_text: 'Hanoi',
                       is_correct: true,
                       display_order: 0,
                     },
                     {
-                      id: "right-1",
-                      pair_id: "pair-1",
-                      type: "right",
-                      option_text: "Vietnam",
+                      id: 'right-1',
+                      pair_id: 'pair-1',
+                      type: 'right',
+                      option_text: 'Vietnam',
                       is_correct: true,
                       display_order: 1,
                     },
                     {
-                      id: "left-2",
-                      pair_id: "pair-2",
-                      type: "left",
-                      option_text: "Tokyo",
+                      id: 'left-2',
+                      pair_id: 'pair-2',
+                      type: 'left',
+                      option_text: 'Tokyo',
                       is_correct: true,
                       display_order: 2,
                     },
                     {
-                      id: "right-2",
-                      pair_id: "pair-2",
-                      type: "right",
-                      option_text: "Japan",
+                      id: 'right-2',
+                      pair_id: 'pair-2',
+                      type: 'right',
+                      option_text: 'Japan',
                       is_correct: true,
                       display_order: 3,
                     },
@@ -211,7 +210,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                 if (act.quiz) {
                   const quizData = act.quiz;
                   question.question_text =
-                    quizData.questionText || "Default question";
+                    quizData.questionText || 'Default question';
 
                   // Map answers based on activity type
                   if (
@@ -223,16 +222,16 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                         option_text: answer.answerText,
                         is_correct: answer.isCorrect,
                         display_order: answer.orderIndex || index,
-                        explanation: answer.explanation || "",
+                        explanation: answer.explanation || '',
                       })
                     );
                   } else if (
-                    act.activity_type_id === "QUIZ_TYPE_ANSWER" &&
+                    act.activity_type_id === 'QUIZ_TYPE_ANSWER' &&
                     quizData.correctAnswer
                   ) {
                     question.correct_answer_text = quizData.correctAnswer;
                     console.log(
-                      "Found text answer question with answer:",
+                      'Found text answer question with answer:',
                       quizData.correctAnswer
                     );
                   }
@@ -247,53 +246,53 @@ export function useCollectionData(collectionId: string, activityId?: string) {
 
             // MOCK DATA INJECTION
             const mockActivity: Activity = {
-              id: "mock-activity-1",
-              title: "Mock Matching Pair Question",
+              id: 'mock-activity-1',
+              title: 'Mock Matching Pair Question',
               collection_id: collectionId,
-              description: "This is a mock question for testing.",
+              description: 'This is a mock question for testing.',
               is_published: true,
-              activity_type_id: "QUIZ_MATCHING_PAIR",
+              activity_type_id: 'QUIZ_MATCHING_PAIR',
               orderIndex: -1, // To ensure it's at the top
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              createdBy: "mock-user",
+              createdBy: 'mock-user',
             };
 
             const mockQuestion: QuizQuestion = {
-              id: "mock-activity-1",
-              activity_id: "mock-activity-1",
-              question_text: "Match the capitals to their countries",
-              question_type: "matching_pair",
+              id: 'mock-activity-1',
+              activity_id: 'mock-activity-1',
+              question_text: 'Match the capitals to their countries',
+              question_type: 'matching_pair',
               options: [
                 {
-                  id: "left-1",
-                  pair_id: "pair-1",
-                  type: "left",
-                  option_text: "Hanoi",
+                  id: 'left-1',
+                  pair_id: 'pair-1',
+                  type: 'left',
+                  option_text: 'Hanoi',
                   is_correct: true,
                   display_order: 0,
                 },
                 {
-                  id: "right-1",
-                  pair_id: "pair-1",
-                  type: "right",
-                  option_text: "Vietnam",
+                  id: 'right-1',
+                  pair_id: 'pair-1',
+                  type: 'right',
+                  option_text: 'Vietnam',
                   is_correct: true,
                   display_order: 1,
                 },
                 {
-                  id: "left-2",
-                  pair_id: "pair-2",
-                  type: "left",
-                  option_text: "Tokyo",
+                  id: 'left-2',
+                  pair_id: 'pair-2',
+                  type: 'left',
+                  option_text: 'Tokyo',
                   is_correct: true,
                   display_order: 2,
                 },
                 {
-                  id: "right-2",
-                  pair_id: "pair-2",
-                  type: "right",
-                  option_text: "Japan",
+                  id: 'right-2',
+                  pair_id: 'pair-2',
+                  type: 'right',
+                  option_text: 'Japan',
                   is_correct: true,
                   display_order: 3,
                 },
@@ -334,27 +333,27 @@ export function useCollectionData(collectionId: string, activityId?: string) {
             }
           } else {
             toast({
-              title: "Info",
+              title: 'Info',
               description:
-                "No activities found in this collection. Add one to get started.",
+                'No activities found in this collection. Add one to get started.',
             });
           }
         } else {
           // No activities in collection
-          console.log("No activities found in the collection");
+          console.log('No activities found in the collection');
           toast({
-            title: "Info",
+            title: 'Info',
             description:
-              "This collection has no activities yet. Add one to get started.",
+              'This collection has no activities yet. Add one to get started.',
           });
         }
       }
     } catch (error) {
-      console.error("Error fetching collection:", error);
+      console.error('Error fetching collection:', error);
       toast({
-        title: "Error",
-        description: "Failed to load collection data",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load collection data',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -374,7 +373,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
       );
       if (correctActivity) {
         console.log(
-          "Syncing activity state with active question:",
+          'Syncing activity state with active question:',
           correctActivity.id
         );
         setActivity(correctActivity);

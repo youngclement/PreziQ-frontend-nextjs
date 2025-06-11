@@ -133,6 +133,13 @@ interface QuestionPreviewProps {
   onReorderOptions?: (fromIndex: number, toIndex: number) => void;
   leftColumnName?: string;
   rightColumnName?: string;
+  slideElements?: Record<string, SlideElementPayload[]>;
+  slidesData?: Record<string, any>;
+  slidesBackgrounds?: Record<string, { backgroundImage: string; backgroundColor: string }>;
+  onSlideElementsUpdate?: (
+    activityId: string,
+    elements: SlideElementPayload[]
+  ) => void;
 }
 
 interface SlideData {
@@ -188,6 +195,10 @@ export function QuestionPreview({
   onReorderOptions,
   leftColumnName,
   rightColumnName,
+  slideElements,
+  onSlideElementsUpdate,
+  slidesData,
+  slidesBackgrounds,
 }: QuestionPreviewProps) {
   const [viewMode, setViewMode] = React.useState('desktop');
   const [showScrollTop, setShowScrollTop] = React.useState(false);
@@ -205,10 +216,10 @@ export function QuestionPreview({
   // Add state for delete confirmation dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
-  const [slidesData, setSlidesData] = useState<Record<string, SlideData>>({});
-  const [slidesElements, setSlidesElements] = useState<
-    Record<string, SlideElementPayload[]>
-  >({});
+  // const [slidesData, setSlidesData] = useState<Record<string, SlideData>>({});
+  // const [slidesElements, setSlidesElements] = useState<
+  //   Record<string, SlideElementPayload[]>
+  // >({});
 
   // React to changes in activity props to update UI
   const [backgroundState, setBackgroundState] = React.useState({
@@ -216,9 +227,9 @@ export function QuestionPreview({
     backgroundColor: activity?.backgroundColor || '#FFFFFF',
   });
 
-  const [slidesBackgrounds, setSlidesBackgrounds] = useState<
-    Record<string, { backgroundImage: string; backgroundColor: string }>
-  >({});
+  // const [slidesBackgrounds, setSlidesBackgrounds] = useState<
+  //   Record<string, { backgroundImage: string; backgroundColor: string }>
+  // >({});
 
   // Map to store activity-specific backgrounds
   const [activityBackgrounds, setActivityBackgrounds] = React.useState<
@@ -271,90 +282,90 @@ export function QuestionPreview({
   };
 
 
-  useEffect(() => {
-    const fetchActivityData = async (
-      activityId: string,
-      questionIndex: number
-    ) => {
-      if (!activityId) {
-        console.warn(
-          'No activity_id found for question at index',
-          questionIndex
-        );
-        return;
-      }
+  // useEffect(() => {
+  //   const fetchActivityData = async (
+  //     activityId: string,
+  //     questionIndex: number
+  //   ) => {
+  //     if (!activityId) {
+  //       console.warn(
+  //         'No activity_id found for question at index',
+  //         questionIndex
+  //       );
+  //       return;
+  //     }
 
-      try {
-        const response = await activitiesApi.getActivityById(activityId);
-        const activityData = response.data.data;
-        // console.log('activityData', activityData);
+  //     try {
+  //       const response = await activitiesApi.getActivityById(activityId);
+  //       const activityData = response.data.data;
+  //       // console.log('activityData', activityData);
 
-        // Lưu dữ liệu slide riêng cho từng activityId
-        setSlidesData((prev) => ({
-          ...prev,
-          [activityId]: activityData,
-        }));
+  //       // Lưu dữ liệu slide riêng cho từng activityId
+  //       setSlidesData((prev) => ({
+  //         ...prev,
+  //         [activityId]: activityData,
+  //       }));
 
-        // Cập nhật activityBackgrounds
-        if (
-          ['slide', 'info_slide'].includes(
-            questions[questionIndex].question_type
-          ) &&
-          activityData.slide?.slideElements
-        ) {
-          setSlidesElements((prev) => ({
-            ...prev,
-            [activityId]: activityData.slide.slideElements,
-          }));
+  //       // Cập nhật activityBackgrounds
+  //       if (
+  //         ['slide', 'info_slide'].includes(
+  //           questions[questionIndex].question_type
+  //         ) &&
+  //         activityData.slide?.slideElements
+  //       ) {
+  //         setSlidesElements((prev) => ({
+  //           ...prev,
+  //           [activityId]: activityData.slide.slideElements,
+  //         }));
 
-          // Cập nhật slidesBackgrounds
-          setSlidesBackgrounds((prev) => ({
-            ...prev,
-            [activityId]: {
-              backgroundImage: activityData.backgroundImage || '',
-              backgroundColor: activityData.backgroundColor || '#fff',
-            },
-          }));
-        }
+  //         // Cập nhật slidesBackgrounds
+  //         setSlidesBackgrounds((prev) => ({
+  //           ...prev,
+  //           [activityId]: {
+  //             backgroundImage: activityData.backgroundImage || '',
+  //             backgroundColor: activityData.backgroundColor || '#fff',
+  //           },
+  //         }));
+  //       }
 
-        // Cập nhật localSlideElements nếu là slide
-        // if (
-        //   ['slide', 'info_slide'].includes(currentQuestion.question_type) &&
-        //   activityData.slide?.slideElements
-        // ) {
-        //   setLocalSlideElements((prev) => ({
-        //     ...prev,
-        //     [currentQuestion.activity_id]: activityData.slide.slideElements,
-        //   }));
-        // }
+  //       // Cập nhật localSlideElements nếu là slide
+  //       // if (
+  //       //   ['slide', 'info_slide'].includes(currentQuestion.question_type) &&
+  //       //   activityData.slide?.slideElements
+  //       // ) {
+  //       //   setLocalSlideElements((prev) => ({
+  //       //     ...prev,
+  //       //     [currentQuestion.activity_id]: activityData.slide.slideElements,
+  //       //   }));
+  //       // }
 
-        // Cập nhật question text và slide content nếu cần
-        // if (activityData.title !== currentQuestion.question_text) {
-        //   onQuestionTextChange(activityData.title, activeQuestionIndex);
-        // }
-        // if (
-        //   activityData.description !== currentQuestion.slide_content &&
-        //   onSlideContentChange
-        // ) {
-        //   onSlideContentChange(activityData.description);
-        // }
-        if (typeof window !== 'undefined') {
-          if (!window.savedBackgroundColors) {
-            window.savedBackgroundColors = {};
-          }
-          window.savedBackgroundColors[activityId] = activityData.backgroundColor || '#FFFFFF';
-        }
+  //       // Cập nhật question text và slide content nếu cần
+  //       // if (activityData.title !== currentQuestion.question_text) {
+  //       //   onQuestionTextChange(activityData.title, activeQuestionIndex);
+  //       // }
+  //       // if (
+  //       //   activityData.description !== currentQuestion.slide_content &&
+  //       //   onSlideContentChange
+  //       // ) {
+  //       //   onSlideContentChange(activityData.description);
+  //       // }
+  //       if (typeof window !== 'undefined') {
+  //         if (!window.savedBackgroundColors) {
+  //           window.savedBackgroundColors = {};
+  //         }
+  //         window.savedBackgroundColors[activityId] = activityData.backgroundColor || '#FFFFFF';
+  //       }
 
-      } catch (error) {
-        console.error('Error fetching activity data:', error);
-      }
-    };
-    questions.forEach((question, index) => {
-      if (question.activity_id && !slidesData[question.activity_id]) {
-        fetchActivityData(question.activity_id, index);
-      }
-    });
-  }, [questions, slidesData]);
+  //     } catch (error) {
+  //       console.error('Error fetching activity data:', error);
+  //     }
+  //   };
+  //   questions.forEach((question, index) => {
+  //     if (question.activity_id && !slidesData[question.activity_id]) {
+  //       fetchActivityData(question.activity_id, index);
+  //     }
+  //   });
+  // }, [questions, slidesData]);
 
   // Add this useEffect to listen for time limit update events
   useEffect(() => {
@@ -804,15 +815,15 @@ export function QuestionPreview({
       question.question_type === 'slide' ||
       question.question_type === 'info_slide';
 
-    const slideData = question.activity_id
+    const slideData = question.activity_id && slidesData
       ? slidesData[question.activity_id]
       : undefined;
 
-    const slideElements = question.activity_id
-      ? slidesElements[question.activity_id] ||
-      slidesData[question.activity_id]?.slide?.slideElements ||
-      []
-      : [];
+    // const slideElements = question.activity_id
+    //   ? slidesData[question.activity_id] ||
+    //   slidesData[question.activity_id]?.slide?.slideElements ||
+    //   []
+    //   : [];
 
     // Find activity specific background for this question
     let actualBackgroundImage = ''; // Initialize with empty string
@@ -828,7 +839,7 @@ export function QuestionPreview({
     if (
       isSlideType &&
       question.activity_id &&
-      slidesBackgrounds[question.activity_id]
+      slidesBackgrounds?.[question.activity_id]
     ) {
       const slideBg = slidesBackgrounds[question.activity_id];
       actualBackgroundImage = slideBg.backgroundImage;
@@ -934,14 +945,8 @@ export function QuestionPreview({
                   if (data.content && onSlideContentChange) {
                     onSlideContentChange(data.content);
                   }
-                  if (data.slideElements && question.activity_id) {
-                    setSlidesElements((prev) => {
-                      const id = question.activity_id!;
-                      const updatedElements = data.slideElements ?? [];
-                      // Lưu slide elements lên server ngay lập tức
-                      // saveSlideElementsToServer(id, updatedElements);
-                      return { ...prev, [id]: updatedElements };
-                    });
+                  if (data.slideElements && question.activity_id && onSlideElementsUpdate) {
+                    onSlideElementsUpdate(question.activity_id, data.slideElements);
                   }
 
                   if (
@@ -958,17 +963,15 @@ export function QuestionPreview({
                           ? ''
                           : data.backgroundColor ?? '',
                     };
-                    setSlidesBackgrounds((prev) => ({
-                      ...prev,
-                      [question.activity_id!]: updatedBackground,
-                    }));
-                    if (question.activity_id) {
-                      console.log('updatedBackground', updatedBackground);
-                      saveBackgroundToServer(
-                        question.activity_id,
-                        updatedBackground
-                      );
-                    }
+                    updateActivityBackground(
+                      question.activity_id,
+                      updatedBackground
+                    );
+                    console.log('updatedBackground', updatedBackground);
+                    saveBackgroundToServer(
+                      question.activity_id,
+                      updatedBackground
+                    );
                   }
                 }}
                 width={
@@ -987,7 +990,7 @@ export function QuestionPreview({
                 height={460}
                 zoom={1}
                 slideId={question.activity_id}
-                slideElements={slideElements}
+                slideElements={question.activity_id ? slideElements?.[question.activity_id] || [] : []}
                 backgroundColor={actualBackgroundColor}
                 backgroundImage={actualBackgroundImage}
               />
@@ -2012,22 +2015,22 @@ export function QuestionPreview({
         currentQuestion &&
         ['slide', 'info_slide'].includes(currentQuestion.question_type);
 
-      if (isSlide && (data.backgroundColor || data.backgroundImage)) {
-        // Cập nhật slidesBackgrounds trước
-        setSlidesBackgrounds((prev) => ({
-          ...prev,
-          [activityId]: {
-            backgroundImage:
-              data.backgroundImage !== undefined
-                ? data.backgroundImage
-                : prev[activityId]?.backgroundImage || '',
-            backgroundColor:
-              data.backgroundColor !== undefined
-                ? data.backgroundColor
-                : prev[activityId]?.backgroundColor || '#FFFFFF',
-          },
-        }));
-      }
+      // if (isSlide && (data.backgroundColor || data.backgroundImage)) {
+      //   // Cập nhật slidesBackgrounds trước
+      //   setSlidesBackgrounds((prev) => ({
+      //     ...prev,
+      //     [activityId]: {
+      //       backgroundImage:
+      //         data.backgroundImage !== undefined
+      //           ? data.backgroundImage
+      //           : prev[activityId]?.backgroundImage || '',
+      //       backgroundColor:
+      //         data.backgroundColor !== undefined
+      //           ? data.backgroundColor
+      //           : prev[activityId]?.backgroundColor || '#FFFFFF',
+      //     },
+      //   }));
+      // }
 
       // Nếu đang cập nhật màu nền, cập nhật UI ngay lập tức trước khi gọi API
       if (data.backgroundColor && typeof data.backgroundColor === 'string') {
@@ -2506,19 +2509,19 @@ export function QuestionPreview({
     console.log('Updating slide background:', activityId, properties);
 
     // Cập nhật local state slidesBackgrounds
-    setSlidesBackgrounds((prev) => ({
-      ...prev,
-      [activityId]: {
-        backgroundImage:
-          properties.backgroundImage !== undefined
-            ? properties.backgroundImage
-            : prev[activityId]?.backgroundImage || '',
-        backgroundColor:
-          properties.backgroundColor !== undefined
-            ? properties.backgroundColor
-            : prev[activityId]?.backgroundColor || '#FFFFFF',
-      },
-    }));
+    // setSlidesBackgrounds((prev) => ({
+    //   ...prev,
+    //   [activityId]: {
+    //     backgroundImage:
+    //       properties.backgroundImage !== undefined
+    //         ? properties.backgroundImage
+    //         : prev[activityId]?.backgroundImage || '',
+    //     backgroundColor:
+    //       properties.backgroundColor !== undefined
+    //         ? properties.backgroundColor
+    //         : prev[activityId]?.backgroundColor || '#FFFFFF',
+    //   },
+    // }));
 
     try {
       // Cập nhật trong activityBackgrounds để đảm bảo đồng bộ
