@@ -1434,11 +1434,6 @@ export function QuestionSettings({
                 locationAnswers: locationAnswers.map((answer: any) => ({
                   longitude: answer.longitude,
                   latitude: answer.latitude,
-
-                  radius: answer.radius,
-                })),
-              });
-
                   radius: answer.radius
                 }))
               })
@@ -1680,7 +1675,7 @@ export function QuestionSettings({
             // Continue with upload even if delete fails
           }
         }
-        
+
         // Simulate upload progress
         const progressInterval = setInterval(() => {
           setUploadProgress((prev) => {
@@ -2454,7 +2449,7 @@ export function QuestionSettings({
 
                 {/* Display different content based on question type */}
                 {activeQuestion.question_type === 'multiple_choice' ||
-                activeQuestion.question_type === 'multiple_response' ? (
+                  activeQuestion.question_type === 'multiple_response' ? (
                   <div
                     className={cn(
                       'p-3 rounded-md border',
@@ -2600,7 +2595,7 @@ export function QuestionSettings({
               </div>
 
               {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide' ? (
+                activeQuestion.question_type === 'info_slide' ? (
                 ''
               ) : (
                 <div>
@@ -2643,7 +2638,7 @@ export function QuestionSettings({
             {/* Design tab: Background, colors, etc */}
 
             {activeQuestion.question_type === 'slide' ||
-            activeQuestion.question_type === 'info_slide' ? (
+              activeQuestion.question_type === 'info_slide' ? (
               <SlideSettings
                 slideId={activity?.id || ''}
                 backgroundColor={backgroundColor}
