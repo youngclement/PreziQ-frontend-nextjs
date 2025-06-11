@@ -75,10 +75,12 @@ export const useGenerateSidebarData = (user: User | null): SidebarData => {
   // Generate user data from API user
   const sidebarUser: SidebarUser = user
     ? {
+
       name: `${user.firstName} ${user.lastName}`.trim() || t('user'),
       email: user.email || 'user@example.com',
       avatar: '/avatars/shadcn.jpg', // Có thể thêm avatar URL từ API sau
     }
+
     : defaultUser;
 
   return {
@@ -160,10 +162,12 @@ export const generateSidebarData = (
   // Generate user data from API user
   const sidebarUser: SidebarUser = user
     ? {
+
       name: `${user.firstName} ${user.lastName}`.trim() || 'Người dùng',
       email: user.email || 'user@example.com',
       avatar: '/avatars/shadcn.jpg', // Có thể thêm avatar URL từ API sau
     }
+
     : defaultUser;
 
   return {

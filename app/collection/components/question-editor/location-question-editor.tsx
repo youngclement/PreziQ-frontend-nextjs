@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect, useRef } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
-import { Maximize, Search, MapPin, Plus } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import React, { useState, useEffect, useRef } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { Maximize, Search, MapPin, Plus } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { Feature, Polygon } from 'geojson';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 // Add a more specific type definition to the beginning of the file
 declare global {
@@ -25,7 +25,8 @@ declare global {
 }
 
 // Set your Mapbox access token
-mapboxgl.accessToken = "pk.eyJ1IjoiY2NkY2MxMSIsImEiOiJjbWFnbXduZDkwMmV6MnFzbDIxM3dxMTJ4In0.2-eYJyMMthGbAa9SOtCDbQ";
+mapboxgl.accessToken =
+  'pk.eyJ1IjoiY2NkY2MxMSIsImEiOiJjbWFnbXduZDkwMmV6MnFzbDIxM3dxMTJ4In0.2-eYJyMMthGbAa9SOtCDbQ';
 
 // Define default map style (streetline 2D)
 const DEFAULT_MAP_STYLE = 'mapbox://styles/mapbox/streets-v12';
@@ -42,7 +43,10 @@ interface LocationAnswer {
 interface LocationQuestionEditorProps {
   questionText: string;
   locationAnswers?: LocationAnswer[];
-  onLocationChange: (questionIndex: number, locationData: LocationAnswer[]) => void;
+  onLocationChange: (
+    questionIndex: number,
+    locationData: LocationAnswer[]
+  ) => void;
   questionIndex: number;
   readonly?: boolean;
 }
@@ -61,10 +65,12 @@ export function LocationQuestionEditor({
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastLocationDataRef = useRef<string>(JSON.stringify(locationAnswers));
   const currentLocationAnswersRef = useRef<LocationAnswer[]>(locationAnswers);
-  const [locationData, setLocationData] = useState<LocationAnswer[]>(locationAnswers);
+  const [locationData, setLocationData] =
+    useState<LocationAnswer[]>(locationAnswers);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isBrowser, setIsBrowser] = useState(false);
-  const [selectedLocationIndex, setSelectedLocationIndex] = useState<number>(-1);
+  const [selectedLocationIndex, setSelectedLocationIndex] =
+    useState<number>(-1);
   const [draggedMarkerIndex, setDraggedMarkerIndex] = useState<number>(-1);
   const [isDragging, setIsDragging] = useState(false);
   const [skipNextRefresh, setSkipNextRefresh] = useState(false);
@@ -82,12 +88,14 @@ export function LocationQuestionEditor({
   } | null>(null);
 
   // Add ref to track latest coordinates after drag
-  const latestMarkerPositionsRef = useRef<Map<number, { lng: number; lat: number }>>(new Map());
+  const latestMarkerPositionsRef = useRef<
+    Map<number, { lng: number; lat: number }>
+  >(new Map());
 
   const { toast } = useToast();
 
   // Search functionality states
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -109,17 +117,22 @@ export function LocationQuestionEditor({
 
     // **CRITICAL FIX**: Skip updates during drag operations
     if (dragOperationRef.current?.isDragging) {
-      console.log("⚠️ Skipping location update during drag operation");
+      console.log('⚠️ Skipping location update during drag operation');
       return;
     }
 
     // **NEW**: Check if this update is from our own drag operation
     if (typeof window !== 'undefined' && window.lastLocationUpdate) {
-      const timeSinceLastUpdate = Date.now() - window.lastLocationUpdate.timestamp;
+      const timeSinceLastUpdate =
+        Date.now() - window.lastLocationUpdate.timestamp;
       // If update happened very recently (within 1 second) and from location editor, it might be our own update
-      if (timeSinceLastUpdate < 1000 &&
-        window.lastLocationUpdate.source?.includes('location-editor')) {
-        console.log("⚠️ Skipping props update - appears to be from our own drag operation");
+      if (
+        timeSinceLastUpdate < 1000 &&
+        window.lastLocationUpdate.source?.includes('location-editor')
+      ) {
+        console.log(
+          '⚠️ Skipping props update - appears to be from our own drag operation'
+        );
         return;
       }
     }
@@ -135,38 +148,46 @@ export function LocationQuestionEditor({
 
       // Check if current data is more recent by comparing timestamps or changes
       if (currentLocationAnswersRef.current.length > 0) {
-        const hasNewerEdits = currentLocationAnswersRef.current.some((current, idx) => {
-          if (idx >= locationAnswers.length) return false;
+        const hasNewerEdits = currentLocationAnswersRef.current.some(
+          (current, idx) => {
+            if (idx >= locationAnswers.length) return false;
 
-          const incomingLocation = locationAnswers[idx];
+            const incomingLocation = locationAnswers[idx];
 
-          // **NEW**: Check if we have a more recent drag position for this marker
-          const latestPosition = latestMarkerPositionsRef.current.get(idx);
-          if (latestPosition) {
-            const positionDiff = Math.abs(latestPosition.lng - incomingLocation.longitude) +
-              Math.abs(latestPosition.lat - incomingLocation.latitude);
-            // If positions differ significantly, prefer our latest drag position
-            if (positionDiff > 0.000001) {
-              console.log(`⚠️ Coordinate conflict for marker ${idx} - keeping dragged position`);
-              return true;
+            // **NEW**: Check if we have a more recent drag position for this marker
+            const latestPosition = latestMarkerPositionsRef.current.get(idx);
+            if (latestPosition) {
+              const positionDiff =
+                Math.abs(latestPosition.lng - incomingLocation.longitude) +
+                Math.abs(latestPosition.lat - incomingLocation.latitude);
+              // If positions differ significantly, prefer our latest drag position
+              if (positionDiff > 0.000001) {
+                console.log(
+                  `⚠️ Coordinate conflict for marker ${idx} - keeping dragged position`
+                );
+                return true;
+              }
             }
-          }
 
-          return (
-            current.quizLocationAnswerId === incomingLocation.quizLocationAnswerId &&
-            current.radius !== incomingLocation.radius &&
-            currentDataStr !== '[]'
-          );
-        });
+            return (
+              current.quizLocationAnswerId ===
+                incomingLocation.quizLocationAnswerId &&
+              current.radius !== incomingLocation.radius &&
+              currentDataStr !== '[]'
+            );
+          }
+        );
 
         if (hasNewerEdits) {
-          console.log("Skipping location update from props because local data appears to be newer");
+          console.log(
+            'Skipping location update from props because local data appears to be newer'
+          );
           shouldUpdate = false;
         }
       }
 
       if (shouldUpdate) {
-        console.log("Updating location answers from prop:", locationAnswers);
+        console.log('Updating location answers from prop:', locationAnswers);
         setLocationData(locationAnswers);
         currentLocationAnswersRef.current = [...locationAnswers];
         previousAnswersRef.current = [...locationAnswers];
@@ -185,25 +206,31 @@ export function LocationQuestionEditor({
   // Clean invalid locations and initialize if empty
   useEffect(() => {
     if (locationAnswers.length === 0 && !readonly) {
-      const defaultLocation = { longitude: 105.804817, latitude: 21.028511, radius: 10 };
+      const defaultLocation = {
+        longitude: 105.804817,
+        latitude: 21.028511,
+        radius: 10,
+      };
       debouncedLocationChange([defaultLocation]);
     } else if (locationAnswers.length > 0) {
       // Validate existing location answers
-      const validatedAnswers = locationAnswers.map(loc => {
+      const validatedAnswers = locationAnswers.map((loc) => {
         if (!isValidCoordinate(loc.longitude, loc.latitude)) {
           return {
             ...loc,
             longitude: 105.804817,
             latitude: 21.028511,
-            radius: loc.radius || 10
+            radius: loc.radius || 10,
           };
         }
         return loc;
       });
 
       // If we had to fix any coordinates, update the location answers
-      if (JSON.stringify(validatedAnswers) !== JSON.stringify(locationAnswers)) {
-        console.log("Fixed invalid coordinates in location answers");
+      if (
+        JSON.stringify(validatedAnswers) !== JSON.stringify(locationAnswers)
+      ) {
+        console.log('Fixed invalid coordinates in location answers');
         debouncedLocationChange(validatedAnswers);
       }
     }
@@ -339,15 +366,15 @@ export function LocationQuestionEditor({
       bearing: 0,
       projection: 'mercator',
       renderWorldCopies: true,
-      attributionControl: false
+      attributionControl: false,
     });
 
     mapRef.current = map;
 
     // Add minimal navigation controls
-    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-    map.on("load", () => {
+    map.on('load', () => {
       setMapLoaded(true);
 
       // Initialize existing location markers
@@ -356,7 +383,7 @@ export function LocationQuestionEditor({
 
     return () => {
       // Clean up
-      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current.forEach((marker) => marker.remove());
       markersRef.current.clear();
       if (mapRef.current) {
         mapRef.current.remove();
@@ -367,7 +394,13 @@ export function LocationQuestionEditor({
 
   // Handle location answers changes with selective updates
   useEffect(() => {
-    if (!mapLoaded || !mapRef.current || isDragging || skipNextRefresh || ignoreNextUpdateRef.current) {
+    if (
+      !mapLoaded ||
+      !mapRef.current ||
+      isDragging ||
+      skipNextRefresh ||
+      ignoreNextUpdateRef.current
+    ) {
       // Skip if we're dragging or if we explicitly want to skip this refresh
       if (skipNextRefresh) {
         setSkipNextRefresh(false);
@@ -396,8 +429,10 @@ export function LocationQuestionEditor({
 
       if (marker && prevLocation) {
         // Check if coordinates changed
-        if (location.longitude !== prevLocation.longitude ||
-          location.latitude !== prevLocation.latitude) {
+        if (
+          location.longitude !== prevLocation.longitude ||
+          location.latitude !== prevLocation.latitude
+        ) {
           // Update marker position
           marker.setLngLat([location.longitude, location.latitude]);
         }
@@ -405,7 +440,12 @@ export function LocationQuestionEditor({
         // Check if radius changed
         if (location.radius !== prevLocation.radius) {
           // Update circle radius
-          updateCircle(index, location.latitude, location.longitude, location.radius);
+          updateCircle(
+            index,
+            location.latitude,
+            location.longitude,
+            location.radius
+          );
         }
 
         // Update marker selection state
@@ -432,7 +472,7 @@ export function LocationQuestionEditor({
       if (event.detail?.locationAnswers && !isDragging) {
         // **NEW**: Check if this update conflicts with recent drag operations
         if (dragOperationRef.current?.isDragging) {
-          console.log("⚠️ Ignoring location update during drag operation");
+          console.log('⚠️ Ignoring location update during drag operation');
           return;
         }
 
@@ -443,10 +483,15 @@ export function LocationQuestionEditor({
         for (let i = 0; i < incomingAnswers.length; i++) {
           const latestPosition = latestMarkerPositionsRef.current.get(i);
           if (latestPosition) {
-            const positionDiff = Math.abs(latestPosition.lng - incomingAnswers[i].longitude) +
+            const positionDiff =
+              Math.abs(latestPosition.lng - incomingAnswers[i].longitude) +
               Math.abs(latestPosition.lat - incomingAnswers[i].latitude);
             if (positionDiff > 0.000001) {
-              console.log(`⚠️ Position conflict detected for marker ${i + 1} - keeping drag position`);
+              console.log(
+                `⚠️ Position conflict detected for marker ${
+                  i + 1
+                } - keeping drag position`
+              );
               hasConflicts = true;
               break;
             }
@@ -471,7 +516,7 @@ export function LocationQuestionEditor({
     // **NEW**: Add cleanup handler for successful API responses
     const handleApiResponseSuccess = (event: CustomEvent) => {
       if (event.detail?.source?.includes('location-quiz-api-success')) {
-        console.log("✅ API response success - clearing drag positions");
+        console.log('✅ API response success - clearing drag positions');
         // Clear latest positions after successful API response
         setTimeout(() => {
           if (!dragOperationRef.current?.isDragging) {
@@ -482,11 +527,15 @@ export function LocationQuestionEditor({
     };
 
     const handleLocationAdded = (event: CustomEvent) => {
-      if (event.detail && typeof event.detail.longitude === 'number' && typeof event.detail.latitude === 'number') {
+      if (
+        event.detail &&
+        typeof event.detail.longitude === 'number' &&
+        typeof event.detail.latitude === 'number'
+      ) {
         const newLocation: LocationAnswer = {
           longitude: event.detail.longitude,
           latitude: event.detail.latitude,
-          radius: event.detail.radius || 10
+          radius: event.detail.radius || 10,
         };
 
         const updatedData = [...currentLocationAnswersRef.current, newLocation];
@@ -510,7 +559,7 @@ export function LocationQuestionEditor({
           updatedLocations[index] = {
             ...updatedLocations[index],
             longitude: longitude,
-            latitude: latitude
+            latitude: latitude,
           };
           currentLocationAnswersRef.current = updatedLocations;
         }
@@ -521,15 +570,22 @@ export function LocationQuestionEditor({
           marker.setLngLat([longitude, latitude]);
 
           // Update circle with new radius if provided
-          updateCircle(index, latitude, longitude, radius || currentLocationAnswersRef.current[index]?.radius || 10);
+          updateCircle(
+            index,
+            latitude,
+            longitude,
+            radius || currentLocationAnswersRef.current[index]?.radius || 10
+          );
 
           // Skip the next refresh cycle to prevent jitter
           setSkipNextRefresh(true);
 
-          // Set flag to ignore the next render cycle 
+          // Set flag to ignore the next render cycle
           ignoreNextUpdateRef.current = true;
 
-          console.log(`Updated marker position for index ${index}: ${longitude}, ${latitude}`);
+          console.log(
+            `Updated marker position for index ${index}: ${longitude}, ${latitude}`
+          );
         }
       }
     };
@@ -543,7 +599,7 @@ export function LocationQuestionEditor({
           const updatedLocations = [...currentLocationAnswersRef.current];
           updatedLocations[index] = {
             ...updatedLocations[index],
-            radius: radius
+            radius: radius,
           };
           currentLocationAnswersRef.current = updatedLocations;
         }
@@ -559,7 +615,7 @@ export function LocationQuestionEditor({
           // Skip the next refresh cycle to prevent jitter
           setSkipNextRefresh(true);
 
-          // Set flag to ignore the next render cycle 
+          // Set flag to ignore the next render cycle
           ignoreNextUpdateRef.current = true;
 
           console.log(`Updated radius for location ${index} to ${radius}km`);
@@ -597,12 +653,13 @@ export function LocationQuestionEditor({
         circlesRef.current.delete(index);
 
         // Update our internal reference
-        currentLocationAnswersRef.current = currentLocationAnswersRef.current.filter((_, i) => i !== index);
+        currentLocationAnswersRef.current =
+          currentLocationAnswersRef.current.filter((_, i) => i !== index);
 
         // Skip the next refresh cycle since we've already updated the UI
         setSkipNextRefresh(true);
 
-        // Set flag to ignore the next render cycle 
+        // Set flag to ignore the next render cycle
         ignoreNextUpdateRef.current = true;
 
         console.log(`Removed location point at index ${index}`);
@@ -610,17 +667,25 @@ export function LocationQuestionEditor({
     };
 
     const handleSyncRequest = (event: CustomEvent) => {
-      if (mapRef.current && mapLoaded && currentLocationAnswersRef.current.length > 0) {
+      if (
+        mapRef.current &&
+        mapLoaded &&
+        currentLocationAnswersRef.current.length > 0
+      ) {
         // Compare current state with our reference to see if we need to update
-        const currentAnswers = JSON.stringify(currentLocationAnswersRef.current);
+        const currentAnswers = JSON.stringify(
+          currentLocationAnswersRef.current
+        );
         const propAnswers = JSON.stringify(locationAnswers);
 
         if (currentAnswers !== propAnswers) {
-          console.log("Syncing map markers with current location data (from ref)");
+          console.log(
+            'Syncing map markers with current location data (from ref)'
+          );
           // Use our internal reference for refresh to ensure latest data is shown
           refreshMapMarkersWithData(currentLocationAnswersRef.current);
         } else {
-          console.log("Syncing map markers with prop location data");
+          console.log('Syncing map markers with prop location data');
           // Force a refresh of all markers to ensure map is in sync with settings
           refreshMapMarkers();
         }
@@ -643,18 +708,25 @@ export function LocationQuestionEditor({
       if (typeof window !== 'undefined' && window.lastLocationUpdate) {
         // If this sync event has older data than our last update, ignore it
         if (timestamp && window.lastLocationUpdate.timestamp > timestamp) {
-          console.log("Ignoring force sync with older data timestamp:",
-            `Last: ${window.lastLocationUpdate.timestamp} > Event: ${timestamp}`);
+          console.log(
+            'Ignoring force sync with older data timestamp:',
+            `Last: ${window.lastLocationUpdate.timestamp} > Event: ${timestamp}`
+          );
           return;
         }
 
         // If data is coming from the same component that last updated, always accept it
-        if (source === 'editor' && source === window.lastLocationUpdate.source) {
+        if (
+          source === 'editor' &&
+          source === window.lastLocationUpdate.source
+        ) {
           // Allow editor to update itself
         }
         // Otherwise compare the actual data
         else {
-          const currentDataStr = JSON.stringify(currentLocationAnswersRef.current);
+          const currentDataStr = JSON.stringify(
+            currentLocationAnswersRef.current
+          );
           const newDataStr = JSON.stringify(locationData);
 
           if (currentDataStr === newDataStr) {
@@ -664,7 +736,10 @@ export function LocationQuestionEditor({
         }
       }
 
-      console.log("Force syncing location data from event:", { source, locationData });
+      console.log('Force syncing location data from event:', {
+        source,
+        locationData,
+      });
 
       // Update all the relevant state and refs
       setLocationData(locationData);
@@ -680,9 +755,9 @@ export function LocationQuestionEditor({
       if (typeof window !== 'undefined') {
         window.lastLocationUpdate = {
           timestamp: timestamp || Date.now(),
-          activityId: '',  // No activity reference available in this component
+          activityId: '', // No activity reference available in this component
           locationData: locationData,
-          source: 'editor'
+          source: 'editor',
         };
       }
     };
@@ -705,7 +780,7 @@ export function LocationQuestionEditor({
           timestamp: timestamp,
           activityId: questionIndex.toString(),
           locationData: locationAnswers,
-          source: source
+          source: source,
         };
       }
 
@@ -758,36 +833,94 @@ export function LocationQuestionEditor({
     };
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('location:answers:updated', handleLocationUpdate as EventListener);
-      window.addEventListener('location:point:added', handleLocationAdded as EventListener);
-      window.addEventListener('location:coordinate:updated', handleCoordinateUpdate as EventListener);
-      window.addEventListener('location:radius:updated', handleRadiusUpdate as EventListener);
-      window.addEventListener('location:point:removed', handleLocationRemoved as EventListener);
-      window.addEventListener('location:sync:request', handleSyncRequest as EventListener);
-      window.addEventListener('location:force:sync', handleForceSync as EventListener);
-      window.addEventListener('location:keep:ui:position', handleKeepUIPosition as EventListener);
-      window.addEventListener('location:revert:position', handleRevertPosition as EventListener);
+      window.addEventListener(
+        'location:answers:updated',
+        handleLocationUpdate as EventListener
+      );
+      window.addEventListener(
+        'location:point:added',
+        handleLocationAdded as EventListener
+      );
+      window.addEventListener(
+        'location:coordinate:updated',
+        handleCoordinateUpdate as EventListener
+      );
+      window.addEventListener(
+        'location:radius:updated',
+        handleRadiusUpdate as EventListener
+      );
+      window.addEventListener(
+        'location:point:removed',
+        handleLocationRemoved as EventListener
+      );
+      window.addEventListener(
+        'location:sync:request',
+        handleSyncRequest as EventListener
+      );
+      window.addEventListener(
+        'location:force:sync',
+        handleForceSync as EventListener
+      );
+      window.addEventListener(
+        'location:keep:ui:position',
+        handleKeepUIPosition as EventListener
+      );
+      window.addEventListener(
+        'location:revert:position',
+        handleRevertPosition as EventListener
+      );
       // **NEW**: Add listener for API response success
+
       window.addEventListener('location:api:success', handleApiResponseSuccess as EventListener);
       window.addEventListener('location:marker:dragend', handleMarkerDragEnd as EventListener);
       window.addEventListener('location:points:updated', handlePointsUpdated as EventListener);
+
     }
 
     return () => {
       if (typeof window !== 'undefined') {
-        window.removeEventListener('location:answers:updated', handleLocationUpdate as EventListener);
-        window.removeEventListener('location:point:added', handleLocationAdded as EventListener);
-        window.removeEventListener('location:coordinate:updated', handleCoordinateUpdate as EventListener);
-        window.removeEventListener('location:radius:updated', handleRadiusUpdate as EventListener);
-        window.removeEventListener('location:point:removed', handleLocationRemoved as EventListener);
-        window.removeEventListener('location:sync:request', handleSyncRequest as EventListener);
-        window.removeEventListener('location:force:sync', handleForceSync as EventListener);
-        window.removeEventListener('location:keep:ui:position', handleKeepUIPosition as EventListener);
-        window.removeEventListener('location:revert:position', handleRevertPosition as EventListener);
+        window.removeEventListener(
+          'location:answers:updated',
+          handleLocationUpdate as EventListener
+        );
+        window.removeEventListener(
+          'location:point:added',
+          handleLocationAdded as EventListener
+        );
+        window.removeEventListener(
+          'location:coordinate:updated',
+          handleCoordinateUpdate as EventListener
+        );
+        window.removeEventListener(
+          'location:radius:updated',
+          handleRadiusUpdate as EventListener
+        );
+        window.removeEventListener(
+          'location:point:removed',
+          handleLocationRemoved as EventListener
+        );
+        window.removeEventListener(
+          'location:sync:request',
+          handleSyncRequest as EventListener
+        );
+        window.removeEventListener(
+          'location:force:sync',
+          handleForceSync as EventListener
+        );
+        window.removeEventListener(
+          'location:keep:ui:position',
+          handleKeepUIPosition as EventListener
+        );
+        window.removeEventListener(
+          'location:revert:position',
+          handleRevertPosition as EventListener
+        );
         // **NEW**: Remove listener for API response success
+
         window.removeEventListener('location:api:success', handleApiResponseSuccess as EventListener);
         window.removeEventListener('location:marker:dragend', handleMarkerDragEnd as EventListener);
         window.removeEventListener('location:points:updated', handlePointsUpdated as EventListener);
+
       }
     };
   }, [mapLoaded, locationAnswers]);
@@ -796,24 +929,43 @@ export function LocationQuestionEditor({
   useEffect(() => {
     // Only log significant changes to avoid console spam
     if (locationAnswers && locationAnswers.length > 0) {
-      console.log(`[DEBUG] Location answers updated from props (${locationAnswers.length} answers)`);
+      console.log(
+        `[DEBUG] Location answers updated from props (${locationAnswers.length} answers)`
+      );
 
       // Log detailed diff if answers changed significantly
-      if (currentLocationAnswersRef.current && currentLocationAnswersRef.current.length > 0) {
+      if (
+        currentLocationAnswersRef.current &&
+        currentLocationAnswersRef.current.length > 0
+      ) {
         const anyChanged = locationAnswers.some((answer, idx) => {
           if (idx >= currentLocationAnswersRef.current.length) return true;
           const current = currentLocationAnswersRef.current[idx];
 
           // Check for significant changes (more than tiny rounding differences)
-          const latChanged = Math.abs(answer.latitude - current.latitude) > 0.0001;
-          const lngChanged = Math.abs(answer.longitude - current.longitude) > 0.0001;
+          const latChanged =
+            Math.abs(answer.latitude - current.latitude) > 0.0001;
+          const lngChanged =
+            Math.abs(answer.longitude - current.longitude) > 0.0001;
           const radiusChanged = answer.radius !== current.radius;
 
           if (latChanged || lngChanged || radiusChanged) {
             console.log(`[DEBUG] Significant change in location ${idx}:`, {
-              latitude: { old: current.latitude, new: answer.latitude, changed: latChanged },
-              longitude: { old: current.longitude, new: answer.longitude, changed: lngChanged },
-              radius: { old: current.radius, new: answer.radius, changed: radiusChanged }
+              latitude: {
+                old: current.latitude,
+                new: answer.latitude,
+                changed: latChanged,
+              },
+              longitude: {
+                old: current.longitude,
+                new: answer.longitude,
+                changed: lngChanged,
+              },
+              radius: {
+                old: current.radius,
+                new: answer.radius,
+                changed: radiusChanged,
+              },
             });
             return true;
           }
@@ -822,10 +974,11 @@ export function LocationQuestionEditor({
 
         if (anyChanged) {
           console.log(`[DEBUG] Location data update source:`, {
-            lastUpdate: typeof window !== 'undefined' ? window.lastLocationUpdate : null,
+            lastUpdate:
+              typeof window !== 'undefined' ? window.lastLocationUpdate : null,
             isDragging,
             skipNextRefresh,
-            ignoreNextUpdate: ignoreNextUpdateRef.current
+            ignoreNextUpdate: ignoreNextUpdateRef.current,
           });
         }
       }
@@ -836,11 +989,18 @@ export function LocationQuestionEditor({
 
   const handleMarkerDragEnd = (event: CustomEvent) => {
     if (event.detail) {
-      const { questionIndex: eventQuestionIndex, locationData, markerIndex, timestamp } = event.detail;
+      const {
+        questionIndex: eventQuestionIndex,
+        locationData,
+        markerIndex,
+        timestamp,
+      } = event.detail;
 
       // Only process if this is for our question index
       if (eventQuestionIndex === questionIndex && locationData) {
-        console.log(`🎯 Processing marker drag end event for marker ${markerIndex + 1}`);
+        console.log(
+          `🎯 Processing marker drag end event for marker ${markerIndex + 1}`
+        );
 
         // Update our internal state with the new location data
         setLocationData(locationData);
@@ -852,7 +1012,7 @@ export function LocationQuestionEditor({
           if (location) {
             latestMarkerPositionsRef.current.set(markerIndex, {
               lng: location.longitude,
-              lat: location.latitude
+              lat: location.latitude,
             });
           }
         }
@@ -860,10 +1020,17 @@ export function LocationQuestionEditor({
     }
   };
   // Function to create a GeoJSON circle
-  function createGeoJSONCircle(center: [number, number], radiusInKm: number, points: number = 64): Feature<Polygon> {
+  function createGeoJSONCircle(
+    center: [number, number],
+    radiusInKm: number,
+    points: number = 64
+  ): Feature<Polygon> {
     // Validate the center coordinates
     if (!isValidCoordinate(center[0], center[1])) {
-      console.warn("Invalid coordinates for circle center, using default:", center);
+      console.warn(
+        'Invalid coordinates for circle center, using default:',
+        center
+      );
       // Use default coordinates instead
       center = [105.804817, 21.028511];
     }
@@ -873,12 +1040,13 @@ export function LocationQuestionEditor({
 
     const coords = {
       latitude: center[1],
-      longitude: center[0]
+      longitude: center[0],
     };
 
     const km = radius;
     const ret = [];
-    const distanceX = km / (111.320 * Math.cos(coords.latitude * Math.PI / 180));
+    const distanceX =
+      km / (111.32 * Math.cos((coords.latitude * Math.PI) / 180));
     const distanceY = km / 110.574;
 
     let theta, x, y;
@@ -891,22 +1059,27 @@ export function LocationQuestionEditor({
     ret.push(ret[0]); // Close the loop
 
     return {
-      type: "Feature",
+      type: 'Feature',
       properties: {},
       geometry: {
-        type: "Polygon",
-        coordinates: [ret]
-      }
+        type: 'Polygon',
+        coordinates: [ret],
+      },
     };
   }
 
   // Function to update or create circle for a location marker
-  function updateCircle(index: number, lat: number, lng: number, radiusInKm: number) {
+  function updateCircle(
+    index: number,
+    lat: number,
+    lng: number,
+    radiusInKm: number
+  ) {
     if (!mapRef.current || !mapLoaded) return;
 
     // Skip if coordinates are invalid
     if (!isValidCoordinate(lng, lat)) {
-      console.warn("Invalid coordinates for circle:", lng, lat);
+      console.warn('Invalid coordinates for circle:', lng, lat);
       return;
     }
 
@@ -916,42 +1089,49 @@ export function LocationQuestionEditor({
     // Check if the source already exists
     if (mapRef.current.getSource(circleId)) {
       // Update existing circle
-      (mapRef.current.getSource(circleId) as mapboxgl.GeoJSONSource).setData(circleData);
+      (mapRef.current.getSource(circleId) as mapboxgl.GeoJSONSource).setData(
+        circleData
+      );
     } else {
       // Create new circle source and layers
       try {
         // Add the GeoJSON source
         mapRef.current.addSource(circleId, {
-          type: "geojson",
-          data: circleData
+          type: 'geojson',
+          data: circleData,
         });
 
         // Add the fill layer
         mapRef.current.addLayer({
           id: circleId,
-          type: "fill",
+          type: 'fill',
           source: circleId,
           paint: {
-            "fill-color": index === selectedLocationIndex ? "#3b82f6" : "#ff0000",
-            "fill-opacity": 0.2
-          }
+            'fill-color':
+              index === selectedLocationIndex ? '#3b82f6' : '#ff0000',
+            'fill-opacity': 0.2,
+          },
         });
 
         // Add the outline layer
         mapRef.current.addLayer({
           id: `${circleId}-border`,
-          type: "line",
+          type: 'line',
           source: circleId,
           paint: {
-            "line-color": index === selectedLocationIndex ? "#3b82f6" : "#ff0000",
-            "line-width": 2
-          }
+            'line-color':
+              index === selectedLocationIndex ? '#3b82f6' : '#ff0000',
+            'line-width': 2,
+          },
         });
 
         // Store the circle source reference
-        circlesRef.current.set(index, mapRef.current.getSource(circleId) as mapboxgl.GeoJSONSource);
+        circlesRef.current.set(
+          index,
+          mapRef.current.getSource(circleId) as mapboxgl.GeoJSONSource
+        );
       } catch (error) {
-        console.error("Error adding circle to map:", error);
+        console.error('Error adding circle to map:', error);
       }
     }
   }
@@ -968,7 +1148,9 @@ export function LocationQuestionEditor({
     // Add marker numbering for multiple points
     if (currentLocationAnswersRef.current.length > 1) {
       el.style.backgroundColor = getMarkerColor(index);
-      el.innerHTML = `<span style="color: white; font-size: 12px; font-weight: bold;">${index + 1}</span>`;
+      el.innerHTML = `<span style="color: white; font-size: 12px; font-weight: bold;">${
+        index + 1
+      }</span>`;
       el.style.display = 'flex';
       el.style.alignItems = 'center';
       el.style.justifyContent = 'center';
@@ -976,7 +1158,7 @@ export function LocationQuestionEditor({
 
     const marker = new mapboxgl.Marker({
       element: el,
-      draggable: !readonly
+      draggable: !readonly,
     })
       .setLngLat(lngLat)
       .addTo(mapRef.current);
@@ -995,7 +1177,7 @@ export function LocationQuestionEditor({
         dragOperationRef.current = {
           isDragging: true,
           markerIndex: index,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
 
         // **NEW**: Also set ignore flag to prevent any updates during drag
@@ -1008,18 +1190,19 @@ export function LocationQuestionEditor({
         // **NEW**: Store the latest position during drag
         latestMarkerPositionsRef.current.set(index, {
           lng: newLngLat.lng,
-          lat: newLngLat.lat
+          lat: newLngLat.lat,
         });
 
         // Update the circle in real-time while dragging
-        const currentRadius = currentLocationAnswersRef.current[index]?.radius || 10;
+        const currentRadius =
+          currentLocationAnswersRef.current[index]?.radius || 10;
         updateCircle(index, newLngLat.lat, newLngLat.lng, currentRadius);
 
         // **NEW**: Update drag operation with new position
         if (dragOperationRef.current) {
           dragOperationRef.current.newPosition = {
             lng: newLngLat.lng,
-            lat: newLngLat.lat
+            lat: newLngLat.lat,
           };
         }
       });
@@ -1027,12 +1210,16 @@ export function LocationQuestionEditor({
       marker.on('dragend', () => {
         const newLngLat = marker.getLngLat();
 
-        console.log(`🎯 Drag ended for marker ${index + 1} at: ${newLngLat.lng.toFixed(6)}, ${newLngLat.lat.toFixed(6)}`);
+        console.log(
+          `🎯 Drag ended for marker ${index + 1} at: ${newLngLat.lng.toFixed(
+            6
+          )}, ${newLngLat.lat.toFixed(6)}`
+        );
 
         // Store final position immediately
         latestMarkerPositionsRef.current.set(index, {
           lng: newLngLat.lng,
-          lat: newLngLat.lat
+          lat: newLngLat.lat,
         });
 
         // Update local state with final position
@@ -1041,7 +1228,7 @@ export function LocationQuestionEditor({
           updatedLocations[index] = {
             ...updatedLocations[index],
             longitude: newLngLat.lng,
-            latitude: newLngLat.lat
+            latitude: newLngLat.lat,
           };
 
           // Update refs immediately before any async operations
@@ -1055,7 +1242,7 @@ export function LocationQuestionEditor({
               timestamp: Date.now(),
               activityId: questionIndex.toString(),
               locationData: [...updatedLocations],
-              source: `location-editor-dragend-marker-${index}`
+              source: `location-editor-dragend-marker-${index}`,
             };
 
             // Dispatch custom event to trigger API update for location change
@@ -1064,8 +1251,8 @@ export function LocationQuestionEditor({
                 questionIndex: questionIndex,
                 locationData: updatedLocations,
                 markerIndex: index,
-                timestamp: Date.now()
-              }
+                timestamp: Date.now(),
+              },
             });
             window.dispatchEvent(dragEndEvent);
           }
@@ -1076,9 +1263,9 @@ export function LocationQuestionEditor({
 
           // Show toast notification
           toast({
-            title: "Point moved",
+            title: 'Point moved',
             description: `Point ${index + 1} moved to new position`,
-            duration: 2000
+            duration: 2000,
           });
         }
 
@@ -1098,7 +1285,7 @@ export function LocationQuestionEditor({
         setSelectedLocationIndex(selectedLocationIndex === index ? -1 : index);
 
         // Update marker styling
-        document.querySelectorAll('.custom-marker').forEach(m => {
+        document.querySelectorAll('.custom-marker').forEach((m) => {
           m.classList.remove('selected');
         });
 
@@ -1115,7 +1302,7 @@ export function LocationQuestionEditor({
   function getMarkerColor(index: number): string {
     const colors = [
       '#ff0000', // Red
-      '#0088ff', // Blue  
+      '#0088ff', // Blue
       '#00ff00', // Green
       '#ff8800', // Orange
       '#8800ff', // Purple
@@ -1128,10 +1315,11 @@ export function LocationQuestionEditor({
 
   // Function to fit map to show all markers
   const fitMapToMarkers = () => {
-    if (!mapRef.current || currentLocationAnswersRef.current.length === 0) return;
+    if (!mapRef.current || currentLocationAnswersRef.current.length === 0)
+      return;
 
     // Filter out invalid coordinates
-    const validLocations = currentLocationAnswersRef.current.filter(loc =>
+    const validLocations = currentLocationAnswersRef.current.filter((loc) =>
       isValidCoordinate(loc.longitude, loc.latitude)
     );
 
@@ -1141,7 +1329,7 @@ export function LocationQuestionEditor({
     const bounds = new mapboxgl.LngLatBounds();
 
     // Extend the bounds to include each marker
-    validLocations.forEach(loc => {
+    validLocations.forEach((loc) => {
       bounds.extend([loc.longitude, loc.latitude]);
     });
 
@@ -1149,14 +1337,14 @@ export function LocationQuestionEditor({
     mapRef.current.fitBounds(bounds, {
       padding: 50,
       maxZoom: 14,
-      duration: 1000 // Smooth animation
+      duration: 1000, // Smooth animation
     });
 
     // Show a brief toast message
     toast({
-      title: "Map view adjusted",
+      title: 'Map view adjusted',
       description: `Showing all ${validLocations.length} location points`,
-      duration: 2000
+      duration: 2000,
     });
   };
 
@@ -1166,7 +1354,7 @@ export function LocationQuestionEditor({
 
     // **CRITICAL**: Don't refresh if we're in the middle of a drag operation
     if (dragOperationRef.current?.isDragging) {
-      console.log("⚠️ Skipping marker refresh during drag operation");
+      console.log('⚠️ Skipping marker refresh during drag operation');
       return;
     }
 
@@ -1204,11 +1392,18 @@ export function LocationQuestionEditor({
 
       // **CRITICAL**: Use latest drag position if available and significantly different
       if (latestPosition) {
-        const positionDiff = Math.abs(latestPosition.lng - location.longitude) +
+        const positionDiff =
+          Math.abs(latestPosition.lng - location.longitude) +
           Math.abs(latestPosition.lat - location.latitude);
 
         if (positionDiff > 0.000001) {
-          console.log(`🎯 Using latest drag position for marker ${index + 1}: ${latestPosition.lng.toFixed(6)}, ${latestPosition.lat.toFixed(6)}`);
+          console.log(
+            `🎯 Using latest drag position for marker ${
+              index + 1
+            }: ${latestPosition.lng.toFixed(6)}, ${latestPosition.lat.toFixed(
+              6
+            )}`
+          );
           finalLng = latestPosition.lng;
           finalLat = latestPosition.lat;
 
@@ -1216,14 +1411,14 @@ export function LocationQuestionEditor({
           location = {
             ...location,
             longitude: finalLng,
-            latitude: finalLat
+            latitude: finalLat,
           };
         }
       }
 
       // Skip invalid coordinates
       if (!isValidCoordinate(finalLng, finalLat)) {
-        console.warn("Skipping invalid coordinates", location);
+        console.warn('Skipping invalid coordinates', location);
         return;
       }
 
@@ -1244,32 +1439,36 @@ export function LocationQuestionEditor({
     // If we have at least one location, fit the map to show all markers
     if (locData.length > 0 && mapRef.current) {
       // Filter out invalid coordinates and use latest positions
-      const validLocations = locData.map((loc, index) => {
-        const latestPosition = latestMarkerPositionsRef.current.get(index);
-        if (latestPosition &&
-          isValidCoordinate(latestPosition.lng, latestPosition.lat)) {
-          return {
-            ...loc,
-            longitude: latestPosition.lng,
-            latitude: latestPosition.lat
-          };
-        }
-        return loc;
-      }).filter(loc => isValidCoordinate(loc.longitude, loc.latitude));
+      const validLocations = locData
+        .map((loc, index) => {
+          const latestPosition = latestMarkerPositionsRef.current.get(index);
+          if (
+            latestPosition &&
+            isValidCoordinate(latestPosition.lng, latestPosition.lat)
+          ) {
+            return {
+              ...loc,
+              longitude: latestPosition.lng,
+              latitude: latestPosition.lat,
+            };
+          }
+          return loc;
+        })
+        .filter((loc) => isValidCoordinate(loc.longitude, loc.latitude));
 
       if (validLocations.length > 0) {
         // Create a bounds object
         const bounds = new mapboxgl.LngLatBounds();
 
         // Extend the bounds to include each valid location
-        validLocations.forEach(loc => {
+        validLocations.forEach((loc) => {
           bounds.extend([loc.longitude, loc.latitude]);
         });
 
         // Set the map's bounds with some padding
         mapRef.current.fitBounds(bounds, {
           padding: 50,
-          maxZoom: 12
+          maxZoom: 12,
         });
       }
     }
@@ -1278,7 +1477,9 @@ export function LocationQuestionEditor({
   // Refresh all markers on the map using prop data
   function refreshMapMarkers(dataOverride?: LocationAnswer[]) {
     // Use dataOverride if provided, otherwise use locationData state if available, falling back to locationAnswers prop
-    const dataToUse = dataOverride || (locationData.length > 0 ? locationData : locationAnswers);
+    const dataToUse =
+      dataOverride ||
+      (locationData.length > 0 ? locationData : locationAnswers);
     refreshMapMarkersWithData(dataToUse);
   }
 
@@ -1311,16 +1512,21 @@ export function LocationQuestionEditor({
         const currentTime = Date.now();
 
         // Skip if we just sent an update recently (within 2 seconds)
-        if (lastUpdate &&
+        if (
+          lastUpdate &&
           lastUpdate.activityId === questionIndex.toString() &&
-          currentTime - lastUpdate.timestamp < 2000) {
+          currentTime - lastUpdate.timestamp < 2000
+        ) {
           console.log('[DEBUG] Skipping API call - too recent');
           return;
         }
 
         // Check if data actually changed
-        if (lastUpdate &&
-          JSON.stringify(lastUpdate.locationData) === JSON.stringify(newLocationData)) {
+        if (
+          lastUpdate &&
+          JSON.stringify(lastUpdate.locationData) ===
+            JSON.stringify(newLocationData)
+        ) {
           console.log('[DEBUG] Skipping API call - no data change');
           return;
         }
@@ -1332,7 +1538,7 @@ export function LocationQuestionEditor({
           timestamp: currentTime,
           activityId: questionIndex.toString(),
           locationData: [...newLocationData],
-          source: 'location-editor'
+          source: 'location-editor',
         };
 
         // Call the parent's change handler
@@ -1381,7 +1587,11 @@ export function LocationQuestionEditor({
 
     try {
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&types=place,locality,neighborhood,address,poi&limit=5&country=vn`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          query
+        )}.json?access_token=${
+          mapboxgl.accessToken
+        }&types=place,locality,neighborhood,address,poi&limit=5&country=vn`
       );
 
       const data = await response.json();
@@ -1393,18 +1603,18 @@ export function LocationQuestionEditor({
         setSearchResults([]);
         setShowSearchResults(false);
         toast({
-          title: "No results found",
-          description: "Try a different search term or location",
-          duration: 3000
+          title: 'No results found',
+          description: 'Try a different search term or location',
+          duration: 3000,
         });
       }
     } catch (error) {
-      console.error("Error searching places:", error);
+      console.error('Error searching places:', error);
       toast({
-        title: "Search error",
-        description: "Unable to search for locations. Please try again.",
-        variant: "destructive",
-        duration: 3000
+        title: 'Search error',
+        description: 'Unable to search for locations. Please try again.',
+        variant: 'destructive',
+        duration: 3000,
       });
       setSearchResults([]);
       setShowSearchResults(false);
@@ -1439,7 +1649,7 @@ export function LocationQuestionEditor({
       center: [lng, lat],
       zoom: 15,
       duration: 1500,
-      essential: true
+      essential: true,
     });
 
     // Clear search results
@@ -1447,9 +1657,9 @@ export function LocationQuestionEditor({
     setSearchQuery(place.place_name);
 
     toast({
-      title: "Location found",
+      title: 'Location found',
       description: `Moved map to ${place.text}`,
-      duration: 2000
+      duration: 2000,
     });
   };
 
@@ -1463,11 +1673,14 @@ export function LocationQuestionEditor({
     const newLocation: LocationAnswer = {
       longitude: lng,
       latitude: lat,
-      radius: 10
+      radius: 10,
     };
 
     // Add to current locations
-    const updatedLocations = [...currentLocationAnswersRef.current, newLocation];
+    const updatedLocations = [
+      ...currentLocationAnswersRef.current,
+      newLocation,
+    ];
 
     // Calculate the new index for this location
     const newPointIndex = updatedLocations.length - 1;
@@ -1479,7 +1692,7 @@ export function LocationQuestionEditor({
     // IMPORTANT: Add this new point to latestMarkerPositionsRef so it's tracked for drag operations
     latestMarkerPositionsRef.current.set(newPointIndex, {
       lng: lng,
-      lat: lat
+      lat: lat,
     });
 
     // Update global state to prevent conflicts
@@ -1488,7 +1701,7 @@ export function LocationQuestionEditor({
         timestamp: Date.now(),
         activityId: questionIndex.toString(),
         locationData: updatedLocations,
-        source: 'location-editor-add-point'
+        source: 'location-editor-add-point',
       };
     }
 
@@ -1508,19 +1721,19 @@ export function LocationQuestionEditor({
           center: [lng, lat],
           zoom: 15,
           duration: 1500,
-          essential: true
+          essential: true,
         });
       }
     }, 100);
 
     // Clear search
     setShowSearchResults(false);
-    setSearchQuery("");
+    setSearchQuery('');
 
     toast({
-      title: "Location added",
+      title: 'Location added',
       description: `Added point at ${place.text}`,
-      duration: 2000
+      duration: 2000,
     });
   };
 
@@ -1528,11 +1741,11 @@ export function LocationQuestionEditor({
   const initializeMarkers = (locationData: any[]) => {
     if (!locationData || locationData.length === 0) return;
 
-    const newMarkers = locationData.map(location => ({
+    const newMarkers = locationData.map((location) => ({
       longitude: location.longitude,
       latitude: location.latitude,
       radius: location.radius || 10,
-      quizLocationAnswerId: location.quizLocationAnswerId || ""
+      quizLocationAnswerId: location.quizLocationAnswerId || '',
     }));
 
     setMarkers(newMarkers);
@@ -1541,14 +1754,14 @@ export function LocationQuestionEditor({
     if (mapRef.current) {
       const bounds = new mapboxgl.LngLatBounds();
 
-      newMarkers.forEach(marker => {
+      newMarkers.forEach((marker) => {
         bounds.extend([marker.longitude, marker.latitude]);
       });
 
       if (!bounds.isEmpty()) {
         mapRef.current.fitBounds(bounds, {
           padding: 50,
-          duration: 1000
+          duration: 1000,
         });
       }
     }
@@ -1579,10 +1792,7 @@ export function LocationQuestionEditor({
             {showSearchResults && searchResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-64 overflow-y-auto">
                 {searchResults.map((place, index) => (
-                  <div
-                    key={index}
-                    className="group"
-                  >
+                  <div key={index} className="group">
                     <div className="flex items-center justify-between p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
                       <div
                         className="flex-1 cursor-pointer"
@@ -1627,7 +1837,7 @@ export function LocationQuestionEditor({
           <div
             ref={mapContainerRef}
             className="w-full rounded-md overflow-hidden"
-            style={{ height: "400px" }}
+            style={{ height: '400px' }}
           />
 
           {/* Zoom to fit button */}

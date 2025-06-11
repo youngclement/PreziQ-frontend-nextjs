@@ -1,4 +1,4 @@
-import axiosClient from "./axios-client";
+import axiosClient from './axios-client';
 
 interface UploadResponse {
   success: boolean;
@@ -6,6 +6,10 @@ interface UploadResponse {
   data:
     | {
         fileName: string;
+        fileUrl: string;
+      }
+    | {
+        name: string;
         fileUrl: string;
       }
     | {
@@ -18,11 +22,29 @@ interface UploadResponse {
   };
 }
 
+// const extractRelativePath = (fullUrl: string): string => {
+//   // Extract everything after the S3 bucket name
+//   const match = fullUrl.match(/[^/]+\/[^/]+$/);
+//   return match ? match[0] : fullUrl;
+// };
 const extractRelativePath = (fullUrl: string): string => {
-  // Extract everything after the S3 bucket name
+  const url = new URL(fullUrl);
+
+  // Kiểm tra nếu URL trỏ đến S3
+  if (url.hostname.includes('s3.amazonaws.com')) {
+    return url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+  }
+
+  // Trường hợp khác: giữ nguyên logic cũ
   const match = fullUrl.match(/[^/]+\/[^/]+$/);
   return match ? match[0] : fullUrl;
 };
+
+console.log(
+  extractRelativePath(
+    'https://preziq-spring-uploader.s3.amazonaws.com/sounds/custom/HolaHola-a2bb650f-f022-4863-bcb3-e45504b96a1a.mp3'
+  )
+);
 
 export const storageApi = {
   /**
@@ -33,12 +55,12 @@ export const storageApi = {
    */
   uploadSingleFile(file: File, folderName: string): Promise<UploadResponse> {
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("folderName", folderName);
+    formData.append('file', file);
+    formData.append('folderName', folderName);
 
-    return axiosClient.post("/storage/aws-s3/upload/single", formData, {
+    return axiosClient.post('/storage/aws-s3/upload/single', formData, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        'Content-Type': 'multipart/form-data',
       },
     });
   },
@@ -56,14 +78,14 @@ export const storageApi = {
     const formData = new FormData();
 
     files.forEach((file) => {
-      formData.append("files", file);
+      formData.append('files', file);
     });
 
-    formData.append("folderName", folderName);
+    formData.append('folderName', folderName);
 
-    return axiosClient.post("/storage/aws-s3/upload/multiple", formData, {
+    return axiosClient.post('/storage/aws-s3/upload/multiple', formData, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        'Content-Type': 'multipart/form-data',
       },
     });
   },

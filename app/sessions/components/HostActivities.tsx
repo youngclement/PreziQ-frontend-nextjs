@@ -29,6 +29,7 @@ import {
   BarChart,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import QuizMatchingPairViewer from './QuizMatchingPairViewer';
 
 interface Participant {
   guestName: string;
@@ -129,7 +130,8 @@ export default function HostActivities({
       activityType === 'QUIZ_REORDER' ||
       activityType === 'QUIZ_TYPE_ANSWER' ||
       activityType === 'QUIZ_TRUE_OR_FALSE' ||
-      activityType === 'QUIZ_LOCATION'
+      activityType === 'QUIZ_LOCATION' ||
+      activityType === 'QUIZ_MATCHING_PAIR'
     );
   };
 
@@ -831,9 +833,19 @@ export default function HostActivities({
             isParticipating={isParticipating}
           />
         );
+      case 'QUIZ_MATCHING_PAIR':
+        return (
+          <QuizMatchingPairViewer
+            key={currentActivity.activityId}
+            activity={currentActivity}
+            sessionId={sessionId}
+            sessionWebSocket={sessionWs}
+            isParticipating={isParticipating}
+          />
+        );
       default:
         return (
-          <div className='text-center py-6 text-white/70'>
+          <div className="text-center py-6 text-white/70">
             Loại hoạt động không được hỗ trợ
           </div>
         );
@@ -845,9 +857,9 @@ export default function HostActivities({
     // Nếu host không tham gia, hiển thị chỉ xem cho tất cả các hoạt động
     if (!isParticipating) {
       return (
-        <div className='relative'>
+        <div className="relative">
           {/* Overlay trong suốt để ngăn tương tác nhưng không che nội dung */}
-          <div className='absolute inset-0 z-10 pointer-events-auto'></div>
+          <div className="absolute inset-0 z-10 pointer-events-auto"></div>
 
           {/* Nút hiển thị đáp án cho host không tham gia
           {isQuizActivity(currentActivity?.activityType) && (
@@ -869,7 +881,7 @@ export default function HostActivities({
           )} */}
 
           {/* Hiển thị nội dung activity bình thường nhưng vô hiệu hóa tương tác */}
-          <div className='pointer-events-none'>{renderRegularActivity()}</div>
+          <div className="pointer-events-none">{renderRegularActivity()}</div>
         </div>
       );
     }
@@ -881,18 +893,18 @@ export default function HostActivities({
   const renderActivityContent = () => {
     if (isLoading) {
       return (
-        <div className='flex flex-col items-center justify-center py-12'>
-          <Loader2 className='h-8 w-8 animate-spin mb-2 text-[#aef359]' />
-          <p className='text-white/70'>Đang tải hoạt động...</p>
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin mb-2 text-[#aef359]" />
+          <p className="text-white/70">Đang tải hoạt động...</p>
         </div>
       );
     }
 
     if (!currentActivity) {
       return (
-        <div className='text-center py-12'>
-          <p className='mb-2 text-lg text-white/70'>Chưa có hoạt động nào</p>
-          <p className='text-sm text-white/50'>
+        <div className="text-center py-12">
+          <p className="mb-2 text-lg text-white/70">Chưa có hoạt động nào</p>
+          <p className="text-sm text-white/50">
             Bắt đầu phiên học để hiển thị hoạt động đầu tiên
           </p>
         </div>
@@ -919,17 +931,17 @@ export default function HostActivities({
 
   // Đặt CountdownOverlay ở mức cao nhất với vị trí z-index lớn để luôn hiển thị đè lên mọi phần tử
   return (
-    <div className='min-h-screen bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white'>
+    <div className="min-h-screen bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white">
       {/* Hiển thị CountdownOverlay với z-index cao hơn các phần tử khác khi KHÔNG ở chế độ toàn màn hình */}
       {showCountdown && !isFullscreenMode && (
-        <div className='fixed inset-0 z-[9999]'>
+        <div className="fixed inset-0 z-[9999]">
           <CountdownOverlay onComplete={handleCountdownComplete} />
         </div>
       )}
 
       {/* Hiển thị PointTypeOverlay với z-index cao hơn cả CountdownOverlay */}
       {showPointTypeOverlay && (
-        <div className='fixed inset-0 z-[10001]'>
+        <div className="fixed inset-0 z-[10001]">
           <PointTypeOverlay
             pointType={currentPointType}
             onComplete={handlePointTypeOverlayComplete}
@@ -952,10 +964,10 @@ export default function HostActivities({
         )}
 
       {/* Animated background elements */}
-      <div className='absolute inset-0 overflow-hidden pointer-events-none'>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Gradient orbs with reduced opacity */}
         <motion.div
-          className='absolute top-10 left-10 w-32 h-32 bg-[#aef359] rounded-full filter blur-[80px]'
+          className="absolute top-10 left-10 w-32 h-32 bg-[#aef359] rounded-full filter blur-[80px]"
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.05, 0.1, 0.05],
@@ -967,7 +979,7 @@ export default function HostActivities({
           }}
         />
         <motion.div
-          className='absolute bottom-10 right-10 w-32 h-32 bg-[#e4f88d] rounded-full filter blur-[80px]'
+          className="absolute bottom-10 right-10 w-32 h-32 bg-[#e4f88d] rounded-full filter blur-[80px]"
           animate={{
             scale: [1.2, 1, 1.2],
             opacity: [0.05, 0.1, 0.05],
@@ -981,23 +993,23 @@ export default function HostActivities({
         />
 
         {/* Dotted grid */}
-        <div className='absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:20px_20px]' />
+        <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:20px_20px]" />
       </div>
 
       {/* Header - ẩn trong chế độ toàn màn hình */}
       {!isFullscreenMode && (
-        <div className='bg-black bg-opacity-40 backdrop-blur-md border-b border-white/5 p-4 shadow-lg sticky top-0 z-50'>
-          <div className='container mx-auto flex items-center justify-between'>
-            <div className='flex items-center space-x-4'>
+        <div className="bg-black bg-opacity-40 backdrop-blur-md border-b border-white/5 p-4 shadow-lg sticky top-0 z-50">
+          <div className="container mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-4">
               <motion.h1
-                className='text-xl md:text-2xl font-bold text-[rgb(198,234,132)]'
+                className="text-xl md:text-2xl font-bold text-[rgb(198,234,132)]"
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: 'spring', stiffness: 400 }}
               >
                 PreziQ! Host
               </motion.h1>
               <motion.div
-                className='bg-black bg-opacity-30 px-3 py-1 rounded-full text-sm text-white/80 border border-white/10 shadow-inner'
+                className="bg-black bg-opacity-30 px-3 py-1 rounded-full text-sm text-white/80 border border-white/10 shadow-inner"
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: 'spring', stiffness: 400 }}
               >
@@ -1005,8 +1017,8 @@ export default function HostActivities({
               </motion.div>
             </div>
 
-            <div className='flex items-center gap-2'>
-              <div className='text-sm text-white/60 hidden md:block'>
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-white/60 hidden md:block">
                 {connectionStatus}
               </div>
 
@@ -1031,13 +1043,13 @@ export default function HostActivities({
                 >
                   Đã trả lời:
                 </span>{' '}
-                <span className='font-medium'>
+                <span className="font-medium">
                   {sessionWs.getParticipantsEventRatio().count}
                 </span>
-                <span className='text-white/50'>
+                <span className="text-white/50">
                   /{sessionWs.getParticipantsEventRatio().total}
                 </span>
-                <span className='ml-1 text-xs opacity-75'>
+                <span className="ml-1 text-xs opacity-75">
                   ({sessionWs.getParticipantsEventRatio().percentage}%)
                 </span>
               </motion.div>
@@ -1049,20 +1061,20 @@ export default function HostActivities({
                   whileTap={{ scale: 0.95 }}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className='ml-2'
+                  className="ml-2"
                 >
                   <Button
                     onClick={handleNextActivity}
-                    className='bg-[rgb(213,189,255)] hover:bg-[rgb(213,189,255)]/90 text-black border border-white/20 flex items-center gap-2'
+                    className="bg-[rgb(213,189,255)] hover:bg-[rgb(213,189,255)]/90 text-black border border-white/20 flex items-center gap-2"
                   >
-                    <BarChart className='h-4 w-4' />
+                    <BarChart className="h-4 w-4" />
                     <span>Xếp hạng</span>
                   </Button>
                 </motion.div>
               )}
             </div>
 
-            <div className='flex space-x-3'>
+            <div className="flex space-x-3">
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -1070,10 +1082,10 @@ export default function HostActivities({
                 <Button
                   onClick={handleNextActivity}
                   disabled={!isConnected || noMoreActivities}
-                  className='bg-[rgb(198,234,132)] hover:bg-[rgb(198,234,132)]/90 text-black font-medium disabled:opacity-50 flex items-center gap-2'
+                  className="bg-[rgb(198,234,132)] hover:bg-[rgb(198,234,132)]/90 text-black font-medium disabled:opacity-50 flex items-center gap-2"
                 >
                   Hoạt động tiếp theo
-                  <ArrowRight className='h-4 w-4' />
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </motion.div>
               <motion.div
@@ -1081,10 +1093,10 @@ export default function HostActivities({
                 whileTap={{ scale: 0.95 }}
               >
                 <Button
-                  variant='destructive'
+                  variant="destructive"
                   onClick={handleEndSession}
                   disabled={!isConnected}
-                  className='bg-red-500/80 hover:bg-red-600/90 text-white border border-red-600/30'
+                  className="bg-red-500/80 hover:bg-red-600/90 text-white border border-red-600/30"
                 >
                   Kết thúc phiên
                 </Button>
@@ -1100,7 +1112,7 @@ export default function HostActivities({
         }`}
       >
         {!isFullscreenMode && (
-          <div className='text-sm text-center text-white/50 mb-4 md:hidden'>
+          <div className="text-sm text-center text-white/50 mb-4 md:hidden">
             {connectionStatus}
           </div>
         )}
@@ -1112,11 +1124,11 @@ export default function HostActivities({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className='mb-6'
+              className="mb-6"
             >
               <Alert
-                variant='destructive'
-                className='bg-red-500/20 border border-red-500 text-white'
+                variant="destructive"
+                className="bg-red-500/20 border border-red-500 text-white"
               >
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
@@ -1126,7 +1138,7 @@ export default function HostActivities({
 
         {/* Floating Controls - fixed position buttons for fullscreen & sidebar toggle */}
         <motion.div
-          className='fixed top-4 right-4 z-50 flex flex-col gap-2'
+          className="fixed top-4 right-4 z-50 flex flex-col gap-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
@@ -1146,29 +1158,29 @@ export default function HostActivities({
             }
           >
             <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='24'
-              height='24'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
               {isFullscreenMode ? (
                 <>
-                  <path d='M8 3v4a1 1 0 0 1-1 1H3'></path>
-                  <path d='M21 8h-4a1 1 0 0 1-1-1V3'></path>
-                  <path d='M3 16h4a1 1 0 0 1 1 1v4'></path>
-                  <path d='M16 21v-4a1 1 0 0 1 1-1h4'></path>
+                  <path d="M8 3v4a1 1 0 0 1-1 1H3"></path>
+                  <path d="M21 8h-4a1 1 0 0 1-1-1V3"></path>
+                  <path d="M3 16h4a1 1 0 0 1 1 1v4"></path>
+                  <path d="M16 21v-4a1 1 0 0 1 1-1h4"></path>
                 </>
               ) : (
                 <>
-                  <path d='M3 8V5a2 2 0 0 1 2-2h3'></path>
-                  <path d='M19 8V5a2 2 0 0 0-2-2h-3'></path>
-                  <path d='M3 16v3a2 2 0 0 0 2 2h3'></path>
-                  <path d='M19 16v3a2 2 0 0 1-2 2h-3'></path>
+                  <path d="M3 8V5a2 2 0 0 1 2-2h3"></path>
+                  <path d="M19 8V5a2 2 0 0 0-2-2h-3"></path>
+                  <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+                  <path d="M19 16v3a2 2 0 0 1-2 2h-3"></path>
                 </>
               )}
             </svg>
@@ -1178,13 +1190,13 @@ export default function HostActivities({
         {/* Floating Controls for fullscreen mode - fixed position always visible */}
         {isFullscreenMode && (
           <motion.div
-            className='fixed top-4 left-4 z-50 flex items-center gap-3 bg-[#0e1c26]/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-xl'
+            className="fixed top-4 left-4 z-50 flex items-center gap-3 bg-[#0e1c26]/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-xl"
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           >
-            <div className='bg-[#0e2838]/80 px-3 py-1 rounded-full text-sm text-white/80 border border-white/10 shadow-inner'>
+            <div className="bg-[#0e2838]/80 px-3 py-1 rounded-full text-sm text-white/80 border border-white/10 shadow-inner">
               Mã: {sessionCode}
             </div>
             <motion.div
@@ -1208,13 +1220,13 @@ export default function HostActivities({
               >
                 Đã trả lời:
               </span>{' '}
-              <span className='font-medium'>
+              <span className="font-medium">
                 {sessionWs.getParticipantsEventRatio().count}
               </span>
-              <span className='text-white/50'>
+              <span className="text-white/50">
                 /{sessionWs.getParticipantsEventRatio().total}
               </span>
-              <span className='ml-1 text-xs opacity-75'>
+              <span className="ml-1 text-xs opacity-75">
                 ({sessionWs.getParticipantsEventRatio().percentage}%)
               </span>
             </motion.div>
@@ -1237,10 +1249,10 @@ export default function HostActivities({
                   whileTap={{ scale: 0.95 }}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className='bg-gradient-to-r from-purple-600/70 to-blue-500/70 hover:from-purple-600/80 hover:to-blue-500/80 text-white border border-purple-400/30 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-md'
+                  className="bg-gradient-to-r from-purple-600/70 to-blue-500/70 hover:from-purple-600/80 hover:to-blue-500/80 text-white border border-purple-400/30 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-md"
                 >
-                  <BarChart className='h-4 w-4' />
-                  <span className='font-medium'>Bảng xếp hạng</span>
+                  <BarChart className="h-4 w-4" />
+                  <span className="font-medium">Bảng xếp hạng</span>
                 </motion.button>
               )}
 
@@ -1255,10 +1267,10 @@ export default function HostActivities({
                 whileTap={{ scale: 0.95 }}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium disabled:opacity-50 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-md'
+                className="bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium disabled:opacity-50 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-md"
               >
-                <span className='font-medium'>Tiếp theo</span>
-                <ArrowRight className='h-4 w-4' />
+                <span className="font-medium">Tiếp theo</span>
+                <ArrowRight className="h-4 w-4" />
               </motion.button>
             )}
           </motion.div>
@@ -1269,7 +1281,7 @@ export default function HostActivities({
           activityTransitionState === 'showing_current' &&
           !canShowRanking && (
             <motion.div
-              className='fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 bg-[#0e1c26]/90 backdrop-blur-md px-4 py-3 rounded-full border border-white/10 shadow-xl'
+              className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 bg-[#0e1c26]/90 backdrop-blur-md px-4 py-3 rounded-full border border-white/10 shadow-xl"
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
@@ -1280,10 +1292,10 @@ export default function HostActivities({
                 disabled={!isConnected || noMoreActivities}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-bold disabled:opacity-50 flex items-center gap-2 px-5 py-3 rounded-full shadow-lg'
+                className="bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-bold disabled:opacity-50 flex items-center gap-2 px-5 py-3 rounded-full shadow-lg"
               >
-                <span className='text-base'>Hoạt động tiếp theo</span>
-                <ArrowRight className='h-5 w-5' />
+                <span className="text-base">Hoạt động tiếp theo</span>
+                <ArrowRight className="h-5 w-5" />
               </motion.button>
 
               <motion.button
@@ -1291,7 +1303,7 @@ export default function HostActivities({
                 disabled={!isConnected}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className='bg-red-500/80 hover:bg-red-600/90 text-white font-medium border border-red-600/30 flex items-center gap-2 px-4 py-3 rounded-full shadow-md'
+                className="bg-red-500/80 hover:bg-red-600/90 text-white font-medium border border-red-600/30 flex items-center gap-2 px-4 py-3 rounded-full shadow-md"
               >
                 <span>Kết thúc phiên</span>
               </motion.button>
@@ -1301,7 +1313,7 @@ export default function HostActivities({
         {/* Hiển thị nút xác nhận tiếp tục khi đang xem bảng xếp hạng */}
         {isFullscreenMode && activityTransitionState === 'showing_ranking' && (
           <motion.div
-            className='fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 bg-[#0e1c26]/90 backdrop-blur-md px-4 py-3 rounded-full border border-white/10 shadow-xl'
+            className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 bg-[#0e1c26]/90 backdrop-blur-md px-4 py-3 rounded-full border border-white/10 shadow-xl"
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
@@ -1314,10 +1326,10 @@ export default function HostActivities({
               }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-bold flex items-center gap-2 px-5 py-3 rounded-full shadow-lg'
+              className="bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-bold flex items-center gap-2 px-5 py-3 rounded-full shadow-lg"
             >
-              <span className='text-base'>Tiếp tục</span>
-              <ArrowRight className='h-5 w-5' />
+              <span className="text-base">Tiếp tục</span>
+              <ArrowRight className="h-5 w-5" />
             </motion.button>
 
             <motion.button
@@ -1325,7 +1337,7 @@ export default function HostActivities({
               disabled={!isConnected}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className='bg-red-500/80 hover:bg-red-600/90 text-white font-medium border border-red-600/30 flex items-center gap-2 px-4 py-3 rounded-full shadow-md'
+              className="bg-red-500/80 hover:bg-red-600/90 text-white font-medium border border-red-600/30 flex items-center gap-2 px-4 py-3 rounded-full shadow-md"
             >
               <span>Kết thúc phiên</span>
             </motion.button>
@@ -1333,7 +1345,7 @@ export default function HostActivities({
         )}
 
         {/* Main layout with sidebar */}
-        <div className='relative flex' ref={quizContainerRef}>
+        <div className="relative flex" ref={quizContainerRef}>
           {/* Main quiz content - adjusts width based on sidebar */}
           <div
             className={`flex-grow transition-all duration-300 ease-in-out 
@@ -1350,8 +1362,8 @@ export default function HostActivities({
               `}
             >
               {!isFullscreenMode && (
-                <div className='bg-gradient-to-r from-[#0e2838]/80 to-[#183244]/80 px-6 py-4 border-b border-white/10'>
-                  <h2 className='text-xl font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text'>
+                <div className="bg-gradient-to-r from-[#0e2838]/80 to-[#183244]/80 px-6 py-4 border-b border-white/10">
+                  <h2 className="text-xl font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text">
                     Hoạt động hiện tại
                   </h2>
                 </div>
@@ -1365,14 +1377,14 @@ export default function HostActivities({
               >
                 {/* Hiển thị CountdownOverlay trong phần nội dung khi ở chế độ toàn màn hình */}
                 {showCountdown && isFullscreenMode && (
-                  <div className='absolute inset-0 z-50'>
+                  <div className="absolute inset-0 z-50">
                     <CountdownOverlay onComplete={handleCountdownComplete} />
                   </div>
                 )}
 
                 {/* Hiển thị PointTypeOverlay trong phần nội dung khi ở chế độ toàn màn hình */}
                 {showPointTypeOverlay && isFullscreenMode && (
-                  <div className='absolute inset-0 z-[51]'>
+                  <div className="absolute inset-0 z-[51]">
                     <PointTypeOverlay
                       pointType={currentPointType}
                       onComplete={handlePointTypeOverlayComplete}
@@ -1386,7 +1398,7 @@ export default function HostActivities({
                   currentRankingActivityId &&
                   isFullscreenMode &&
                   !isInfoSlideActivity(currentActivity?.activityType) && (
-                    <div className='absolute inset-0 z-50'>
+                    <div className="absolute inset-0 z-50">
                       <HostRankingChange
                         sessionWebSocket={sessionWs}
                         currentActivityId={currentRankingActivityId}
@@ -1397,17 +1409,17 @@ export default function HostActivities({
                   )}
 
                 {noMoreActivities ? (
-                  <div className='text-center py-8 bg-[#0e2838]/30 rounded-lg border border-yellow-500/20'>
+                  <div className="text-center py-8 bg-[#0e2838]/30 rounded-lg border border-yellow-500/20">
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.5 }}
                     >
-                      <Clock className='h-12 w-12 text-yellow-500/70 mx-auto mb-4' />
-                      <p className='text-lg font-medium text-yellow-500/90 mb-2'>
+                      <Clock className="h-12 w-12 text-yellow-500/70 mx-auto mb-4" />
+                      <p className="text-lg font-medium text-yellow-500/90 mb-2">
                         Không còn hoạt động nào nữa
                       </p>
-                      <p className='text-white/50'>
+                      <p className="text-white/50">
                         Phiên học sẽ tự động kết thúc trong giây lát...
                       </p>
                     </motion.div>
@@ -1430,7 +1442,7 @@ export default function HostActivities({
           </div>
 
           {/* Sidebar toggle button positioned on the boundary */}
-          <div className='fixed right-0 top-1/2 transform -translate-y-1/2 z-50'>
+          <div className="fixed right-0 top-1/2 transform -translate-y-1/2 z-50">
             <motion.button
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
               whileHover={{ scale: 1.05 }}
@@ -1445,20 +1457,20 @@ export default function HostActivities({
               }
             >
               {isSidebarCollapsed ? (
-                <Users className='h-5 w-5' />
+                <Users className="h-5 w-5" />
               ) : (
                 <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  width='20'
-                  height='20'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <polyline points='15 18 9 12 15 6'></polyline>
+                  <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
               )}
             </motion.button>
@@ -1483,46 +1495,46 @@ export default function HostActivities({
               opacity: isSidebarCollapsed ? 0 : 1,
             }}
           >
-            <div className='p-4 h-full flex flex-col'>
-              <div className='mb-4 flex items-center justify-between'>
-                <h2 className='text-lg font-semibold flex items-center gap-2 text-white/90'>
-                  <Users className='h-5 w-5 text-[#aef359]' />
+            <div className="p-4 h-full flex flex-col">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-white/90">
+                  <Users className="h-5 w-5 text-[#aef359]" />
                   <span>Người tham gia</span>
                   <motion.span
                     key={participants.length}
                     initial={{ scale: 1.2 }}
                     animate={{ scale: 1 }}
-                    className='ml-2 bg-[#0e2838]/80 px-2 py-0.5 rounded-full text-sm text-[#aef359] border border-[#aef359]/20'
+                    className="ml-2 bg-[#0e2838]/80 px-2 py-0.5 rounded-full text-sm text-[#aef359] border border-[#aef359]/20"
                   >
                     {participants.length}
                   </motion.span>
                 </h2>
 
                 <motion.button
-                  className='bg-[#0e2838]/50 p-1.5 rounded-full border border-white/10 shadow-inner'
+                  className="bg-[#0e2838]/50 p-1.5 rounded-full border border-white/10 shadow-inner"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setIsSidebarCollapsed(true)}
                 >
                   <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    width='16'
-                    height='16'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    className='text-[#aef359]'
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-[#aef359]"
                   >
-                    <line x1='18' y1='6' x2='6' y2='18'></line>
-                    <line x1='6' y1='6' x2='18' y2='18'></line>
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
                   </svg>
                 </motion.button>
               </div>
 
-              <div className='flex-grow overflow-auto pr-1 custom-scrollbar'>
+              <div className="flex-grow overflow-auto pr-1 custom-scrollbar">
                 <RealtimeLeaderboard
                   participants={participants.map((p) => ({
                     displayName: p.guestName,
@@ -1533,7 +1545,7 @@ export default function HostActivities({
                   }))}
                   onScoreUpdate={handleScoreUpdate}
                   // Host không cần currentUserName vì đây là view của host
-                  currentUserName=''
+                  currentUserName=""
                 />
               </div>
             </div>

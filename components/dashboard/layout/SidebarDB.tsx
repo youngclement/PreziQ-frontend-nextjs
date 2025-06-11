@@ -14,20 +14,17 @@ import { useAuth } from '@/contexts/auth-context';
 import { sidebarData } from '@/components/dashboard/data/sidebarData';
 import { useGenerateSidebarData } from '../data/sidebarData';
 
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
 
-
-
-
-
   // Generate sidebar data based on current user using hook with language context
-  const sidebarData = useGenerateSidebarData(user);
 
   return (
-    <Sidebar collapsible='icon' variant='floating' {...props}>
-      <SidebarHeader className='flex items-left justify-center py-4'>
-        <Logo variant='minimal' size='md' />
+    <Sidebar collapsible="icon" variant="floating" {...props}>
+      <SidebarHeader className="flex items-left justify-center py-4">
+        <Logo variant="minimal" size="md" />
+
       </SidebarHeader>
       <SidebarContent>
         {sidebarData.navGroups.map((props) => (

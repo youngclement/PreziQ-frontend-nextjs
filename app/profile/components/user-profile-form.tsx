@@ -314,56 +314,56 @@ export function UserProfileForm({
     }`.trim();
 
   return (
-    <Card className='border-0 shadow-none'>
-      <CardHeader className='space-y-1'>
-        <CardTitle className='text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'>
+    <Card className="border-0 shadow-none">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
           Thông tin cá nhân
         </CardTitle>
-        <CardDescription className='text-base'>
+        <CardDescription className="text-base">
           Cập nhật và quản lý thông tin cá nhân của bạn
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className='space-y-8'>
+        <div className="space-y-8">
           {/* Avatar Section */}
-          <div className='flex flex-col items-center space-y-4 px-2 sm:px-4'>
-            <div className='relative group'>
+          <div className="flex flex-col items-center space-y-4 px-2 sm:px-4">
+            <div className="relative group">
               <Avatar
-                className='h-24 w-24 sm:h-28 sm:w-28 cursor-pointer border-4 border-white dark:border-gray-800 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105'
+                className="h-24 w-24 sm:h-28 sm:w-28 cursor-pointer border-4 border-white dark:border-gray-800 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105"
                 onClick={handleAvatarClick}
               >
                 <AvatarImage
                   src={avatarPreview || undefined}
                   alt={displayName}
-                  className='object-cover'
+                  className="object-cover"
                 />
-                <AvatarFallback className='text-lg sm:text-xl bg-gradient-to-br from-primary to-primary/80 text-white'>
+                <AvatarFallback className="text-lg sm:text-xl bg-gradient-to-br from-primary to-primary/80 text-white">
                   {getInitials(displayName)}
                 </AvatarFallback>
               </Avatar>
               <div
-                className='absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center cursor-pointer backdrop-blur-sm'
+                className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center cursor-pointer backdrop-blur-sm"
                 onClick={handleAvatarClick}
               >
-                <Camera className='h-6 w-6 sm:h-7 sm:w-7 text-white' />
+                <Camera className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
               </div>
               <input
-                type='file'
+                type="file"
                 ref={fileInputRef}
-                className='hidden'
-                accept='image/*'
+                className="hidden"
+                accept="image/*"
                 onChange={handleFileChange}
               />
             </div>
-            <div className='text-center space-y-2'>
-              <p className='text-xs sm:text-sm text-gray-500 dark:text-gray-400'>
+            <div className="text-center space-y-2">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 Nhấn vào ảnh để thay đổi
               </p>
-              <h3 className='text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200'>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200">
                 {userProfile?.email}
               </h3>
               {userProfile?.createdAt && (
-                <p className='text-xs sm:text-sm text-muted-foreground'>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Thành viên từ{' '}
                   {new Date(userProfile.createdAt).toLocaleDateString('vi-VN')}
                 </p>
@@ -372,26 +372,26 @@ export function UserProfileForm({
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-              <div className='grid grid-cols-1 gap-6 sm:grid-cols-2'>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 {/* Họ */}
                 <FormField
                   control={form.control}
-                  name='lastName'
+                  name="lastName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
-                        <User className='h-4 w-4' />
+                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                        <User className="h-4 w-4" />
                         Họ
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder='Nguyễn'
+                          placeholder="Nguyễn"
                           {...field}
-                          className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'
+                          className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg"
                         />
                       </FormControl>
-                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
+                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
                     </FormItem>
                   )}
                 />
@@ -399,21 +399,21 @@ export function UserProfileForm({
                 {/* Tên */}
                 <FormField
                   control={form.control}
-                  name='firstName'
+                  name="firstName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
-                        <User className='h-4 w-4' />
+                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                        <User className="h-4 w-4" />
                         Tên
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder='Văn A'
+                          placeholder="Văn A"
                           {...field}
-                          className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'
+                          className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg"
                         />
                       </FormControl>
-                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
+                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
                     </FormItem>
                   )}
                 />
@@ -421,20 +421,20 @@ export function UserProfileForm({
                 {/* Biệt danh */}
                 <FormField
                   control={form.control}
-                  name='nickname'
+                  name="nickname"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Biệt danh
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder='Nhập biệt danh (tùy chọn)'
+                          placeholder="Nhập biệt danh (tùy chọn)"
                           {...field}
-                          className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'
+                          className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg"
                         />
                       </FormControl>
-                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
+                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
                     </FormItem>
                   )}
                 />
@@ -442,21 +442,21 @@ export function UserProfileForm({
                 {/* Ngày sinh */}
                 <FormField
                   control={form.control}
-                  name='birthDate'
+                  name="birthDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
-                        <Calendar className='h-4 w-4' />
+                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
                         Ngày sinh
                       </FormLabel>
                       <FormControl>
                         <Input
-                          type='date'
+                          type="date"
                           {...field}
-                          className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'
+                          className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg"
                         />
                       </FormControl>
-                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
+                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
                     </FormItem>
                   )}
                 />
@@ -464,10 +464,10 @@ export function UserProfileForm({
                 {/* Giới tính */}
                 <FormField
                   control={form.control}
-                  name='gender'
+                  name="gender"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Giới tính
                       </FormLabel>
                       <Select
@@ -475,17 +475,17 @@ export function UserProfileForm({
                         defaultValue={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'>
-                            <SelectValue placeholder='Chọn giới tính' />
+                          <SelectTrigger className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg">
+                            <SelectValue placeholder="Chọn giới tính" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value='Nam'>Nam</SelectItem>
-                          <SelectItem value='Nữ'>Nữ</SelectItem>
-                          <SelectItem value='Khác'>Khác</SelectItem>
+                          <SelectItem value="Nam">Nam</SelectItem>
+                          <SelectItem value="Nữ">Nữ</SelectItem>
+                          <SelectItem value="Khác">Khác</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
+                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
                     </FormItem>
                   )}
                 />
@@ -493,11 +493,11 @@ export function UserProfileForm({
                 {/* Quốc tịch */}
                 <FormField
                   control={form.control}
-                  name='nationality'
+                  name="nationality"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
-                        <Globe className='h-4 w-4' />
+                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
                         Quốc tịch
                       </FormLabel>
                       <Select
@@ -505,7 +505,7 @@ export function UserProfileForm({
                         defaultValue={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'>
+                          <SelectTrigger className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg">
                             <SelectValue
                               placeholder={
                                 isLoadingCountries
@@ -515,7 +515,7 @@ export function UserProfileForm({
                             />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent className='max-h-[200px]'>
+                        <SelectContent className="max-h-[200px]">
                           {countries.map((country) => (
                             <SelectItem key={country.id} value={country.name}>
                               {country.name}
@@ -523,22 +523,22 @@ export function UserProfileForm({
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
+                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
                     </FormItem>
                   )}
                 />
               </div>
 
               {/* Submit Button */}
-              <div className='flex justify-end pt-4'>
+              <div className="flex justify-end pt-4">
                 <Button
-                  type='submit'
+                  type="submit"
                   disabled={isLoading}
-                  className='min-w-[140px] h-11 text-sm font-medium transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 bg-primary hover:bg-primary/90 rounded-lg'
+                  className="min-w-[140px] h-11 text-sm font-medium transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 bg-primary hover:bg-primary/90 rounded-lg"
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Đang cập nhật...
                     </>
                   ) : (

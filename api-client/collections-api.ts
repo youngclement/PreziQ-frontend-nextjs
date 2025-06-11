@@ -83,9 +83,7 @@ export const collectionsApi = {
    * @returns Promise với kết quả từ API
    */
   getMyCollections(params: GetCollectionsParams = { page: 1, size: 100 }) {
-
     return axiosClient.get('/collections/me', { params });
-
   },
 
   /**
@@ -124,7 +122,6 @@ export const collectionsApi = {
     params: GetGroupedCollectionsByTopicParams = { page: 1, size: 10 }
   ) {
     return axiosClient.get('/collections/grouped/topics', { params });
-
   },
 
   /**
@@ -134,6 +131,13 @@ export const collectionsApi = {
    */
   copyCollection(id: string) {
     return axiosClient.post(`/collections/${id}/copy`);
+  },
 
+  /**
+   * Lấy danh sách các bài nhạc mặc định của hệ thống
+   * @return Promise với kết quả từ API
+   */
+  getDefaultBackgroundMusic() {
+    return axiosClient.get('/collections/background-music');
   },
 };

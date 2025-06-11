@@ -1,5 +1,9 @@
+'use client';
+
+import type React from 'react';
+
 import { useState, useEffect } from 'react';
-import { Music, Upload, Play, Pause } from 'lucide-react';
+import { Upload, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { useLanguage } from '@/contexts/language-context';
 import { storageApi } from '@/api-client/storage-api';
+import { collectionsApi } from '@/api-client/collections-api';
 import { useToast } from '@/hooks/use-toast';
 
 interface MusicSelectorProps {
@@ -19,27 +24,9 @@ interface MusicSelectorProps {
 }
 
 interface MusicFile {
-  fileName: string;
   fileUrl: string;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-  meta: {
-    timestamp: string;
-    instance: string;
-  };
-}
-
-interface SingleFileResponse {
-  fileName: string;
-  fileUrl: string;
-}
-
-interface MultipleFilesResponse {
-  files: MusicFile[];
+  name?: string;
+  fileName?: string;
 }
 
 export function MusicSelector({ value, onChange }: MusicSelectorProps) {
@@ -49,28 +36,17 @@ export function MusicSelector({ value, onChange }: MusicSelectorProps) {
   const [audio] = useState(new Audio());
   const [musicList, setMusicList] = useState<MusicFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-
+  const [customMusic, setCustomMusic] = useState<MusicFile | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   useEffect(() => {
     const handleEnded = () => {
       setIsPlaying(false);
     };
-
-    const handleError = (e: ErrorEvent) => {
-      console.error('Audio playback error:', e);
-      setIsPlaying(false);
-      toast({
-        title: t('collectionForm.playbackError'),
-        description: t('collectionForm.playbackErrorDesc'),
-        variant: 'destructive',
-      });
-    };
-
     audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('error', handleError);
 
     return () => {
       audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('error', handleError);
+
       audio.pause();
       audio.src = '';
     };
@@ -79,30 +55,48 @@ export function MusicSelector({ value, onChange }: MusicSelectorProps) {
   useEffect(() => {
     if (value) {
       audio.src = value;
+    } else {
+      audio.src = '';
+      setIsPlaying(false);
     }
+    setIsInitialized(true);
   }, [value, audio]);
 
   useEffect(() => {
     const fetchMusicList = async () => {
       try {
-        const response = await storageApi.uploadMultipleFiles([], 'sounds');
-        const apiResponse = response.data as ApiResponse<MultipleFilesResponse>;
+        const response = await collectionsApi.getDefaultBackgroundMusic();
+        const apiResponse = response.data.data;
 
-        if (apiResponse.success && apiResponse.data.files) {
-          setMusicList(apiResponse.data.files);
+        if (apiResponse) {
+          // Combine default music with custom music if exists
+          const defaultMusic = apiResponse.map((music: any) => ({
+            fileUrl: music.fileUrl,
+            name: music.name || music.fileName || 'Unknown',
+          }));
+
+          setMusicList(
+            customMusic ? [...defaultMusic, customMusic] : defaultMusic
+          );
+        } else {
+          toast({
+            title: 'Error get list music',
+            description: apiResponse.message || 'Failed to fetch music list.',
+            variant: 'destructive',
+          });
         }
       } catch (error) {
         console.error('Error fetching music list:', error);
         toast({
-          title: t('collectionForm.fetchError'),
-          description: t('collectionForm.musicListError'),
+          title: 'Error',
+          description: 'Failed to fetch music list.',
           variant: 'destructive',
         });
       }
     };
 
     fetchMusicList();
-  }, [t, toast]);
+  }, [customMusic, t, toast]);
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -133,40 +127,68 @@ export function MusicSelector({ value, onChange }: MusicSelectorProps) {
 
     try {
       setIsUploading(true);
-      const response = await storageApi.uploadSingleFile(file, 'sounds');
-      const apiResponse = response.data as ApiResponse<SingleFileResponse>;
 
-      if (apiResponse.success && apiResponse.data) {
-        const { fileUrl, fileName } = apiResponse.data;
-        if (fileUrl) {
-          onChange(fileUrl);
-          // Add the new music to the list
-          setMusicList((prev) => [...prev, { fileName, fileUrl }]);
-          toast({
-            title: t('collectionForm.uploadSuccess'),
-            description: t('collectionForm.musicUploadSuccess'),
-          });
+      // Delete the old custom music file if it exists
+      if (customMusic?.fileUrl) {
+        try {
+          await storageApi.deleteSingleFile(customMusic.fileUrl);
+          console.log('Old custom music file deleted successfully');
+        } catch (error) {
+          console.error('Error deleting old custom music file:', error);
+          // Continue with upload even if delete fails
         }
+      }
+
+      const response = await storageApi.uploadSingleFile(file, 'sounds/custom');
+      const responseUpload = response.data?.data;
+
+      if (responseUpload?.fileUrl) {
+        const newName =
+          responseUpload.name || responseUpload.fileName || file.name;
+        const newCustomMusic = {
+          fileUrl: responseUpload.fileUrl,
+          name: newName.replace('.mp3', ''),
+          fileName: file.name,
+        };
+        // First update the music list
+        setMusicList((prev) => [...prev, newCustomMusic]);
+
+        // Then set the selected value
+        onChange(newCustomMusic.fileUrl);
+
+        // Set this as the custom music for future reference
+        setCustomMusic(newCustomMusic);
+
+        toast({
+          title: 'Upload music file',
+          description: 'Upload music file successfully!',
+        });
       }
     } catch (error) {
       console.error('Error uploading file:', error);
       toast({
-        title: t('collectionForm.uploadError'),
-        description: t('collectionForm.musicUploadError'),
+        title: 'Failed to upload music file',
+        description: 'An error occurred while trying to upload the file.',
         variant: 'destructive',
       });
     } finally {
       setIsUploading(false);
-      // Clear the file input
       event.target.value = '';
     }
   };
 
   const handleMusicSelect = (musicUrl: string) => {
     onChange(musicUrl);
+    // Stop playback when selecting new music
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    }
   };
 
   const togglePlayback = async () => {
+    if (!isInitialized) return;
+
     try {
       if (isPlaying) {
         await audio.pause();
@@ -191,16 +213,23 @@ export function MusicSelector({ value, onChange }: MusicSelectorProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        <Select value={value} onValueChange={handleMusicSelect}>
+        <Select
+          value={value}
+          onValueChange={handleMusicSelect}
+          key={musicList.length} // Add a key that changes when the music list updates
+        >
           <SelectTrigger className="flex-1">
             <SelectValue
               placeholder={t('collectionForm.backgroundMusicPlaceholder')}
             />
           </SelectTrigger>
           <SelectContent>
-            {musicList.map((music) => (
-              <SelectItem key={music.fileName} value={music.fileUrl}>
-                {music.fileName}
+            {musicList.map((music, index) => (
+              <SelectItem
+                key={`${music.fileUrl}-${index}`}
+                value={music.fileUrl}
+              >
+                {music.name || music.fileName || `Music ${index + 1}`}
               </SelectItem>
             ))}
           </SelectContent>
@@ -256,7 +285,7 @@ export function MusicSelector({ value, onChange }: MusicSelectorProps) {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
-              {t('collectionForm.uploading')}
+              Loading...
             </>
           ) : (
             <>
@@ -266,12 +295,6 @@ export function MusicSelector({ value, onChange }: MusicSelectorProps) {
           )}
         </label>
       </div>
-
-      {value && (
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          {t('collectionForm.selectedMusic')}: {value.split('/').pop()}
-        </div>
-      )}
     </div>
   );
 }
