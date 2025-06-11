@@ -140,9 +140,7 @@ export function MusicSelector({ value, onChange }: MusicSelectorProps) {
       }
 
       const response = await storageApi.uploadSingleFile(file, 'sounds/custom');
-      // console.log('File uploaded successfully:', response);
       const responseUpload = response.data?.data;
-      // console.log('Upload response:', responseUpload);
 
       if (responseUpload?.fileUrl) {
         const newName =
