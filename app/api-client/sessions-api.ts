@@ -285,10 +285,10 @@ export const sessionsApi = {
 
   getMySessionsHistory: async (
     page = 1,
-    limit = 10
+    limit = 100
   ): Promise<SessionHistoryResponse> => {
     const response = await axiosClient.get<SessionHistoryResponse>(
-      `/sessions/me?page=${page}&limit=${limit}`
+      `/sessions/me?page=${page}&size=${limit}`
     );
     return response.data;
   },

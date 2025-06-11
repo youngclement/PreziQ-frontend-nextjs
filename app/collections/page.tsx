@@ -11,6 +11,7 @@ import {
 import { collectionsApi } from '@/api-client';
 import { getTopicImageUrl } from './constants/topic-images';
 import Image from 'next/image';
+import { useLanguage } from '@/contexts/language-context';
 
 // Import các component đã tách
 import { CollectionHeader } from './components/collection-header';
@@ -21,18 +22,21 @@ import { CollectionListItem } from './components/collection-list-item';
 import { JoinSessionBanner } from './components/join-session-banner';
 import { Button } from '@/components/ui/button';
 
-// Topic mapping from API format to display format
-const mapTopicName = (apiTopic: string): string => {
-  // If already in display format, return as is
-  if (apiTopic === 'All Topics') return apiTopic;
-
-  // Return the API format directly as that's what we use in our topic-images.ts
-  return apiTopic;
-};
-
 export default function PublishedCollectionsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useLanguage();
+
+  // Topic mapping from API format to display format
+  const mapTopicName = (apiTopic: string): string => {
+    // If already in display format, return as is
+    if (apiTopic === 'All Topics' || apiTopic === t('collections.allTopics'))
+      return t('collections.allTopics');
+
+    // Return the API format directly as that's what we use in our topic-images.ts
+    return apiTopic;
+  };
+
   const [collections, setCollections] = useState<Collection[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<string>('');
@@ -94,10 +98,10 @@ export default function PublishedCollectionsPage() {
       }
     } catch (err) {
       console.error('Error fetching topics:', err);
-      setError('Could not load topics. Please try again later.');
+      setError(t('collections.errorLoadingTopics'));
       toast({
-        title: 'Error',
-        description: 'Could not load topics.',
+        title: t('error'),
+        description: t('collections.errorLoadingTopics'),
         variant: 'destructive',
       });
     }
@@ -141,10 +145,10 @@ export default function PublishedCollectionsPage() {
       }
     } catch (err) {
       console.error('Error fetching collections by topic:', err);
-      setError('Could not load collections. Please try again later.');
+      setError(t('collections.errorLoadingCollections'));
       toast({
-        title: 'Error',
-        description: 'Could not load collections.',
+        title: t('error'),
+        description: t('collections.errorLoadingCollections'),
         variant: 'destructive',
       });
       setIsLoading(false);
@@ -231,8 +235,8 @@ export default function PublishedCollectionsPage() {
 
       if (response?.data?.success) {
         toast({
-          title: 'Thành công',
-          description: 'Đã xóa bộ sưu tập thành công.',
+          title: t('success'),
+          description: t('collections.deleteSuccess'),
           variant: 'default',
         });
 
@@ -248,13 +252,15 @@ export default function PublishedCollectionsPage() {
         });
         setCollectionsByTopic(updatedCollectionsByTopic);
       } else {
-        throw new Error(response?.data?.message || 'Có lỗi xảy ra khi xóa');
+        throw new Error(
+          response?.data?.message || t('collections.deleteErrorGeneric')
+        );
       }
     } catch (err) {
       console.error('Error deleting collection:', err);
       toast({
-        title: 'Lỗi',
-        description: 'Không thể xóa bộ sưu tập. Vui lòng thử lại sau.',
+        title: t('error'),
+        description: t('collections.deleteError'),
         variant: 'destructive',
       });
     } finally {
@@ -284,7 +290,7 @@ export default function PublishedCollectionsPage() {
     if (searchQuery) {
       // If searching, just return filtered collections in a single group
       return {
-        'Search Results': filteredCollections,
+        [t('collections.searchResults')]: filteredCollections,
       };
     }
 
@@ -299,39 +305,39 @@ export default function PublishedCollectionsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <div className='container mx-auto px-4 py-6 max-w-7xl'>
       {/* Search and View Mode Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-          Collections
+      <div className='flex flex-col md:flex-row justify-between items-center gap-4 mb-8'>
+        <h1 className='text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent'>
+          {t('collections.title')}
         </h1>
 
-        <div className="flex items-center gap-4">
-          <div className="relative w-full sm:w-60">
+        <div className='flex items-center gap-4'>
+          <div className='relative w-full sm:w-60'>
             <input
-              type="text"
-              placeholder="Search collections..."
+              type='text'
+              placeholder={t('collections.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-8 pr-4 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className='w-full h-10 pl-8 pr-4 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500'
             />
             <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+              xmlns='http://www.w3.org/2000/svg'
+              className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
             >
               <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                strokeLinecap='round'
+                strokeLinejoin='round'
                 strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'
               />
             </svg>
           </div>
 
-          <div className="flex items-center space-x-2 border rounded-lg overflow-hidden">
+          <div className='flex items-center space-x-2 border rounded-lg overflow-hidden'>
             <button
               className={`flex items-center justify-center w-10 h-10 ${
                 viewMode === 'grid'
@@ -341,17 +347,17 @@ export default function PublishedCollectionsPage() {
               onClick={() => setViewMode('grid')}
             >
               <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+                xmlns='http://www.w3.org/2000/svg'
+                className='h-5 w-5'
+                fill='none'
+                viewBox='0 0 24 24'
+                stroke='currentColor'
               >
                 <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                   strokeWidth={2}
-                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                  d='M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z'
                 />
               </svg>
             </button>
@@ -364,17 +370,17 @@ export default function PublishedCollectionsPage() {
               onClick={() => setViewMode('list')}
             >
               <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+                xmlns='http://www.w3.org/2000/svg'
+                className='h-5 w-5'
+                fill='none'
+                viewBox='0 0 24 24'
+                stroke='currentColor'
               >
                 <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                   strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
+                  d='M4 6h16M4 12h16M4 18h16'
                 />
               </svg>
             </button>
@@ -383,7 +389,7 @@ export default function PublishedCollectionsPage() {
       </div>
 
       {/* Topic Filters */}
-      <div className="mb-8">
+      <div className='mb-8'>
         <CollectionFilters
           topics={topics}
           selectedTopic={selectedTopic}
@@ -395,21 +401,21 @@ export default function PublishedCollectionsPage() {
       <JoinSessionBanner />
 
       {/* Collection Content */}
-      <div className="mt-10">
+      <div className='mt-10'>
         {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+          <div className='flex justify-center items-center h-64'>
+            <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600'></div>
           </div>
         ) : error ? (
-          <div className="text-center py-10">
-            <p className="text-red-500 mb-4">{error}</p>
+          <div className='text-center py-10'>
+            <p className='text-red-500 mb-4'>{error}</p>
             <Button
               onClick={() => {
                 fetchTopics();
                 fetchGroupedCollections();
               }}
             >
-              Try Again
+              {t('collections.tryAgain')}
             </Button>
           </div>
         ) : Object.keys(groupedCollections()).length === 0 ? (
@@ -418,62 +424,66 @@ export default function PublishedCollectionsPage() {
             searchQuery={searchQuery}
           />
         ) : (
-          <div className="space-y-12">
+          <div className='space-y-12'>
             {Object.entries(groupedCollections()).map(
               ([topic, topicCollections]) => (
-                <section key={topic} className="mb-10">
-                  <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="relative w-10 h-10 rounded-full overflow-hidden">
+                <section key={topic} className='mb-10'>
+                  <div className='flex justify-between items-center mb-6'>
+                    <div className='flex items-center gap-3'>
+                      <div className='relative w-10 h-10 rounded-full overflow-hidden'>
                         <Image
                           src={getTopicImageUrl(topic)}
                           alt={topic}
                           fill
-                          className="object-cover"
+                          className='object-cover'
                         />
-                        <div className="absolute inset-0 bg-black opacity-30"></div>
+                        <div className='absolute inset-0 bg-black opacity-30'></div>
                       </div>
-                      <h2 className="text-2xl font-bold">{topic}</h2>
+                      <h2 className='text-2xl font-bold'>{topic}</h2>
                     </div>
                     {topicCollections.length > 3 && (
-                      <div className="flex space-x-2">
+                      <div className='flex space-x-2'>
                         <button
-                          className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                          className='w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
                           onClick={() => scrollCarousel(topic, 'left')}
                         >
-                          <span className="sr-only">Scroll left</span>
+                          <span className='sr-only'>
+                            {t('collections.scrollLeft')}
+                          </span>
                           <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                            xmlns='http://www.w3.org/2000/svg'
+                            className='h-4 w-4'
+                            fill='none'
+                            viewBox='0 0 24 24'
+                            stroke='currentColor'
                           >
                             <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
                               strokeWidth={2}
-                              d="M15 19l-7-7 7-7"
+                              d='M15 19l-7-7 7-7'
                             />
                           </svg>
                         </button>
                         <button
-                          className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                          className='w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
                           onClick={() => scrollCarousel(topic, 'right')}
                         >
-                          <span className="sr-only">Scroll right</span>
+                          <span className='sr-only'>
+                            {t('collections.scrollRight')}
+                          </span>
                           <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                            xmlns='http://www.w3.org/2000/svg'
+                            className='h-4 w-4'
+                            fill='none'
+                            viewBox='0 0 24 24'
+                            stroke='currentColor'
                           >
                             <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
                               strokeWidth={2}
-                              d="M9 5l7 7-7 7"
+                              d='M9 5l7 7-7 7'
                             />
                           </svg>
                         </button>
@@ -483,7 +493,7 @@ export default function PublishedCollectionsPage() {
 
                   {viewMode === 'grid' ? (
                     <div
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                      className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
                       ref={(el) => el && carouselRefs.current.set(topic, el)}
                     >
                       {topicCollections.map((collection) => (
@@ -507,7 +517,7 @@ export default function PublishedCollectionsPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="space-y-6">
+                    <div className='space-y-6'>
                       {topicCollections.map((collection) => (
                         <CollectionListItem
                           key={collection.collectionId}

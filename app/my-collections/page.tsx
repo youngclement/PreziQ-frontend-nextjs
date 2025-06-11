@@ -452,4 +452,3 @@ export default function MyCollectionsPage() {
         </ClientOnly>
     );
 }
-
