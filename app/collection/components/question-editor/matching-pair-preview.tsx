@@ -121,12 +121,10 @@ export function MatchingPairPreview({
 
   // Add useEffect to handle initial shuffle only once
   useEffect(() => {
-    const columnA = question.options.filter(
-      (item) => item.type === 'left' && item.id
-    );
-    const columnB = question.options.filter(
-      (item) => item.type === 'right' && item.id
-    );
+
+    const columnA = question.options.filter((item) => item.type === 'left' && item.id);
+    const columnB = question.options.filter((item) => item.type === 'right' && item.id);
+
 
     // Sort both columns by display_order to maintain the correct order
     columnA.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
@@ -384,14 +382,9 @@ export function MatchingPairPreview({
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                   )}
-                  style={
-                    connectionColor
-                      ? {
-                          backgroundColor: connectionColor,
-                          borderColor: connectionColor,
-                        }
-                      : {}
-                  }
+
+                  style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
+
                   onClick={() => item.id && handleItemClick('left', item.id)}
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout
@@ -429,14 +422,9 @@ export function MatchingPairPreview({
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                   )}
-                  style={
-                    connectionColor
-                      ? {
-                          backgroundColor: connectionColor,
-                          borderColor: connectionColor,
-                        }
-                      : {}
-                  }
+
+                  style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
+
                   onClick={() => item.id && handleItemClick('right', item.id)}
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout

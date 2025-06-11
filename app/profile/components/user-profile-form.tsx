@@ -310,9 +310,8 @@ export function UserProfileForm({
   };
 
   // Tính tên hiển thị từ firstName và lastName
-  const displayName = `${userProfile?.firstName || ''} ${
-    userProfile?.lastName || ''
-  }`.trim();
+  const displayName = `${userProfile?.firstName || ''} ${userProfile?.lastName || ''
+    }`.trim();
 
   return (
     <Card className="border-0 shadow-none">

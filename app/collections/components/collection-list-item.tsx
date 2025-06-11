@@ -143,7 +143,7 @@ export function CollectionListItem({
                 <span>
                   {collection._activityCount !== undefined
                     ? collection._activityCount
-                    : activities.length || 0}{' '}
+                    : activities?.length || 0}{' '}
                   activities
                 </span>
               </div>

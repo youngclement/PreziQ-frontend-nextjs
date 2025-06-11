@@ -870,18 +870,11 @@ export function LocationQuestionEditor({
         handleRevertPosition as EventListener
       );
       // **NEW**: Add listener for API response success
-      window.addEventListener(
-        'location:api:success',
-        handleApiResponseSuccess as EventListener
-      );
-      window.addEventListener(
-        'location:marker:dragend',
-        handleMarkerDragEnd as EventListener
-      );
-      window.addEventListener(
-        'location:points:updated',
-        handlePointsUpdated as EventListener
-      );
+
+      window.addEventListener('location:api:success', handleApiResponseSuccess as EventListener);
+      window.addEventListener('location:marker:dragend', handleMarkerDragEnd as EventListener);
+      window.addEventListener('location:points:updated', handlePointsUpdated as EventListener);
+
     }
 
     return () => {
@@ -923,18 +916,11 @@ export function LocationQuestionEditor({
           handleRevertPosition as EventListener
         );
         // **NEW**: Remove listener for API response success
-        window.removeEventListener(
-          'location:api:success',
-          handleApiResponseSuccess as EventListener
-        );
-        window.removeEventListener(
-          'location:marker:dragend',
-          handleMarkerDragEnd as EventListener
-        );
-        window.removeEventListener(
-          'location:points:updated',
-          handlePointsUpdated as EventListener
-        );
+
+        window.removeEventListener('location:api:success', handleApiResponseSuccess as EventListener);
+        window.removeEventListener('location:marker:dragend', handleMarkerDragEnd as EventListener);
+        window.removeEventListener('location:points:updated', handlePointsUpdated as EventListener);
+
       }
     };
   }, [mapLoaded, locationAnswers]);

@@ -31,7 +31,11 @@ import { authApi } from '@/api-client/auth-api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Loading from '@/components/common/loading';
+
 import { sessionsApi } from '@/api-client/sessions-api';
+
+import { useLanguage } from '@/contexts/language-context';
+
 
 interface UserAccount {
   userId: string;
@@ -41,13 +45,16 @@ interface UserAccount {
 }
 
 const SessionJoinPage = () => {
+  const { t } = useLanguage();
   const params = useParams();
   const sessionCode = params.code as string;
   const [displayName, setDisplayName] = useState('');
   const [avatar, setAvatar] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState('Đang kết nối...');
+  const [connectionStatus, setConnectionStatus] = useState(
+    t('session.connecting')
+  );
   const [hasJoined, setHasJoined] = useState(false);
   const [isSessionStarted, setIsSessionStarted] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
@@ -141,7 +148,7 @@ const SessionJoinPage = () => {
   useEffect(() => {
     if (!sessionCode) {
       console.error('Không có mã phiên!');
-      setError('Vui lòng quay lại trang chính và nhập mã phiên');
+      setError(t('session.noSessionCode'));
       setIsConnecting(false);
       return;
     }
@@ -155,9 +162,11 @@ const SessionJoinPage = () => {
       if (!isMounted.current) return;
 
       let translatedStatus = status;
-      if (status === 'Connected') translatedStatus = 'Đã kết nối';
-      else if (status === 'Connecting...') translatedStatus = 'Đang kết nối...';
-      else if (status === 'Disconnected') translatedStatus = 'Mất kết nối';
+      if (status === 'Connected') translatedStatus = t('session.connected');
+      else if (status === 'Connecting...')
+        translatedStatus = t('session.connecting');
+      else if (status === 'Disconnected')
+        translatedStatus = t('session.disconnected');
 
       setConnectionStatus(translatedStatus);
       setIsConnected(status === 'Connected');
@@ -224,7 +233,7 @@ const SessionJoinPage = () => {
       })
       .catch((err) => {
         if (isMounted.current) {
-          setError('Không thể kết nối tới phiên. Vui lòng thử lại sau.');
+          setError(t('session.connectionError'));
           setIsConnected(false);
           setIsConnecting(false);
         }
@@ -237,7 +246,7 @@ const SessionJoinPage = () => {
         sessionWsRef.current = null;
       }
     };
-  }, [sessionCode]);
+  }, [sessionCode, t]);
 
   // Theo dõi và cập nhật điểm số của người tham gia
   useEffect(() => {
@@ -424,17 +433,17 @@ const SessionJoinPage = () => {
     e.preventDefault();
 
     if (!displayName.trim()) {
-      setError('Vui lòng nhập tên của bạn');
+      setError(t('session.enterName'));
       return;
     }
 
     if (!sessionWsRef.current) {
-      setError('Không có kết nối tới phiên');
+      setError(t('session.noConnection'));
       return;
     }
 
     if (!isConnected) {
-      setError('Đang chờ kết nối, vui lòng thử lại sau');
+      setError(t('session.waitingConnection'));
       return;
     }
 
@@ -447,7 +456,7 @@ const SessionJoinPage = () => {
       setError(null);
     } catch (err) {
       console.error('Lỗi khi tham gia phiên:', err);
-      setError('Không thể tham gia phiên. Vui lòng thử lại sau.');
+      setError(t('session.joinError'));
     }
   };
 
@@ -614,30 +623,37 @@ const SessionJoinPage = () => {
                   {sessionCode}
                 </h1>
               </motion.div>
-              <h2 className="text-2xl font-semibold mb-2">Tham gia phiên</h2>
-              <p className="text-white/70">Nhập tên của bạn để bắt đầu</p>
+
+              <h2 className='text-2xl font-semibold mb-2'>
+                {t('session.joinSession')}
+              </h2>
+              <p className='text-white/70'>{t('session.enterNameToStart')}</p>
+
             </div>
 
             {isConnecting ? (
               <Loading />
             ) : (
-              <form onSubmit={handleJoinSession} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/80">
-                    Tên hiển thị
+
+              <form onSubmit={handleJoinSession} className='space-y-6'>
+                <div className='space-y-2'>
+                  <label className='text-sm font-medium text-white/80'>
+                    {t('session.displayName')}
+
                   </label>
                   <Input
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Nhập tên của bạn"
-                    className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl focus:border-[#aef359] focus:ring-[#aef359]/20"
+          placeholder={t('session.enterYourName')}
+                    className='h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-xl focus:border-[#aef359] focus:ring-[#aef359]/20'
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/80">
-                    Avatar
+                <div className='space-y-2'>
+                  <label className='text-sm font-medium text-white/80'>
+                    {t('session.avatar')}
+
                   </label>
                   <div className="flex items-center space-x-4">
                     <Avatar className="h-16 w-16 rounded-full border-2 border-white/20">
@@ -652,8 +668,10 @@ const SessionJoinPage = () => {
                       variant="outline"
                       className="text-white bg-[#0E1C26] border-white/30 hover:bg-white/10 rounded-xl"
                     >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Đổi avatar
+
+                      <RefreshCw className='h-4 w-4 mr-2' />
+                      {t('session.changeAvatar')}
+
                     </Button>
                   </div>
                 </div>
@@ -672,14 +690,16 @@ const SessionJoinPage = () => {
                     }`}
                   >
                     {!isConnected ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        Đang kết nối...
+
+                      <span className='flex items-center justify-center gap-2'>
+                        <Loader2 className='h-5 w-5 animate-spin' />
+                        {t('session.connecting')}
                       </span>
                     ) : (
-                      <span className="flex items-center justify-center gap-2">
-                        <UserPlus className="h-5 w-5" />
-                        Tham gia ngay
+                      <span className='flex items-center justify-center gap-2'>
+                        <UserPlus className='h-5 w-5' />
+                        {t('session.joinNow')}
+
                       </span>
                     )}
                   </Button>
@@ -713,9 +733,13 @@ const SessionJoinPage = () => {
             animate={{ opacity: 1 }}
             className="w-full text-white"
           >
-            <div className="text-center mb-10">
-              <h2 className="text-2xl font-semibold mb-2">Sảnh chờ</h2>
-              <p className="text-white/70">Đang chờ host bắt đầu phiên</p>
+
+            <div className='text-center mb-10'>
+              <h2 className='text-2xl font-semibold mb-2'>
+                {t('session.waitingRoom')}
+              </h2>
+              <p className='text-white/70'>{t('session.waitingForHost')}</p>
+
 
               <motion.div
                 initial={{ opacity: 0.6 }}
@@ -727,8 +751,10 @@ const SessionJoinPage = () => {
                 }}
                 className="flex items-center justify-center gap-2 mt-4 mb-6 text-white/80"
               >
-                <Clock className="h-5 w-5 text-[#aef359]" />
-                <span>Phiên sẽ bắt đầu sớm...</span>
+
+                <Clock className='h-5 w-5 text-[#aef359]' />
+                <span>{t('session.sessionStartingSoon')}</span>
+
               </motion.div>
 
               <div className="mt-6 flex items-center justify-center gap-3">
@@ -744,11 +770,15 @@ const SessionJoinPage = () => {
             </div>
 
             {/* Danh sách người tham gia */}
-            <div className="mt-6">
-              <div className="mb-6 text-center">
-                <h2 className="text-xl font-semibold mb-2 flex items-center justify-center gap-2">
-                  <Users className="h-5 w-5 text-[#aef359]" />
-                  <span>Người tham gia ({participants.length})</span>
+
+            <div className='mt-6'>
+              <div className='mb-6 text-center'>
+                <h2 className='text-xl font-semibold mb-2 flex items-center justify-center gap-2'>
+                  <Users className='h-5 w-5 text-[#aef359]' />
+                  <span>
+                    {t('session.participants')} ({participants.length})
+                  </span>
+
                 </h2>
               </div>
 
@@ -805,8 +835,10 @@ const SessionJoinPage = () => {
                   </div>
                 </ScrollArea>
               ) : (
-                <div className="text-center text-white/60 py-8">
-                  <p>Chưa có người tham gia nào khác</p>
+
+                <div className='text-center text-white/60 py-8'>
+                  <p>{t('session.noOtherParticipants')}</p>
+
                 </div>
               )}
             </div>
@@ -821,7 +853,7 @@ const SessionJoinPage = () => {
                   variant="outline"
                   className="text-white bg-[#0E1C26] border-white/30 hover:bg-white/10 px-6 py-5 rounded-xl"
                 >
-                  Rời phiên
+                  {t('session.leaveSession')}
                 </Button>
               </motion.div>
             </div>

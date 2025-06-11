@@ -35,6 +35,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import HostActivities from '../../components/HostActivities';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '@/contexts/language-context';
 
 interface Participant {
   guestName: string;
@@ -52,6 +53,7 @@ interface UserAccount {
 export default function HostSessionPage() {
   const params = useParams();
   const router = useRouter();
+  const { t } = useLanguage();
   const collectionId = params.id as string;
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -565,10 +567,12 @@ export default function HostSessionPage() {
               ease: 'easeInOut',
             }}
           >
-            Đang thiết lập phiên
+            {t('hostSession.settingUpSession')}
           </motion.h2>
-          <p className="text-white/70 text-sm sm:text-base">
-            PreziQ đang chuẩn bị phòng chờ của bạn...
+
+          <p className='text-white/70 text-sm sm:text-base'>
+            {t('hostSession.preparingWaitingRoom')}
+
           </p>
         </motion.div>
       </div>
@@ -924,7 +928,7 @@ export default function HostSessionPage() {
               whileHover={{ scale: 1.05 }}
               transition={{ type: 'spring', stiffness: 400 }}
             >
-              <span>Join at:</span>
+              <span>{t('hostSession.joinAt')}</span>
               <motion.div
                 animate={{
                   y: [0, -2, 0],
@@ -950,8 +954,10 @@ export default function HostSessionPage() {
                   ease: 'easeInOut',
                 }}
               />
-              <span className="relative text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-pink-300 via-yellow-300 to-green-200 text-transparent bg-clip-text drop-shadow-md">
-                preziq.com
+
+              <span className='relative text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-pink-300 via-yellow-300 to-green-200 text-transparent bg-clip-text drop-shadow-md'>
+                {t('hostSession.websiteUrl')}
+
               </span>
             </div>
           </motion.div>
@@ -968,7 +974,7 @@ export default function HostSessionPage() {
               whileHover={{ scale: 1.05 }}
               transition={{ type: 'spring', stiffness: 400 }}
             >
-              <span>PIN code:</span>
+              <span>{t('hostSession.pinCode')}</span>
               <motion.div
                 animate={{
                   rotate: [0, 10, -10, 0],
@@ -1038,8 +1044,10 @@ export default function HostSessionPage() {
                 whileTap={{ scale: 0.9 }}
                 className="text-white/80 hover:text-white flex items-center gap-1.5 text-sm transition-colors duration-200"
               >
-                <LinkIcon className="w-4 h-4" />
-                Copy
+
+                <LinkIcon className='w-4 h-4' />
+                {t('hostSession.copy')}
+
               </motion.button>
               <motion.button
                 onClick={toggleHidePin}
@@ -1047,8 +1055,10 @@ export default function HostSessionPage() {
                 whileTap={{ scale: 0.9 }}
                 className="text-white/80 hover:text-white flex items-center gap-1.5 text-sm transition-colors duration-200"
               >
-                <EyeOff className="w-4 h-4" />
-                Hide
+
+                <EyeOff className='w-4 h-4' />
+                {t('hostSession.hide')}
+
               </motion.button>
               <AnimatePresence>
                 {copySuccess && (
@@ -1068,7 +1078,7 @@ export default function HostSessionPage() {
                     >
                       <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
                     </motion.div>
-                    Copied!
+                    {t('hostSession.copied')}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1179,7 +1189,11 @@ export default function HostSessionPage() {
                   }}
                 />
               </motion.span>
-              <span className="relative">of 300 players:</span>
+
+              <span className='relative'>
+                {t('hostSession.playersCountOf300')}
+              </span>
+
             </motion.div>
           </motion.h2>
 
@@ -1202,9 +1216,13 @@ export default function HostSessionPage() {
                 whileTap={{ scale: 0.95 }}
                 className="flex items-center gap-2 text-white/70 hover:text-white/90 transition-colors duration-300 relative group"
               >
-                <motion.div className="absolute -inset-2 bg-gradient-to-r from-[#aef359]/10 to-[#e4f88d]/10 rounded-lg blur opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <Users className="w-5 h-5 relative" />
-                <span className="relative">Join on this device</span>
+
+                <motion.div className='absolute -inset-2 bg-gradient-to-r from-[#aef359]/10 to-[#e4f88d]/10 rounded-lg blur opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
+                <Users className='w-5 h-5 relative' />
+                <span className='relative'>
+                  {t('hostSession.joinOnThisDevice')}
+                </span>
+
               </motion.button>
             </motion.div>
           ) : (
@@ -1322,8 +1340,10 @@ export default function HostSessionPage() {
           className="mt-4 sm:mt-6 text-white/40 text-xs relative group cursor-pointer"
           whileHover={{ scale: 1.05 }}
         >
-          <motion.div className="absolute inset-0 bg-gradient-to-r from-[#aef359]/5 to-[#e4f88d]/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <span className="relative">PreziQ v1.0</span>
+
+          <motion.div className='absolute inset-0 bg-gradient-to-r from-[#aef359]/5 to-[#e4f88d]/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
+          <span className='relative'>{t('hostSession.preziqVersion')}</span>
+
           <motion.div
             className="absolute -top-1 -right-1 w-1 h-1 bg-[#aef359] rounded-full"
             animate={{
@@ -1353,13 +1373,15 @@ export default function HostSessionPage() {
             >
               {isJoining ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Đang khởi động...</span>
+
+                  <Loader2 className='w-5 h-5 animate-spin' />
+                  <span>{t('hostSession.starting')}</span>
                 </>
               ) : (
                 <>
-                  <Settings className="w-5 h-5" />
-                  <span>Bắt đầu phiên</span>
+                  <Settings className='w-5 h-5' />
+                  <span>{t('hostSession.startSession')}</span>
+
                 </>
               )}
             </Button>
@@ -1368,22 +1390,24 @@ export default function HostSessionPage() {
 
         {/* Dialog chọn vai trò */}
         <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
-          <DialogContent className="sm:max-w-[425px] bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white border border-white/10">
-            <DialogHeader className="space-y-4">
-              <DialogTitle className="text-2xl font-bold text-center bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text">
-                Thiết lập vai trò
+
+          <DialogContent className='sm:max-w-[425px] bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white border border-white/10'>
+            <DialogHeader className='space-y-4'>
+              <DialogTitle className='text-2xl font-bold text-center bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text'>
+                {t('hostSession.setupRole')}
               </DialogTitle>
-              <DialogDescription className="text-center text-white/70">
-                Chọn cách bạn muốn tham gia vào phiên này
+              <DialogDescription className='text-center text-white/70'>
+                {t('hostSession.chooseParticipationMethod')}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-6 py-6">
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex items-center space-x-3">
-                  <Settings className="w-5 h-5 text-[#aef359]" />
-                  <Label htmlFor="participate-mode" className="font-medium">
-                    Tham gia trả lời
+            <div className='space-y-6 py-6'>
+              <div className='flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10'>
+                <div className='flex items-center space-x-3'>
+                  <Settings className='w-5 h-5 text-[#aef359]' />
+                  <Label htmlFor='participate-mode' className='font-medium'>
+                    {t('hostSession.participateInAnswers')}
+
                   </Label>
                 </div>
                 <Switch
@@ -1428,7 +1452,7 @@ export default function HostSessionPage() {
                             animate={{ opacity: 1 }}
                             className="text-white/90 text-sm font-medium"
                           >
-                            Đổi avatar
+                            {t('hostSession.changeAvatar')}
                           </motion.div>
                         </div>
                       </motion.div>
@@ -1438,14 +1462,16 @@ export default function HostSessionPage() {
                           htmlFor="participant-name"
                           className="text-sm text-white/70"
                         >
-                          Tên của bạn
+                          {t('hostSession.yourName')}
                         </Label>
                         <Input
                           id="participant-name"
                           value={participantName}
                           onChange={(e) => setParticipantName(e.target.value)}
-                          placeholder="Nhập tên của bạn"
-                          className="bg-white/5 border-white/10 focus:border-[#aef359]/50 focus:ring-[#aef359]/20 placeholder:text-white/30"
+
+                          placeholder={t('hostSession.enterYourName')}
+                          className='bg-white/5 border-white/10 focus:border-[#aef359]/50 focus:ring-[#aef359]/20 placeholder:text-white/30'
+
                         />
                       </div>
                     </div>
@@ -1460,20 +1486,22 @@ export default function HostSessionPage() {
                 onClick={() => setShowRoleDialog(false)}
                 className="bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
               >
-                Hủy
+                {t('hostSession.cancel')}
               </Button>
               <Button
                 onClick={handleRoleConfirm}
-                disabled={willParticipate && !participantName}
-                className="bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium disabled:opacity-50"
+
+                disabled={!participantName.trim() || isJoining}
+                className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-black font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 {isJoining ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Đang xử lý...
+                    <Loader2 className='w-4 h-4 animate-spin mr-2' />
+                    {t('hostSession.processing')}
+
                   </>
                 ) : (
-                  'Xác nhận'
+                  t('hostSession.confirm')
                 )}
               </Button>
             </div>

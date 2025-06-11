@@ -47,7 +47,9 @@ import {
   EyeOff,
   Palette,
   Check,
+
   Link,
+
   Trash,
   Trash2,
   Loader2,
@@ -56,7 +58,8 @@ import {
   PaintBucket,
   ChevronsUpDown,
   Plus,
-  X,
+  X
+
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -109,6 +112,8 @@ import SlideToolbar from '../slide/sidebar/slide-toolbar';
 import { useToast } from '@/hooks/use-toast';
 import { MatchingPairSettings } from './matching-pair-settings';
 
+import AnimationToolbar from '../slide/sidebar/animation-toolbar';
+import { SlideElementPayload } from '@/types/slideInterface';
 /**
  * Component that allows editing settings for a quiz question/activity.
  *
@@ -198,6 +203,11 @@ interface QuestionSettingsProps {
   leftColumnName?: string;
   rightColumnName?: string;
   activity?: any; // Atividade associada à questão ativa
+  slideElements: Record<string, SlideElementPayload[]>;
+  onSlideElementsUpdate: (
+    activityId: string,
+    elements: SlideElementPayload[]
+  ) => void;
 }
 const TextAnswerForm = ({
   correctAnswerText,
@@ -257,6 +267,8 @@ export function QuestionSettings({
   leftColumnName,
   rightColumnName,
   onMatchingPairColumnNamesChange,
+  slideElements,
+  onSlideElementsUpdate,
 }: QuestionSettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeType, setActiveType] = useState(
@@ -928,7 +940,7 @@ export function QuestionSettings({
       // Upload file with flexible type
       const response = (await storageApi.uploadSingleFile(
         file,
-        'uploads'
+        'activities'
       )) as FileUploadResponse;
 
       clearInterval(progressInterval);
@@ -1317,67 +1329,173 @@ export function QuestionSettings({
   };
 
   const handlePointTypeChange = (value: string) => {
-    try {
-      const questionType = activeQuestion.question_type;
-      switch (questionType) {
-        case 'LOCATION':
-          if (onQuestionLocationChange) {
-            // Update local state
-            const updatedData = {
-              ...locationData,
-              pointType: value,
-            };
+    // Update local state
+    setPointType(value);
 
-            onQuestionLocationChange(activeQuestionIndex, updatedData);
+    // Call API to update the quiz based on question type
+    if (activity && activity.id) {
+      try {
+        const questionType = activeQuestion.question_type;
+        const quizPayload = { pointType: value };
 
-            // Update via API
-            activitiesApi
-              .updateLocationQuiz(activity.id, {
-                type: 'LOCATION',
-                questionText: activeQuestion.question_text,
-                timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
-                pointType: value as 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS',
-                locationAnswers: locationAnswers.map((answer: any) => ({
-                  longitude: answer.longitude,
-                  latitude: answer.latitude,
-                  radius: answer.radius,
-                })),
-              })
-              .then((response) => {
-                // **NEW**: Dispatch success event for location editor
-                if (typeof window !== 'undefined') {
-                  const successEvent = new CustomEvent('location:api:success', {
-                    detail: {
-                      source: 'location-quiz-api-success-pointType',
-                      response: response,
-                      timestamp: Date.now(),
-                    },
-                  });
-                  window.dispatchEvent(successEvent);
-                }
-                console.log('Location quiz point type updated successfully');
-              })
-              .catch((error) => {
-                console.error(
-                  'Error updating location quiz point type:',
-                  error
-                );
-              });
-          }
-          break;
-        default:
-          // For other types, just update the activity directly
-          debouncedUpdateActivity({ pointType: value });
-          break;
+        // Type assertion for pointType
+        const typedPointType = value as
+          | 'STANDARD'
+          | 'NO_POINTS'
+          | 'DOUBLE_POINTS';
+
+        // Update with the appropriate quiz API call based on quiz type
+        switch (questionType) {
+          case 'multiple_choice':
+            activitiesApi.updateButtonsQuiz(activity.id, {
+              type: 'CHOICE',
+              questionText:
+                activity.quiz?.questionText || activeQuestion.question_text,
+              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+              pointType: typedPointType,
+              answers:
+                activity.quiz?.quizAnswers ||
+                activeQuestion.options?.map((opt) => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || '',
+                })) ||
+                [],
+            });
+            break;
+          case 'multiple_response':
+            activitiesApi.updateCheckboxesQuiz(activity.id, {
+              type: 'CHOICE',
+              questionText:
+                activity.quiz?.questionText || activeQuestion.question_text,
+              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+              pointType: typedPointType,
+              answers:
+                activity.quiz?.quizAnswers ||
+                activeQuestion.options?.map((opt) => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || '',
+                })) ||
+                [],
+            });
+            break;
+          case 'true_false':
+            activitiesApi.updateTrueFalseQuiz(activity.id, {
+              type: 'TRUE_FALSE',
+              questionText:
+                activity.quiz?.questionText || activeQuestion.question_text,
+              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+              pointType: typedPointType,
+              correctAnswer:
+                activeQuestion.options
+                  ?.find((o) => o.is_correct)
+                  ?.option_text.toLowerCase() === 'true',
+            });
+            break;
+          case 'text_answer':
+            activitiesApi.updateTypeAnswerQuiz(activity.id, {
+              type: 'TYPE_ANSWER',
+              questionText:
+                activity.quiz?.questionText || activeQuestion.question_text,
+              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+              pointType: typedPointType,
+              correctAnswer: activeQuestion.correct_answer_text || '',
+            });
+            break;
+          case 'reorder':
+            activitiesApi.updateReorderQuiz(activity.id, {
+              type: 'REORDER',
+              questionText:
+                activity.quiz?.questionText || activeQuestion.question_text,
+              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+              pointType: typedPointType,
+              correctOrder:
+                activeQuestion.options?.map((o) => o.option_text) || [],
+            });
+            break;
+          case 'location':
+            // For location quizzes
+
+            const locationData = activeQuestion.location_data || ({} as any);
+            const locationPointType = locationData.pointType || 'STANDARD';
+
+            // Use the correct field name for location answers
+            const locationAnswers = activity?.quiz?.quizLocationAnswers ||
+              (locationData as any).quizLocationAnswers ||
+              (locationData as any).locationAnswers || [
+                {
+                  longitude: (locationData as any).lng || 105.77803333582227,
+                  latitude: (locationData as any).lat || 19.83950812993956,
+                  radius: (locationData as any).radius || 10.0,
+                },
+              ];
+
+            if (onQuestionLocationChange) {
+              // Update local state
+              const updatedData = {
+                ...locationData,
+                pointType: value,
+              };
+
+              onQuestionLocationChange(activeQuestionIndex, updatedData);
+
+              // Update via API
+              activitiesApi
+                .updateLocationQuiz(activity.id, {
+                  type: 'LOCATION',
+                  questionText: activeQuestion.question_text,
+                  timeLimitSeconds:
+                    activity.quiz?.timeLimitSeconds || timeLimit,
+                  pointType: value as
+                    | 'STANDARD'
+                    | 'NO_POINTS'
+                    | 'DOUBLE_POINTS',
+                  locationAnswers: locationAnswers.map((answer: any) => ({
+                    longitude: answer.longitude,
+                    latitude: answer.latitude,
+                    radius: answer.radius,
+                  })),
+                })
+                .then((response) => {
+                  // **NEW**: Dispatch success event for location editor
+                  if (typeof window !== 'undefined') {
+                    const successEvent = new CustomEvent(
+                      'location:api:success',
+                      {
+                        detail: {
+                          source: 'location-quiz-api-success-pointType',
+                          response: response,
+                          timestamp: Date.now(),
+                        },
+                      }
+                    );
+                    window.dispatchEvent(successEvent);
+                  }
+                  console.log('Location quiz point type updated successfully');
+                })
+                .catch((error) => {
+                  console.error(
+                    'Error updating location quiz point type:',
+                    error
+                  );
+                });
+            }
+            break;
+          default:
+            // For other types, just update the activity directly
+            debouncedUpdateActivity({ pointType: value });
+            break;
+        }
+
+        console.log(
+          `Updated point type to ${value} for ${questionType} question`
+        );
+      } catch (error) {
+        console.error('Error updating point type:', error);
+        // Fall back to general update if specific API fails
+        debouncedUpdateActivity({ pointType: value });
       }
-
-      console.log(
-        `Updated point type to ${value} for ${questionType} question`
-      );
-    } catch (error) {
-      console.error('Error updating point type:', error);
-      // Fall back to general update if specific API fails
-      debouncedUpdateActivity({ pointType: value });
     }
   };
 
@@ -2313,7 +2431,15 @@ export function QuestionSettings({
 
         {/* Slide content editor */}
         {activeQuestion.question_type === 'slide' && (
-          <SlideToolbar slideId={activity.id} />
+          <SlideToolbar
+            slideId={activity.id}
+            slideElements={slideElements[activity?.id] || []}
+            onSlideElementsUpdate={(elements) => {
+              if (activity?.id) {
+                onSlideElementsUpdate(activity.id, elements);
+              }
+            }}
+          />
         )}
 
         {/* Location question editor */}
@@ -2378,7 +2504,10 @@ export function QuestionSettings({
             </TabsTrigger>
             <TabsTrigger value="meta" className="text-xs">
               <Info className="h-3.5 w-3.5 mr-1.5" />
-              Metadata
+              {activeQuestion.question_type === 'slide' ||
+              activeQuestion.question_type === 'info_slide'
+                ? 'Animation'
+                : 'Metadata'}
             </TabsTrigger>
           </TabsList>
 
@@ -2448,7 +2577,15 @@ export function QuestionSettings({
                 ) : activeQuestion.question_type === 'slide' ||
                   activeQuestion.question_type === 'info_slide' ? (
                   <>
-                    <SlideToolbar slideId={activity.id} />
+                    <SlideToolbar
+                      slideId={activity.id}
+                      slideElements={slideElements[activity?.id] || []}
+                      onSlideElementsUpdate={(elements) => {
+                        if (activity?.id) {
+                          onSlideElementsUpdate(activity.id, elements);
+                        }
+                      }}
+                    />
                     <div>
                       <h3 className="text-sm font-medium mb-2.5 mt-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                         {/* <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
@@ -2624,7 +2761,21 @@ export function QuestionSettings({
 
           <TabsContent value="meta" className="mt-0">
             {/* Metadata tab: title, description, publication status */}
-            <ActivityMetadataTab />
+
+            {activeQuestion.question_type === 'slide' ||
+            activeQuestion.question_type === 'info_slide' ? (
+              <AnimationToolbar
+                slideId={activity?.id || ''}
+                slideElements={slideElements[activity?.id] || []}
+                onSlideElementsUpdate={(elements) => {
+                  if (activity?.id) {
+                    onSlideElementsUpdate(activity.id, elements);
+                  }
+                }}
+              ></AnimationToolbar>
+            ) : (
+              <ActivityMetadataTab />
+            )}
           </TabsContent>
         </Tabs>
       </CardContent>

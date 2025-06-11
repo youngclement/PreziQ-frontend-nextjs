@@ -22,11 +22,11 @@ export const ToolbarHandlers = (
     content?: string;
     slideElements: SlideElementPayload[];
   }) => void,
-  initialSlideElements: SlideElementPayload[] = [],
+  slideElementsRef: React.MutableRefObject<SlideElementPayload[]> = { current: [] },
   currentTitle: string = '', // Pass current title
   currentContent: string = '' // Pass current content
 ) => {
-  // console.log('slideId', slideId);
+  console.log('slideId', slideElementsRef.current);
   const updateTextboxElement = debounce((textbox: fabric.Textbox) => {
     const slideElementId = textbox.get('slideElementId');
     if (!slideElementId) return;
@@ -37,6 +37,11 @@ export const ToolbarHandlers = (
     const zoom = canvas.getZoom();
     const cw = canvas.getWidth()! / zoom;
     const ch = canvas.getHeight()! / zoom;
+
+    const currentElement = slideElementsRef.current.find(
+      (el) => el.slideElementId === slideElementId
+    );
+    const displayOrder = currentElement?.displayOrder || 0;
 
     const rawLeft = textbox.left! / zoom;
     const rawTop = textbox.top! / zoom;
@@ -69,6 +74,7 @@ export const ToolbarHandlers = (
       rotation: textbox.angle || 0,
       layerOrder: canvas.getObjects().indexOf(textbox),
       slideElementType: 'TEXT',
+      displayOrder: displayOrder,
       content: JSON.stringify(textboxJson),
     };
     // console.log("Payload sent to API:", JSON.parse(payload.content));
@@ -80,7 +86,7 @@ export const ToolbarHandlers = (
           ...payload,
         };
 
-        const updatedSlideElements = initialSlideElements.map((el) =>
+        const updatedSlideElements = slideElementsRef.current.map((el) =>
           el.slideElementId === slideElementId ? updatedElement : el
         );
 
@@ -97,6 +103,7 @@ export const ToolbarHandlers = (
     const canvas = image.canvas;
     if (!canvas) return;
 
+
     const zoom = canvas.getZoom();
     const cw = canvas.getWidth()! / zoom;
     const ch = canvas.getHeight()! / zoom;
@@ -105,6 +112,11 @@ export const ToolbarHandlers = (
     const rawTop = image.top! / zoom;
     const w = image.getScaledWidth() / zoom;
     const h = image.getScaledHeight() / zoom;
+
+    const currentElement = slideElementsRef.current.find(
+      (el) => el.slideElementId === slideElementId
+    );
+    const displayOrder = currentElement?.displayOrder || 0;
 
     const payload: SlideElementPayload = {
       positionX: (rawLeft / cw) * 100,
@@ -115,6 +127,7 @@ export const ToolbarHandlers = (
       layerOrder: canvas.getObjects().indexOf(image),
       slideElementType: 'IMAGE',
       sourceUrl: image.get('sourceUrl') || image.getSrc(),
+      displayOrder: displayOrder,
     };
 
     slidesApi
@@ -123,82 +136,111 @@ export const ToolbarHandlers = (
       .catch((err) => console.error('Update image failed', err));
   }, 500);
 
-  const addTextbox = () => {
-    console.log('Bắt đầu addTextbox');
-    if (canvas.get('isCreating')) {
-      console.log('Bỏ qua addTextbox vì đang tạo');
-      return;
-    }
-    canvas.set('isCreating', true);
-    const defaultFontSizePercent = (20 / ORIGINAL_CANVAS_WIDTH) * 100;
-    const textbox = new fabric.Textbox('New Text', {
-      left: 50,
-      top: 250,
-      fontSize: 20,
-      width: 100,
-      fill: '#000000',
-      fontFamily: 'Arial',
-    });
-    textbox.set('isNew', true);
+  const addTextbox = async () => {
+    let textbox: fabric.Textbox | null = null; 
 
-    console.log('Thêm textbox vào canvas');
-    canvas.add(textbox);
-    canvas.setActiveObject(textbox);
-    canvas.renderAll();
+    try {
+      canvas.set('isCreating', true);
+      // Tạo textbox mới
+      const defaultFontSizePercent = (20 / ORIGINAL_CANVAS_WIDTH) * 100;
+      textbox = new fabric.Textbox('New Text', {
+        left: 50,
+        top: 250,
+        fontSize: 20,
+        width: 100,
+        fill: '#000000',
+        fontFamily: 'Arial',
+      });
 
-    const cw = canvas.getWidth();
-    const ch = canvas.getHeight();
-    const w = textbox.getScaledWidth();
-    const h = textbox.getScaledHeight();
+      // Set isNew flag
+      textbox.set('isNew', true);
 
-    const payload: SlideElementPayload = {
-      positionX: (textbox.left! / cw) * 100,
-      positionY: (textbox.top! / ch) * 100,
-      width: (w / cw) * 100,
-      height: (h / ch) * 100,
-      rotation: textbox.angle || 0,
-      layerOrder: (textbox.get('layerOrder') as number) || 0,
-      slideElementType: 'TEXT',
-      content: JSON.stringify({
-        ...textbox.toJSON(),
-        fontSize: defaultFontSizePercent,
-      }),
-    };
+      // Thêm vào canvas
+      canvas.add(textbox);
+      canvas.setActiveObject(textbox);
+      canvas.renderAll();
 
-    slidesApi
-      .addSlidesElement(slideId, payload)
-      .then((res) => {
-        console.log('API addSlidesElement thành công:', res.data);
-        textbox.set('isNew', false);
-        textbox.set('slideElementId', res.data.data.slideElementId);
+      // Lấy thông số để tạo payload
+      const cw = canvas.getWidth();
+      const ch = canvas.getHeight();
+      const w = textbox.getScaledWidth();
+      const h = textbox.getScaledHeight();
 
-        const newElement = {
-          slideElementId: res.data.data.slideElementId,
-          ...payload,
-        };
+      // Tính toán displayOrder mới
+      const maxDisplayOrder = Math.max(
+        -1,
+        ...slideElementsRef.current.map((el) => el.displayOrder)
+      );
 
-        window.dispatchEvent(
-          new CustomEvent('slide:element:created', {
-            detail: {
-              slideId,
-              element: newElement,
-            },
-          })
-        );
+      // Tạo payload
+      const payload: SlideElementPayload = {
+        positionX: (textbox.left! / cw) * 100,
+        positionY: (textbox.top! / ch) * 100,
+        width: (w / cw) * 100,
+        height: (h / ch) * 100,
+        rotation: textbox.angle || 0,
+        layerOrder: canvas.getObjects().indexOf(textbox),
+        slideElementType: 'TEXT',
+        displayOrder: maxDisplayOrder + 1,
+        content: JSON.stringify({
+          ...textbox.toJSON(),
+          fontSize: defaultFontSizePercent,
+        }),
+      };
 
-        // Cập nhật slideElements và gọi onUpdate
-        if (onUpdate) {
-          onUpdate({ slideElements: [...initialSlideElements, newElement] });
-        }
-      })
-      .catch((err) => {
-        console.error('Lỗi khi tạo text element:', err);
+      // Gọi API để thêm element
+      const response = await slidesApi.addSlidesElement(slideId, payload);
+      console.log('API addSlidesElement thành công:', response.data);
+
+      // Update textbox với ID từ server
+      textbox.set('isNew', false);
+      textbox.set('slideElementId', response.data.data.slideElementId);
+      textbox.set('displayOrder', maxDisplayOrder + 1);
+
+      // Tạo element mới với đầy đủ thông tin
+      const newElement = {
+        slideElementId: response.data.data.slideElementId,
+        ...payload,
+      };
+
+      // Tạo mảng elements mới bằng cách copy mảng cũ và thêm element mới
+      const updatedElements = [...slideElementsRef.current, newElement];
+
+      // Emit event để thông báo element mới được tạo
+      window.dispatchEvent(
+        new CustomEvent('slide:element:created', {
+          detail: {
+            slideId,
+            element: newElement,
+          },
+        })
+      );
+
+      // Cập nhật state qua onUpdate
+      if (onUpdate) {
+        onUpdate({
+          slideElements: updatedElements,
+        });
+      }
+
+      // Emit event selection changed
+      window.dispatchEvent(
+        new CustomEvent('fabric:selection-changed', {
+          detail: {
+            slideId,
+            animationName: 'none',
+            objectId: response.data.data.slideElementId,
+          },
+        })
+      );
+    } catch (err) {
+      if (textbox) {
         canvas.remove(textbox);
         canvas.renderAll();
-      })
-      .finally(() => {
-        canvas.set('isCreating', false);
-      });
+      }
+    } finally {
+      canvas.set('isCreating', false);
+    }
   };
 
   function onAddImage(e: Event) {
@@ -239,6 +281,7 @@ export const ToolbarHandlers = (
           layerOrder: canvas.getObjects().indexOf(img),
           slideElementType: 'IMAGE',
           sourceUrl: url,
+          displayOrder: 0, // Mặc định là 0, có thể cập nhật sau
         };
 
         slidesApi
@@ -263,7 +306,10 @@ export const ToolbarHandlers = (
               })
             );
 
-            const updatedSlideElements = [...initialSlideElements, newElement];
+            const updatedSlideElements = [
+              ...slideElementsRef.current,
+              newElement,
+            ];
 
             if (onUpdate) {
               onUpdate({
@@ -928,6 +974,11 @@ export const ToolbarHandlers = (
         const rawLeft = o.left! / zoom;
         const rawTop = o.top! / zoom;
 
+        const currentElement = slideElementsRef.current.find(
+          (el) => el.slideElementId === slideElementId
+        );
+        const displayOrder = currentElement?.displayOrder || 0;
+
         let payload: SlideElementPayload;
 
         if (o.type === 'textbox') {
@@ -967,6 +1018,7 @@ export const ToolbarHandlers = (
             layerOrder: index,
             slideElementType: 'TEXT',
             content: JSON.stringify(textboxJson),
+            displayOrder: displayOrder,
           };
         } else {
           const image = o as fabric.Image;
@@ -982,6 +1034,7 @@ export const ToolbarHandlers = (
             layerOrder: index,
             slideElementType: 'IMAGE',
             sourceUrl: image.get('sourceUrl') || image.getSrc(),
+            displayOrder: displayOrder,
           };
         }
 
@@ -1006,24 +1059,26 @@ export const ToolbarHandlers = (
           results
         );
 
-         // Tạo mảng slideElements mới với layerOrder đã cập nhật
-      const updatedSlideElements = initialSlideElements.map((el) => {
-        const update = updates.find(u => u.slideElementId === el.slideElementId);
-        if (update) {
-          return {
-            ...el,
-            ...update.payload,
-          } as SlideElementPayload;
-        }
-        return el;
-      });
-
-       // Gọi onUpdate để cập nhật state
-       if (onUpdate) {
-        onUpdate({
-          slideElements: updatedSlideElements
+        // Tạo mảng slideElements mới với layerOrder đã cập nhật
+        const updatedSlideElements = slideElementsRef.current.map((el) => {
+          const update = updates.find(
+            (u) => u.slideElementId === el.slideElementId
+          );
+          if (update) {
+            return {
+              ...el,
+              ...update.payload,
+            } as SlideElementPayload;
+          }
+          return el;
         });
-      }
+
+        // Gọi onUpdate để cập nhật state
+        if (onUpdate) {
+          onUpdate({
+            slideElements: updatedSlideElements,
+          });
+        }
       })
       .catch((err) => {
         console.error('Lỗi khi cập nhật hàng loạt layerOrder:', err);
