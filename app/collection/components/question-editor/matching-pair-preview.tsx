@@ -118,8 +118,8 @@ export function MatchingPairPreview({
 
   // Add useEffect to handle initial shuffle only once
   useEffect(() => {
-    const columnA = question.options.filter((item) => item.type === 'left');
-    const columnB = question.options.filter((item) => item.type === 'right');
+    const columnA = question.options.filter((item) => item.type === 'left' && item.id);
+    const columnB = question.options.filter((item) => item.type === 'right' && item.id);
 
     // Sort both columns by display_order to maintain the correct order
     columnA.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
@@ -150,7 +150,7 @@ export function MatchingPairPreview({
           const matchingRightItem = rightOptionsWithPairId.find(
             rightItem => rightItem.pair_id === leftItem.pair_id
           );
-          if (matchingRightItem) {
+          if (matchingRightItem && leftItem.id && matchingRightItem.id) {
             newConnections.push({
               columnA: leftItem.id,
               columnB: matchingRightItem.id,
@@ -353,7 +353,7 @@ export function MatchingPairPreview({
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                   )}
                   style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
-                  onClick={() => handleItemClick('left', item.id)}
+                  onClick={() => item.id && handleItemClick('left', item.id)}
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout
                 >
@@ -391,7 +391,7 @@ export function MatchingPairPreview({
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                   )}
                   style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
-                  onClick={() => handleItemClick('right', item.id)}
+                  onClick={() => item.id && handleItemClick('right', item.id)}
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout
                 >
