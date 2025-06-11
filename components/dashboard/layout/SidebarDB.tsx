@@ -11,10 +11,15 @@ import { NavGroup } from '@/components/dashboard/layout/NavGroup';
 import { NavUser } from '@/components/dashboard/layout/NavUser';
 import Logo from '@/components/common/logo';
 import { useAuth } from '@/contexts/auth-context';
+import { sidebarData } from '@/components/dashboard/data/sidebarData';
 import { useGenerateSidebarData } from '../data/sidebarData';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
+
+
+
+
 
   // Generate sidebar data based on current user using hook with language context
   const sidebarData = useGenerateSidebarData(user);

@@ -810,8 +810,8 @@ export function QuestionPreview({
 
     const slideElements = question.activity_id
       ? slidesElements[question.activity_id] ||
-        slidesData[question.activity_id]?.slide?.slideElements ||
-        []
+      slidesData[question.activity_id]?.slide?.slideElements ||
+      []
       : [];
 
     // Find activity specific background for this question
@@ -976,13 +976,13 @@ export function QuestionPreview({
                     ? viewMode === 'mobile'
                       ? 300
                       : viewMode === 'tablet'
-                      ? 650
-                      : 812
+                        ? 650
+                        : 812
                     : viewMode === 'mobile'
-                    ? 300
-                    : viewMode === 'tablet'
-                    ? 650
-                    : 812
+                      ? 300
+                      : viewMode === 'tablet'
+                        ? 650
+                        : 812
                 }
                 height={460}
                 zoom={1}
@@ -1363,8 +1363,8 @@ export function QuestionPreview({
                         option.is_correct
                           ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                           : isTrue
-                          ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                          : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                            ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                            : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
                         // Only show pointer cursor when edit mode is enabled
                         editMode !== null
                           ? 'cursor-pointer hover:shadow-md'
@@ -1814,12 +1814,12 @@ export function QuestionPreview({
                   question.options.length <= 2
                     ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
                     : question.options.length <= 4
-                    ? 'grid grid-cols-2 gap-3'
-                    : 'grid grid-cols-2 gap-3 md:grid-cols-3',
+                      ? 'grid grid-cols-2 gap-3'
+                      : 'grid grid-cols-2 gap-3 md:grid-cols-3',
                   viewMode === 'mobile' && 'grid-cols-1',
                   viewMode === 'tablet' &&
-                    question.options.length > 4 &&
-                    'grid-cols-2'
+                  question.options.length > 4 &&
+                  'grid-cols-2'
                 )}
               >
                 {/* Direct rendering of choice options */}
@@ -2655,49 +2655,18 @@ export function QuestionPreview({
     questionIndex: number,
     locationData: any
   ) => {
-
     console.log('Handling location change:', questionIndex, locationData);
 
-    // Clone questions array to avoid direct state mutation
-    const updatedQuestions = [...questions];
-    const question = updatedQuestions[questionIndex];
+    const question = questions[questionIndex];
 
-
-    // For multiple location answers format
-    if (Array.isArray(locationData)) {
-      // This is the new format with multiple location answers
-      updatedQuestions[questionIndex] = {
-        ...updatedQuestions[questionIndex],
-        location_data: {
-          ...updatedQuestions[questionIndex].location_data,
-          lat: updatedQuestions[questionIndex].location_data?.lat || 0,
-          lng: updatedQuestions[questionIndex].location_data?.lng || 0,
-          radius: updatedQuestions[questionIndex].location_data?.radius || 20,
-          quizLocationAnswers: locationData,
-        },
-      };
-
-
-    // Pass the locationData to the parent component's handler
     if (onQuestionLocationChange) {
       onQuestionLocationChange(questionIndex, locationData);
     }
 
-    // For backward compatibility with single location format
-    else {
-      updatedQuestions[questionIndex] = {
-        ...updatedQuestions[questionIndex],
-        location_data: locationData,
-      };
-
-
     try {
       setIsSaving(true);
-
-      // Handle different data formats
       let locationAnswers;
 
-      // Check if locationData is an array (direct markers data)
       if (Array.isArray(locationData)) {
         console.log('Detected array format for location data');
         locationAnswers = locationData.map((loc: LocationAnswer) => ({
@@ -2705,28 +2674,21 @@ export function QuestionPreview({
           latitude: loc.latitude || loc.lat,
           radius: loc.radius || 10
         }));
-      }
-
-      // Check if locationData has quizLocationAnswers property
-      else if (locationData.quizLocationAnswers) {
+      } else if (locationData && locationData.quizLocationAnswers) {
         console.log('Detected object with quizLocationAnswers property');
         locationAnswers = locationData.quizLocationAnswers.map((loc: LocationAnswer) => ({
           longitude: loc.longitude || loc.lng,
           latitude: loc.latitude || loc.lat,
           radius: loc.radius || 10
         }));
-      }
-      // Handle legacy format where locationData might contain direct coordinates
-      else if (locationData.longitude || locationData.lat) {
+      } else if (locationData && (locationData.longitude || locationData.lat)) {
         console.log('Detected legacy format with direct coordinates');
         locationAnswers = [{
           longitude: locationData.longitude || locationData.lng,
           latitude: locationData.latitude || locationData.lat,
           radius: locationData.radius || 10
         }];
-      }
-      // If we still don't have valid data, try to get it from the question
-      else {
+      } else {
         console.log('Using existing location data from question');
         const existingData = getLocationAnswers(question, activity);
         locationAnswers = existingData.map((loc: LocationAnswer) => ({
@@ -2736,26 +2698,22 @@ export function QuestionPreview({
         }));
       }
 
-      // Make sure we have valid location answers
       if (!locationAnswers || locationAnswers.length === 0) {
         throw new Error('No valid location answers found');
       }
 
       console.log('Calling API with location answers:', locationAnswers);
 
-      // Prepare API payload with the required format - omit quizLocationAnswerId
       const locationPayload = {
         type: "LOCATION" as const,
         questionText: question.question_text || "Location Question",
         timeLimitSeconds: question.time_limit_seconds || timeLimit || 60,
         pointType: "STANDARD" as const,
-        locationAnswers: locationAnswers // Only include required fields for API
+        locationAnswers: locationAnswers
       };
 
-      // Use debounced function to update the quiz via API
       debouncedUpdateLocationQuiz(question.activity_id, locationPayload);
 
-      // Show pending toast while updating
       toast({
         title: "Updating location",
         description: "Saving new coordinates...",
@@ -2770,7 +2728,6 @@ export function QuestionPreview({
       });
     } finally {
       setIsSaving(false);
-
     }
   };
 

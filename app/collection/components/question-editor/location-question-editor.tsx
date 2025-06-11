@@ -70,6 +70,8 @@ export function LocationQuestionEditor({
   const [skipNextRefresh, setSkipNextRefresh] = useState(false);
   const previousAnswersRef = useRef<LocationAnswer[]>(locationAnswers);
   const ignoreNextUpdateRef = useRef<boolean>(false);
+  const [markers, setMarkers] = useState<LocationAnswer[]>([]);
+  const [renderKey, setRenderKey] = useState(0);
 
   // Add new ref to track drag operations and prevent interference
   const dragOperationRef = useRef<{
@@ -733,6 +735,28 @@ export function LocationQuestionEditor({
       console.log('↩️ UI reverted to previous position');
     };
 
+    const handlePointsUpdated = (event: CustomEvent) => {
+      if (event.detail && event.detail.locationAnswers) {
+        /* setMarkers(event.detail.locationAnswers.map((location: any) => ({
+          longitude: location.longitude,
+          latitude: location.latitude,
+          radius: location.radius || 10,
+          quizLocationAnswerId: location.quizLocationAnswerId || ""
+        }))); */
+
+        // Force map update
+        if (mapRef.current) {
+          // ... existing code ...
+        }
+
+        // Re-initialize markers with the server data
+        initializeMarkers(event.detail.locationAnswers);
+
+        // Force redraw
+        setRenderKey((prev: number) => prev + 1);
+      }
+    };
+
     if (typeof window !== 'undefined') {
       window.addEventListener('location:answers:updated', handleLocationUpdate as EventListener);
       window.addEventListener('location:point:added', handleLocationAdded as EventListener);
@@ -746,6 +770,7 @@ export function LocationQuestionEditor({
       // **NEW**: Add listener for API response success
       window.addEventListener('location:api:success', handleApiResponseSuccess as EventListener);
       window.addEventListener('location:marker:dragend', handleMarkerDragEnd as EventListener);
+      window.addEventListener('location:points:updated', handlePointsUpdated as EventListener);
     }
 
     return () => {
@@ -762,6 +787,7 @@ export function LocationQuestionEditor({
         // **NEW**: Remove listener for API response success
         window.removeEventListener('location:api:success', handleApiResponseSuccess as EventListener);
         window.removeEventListener('location:marker:dragend', handleMarkerDragEnd as EventListener);
+        window.removeEventListener('location:points:updated', handlePointsUpdated as EventListener);
       }
     };
   }, [mapLoaded, locationAnswers]);
@@ -1497,46 +1523,6 @@ export function LocationQuestionEditor({
       duration: 2000
     });
   };
-
-  // Add to useEffect in LocationQuestionEditor component
-  useEffect(() => {
-    // Listen for marker updates from API responses
-    const handlePointsUpdated = (event: CustomEvent) => {
-      if (event.detail && event.detail.locationAnswers) {
-        setMarkers(event.detail.locationAnswers.map((location: any) => ({
-          longitude: location.longitude,
-          latitude: location.latitude,
-          radius: location.radius || 10,
-          quizLocationAnswerId: location.quizLocationAnswerId || ""
-        })));
-
-        // Force map update
-        if (mapRef.current) {
-          setTimeout(() => {
-            mapRef.current?.resize();
-          }, 50);
-        }
-      }
-    };
-
-    const handleRefreshMarkers = (event: CustomEvent) => {
-      if (event.detail && event.detail.locationAnswers) {
-        // Re-initialize markers with the server data
-        initializeMarkers(event.detail.locationAnswers);
-
-        // Force redraw
-        setRenderKey(prev => prev + 1);
-      }
-    };
-
-    window.addEventListener('location:points:updated', handlePointsUpdated as EventListener);
-    window.addEventListener('location:refresh:markers', handleRefreshMarkers as EventListener);
-
-    return () => {
-      window.removeEventListener('location:points:updated', handlePointsUpdated as EventListener);
-      window.removeEventListener('location:refresh:markers', handleRefreshMarkers as EventListener);
-    };
-  }, []);
 
   // Add this helper function to the component
   const initializeMarkers = (locationData: any[]) => {
