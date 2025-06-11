@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Collection,
-  Activity,
-  ApiCollectionResponse,
+    Collection,
+    Activity,
+    ApiCollectionResponse,
 } from '../collections/components/types';
 import { collectionsApi } from '@/api-client';
 import ClientOnly from '@/components/ClientOnly';
@@ -25,6 +25,7 @@ export default function MyCollectionsPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [collections, setCollections] = useState<Collection[]>([]);
+    const [activities, setActivities] = useState<Activity[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -39,6 +40,7 @@ export default function MyCollectionsPage() {
         hasNext: false,
         hasPrevious: false,
     });
+    const [selectedTopic, setSelectedTopic] = useState('');
 
     // Fetch collections when component mounts
     useEffect(() => {
@@ -112,6 +114,17 @@ export default function MyCollectionsPage() {
 
         return () => clearTimeout(timer);
     }, [searchQuery]);
+
+    // Handle view activities
+    const handleViewActivities = (id: string) => {
+        router.push(`/collections/${id}/activities`);
+    };
+
+    // Handle preview activity
+    const handlePreviewActivity = (id: string) => {
+        // Implementation for previewing an activity
+        console.log('Previewing activity:', id);
+    };
 
     // Filter collections by search query
     const filteredCollections = collections.filter(collection =>
@@ -235,8 +248,8 @@ export default function MyCollectionsPage() {
                 />
 
                 <CollectionFilters
-                    showActive={false}
-                    showPublished={true}
+                    selectedTopic={selectedTopic}
+                    onTopicChange={setSelectedTopic}
                 />
 
                 {isLoading ? (
@@ -303,11 +316,10 @@ export default function MyCollectionsPage() {
                                             <CollectionGridItem
                                                 key={collection.id}
                                                 collection={collection}
+                                                activities={[]}
                                                 onEdit={() => handleEditCollection(collection.id)}
                                                 onView={() => handleViewCollection(collection.id)}
                                                 onDelete={() => handleDeleteCollection(collection.id)}
-                                                onTogglePublish={(e) => handleTogglePublish(collection, e)}
-                                                showPublishToggle={true}
                                             />
                                         ))}
                                     </div>
@@ -320,7 +332,7 @@ export default function MyCollectionsPage() {
                                                 onEdit={() => handleEditCollection(collection.id)}
                                                 onView={() => handleViewCollection(collection.id)}
                                                 onDelete={() => handleDeleteCollection(collection.id)}
-                                                onTogglePublish={(e) => handleTogglePublish(collection, e)}
+                                                onTogglePublish={(e: React.MouseEvent) => handleTogglePublish(collection, e)}
                                                 showPublishToggle={true}
                                             />
                                         ))}
@@ -430,10 +442,13 @@ export default function MyCollectionsPage() {
                 <CollectionPreviewDialog
                     open={previewOpen}
                     onOpenChange={setPreviewOpen}
-                    collection={selectedCollection}
+                    selectedCollection={selectedCollection}
+                    activities={activities}
+                    onViewActivities={handleViewActivities}
+                    onEditCollection={handleEditCollection}
+                    onPreviewActivity={handlePreviewActivity}
                 />
             </div>
         </ClientOnly>
     );
 }
-

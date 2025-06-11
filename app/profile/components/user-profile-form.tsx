@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { userApi } from '@/api-client/user-update-api';
+import { storageApi } from '@/api-client/storage-api';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -123,9 +124,11 @@ export function UserProfileForm({
   onProfileUpdated,
 }: UserProfileFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(
-    userProfile?.avatar || null
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | undefined>(
+    userProfile?.avatar || undefined
   );
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoadingCountries, setIsLoadingCountries] = useState(false);
@@ -202,6 +205,35 @@ export function UserProfileForm({
     },
   });
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Kiểm tra định dạng file
+    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+      sonnerToast.error('Chỉ chấp nhận file ảnh JPG, PNG hoặc GIF');
+      return;
+    }
+
+    // Kiểm tra kích thước file (tối đa 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      sonnerToast.error('Kích thước file không được vượt quá 5MB');
+      return;
+    }
+
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target) {
+        setAvatarPreview(e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
 
   async function onSubmit(data: ProfileFormValues) {
     try {
@@ -224,7 +256,6 @@ export function UserProfileForm({
         avatar: data.avatar || '',
         gender: data.gender || '',
         nationality: data.nationality || '',
-        phoneNumber: data.phoneNumber || '',
         birthDate: data.birthDate
           ? format(new Date(data.birthDate), "yyyy-MM-dd'T'HH:mm:ssXXX")
           : '',
@@ -250,7 +281,6 @@ export function UserProfileForm({
           birthDate: profileData.birthDate || '',
           gender: profileData.gender || '',
           nationality: profileData.nationality || '',
-          phoneNumber: profileData.phoneNumber || '',
         });
       }
 
@@ -270,222 +300,6 @@ export function UserProfileForm({
     }
   }
 
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Kiểm tra định dạng file
-    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
-      sonnerToast.error('Chỉ chấp nhận file ảnh JPG, PNG hoặc GIF');
-      return;
-    }
-
-    // Kiểm tra kích thước file (tối đa 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      sonnerToast.error('Kích thước file không được vượt quá 5MB');
-      return;
-    }
-
-    // Giả lập việc tải ảnh lên server (trong thực tế, bạn sẽ gọi API riêng để upload ảnh)
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setAvatarPreview(result);
-
-      // Trong thực tế, bạn sẽ upload file và nhận URL từ server
-      // Sau đó cập nhật vào form
-      form.setValue('avatar', result);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const onSubmit = async (data: ProfileFormValues) => {
-    setIsLoading(true);
-
-    try {
-      // Check if user data is changed
-      const currentValues = form.getValues();
-      const originalValues = {
-        firstName: userProfile?.firstName || '',
-        lastName: userProfile?.lastName || '',
-        nickname: userProfile?.nickname || '',
-        birthDate: formatDate(userProfile?.birthDate),
-        gender: userProfile?.gender || '',
-        nationality: userProfile?.nationality || '',
-        avatar: userProfile?.avatar || '',
-      };
-
-      if (JSON.stringify(currentValues) === JSON.stringify(originalValues)) {
-        sonnerToast.warning('Vui lòng thay đổi thông tin trước khi cập nhật');
-        setIsLoading(false);
-        return;
-      }
-
-      // Check if birthday is changed from null to any date
-      let updateBirthday = false;
-      if (!userProfile?.birthDate && data.birthDate) {
-        updateBirthday = true;
-      }
-
-      // Check if name is empty
-      if (!data.firstName || !data.lastName) {
-        sonnerToast.error('Vui lòng nhập họ tên');
-        setIsLoading(false);
-        return;
-      }
-
-      // Prepare form data
-      const payload: Record<string, any> = {};
-
-      if (data.firstName !== userProfile?.firstName) {
-        payload.firstName = data.firstName;
-      }
-
-      // Tạo preview URL cho hình ảnh đã cắt
-      const croppedPreviewUrl = URL.createObjectURL(croppedImageBlob);
-      setPreviewUrl(croppedPreviewUrl);
-
-      // Upload file đã cắt
-      const response = await storageApi.uploadSingleFile(croppedFile, 'users');
-
-      const responseData = response.data as any;
-
-      if (responseData && responseData.success === true && responseData.data) {
-        // Lấy URL từ ảnh đã upload
-        const fileUrl = responseData.data.fileUrl;
-
-        if (fileUrl) {
-          // Cập nhật trường avatar trong form
-          form.setValue('avatar', fileUrl);
-
-          // Gọi API cập nhật thông tin avatar người dùng
-          try {
-            // Tạo payload chỉ bao gồm avatar mới cần cập nhật
-            const updateData = {
-              avatar: fileUrl // Chỉ cập nhật URL avatar mới
-            };
-
-            // Gọi API cập nhật profile
-            const updateResponse = await userApi.updateProfile(updateData);
-            
-            if (userProfile.avatar) {
-              try {
-                await storageApi.deleteSingleFile(userProfile.avatar);
-              } catch (error) {
-                console.error('Lỗi khi xóa avatar cũ:', error);
-              }
-            }
-
-            // Kiểm tra kết quả cập nhật
-            if (updateResponse.success && updateResponse.data) {
-              // Cập nhật UserProfile trong parent component
-              onProfileUpdated({
-                ...userProfile,
-                avatar: fileUrl,
-              });
-            }
-          } catch (updateError) {
-            console.error('Lỗi khi cập nhật thông tin avatar:', updateError);
-            // Vẫn giữ URL ảnh đã tải lên dù có lỗi khi cập nhật profile
-          }
-
-          // Hiển thị thông báo thành công
-          toast({
-            title: 'Thành công',
-            description: 'Đã tải lên và cập nhật ảnh đại diện',
-          });
-
-          // Đóng cropper
-          setShowCropper(false);
-        } else {
-          toast({
-            title: 'Lỗi',
-            description: 'Không tìm thấy URL file trong phản hồi',
-            variant: 'destructive',
-          });
-
-        }
-      }
-
-      if (
-        updateBirthday ||
-        (userProfile?.birthDate &&
-          data.birthDate !== formatDate(userProfile.birthDate))
-      ) {
-        payload.birthDate = data.birthDate
-          ? new Date(data.birthDate).toISOString()
-          : null;
-      }
-
-      if (data.gender !== userProfile?.gender) {
-        payload.gender = data.gender;
-      }
-
-      if (data.nationality !== userProfile?.nationality) {
-        payload.nationality = data.nationality;
-      }
-
-      // Only include avatar if it's changed
-      if (data.avatar !== userProfile?.avatar) {
-        if (userProfile?.avatar && data.avatar === '') {
-          payload.avatar = data.avatar;
-        } else if (data.avatar !== '') {
-          payload.avatar = data.avatar;
-        }
-      }
-
-      console.log('Update payload:', payload);
-
-      // If nothing is changed, return
-      if (Object.keys(payload).length === 0) {
-        sonnerToast.warning('Vui lòng thay đổi thông tin trước khi cập nhật');
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await userApi.updateProfile(payload);
-      console.log('Response:', response);
-
-      if (response && response.data) {
-        // Hiển thị toast thành công với cả 2 loại
-        toast({
-          title: 'Cập nhật thành công!',
-          description: 'Thông tin cá nhân đã được cập nhật thành công.',
-          variant: 'default',
-        });
-
-        // Cập nhật UserProfile trong parent component
-        const profileData = response.data as ProfileResponse;
-        onProfileUpdated({
-          ...userProfile,
-          firstName: profileData.firstName,
-          lastName: profileData.lastName,
-          nickname: profileData.nickname || '',
-          avatar: profileData.avatar || '',
-          birthDate: profileData.birthDate || '',
-          gender: profileData.gender || '',
-          nationality: profileData.nationality || '',
-        });
-      } else {
-        throw new Error('Cập nhật thông tin không thành công');
-      }
-    } catch (error: any) {
-      console.error('Lỗi khi cập nhật thông tin:', error);
-
-      // Hiển thị toast lỗi với cả 2 loại
-      toast({
-        title: 'Cập nhật thất bại!',
-        description:
-          error.message ||
-          'Không thể cập nhật thông tin. Vui lòng thử lại sau.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const getInitials = (name: string = '') => {
     return name
       .split(' ')
@@ -496,9 +310,8 @@ export function UserProfileForm({
   };
 
   // Tính tên hiển thị từ firstName và lastName
-  const displayName = `${userProfile?.firstName || ''} ${
-    userProfile?.lastName || ''
-  }`.trim();
+  const displayName = `${userProfile?.firstName || ''} ${userProfile?.lastName || ''
+    }`.trim();
 
   return (
     <Card className='border-0 shadow-none'>
