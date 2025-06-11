@@ -112,6 +112,8 @@ import SlideToolbar from '../slide/sidebar/slide-toolbar';
 import { useToast } from '@/hooks/use-toast';
 import { MatchingPairSettings } from './matching-pair-settings';
 
+import AnimationToolbar from '../slide/sidebar/animation-toolbar';
+import { SlideElementPayload } from '@/types/slideInterface';
 /**
  * Component that allows editing settings for a quiz question/activity.
  *
@@ -201,6 +203,11 @@ interface QuestionSettingsProps {
   leftColumnName?: string;
   rightColumnName?: string;
   activity?: any; // Atividade associada à questão ativa
+  slideElements: Record<string, SlideElementPayload[]>;
+  onSlideElementsUpdate: (
+    activityId: string,
+    elements: SlideElementPayload[]
+  ) => void;
 }
 const TextAnswerForm = ({
   correctAnswerText,
@@ -260,6 +267,8 @@ export function QuestionSettings({
   leftColumnName,
   rightColumnName,
   onMatchingPairColumnNamesChange,
+  slideElements,
+  onSlideElementsUpdate,
 }: QuestionSettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeType, setActiveType] = useState(
@@ -272,7 +281,6 @@ export function QuestionSettings({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [invalidImageUrl, setInvalidImageUrl] = useState(false);
-
 
   const [backgroundColor, setBackgroundColor] = useState(
     activity?.backgroundColor || '#FFFFFF'
@@ -288,7 +296,6 @@ export function QuestionSettings({
   const [pointType, setPointType] = useState(
     activity?.quiz?.pointType || 'STANDARD'
   );
-
 
   // Track the activity ID to detect changes
   const [prevActivityId, setPrevActivityId] = useState(activity?.id);
@@ -391,7 +398,6 @@ export function QuestionSettings({
         });
       } catch (error) {
         console.error('Error updating text answer quiz:', error);
-
       }
     }
   };
@@ -516,7 +522,7 @@ export function QuestionSettings({
             className={cn(
               'w-full justify-between px-3 py-5 h-auto border',
               activeQuestion.question_type &&
-              questionTypeColors[activeQuestion.question_type]
+                questionTypeColors[activeQuestion.question_type]
             )}
           >
             <div className="flex items-center gap-2">
@@ -770,14 +776,13 @@ export function QuestionSettings({
               // Use the correct field name for location answers
               const locationAnswers = activity?.quiz?.quizLocationAnswers ||
                 (locationData as any).quizLocationAnswers ||
-
-                (locationData as any).locationAnswers ||
-                [{
-                  longitude: (locationData as any).lng || 105.77803333582227,
-                  latitude: (locationData as any).lat || 19.83950812993956,
-                  radius: (locationData as any).radius || 10.0
-                }];
-
+                (locationData as any).locationAnswers || [
+                  {
+                    longitude: (locationData as any).lng || 105.77803333582227,
+                    latitude: (locationData as any).lat || 19.83950812993956,
+                    radius: (locationData as any).radius || 10.0,
+                  },
+                ];
 
               // For location quizzes, use the activitiesApi
               if (onQuestionLocationChange) {
@@ -788,44 +793,56 @@ export function QuestionSettings({
                 };
 
                 // Call the callback to update parent state
-                onQuestionLocationChange(activeQuestionIndex, updatedLocationData);
+                onQuestionLocationChange(
+                  activeQuestionIndex,
+                  updatedLocationData
+                );
 
                 // Update via API
-                activitiesApi.updateLocationQuiz(activity.id, {
+                activitiesApi
+                  .updateLocationQuiz(activity.id, {
+                    type: 'LOCATION' as 'LOCATION',
+                    questionText:
+                      activity.quiz?.questionText ||
+                      activeQuestion.question_text,
 
-                  type: "LOCATION" as "LOCATION",
-                  questionText: activity.quiz?.questionText || activeQuestion.question_text,
+                    timeLimitSeconds: value,
+                    pointType: locationPointType as
+                      | 'STANDARD'
+                      | 'NO_POINTS'
+                      | 'DOUBLE_POINTS',
+                    locationAnswers: locationAnswers.map((answer: any) => ({
+                      longitude: answer.longitude,
+                      latitude: answer.latitude,
 
-                  timeLimitSeconds: value,
-                  pointType: locationPointType as
-                    | 'STANDARD'
-                    | 'NO_POINTS'
-                    | 'DOUBLE_POINTS',
-                  locationAnswers: locationAnswers.map((answer: any) => ({
-                    longitude: answer.longitude,
-                    latitude: answer.latitude,
-
-                    radius: answer.radius
-                  }))
-                })
+                      radius: answer.radius,
+                    })),
+                  })
                   .then((response) => {
                     // **NEW**: Dispatch success event for location editor
                     if (typeof window !== 'undefined') {
-                      const successEvent = new CustomEvent('location:api:success', {
-                        detail: {
-                          source: 'location-quiz-api-success-timeLimit',
-                          response: response,
-                          timestamp: Date.now()
+                      const successEvent = new CustomEvent(
+                        'location:api:success',
+                        {
+                          detail: {
+                            source: 'location-quiz-api-success-timeLimit',
+                            response: response,
+                            timestamp: Date.now(),
+                          },
                         }
-                      });
+                      );
                       window.dispatchEvent(successEvent);
                     }
-                    console.log('Location quiz time limit updated successfully');
+                    console.log(
+                      'Location quiz time limit updated successfully'
+                    );
                   })
                   .catch((error) => {
-                    console.error('Error updating location quiz time limit:', error);
+                    console.error(
+                      'Error updating location quiz time limit:',
+                      error
+                    );
                   });
-
               }
               break;
             default:
@@ -883,7 +900,6 @@ export function QuestionSettings({
     );
   };
 
-
   // Function to handle audio file upload
   const audioFileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
@@ -924,7 +940,7 @@ export function QuestionSettings({
       // Upload file with flexible type
       const response = (await storageApi.uploadSingleFile(
         file,
-        'uploads'
+        'activities'
       )) as FileUploadResponse;
 
       clearInterval(progressInterval);
@@ -958,7 +974,6 @@ export function QuestionSettings({
       }
     }
   };
-
 
   // Function to update activity in the API
   const updateActivity = async (data: any) => {
@@ -1042,18 +1057,20 @@ export function QuestionSettings({
 
           // Include required fields if they're missing
           const locationPayload = {
-
-            type: "LOCATION" as "LOCATION",
-            questionText: activity.quiz?.questionText || activeQuestion.question_text,
-            timeLimitSeconds: data.timeLimitSeconds || activity.quiz?.timeLimitSeconds || timeLimit,
-            pointType: data.pointType || activity.quiz?.pointType || "STANDARD",
+            type: 'LOCATION' as 'LOCATION',
+            questionText:
+              activity.quiz?.questionText || activeQuestion.question_text,
+            timeLimitSeconds:
+              data.timeLimitSeconds ||
+              activity.quiz?.timeLimitSeconds ||
+              timeLimit,
+            pointType: data.pointType || activity.quiz?.pointType || 'STANDARD',
             // Don't send quizLocationAnswerId - let API generate new ones
             locationAnswers: data.locationAnswers.map((answer: any) => ({
               longitude: answer.longitude,
               latitude: answer.latitude,
-              radius: answer.radius
-            }))
-
+              radius: answer.radius,
+            })),
           };
 
           console.log('Updating location quiz with payload:', locationPayload);
@@ -1119,7 +1136,9 @@ export function QuestionSettings({
           if (typeof window !== 'undefined') {
             const updateEvent = new CustomEvent('location:answers:updated', {
               detail: {
-                locationAnswers: response.data?.quiz?.quizLocationAnswers || data.locationAnswers,
+                locationAnswers:
+                  response.data?.quiz?.quizLocationAnswers ||
+                  data.locationAnswers,
                 timestamp: Date.now(),
                 source: 'settings',
               },
@@ -1144,9 +1163,7 @@ export function QuestionSettings({
         });
       }
     } catch (error) {
-
       console.error('Error updating activity:', error);
-
     } finally {
       setIsSaving(false);
     }
@@ -1403,18 +1420,16 @@ export function QuestionSettings({
             const locationData = activeQuestion.location_data || ({} as any);
             const locationPointType = locationData.pointType || 'STANDARD';
 
-
             // Use the correct field name for location answers
             const locationAnswers = activity?.quiz?.quizLocationAnswers ||
               (locationData as any).quizLocationAnswers ||
-
-              (locationData as any).locationAnswers ||
-              [{
-                longitude: (locationData as any).lng || 105.77803333582227,
-                latitude: (locationData as any).lat || 19.83950812993956,
-                radius: (locationData as any).radius || 10.0
-              }];
-
+              (locationData as any).locationAnswers || [
+                {
+                  longitude: (locationData as any).lng || 105.77803333582227,
+                  latitude: (locationData as any).lat || 19.83950812993956,
+                  radius: (locationData as any).radius || 10.0,
+                },
+              ];
 
             if (onQuestionLocationChange) {
               // Update local state
@@ -1426,35 +1441,45 @@ export function QuestionSettings({
               onQuestionLocationChange(activeQuestionIndex, updatedData);
 
               // Update via API
-              activitiesApi.updateLocationQuiz(activity.id, {
-                type: 'LOCATION',
-                questionText: activeQuestion.question_text,
-                timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
-                pointType: value as 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS',
-                locationAnswers: locationAnswers.map((answer: any) => ({
-                  longitude: answer.longitude,
-                  latitude: answer.latitude,
-                  radius: answer.radius
-                }))
-              })
+              activitiesApi
+                .updateLocationQuiz(activity.id, {
+                  type: 'LOCATION',
+                  questionText: activeQuestion.question_text,
+                  timeLimitSeconds:
+                    activity.quiz?.timeLimitSeconds || timeLimit,
+                  pointType: value as
+                    | 'STANDARD'
+                    | 'NO_POINTS'
+                    | 'DOUBLE_POINTS',
+                  locationAnswers: locationAnswers.map((answer: any) => ({
+                    longitude: answer.longitude,
+                    latitude: answer.latitude,
+                    radius: answer.radius,
+                  })),
+                })
                 .then((response) => {
                   // **NEW**: Dispatch success event for location editor
                   if (typeof window !== 'undefined') {
-                    const successEvent = new CustomEvent('location:api:success', {
-                      detail: {
-                        source: 'location-quiz-api-success-pointType',
-                        response: response,
-                        timestamp: Date.now()
+                    const successEvent = new CustomEvent(
+                      'location:api:success',
+                      {
+                        detail: {
+                          source: 'location-quiz-api-success-pointType',
+                          response: response,
+                          timestamp: Date.now(),
+                        },
                       }
-                    });
+                    );
                     window.dispatchEvent(successEvent);
                   }
                   console.log('Location quiz point type updated successfully');
                 })
                 .catch((error) => {
-                  console.error('Error updating location quiz point type:', error);
+                  console.error(
+                    'Error updating location quiz point type:',
+                    error
+                  );
                 });
-
             }
             break;
           default:
@@ -1633,9 +1658,9 @@ export function QuestionSettings({
     // Ưu tiên global storage trước, sau đó mới tới state local
     const currentBackgroundColor =
       typeof window !== 'undefined' &&
-        window.savedBackgroundColors &&
-        activity?.id &&
-        window.savedBackgroundColors[activity.id]
+      window.savedBackgroundColors &&
+      activity?.id &&
+      window.savedBackgroundColors[activity.id]
         ? window.savedBackgroundColors[activity.id]
         : backgroundColor;
 
@@ -1652,13 +1677,11 @@ export function QuestionSettings({
       // Check file type
       const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
       if (!allowedTypes.includes(file.type)) {
-
         return;
       }
 
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-
         return;
       }
 
@@ -1666,7 +1689,6 @@ export function QuestionSettings({
       setUploadProgress(10);
 
       try {
-
         if (activity.backgroundImage) {
           try {
             await storageApi.deleteSingleFile(activity.backgroundImage);
@@ -1712,11 +1734,9 @@ export function QuestionSettings({
             updateActivity({ backgroundImage: fileUrl });
           }
         } else {
-
         }
       } catch (error) {
         console.error('Error uploading file:', error);
-
       } finally {
         setIsUploading(false);
         setUploadProgress(0);
@@ -1771,10 +1791,10 @@ export function QuestionSettings({
                   </div>
                   {currentBackgroundColor.toUpperCase() ===
                     pastel.color.toUpperCase() && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
-                      </div>
-                    )}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -1871,7 +1891,6 @@ export function QuestionSettings({
                     setInvalidImageUrl(true);
                     (e.target as HTMLImageElement).src =
                       'https://via.placeholder.com/300x200?text=Invalid+Image+URL';
-
                   }
                 }}
               />
@@ -1885,26 +1904,38 @@ export function QuestionSettings({
   // Location settings component
   const LocationSettings = () => {
     // Get the current location data from activity or activeQuestion
-    const locationData = activity?.quiz?.quizLocationAnswers || activeQuestion?.location_data?.quizLocationAnswers || [];
+    const locationData =
+      activity?.quiz?.quizLocationAnswers ||
+      activeQuestion?.location_data?.quizLocationAnswers ||
+      [];
 
-    const [currentLocations, setCurrentLocations] = useState<any[]>(locationData);
+    const [currentLocations, setCurrentLocations] =
+      useState<any[]>(locationData);
 
     // Update local state when activity changes
     useEffect(() => {
-      const newLocationData = activity?.quiz?.quizLocationAnswers || activeQuestion?.location_data?.quizLocationAnswers || [];
-      setCurrentLocations(newLocationData.map((loc: any) => ({
-        ...loc,
-        longitude: String(loc.longitude || 0),
-        latitude: String(loc.latitude || 0),
-      })));
-    }, [activity?.quiz?.quizLocationAnswers, activeQuestion?.location_data?.quizLocationAnswers]);
+      const newLocationData =
+        activity?.quiz?.quizLocationAnswers ||
+        activeQuestion?.location_data?.quizLocationAnswers ||
+        [];
+      setCurrentLocations(
+        newLocationData.map((loc: any) => ({
+          ...loc,
+          longitude: String(loc.longitude || 0),
+          latitude: String(loc.latitude || 0),
+        }))
+      );
+    }, [
+      activity?.quiz?.quizLocationAnswers,
+      activeQuestion?.location_data?.quizLocationAnswers,
+    ]);
 
     const handleAddLocation = () => {
       // Default location for new points
       const newLocation = {
         longitude: '105.804817',
         latitude: '21.028511',
-        radius: 10.0
+        radius: 10.0,
         // Note: No quizLocationAnswerId - this will be generated by the API
       };
 
@@ -1913,22 +1944,27 @@ export function QuestionSettings({
       // **IMMEDIATELY call API with all points (old + new)**
       if (activity?.id) {
         const locationPayload = {
-          type: "LOCATION" as const,
-          questionText: activity.quiz?.questionText || activeQuestion.question_text,
+          type: 'LOCATION' as const,
+          questionText:
+            activity.quiz?.questionText || activeQuestion.question_text,
           timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
-          pointType: (activity.quiz?.pointType || "STANDARD") as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS",
-          locationAnswers: updatedLocations.map(loc => ({
+          pointType: (activity.quiz?.pointType || 'STANDARD') as
+            | 'STANDARD'
+            | 'NO_POINTS'
+            | 'DOUBLE_POINTS',
+          locationAnswers: updatedLocations.map((loc) => ({
             longitude: parseFloat(loc.longitude),
             latitude: parseFloat(loc.latitude),
-            radius: loc.radius
-          }))
+            radius: loc.radius,
+          })),
         };
 
-        console.log("🚀 Adding new point - API payload:", locationPayload);
+        console.log('🚀 Adding new point - API payload:', locationPayload);
 
-        activitiesApi.updateLocationQuiz(activity.id, locationPayload)
-          .then(response => {
-            console.log("✅ Location added successfully:", response);
+        activitiesApi
+          .updateLocationQuiz(activity.id, locationPayload)
+          .then((response) => {
+            console.log('✅ Location added successfully:', response);
 
             // Update parent state with response data which includes IDs
             if (response.data?.quiz?.quizLocationAnswers) {
@@ -1941,16 +1977,17 @@ export function QuestionSettings({
             }
 
             toast({
-              title: "Point added successfully",
+              title: 'Point added successfully',
               description: `Added new location point. Total: ${response.data.quiz.quizLocationAnswers.length} points`,
             });
           })
-          .catch(error => {
-            console.error("❌ Error adding location:", error);
+          .catch((error) => {
+            console.error('❌ Error adding location:', error);
             toast({
-              title: "Error adding point",
-              description: "Failed to add the new location point. Please try again.",
-              variant: "destructive"
+              title: 'Error adding point',
+              description:
+                'Failed to add the new location point. Please try again.',
+              variant: 'destructive',
             });
           });
       }
@@ -1959,32 +1996,39 @@ export function QuestionSettings({
     const handleDeleteLocation = (indexToDelete: number) => {
       if (currentLocations.length <= 1) {
         toast({
-          title: "Cannot delete",
-          description: "At least one location point is required.",
-          variant: "destructive"
+          title: 'Cannot delete',
+          description: 'At least one location point is required.',
+          variant: 'destructive',
         });
         return;
       }
 
-      const updatedLocations = currentLocations.filter((_, index) => index !== indexToDelete);
+      const updatedLocations = currentLocations.filter(
+        (_, index) => index !== indexToDelete
+      );
 
       // Update via API afterwards
       if (activity?.id) {
         const locationPayload = {
-          type: "LOCATION" as const,
-          questionText: activity.quiz?.questionText || activeQuestion.question_text,
+          type: 'LOCATION' as const,
+          questionText:
+            activity.quiz?.questionText || activeQuestion.question_text,
           timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
-          pointType: (activity.quiz?.pointType || "STANDARD") as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS",
-          locationAnswers: updatedLocations.map(loc => ({
+          pointType: (activity.quiz?.pointType || 'STANDARD') as
+            | 'STANDARD'
+            | 'NO_POINTS'
+            | 'DOUBLE_POINTS',
+          locationAnswers: updatedLocations.map((loc) => ({
             longitude: parseFloat(loc.longitude),
             latitude: parseFloat(loc.latitude),
-            radius: loc.radius
-          }))
+            radius: loc.radius,
+          })),
         };
 
-        activitiesApi.updateLocationQuiz(activity.id, locationPayload)
-          .then(response => {
-            console.log("Location deleted successfully:", response);
+        activitiesApi
+          .updateLocationQuiz(activity.id, locationPayload)
+          .then((response) => {
+            console.log('Location deleted successfully:', response);
 
             // Update parent state with response data
             if (response.data?.quiz?.quizLocationAnswers) {
@@ -1996,17 +2040,24 @@ export function QuestionSettings({
               }
             }
           })
-          .catch(error => {
-            console.error("Error deleting location:", error);
+          .catch((error) => {
+            console.error('Error deleting location:', error);
           });
       }
     };
 
-    const handleUpdateLocation = (indexToUpdate: number, property: 'longitude' | 'latitude' | 'radius', value: string | number) => {
+    const handleUpdateLocation = (
+      indexToUpdate: number,
+      property: 'longitude' | 'latitude' | 'radius',
+      value: string | number
+    ) => {
       const updatedLocations = [...currentLocations];
       const locationToUpdate = { ...updatedLocations[indexToUpdate] };
 
-      if ((property === 'longitude' || property === 'latitude') && typeof value === 'string') {
+      if (
+        (property === 'longitude' || property === 'latitude') &&
+        typeof value === 'string'
+      ) {
         if (value !== '' && value !== '-' && !/^-?\d*\.?\d*$/.test(value)) {
           return;
         }
@@ -2015,7 +2066,6 @@ export function QuestionSettings({
       locationToUpdate[property] = value;
       updatedLocations[indexToUpdate] = locationToUpdate;
       setCurrentLocations(updatedLocations);
-
 
       // Debounce API calls for coordinate/radius updates
       if (typeof window !== 'undefined') {
@@ -2026,20 +2076,25 @@ export function QuestionSettings({
         window.locationUpdateTimer = setTimeout(() => {
           if (activity?.id) {
             const locationPayload = {
-              type: "LOCATION" as const,
-              questionText: activity.quiz?.questionText || activeQuestion.question_text,
+              type: 'LOCATION' as const,
+              questionText:
+                activity.quiz?.questionText || activeQuestion.question_text,
               timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
-              pointType: (activity.quiz?.pointType || "STANDARD") as "STANDARD" | "NO_POINTS" | "DOUBLE_POINTS",
+              pointType: (activity.quiz?.pointType || 'STANDARD') as
+                | 'STANDARD'
+                | 'NO_POINTS'
+                | 'DOUBLE_POINTS',
               locationAnswers: updatedLocations.map((loc: any) => ({
                 longitude: parseFloat(loc.longitude),
                 latitude: parseFloat(loc.latitude),
-                radius: loc.radius
-              }))
+                radius: loc.radius,
+              })),
             };
 
-            activitiesApi.updateLocationQuiz(activity.id, locationPayload)
-              .then(response => {
-                console.log("Location updated successfully:", response);
+            activitiesApi
+              .updateLocationQuiz(activity.id, locationPayload)
+              .then((response) => {
+                console.log('Location updated successfully:', response);
 
                 // Update local state with response data
                 if (response.data?.quiz?.quizLocationAnswers) {
@@ -2048,15 +2103,19 @@ export function QuestionSettings({
 
                 // Notify location editor
                 if (typeof window !== 'undefined') {
-                  const updateEvent = new CustomEvent('location:answers:updated', {
-                    detail: {
-                      activityId: activity.id,
-                      locationAnswers:
-                        response.data?.quiz?.quizLocationAnswers || updatedLocations,
-                      timestamp: Date.now(),
-                      source: 'settings'
+                  const updateEvent = new CustomEvent(
+                    'location:answers:updated',
+                    {
+                      detail: {
+                        activityId: activity.id,
+                        locationAnswers:
+                          response.data?.quiz?.quizLocationAnswers ||
+                          updatedLocations,
+                        timestamp: Date.now(),
+                        source: 'settings',
+                      },
                     }
-                  });
+                  );
                   window.dispatchEvent(updateEvent);
 
                   // **NEW**: Dispatch success event for location editor
@@ -2064,14 +2123,14 @@ export function QuestionSettings({
                     detail: {
                       source: 'location-quiz-api-success-updateProperties',
                       response: response,
-                      timestamp: Date.now()
-                    }
+                      timestamp: Date.now(),
+                    },
                   });
                   window.dispatchEvent(successEvent);
                 }
               })
-              .catch(error => {
-                console.error("Error updating location:", error);
+              .catch((error) => {
+                console.error('Error updating location:', error);
               });
           }
         }, 500); // 500ms debounce
@@ -2081,7 +2140,7 @@ export function QuestionSettings({
       if (onQuestionLocationChange) {
         onQuestionLocationChange(activeQuestionIndex, {
           ...activeQuestion.location_data,
-          quizLocationAnswers: updatedLocations
+          quizLocationAnswers: updatedLocations,
         });
       }
     };
@@ -2120,7 +2179,10 @@ export function QuestionSettings({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor={`longitude-${index}`} className="text-xs text-gray-600">
+                  <Label
+                    htmlFor={`longitude-${index}`}
+                    className="text-xs text-gray-600"
+                  >
                     Longitude
                   </Label>
                   <Input
@@ -2128,13 +2190,18 @@ export function QuestionSettings({
                     type="number"
                     step="0.000001"
                     value={location.longitude}
-                    onChange={(e) => handleUpdateLocation(index, 'longitude', e.target.value)}
+                    onChange={(e) =>
+                      handleUpdateLocation(index, 'longitude', e.target.value)
+                    }
                     className="h-8 text-sm"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor={`latitude-${index}`} className="text-xs text-gray-600">
+                  <Label
+                    htmlFor={`latitude-${index}`}
+                    className="text-xs text-gray-600"
+                  >
                     Latitude
                   </Label>
                   <Input
@@ -2142,20 +2209,27 @@ export function QuestionSettings({
                     type="number"
                     step="0.000001"
                     value={location.latitude}
-                    onChange={(e) => handleUpdateLocation(index, 'latitude', e.target.value)}
+                    onChange={(e) =>
+                      handleUpdateLocation(index, 'latitude', e.target.value)
+                    }
                     className="h-8 text-sm"
                   />
                 </div>
               </div>
 
               <div className="mt-3">
-                <Label htmlFor={`radius-${index}`} className="text-xs text-gray-600">
+                <Label
+                  htmlFor={`radius-${index}`}
+                  className="text-xs text-gray-600"
+                >
                   Radius (km)
                 </Label>
                 <div className="flex items-center gap-2">
                   <Slider
                     value={[location.radius || 10]}
-                    onValueChange={(value) => handleUpdateLocation(index, 'radius', value[0])}
+                    onValueChange={(value) =>
+                      handleUpdateLocation(index, 'radius', value[0])
+                    }
                     min={1}
                     max={100}
                     step={1}
@@ -2205,14 +2279,14 @@ export function QuestionSettings({
           <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
             <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
             {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide'
+            activeQuestion.question_type === 'info_slide'
               ? 'Slide Content'
               : 'Answer Options'}
           </h3>
 
           {/* Display different content based on question type */}
           {activeQuestion.question_type === 'multiple_choice' ||
-            activeQuestion.question_type === 'multiple_response' ? (
+          activeQuestion.question_type === 'multiple_response' ? (
             <div
               className={cn(
                 'p-3 rounded-md border',
@@ -2340,7 +2414,10 @@ export function QuestionSettings({
 
                   const newOptions = pairs
                     .flatMap((p) => [p.left, p.right])
-                    .map((opt, index) => ({ ...opt, display_order: index })) as QuizOption[];
+                    .map((opt, index) => ({
+                      ...opt,
+                      display_order: index,
+                    })) as QuizOption[];
 
                   onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
                 }}
@@ -2354,7 +2431,15 @@ export function QuestionSettings({
 
         {/* Slide content editor */}
         {activeQuestion.question_type === 'slide' && (
-          <SlideToolbar slideId={activity.id} />
+          <SlideToolbar
+            slideId={activity.id}
+            slideElements={slideElements[activity?.id] || []}
+            onSlideElementsUpdate={(elements) => {
+              if (activity?.id) {
+                onSlideElementsUpdate(activity.id, elements);
+              }
+            }}
+          />
         )}
 
         {/* Location question editor */}
@@ -2419,7 +2504,10 @@ export function QuestionSettings({
             </TabsTrigger>
             <TabsTrigger value="meta" className="text-xs">
               <Info className="h-3.5 w-3.5 mr-1.5" />
-              Metadata
+              {activeQuestion.question_type === 'slide' ||
+              activeQuestion.question_type === 'info_slide'
+                ? 'Animation'
+                : 'Metadata'}
             </TabsTrigger>
           </TabsList>
 
@@ -2440,16 +2528,14 @@ export function QuestionSettings({
                 <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
                   {activeQuestion.question_type === 'slide' ||
-
-                    activeQuestion.question_type === 'info_slide'
-
+                  activeQuestion.question_type === 'info_slide'
                     ? 'Slide Content'
                     : 'Answer Options'}
                 </h3>
 
                 {/* Display different content based on question type */}
                 {activeQuestion.question_type === 'multiple_choice' ||
-                  activeQuestion.question_type === 'multiple_response' ? (
+                activeQuestion.question_type === 'multiple_response' ? (
                   <div
                     className={cn(
                       'p-3 rounded-md border',
@@ -2491,7 +2577,15 @@ export function QuestionSettings({
                 ) : activeQuestion.question_type === 'slide' ||
                   activeQuestion.question_type === 'info_slide' ? (
                   <>
-                    <SlideToolbar slideId={activity.id} />
+                    <SlideToolbar
+                      slideId={activity.id}
+                      slideElements={slideElements[activity?.id] || []}
+                      onSlideElementsUpdate={(elements) => {
+                        if (activity?.id) {
+                          onSlideElementsUpdate(activity.id, elements);
+                        }
+                      }}
+                    />
                     <div>
                       <h3 className="text-sm font-medium mb-2.5 mt-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                         {/* <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
@@ -2560,18 +2654,24 @@ export function QuestionSettings({
                         const newOptions = currentOptions.filter(
                           (opt) => opt.pair_id !== pairId
                         );
-                        onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
+                        onMatchingPairOptionsChange(
+                          activeQuestionIndex,
+                          newOptions
+                        );
                       }}
                       onReorderPairs={(startIndex, endIndex) => {
                         if (!onMatchingPairOptionsChange) return;
 
-                        const currentOptions = [...(activeQuestion.options || [])];
+                        const currentOptions = [
+                          ...(activeQuestion.options || []),
+                        ];
 
                         const pairs = currentOptions
                           .filter((o) => o.type === 'left')
                           .map((left) => {
                             const right = currentOptions.find(
-                              (r) => r.type === 'right' && r.pair_id === left.pair_id
+                              (r) =>
+                                r.type === 'right' && r.pair_id === left.pair_id
                             );
                             return { id: left.pair_id, left, right };
                           })
@@ -2582,9 +2682,15 @@ export function QuestionSettings({
 
                         const newOptions = pairs
                           .flatMap((p) => [p.left, p.right])
-                          .map((opt, index) => ({ ...opt, display_order: index })) as QuizOption[];
+                          .map((opt, index) => ({
+                            ...opt,
+                            display_order: index,
+                          })) as QuizOption[];
 
-                        onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
+                        onMatchingPairOptionsChange(
+                          activeQuestionIndex,
+                          newOptions
+                        );
                       }}
                       leftColumnName={leftColumnName}
                       rightColumnName={rightColumnName}
@@ -2595,7 +2701,7 @@ export function QuestionSettings({
               </div>
 
               {activeQuestion.question_type === 'slide' ||
-                activeQuestion.question_type === 'info_slide' ? (
+              activeQuestion.question_type === 'info_slide' ? (
                 ''
               ) : (
                 <div>
@@ -2638,7 +2744,7 @@ export function QuestionSettings({
             {/* Design tab: Background, colors, etc */}
 
             {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide' ? (
+            activeQuestion.question_type === 'info_slide' ? (
               <SlideSettings
                 slideId={activity?.id || ''}
                 backgroundColor={backgroundColor}
@@ -2655,7 +2761,21 @@ export function QuestionSettings({
 
           <TabsContent value="meta" className="mt-0">
             {/* Metadata tab: title, description, publication status */}
-            <ActivityMetadataTab />
+
+            {activeQuestion.question_type === 'slide' ||
+            activeQuestion.question_type === 'info_slide' ? (
+              <AnimationToolbar
+                slideId={activity?.id || ''}
+                slideElements={slideElements[activity?.id] || []}
+                onSlideElementsUpdate={(elements) => {
+                  if (activity?.id) {
+                    onSlideElementsUpdate(activity.id, elements);
+                  }
+                }}
+              ></AnimationToolbar>
+            ) : (
+              <ActivityMetadataTab />
+            )}
           </TabsContent>
         </Tabs>
       </CardContent>

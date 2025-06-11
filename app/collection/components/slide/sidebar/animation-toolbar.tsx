@@ -1,21 +1,21 @@
 // src/components/AnimationToolbar.tsx
 'use client';
-  export interface SlideElementEvent extends CustomEvent {
-    detail: {
-      slideId: string;
-      element: SlideElementPayload;
-      elements?: SlideElementPayload[];
-      objectId: string;
-    };
-  }
+export interface SlideElementEvent extends CustomEvent {
+  detail: {
+    slideId: string;
+    element: SlideElementPayload;
+    elements?: SlideElementPayload[];
+    objectId: string;
+  };
+}
 
-  declare global {
-    interface WindowEventMap {
-      'slide:element:created': SlideElementEvent;
-      'slide:element:updated': SlideElementEvent;
-      'slide:elements:changed': SlideElementEvent;
-    }
+declare global {
+  interface WindowEventMap {
+    'slide:element:created': SlideElementEvent;
+    'slide:element:updated': SlideElementEvent;
+    'slide:elements:changed': SlideElementEvent;
   }
+}
 
 import type React from 'react';
 import { useState, useCallback, useEffect } from 'react';
@@ -38,13 +38,18 @@ import type { SlideElementPayload } from '@/types/slideInterface';
 import { activitiesApi } from '@/api-client/activities-api';
 interface AnimationToolbarProps {
   slideId: string;
+  slideElements: SlideElementPayload[];
+  onSlideElementsUpdate: (elements: SlideElementPayload[]) => void;
 }
 
-const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
+const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
+  slideId,
+  slideElements,
+  onSlideElementsUpdate,
+}) => {
   const [selectedAnimation, setSelectedAnimation] = useState<string>('none');
   const [animationMap, setAnimationMap] = useState<Record<string, string>>({});
   const [currentObjectId, setCurrentObjectId] = useState<string | null>(null);
-  const [slideElements, setSlideElements] = useState<SlideElementPayload[]>([]);
 
   const animationOptions = [
     {
@@ -117,119 +122,132 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
     },
   ];
 
-  useEffect(() => {
-    const handleSelectionChanged = (
-      e: CustomEvent<{
-        slideId: string;
-        animationName: string;
-        objectId: string | null;
-      }>
-    ) => {
-      if (e.detail.slideId !== slideId) {
-        console.log(
-          `Ignoring fabric:selection-changed because slideId does not match: ${e.detail.slideId} !== ${slideId}`
-        );
-        return;
-      }
+  // useEffect(() => {
+  //   const handleSelectionChanged = (
+  //     e: CustomEvent<{
+  //       slideId: string;
+  //       animationName: string;
+  //       objectId: string | null;
+  //     }>
+  //   ) => {
+  //     if (e.detail.slideId !== slideId) {
+  //       console.log(
+  //         `Ignoring fabric:selection-changed because slideId does not match: ${e.detail.slideId} !== ${slideId}`
+  //       );
+  //       return;
+  //     }
 
-      const { animationName, objectId } = e.detail;
+  //     const { animationName, objectId } = e.detail;
 
-      // Cập nhật animation map khi có thay đổi
-      if (objectId) {
-        setAnimationMap((prev) => ({
-          ...prev,
-          [objectId]: animationName,
-        }));
-        setCurrentObjectId(objectId);
-      } else {
-        setCurrentObjectId(null);
-      }
+  //     // Cập nhật animation map khi có thay đổi
+  //     if (objectId) {
+  //       setAnimationMap((prev) => ({
+  //         ...prev,
+  //         [objectId]: animationName,
+  //       }));
+  //       setCurrentObjectId(objectId);
+  //     } else {
+  //       setCurrentObjectId(null);
+  //     }
+  //     console.log('AnimationToolbar received fabric:selection-changed:', e.detail);
+  //     // Cập nhật selected animation
+  //     setSelectedAnimation(animationName || 'none');
+  //   };
 
-      // Cập nhật selected animation
-      setSelectedAnimation(animationName || 'none');
-    };
+  //   window.addEventListener(
+  //     'fabric:selection-changed',
+  //     handleSelectionChanged as EventListener
+  //   );
 
-    window.addEventListener(
-      'fabric:selection-changed',
-      handleSelectionChanged as EventListener
-    );
+  //   return () => {
+  //     window.removeEventListener(
+  //       'fabric:selection-changed',
+  //       handleSelectionChanged as EventListener
+  //     );
+  //   };
+  // }, [slideId]);
 
-    return () => {
-      window.removeEventListener(
-        'fabric:selection-changed',
-        handleSelectionChanged as EventListener
-      );
-    };
-  }, [slideId]);
-
-  const handleAnimationPreview = useCallback(
-    debounce((animationValue: string) => {
-      if (animationValue !== 'none') {
-        const event = new CustomEvent('fabric:preview-animation', {
-          detail: { slideId, animationName: animationValue },
-        });
-        window.dispatchEvent(event);
-      }
-    }, 500),
-    [slideId]
-  );
+  // const handleAnimationPreview = useCallback(
+  //   debounce((animationValue: string) => {
+  //     if (animationValue !== 'none') {
+  //       const event = new CustomEvent('fabric:preview-animation', {
+  //         detail: { slideId, animationName: animationValue },
+  //       });
+  //       window.dispatchEvent(event);
+  //     }
+  //   }, 1000),
+  //   [slideId]
+  // );
 
   const handleAnimationSelect = (animationValue: string) => {
-    setSelectedAnimation(animationValue);
+    if (animationValue === selectedAnimation) {
+      return;
+    }
 
-    // Lưu animation vào map
+    // Kill preview animation đang chạy
     if (currentObjectId) {
-      setAnimationMap((prev) => ({
-        ...prev,
-        [currentObjectId]: animationValue,
-      }));
+      const event = new CustomEvent('fabric:reset-animation', {
+        detail: { slideId },
+      });
+      window.dispatchEvent(event);
     }
 
-    if (animationValue !== 'none') {
-      const previewEvent = new CustomEvent('fabric:preview-animation', {
-        detail: { slideId, animationName: animationValue },
-      });
-      window.dispatchEvent(previewEvent);
+    setTimeout(() => {
+      setSelectedAnimation(animationValue);
 
-      const setEvent = new CustomEvent('fabric:set-animation', {
-        detail: { slideId, animationName: animationValue, objectId: currentObjectId },
-      });
-      window.dispatchEvent(setEvent);
-    } else {
-      const setEvent = new CustomEvent('fabric:set-animation', {
-        detail: { slideId, animationName: null, objectId: currentObjectId },
-      });
-      window.dispatchEvent(setEvent);
-    }
+      // Lưu animation vào map
+      if (currentObjectId) {
+        setAnimationMap((prev) => ({
+          ...prev,
+          [currentObjectId]: animationValue,
+        }));
+
+        //  Cập nhật slideElements với animation mới
+        const updatedElements = slideElements.map((item) =>
+          item.slideElementId === currentObjectId
+            ? { ...item, entryAnimation: animationValue }
+            : item
+        );
+        onSlideElementsUpdate(updatedElements);
+      }
+
+      if (animationValue !== 'none') {
+        const previewEvent = new CustomEvent('fabric:preview-animation', {
+          detail: { slideId, animationName: animationValue },
+        });
+        window.dispatchEvent(previewEvent);
+
+        const setEvent = new CustomEvent('fabric:set-animation', {
+          detail: {
+            slideId,
+            animationName: animationValue,
+            objectId: currentObjectId,
+          },
+        });
+        window.dispatchEvent(setEvent);
+      } else {
+        const setEvent = new CustomEvent('fabric:set-animation', {
+          detail: { slideId, animationName: null, objectId: currentObjectId },
+        });
+        window.dispatchEvent(setEvent);
+      }
+    }, 50);
   };
 
   useEffect(() => {
-    const fetchSlideElements = async () => {
-      try {
-        const response = await activitiesApi.getActivityById(slideId);
-        setSlideElements(response.data?.data?.slide?.slideElements || []);
-      } catch (error) {
-        console.error('Error fetching slide elements:', error);
-      }
-    };
-
     // Thêm listeners cho các events
     const handleElementCreated = (e: SlideElementEvent) => {
       if (e.detail.slideId !== slideId) return;
-      setSlideElements((prev) => {
-        const newElements = [...prev, e.detail.element];
-        return newElements.sort((a, b) => a.displayOrder - b.displayOrder);
-      });
+      const newElements = [...slideElements, e.detail.element].sort(
+        (a, b) => a.displayOrder - b.displayOrder
+      );
+      onSlideElementsUpdate(newElements);
     };
 
     const handleElementsChanged = (e: SlideElementEvent) => {
       if (e.detail.slideId !== slideId) return;
       if (e.detail.elements) {
-        console.log(
-          'AnimationToolbar received slide:elements:changed:',
-          e.detail.elements
-        );
-        setSlideElements(e.detail.elements);
+        onSlideElementsUpdate(e.detail.elements);
       }
     };
 
@@ -248,55 +266,69 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
 
       const { objectId, animationName } = e.detail;
       if (objectId) {
-        setSlideElements((prev) =>
-          prev.map((item) =>
-            item.slideElementId === objectId
-              ? { ...item, entryAnimation: animationName }
-              : item
-          )
-        );
         setAnimationMap((prev) => ({
           ...prev,
           [objectId]: animationName,
         }));
         setCurrentObjectId(objectId);
+
+        const updatedElements = slideElements.map((item) =>
+          item.slideElementId === objectId
+            ? { ...item, entryAnimation: animationName }
+            : item
+        );
+        onSlideElementsUpdate(updatedElements);
       } else {
         setCurrentObjectId(null);
       }
       setSelectedAnimation(animationName || 'none');
     };
 
-    fetchSlideElements();
+    window.addEventListener(
+      'slide:element:created',
+      handleElementCreated as EventListener
+    );
+    window.addEventListener(
+      'slide:elements:changed',
+      handleElementsChanged as EventListener
+    );
+    window.addEventListener(
+      'fabric:selection-changed',
+      handleSelectionChanged as EventListener
+    );
 
-  window.addEventListener('slide:element:created', handleElementCreated as EventListener);
-  window.addEventListener('slide:elements:changed', handleElementsChanged as EventListener);
-  window.addEventListener('fabric:selection-changed', handleSelectionChanged as EventListener);
-
-  return () => {
-    window.removeEventListener('slide:element:created', handleElementCreated as EventListener);
-    window.removeEventListener('slide:elements:changed', handleElementsChanged as EventListener);
-    window.removeEventListener('fabric:selection-changed', handleSelectionChanged as EventListener);
-  };
-  }, [slideId]);
+    return () => {
+      window.removeEventListener(
+        'slide:element:created',
+        handleElementCreated as EventListener
+      );
+      window.removeEventListener(
+        'slide:elements:changed',
+        handleElementsChanged as EventListener
+      );
+      window.removeEventListener(
+        'fabric:selection-changed',
+        handleSelectionChanged as EventListener
+      );
+    };
+  }, [slideId, slideElements, onSlideElementsUpdate]);
 
   const handleOrderChange = async (updatedElements: SlideElementPayload[]) => {
-    try {
-      // Cập nhật displayOrder cho từng phần tử
-      const event = new CustomEvent('fabric:update-display-order', {
-        detail: {
-          slideId,
-          elements: updatedElements,
-        },
-      });
-      window.dispatchEvent(event);
-    } catch (error) {
-      console.error('Lỗi khi cập nhật thứ tự:', error);
-    }
+    onSlideElementsUpdate(updatedElements);
+
+    const event = new CustomEvent('fabric:update-display-order', {
+      detail: {
+        slideId,
+        elements: updatedElements,
+      },
+    });
+    window.dispatchEvent(event);
   };
 
   useEffect(() => {
     setCurrentObjectId(null);
     setSelectedAnimation('none');
+    setAnimationMap({});
   }, [slideId]);
 
   return (
@@ -314,7 +346,7 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({ slideId }) => {
         {animationOptions.map((option) => (
           <div
             key={option.value}
-            onMouseEnter={() => handleAnimationPreview(option.value)}
+            // onMouseEnter={() => handleAnimationPreview(option.value)}
             onClick={() => handleAnimationSelect(option.value)}
             className={`
               p-2 rounded-md border cursor-pointer transition-all duration-200 group

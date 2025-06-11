@@ -15,22 +15,28 @@ export const animationMap: Record<string, AnimationFunction> = {
     canvas: fabric.Canvas,
     callback?: () => void
   ) => {
+    gsap.killTweensOf(target);
+
     const initialOpacity = target.opacity ?? 1;
-    target.set('opacity', 0);
-    canvas.renderAll();
-    gsap.to(target, {
-      duration: 1,
-      opacity: initialOpacity,
-      ease: 'sine.inOut',
-      onUpdate: () => canvas.renderAll(),
-      onComplete: callback,
-    });
+    gsap.fromTo(
+      target,
+      { opacity: 0 },
+      {
+        duration: 1,
+        opacity: initialOpacity,
+        ease: 'sine.inOut',
+        onUpdate: () => canvas.renderAll(),
+        onComplete: callback,
+      }
+    );
   },
   SlideInLeft: (
     target: fabric.Object,
     canvas: fabric.Canvas,
     callback?: () => void
   ) => {
+    gsap.killTweensOf(target);
+
     const initialLeft = target.left ?? 0;
     target.set('left', initialLeft - 100);
     target.set('opacity', 0);
@@ -44,11 +50,14 @@ export const animationMap: Record<string, AnimationFunction> = {
       onComplete: callback,
     });
   },
+
   SlideInRight: (
     target: fabric.Object,
     canvas: fabric.Canvas,
     callback?: () => void
   ) => {
+    gsap.killTweensOf(target);
+
     const initialLeft = target.left ?? 0;
     target.set('left', initialLeft + 100);
     target.set('opacity', 0);
@@ -90,21 +99,22 @@ export const animationMap: Record<string, AnimationFunction> = {
     canvas: fabric.Canvas,
     callback?: () => void
   ) => {
-    target.set({
-      angle: -90,
-      opacity: 0,
-    });
-    canvas.renderAll();
-    gsap.to(target, {
-      duration: 0.8,
-      angle: 0,
-      opacity: 1,
-      ease: 'power3.out',
-      onUpdate: () => canvas.renderAll(),
-      onComplete: callback,
-    });
-  },
+    gsap.killTweensOf(target);
 
+    const initialAngle = target.angle ?? 0;
+    gsap.fromTo(
+      target,
+      { angle: -90, opacity: 0 },
+      {
+        duration: 0.8,
+        angle: initialAngle,
+        opacity: 1,
+        ease: 'power3.out',
+        onUpdate: () => canvas.renderAll(),
+        onComplete: callback,
+      }
+    );
+  },
   // Hiệu ứng dành riêng cho TEXT
   // Typewriter: (
   //   target: fabric.Object,
@@ -249,6 +259,8 @@ export const animationMap: Record<string, AnimationFunction> = {
     canvas: fabric.Canvas,
     callback?: () => void
   ) => {
+    gsap.killTweensOf(target);
+
     const initialTop = target.top ?? 0;
     target.set('top', initialTop - 100);
     target.set('opacity', 0);

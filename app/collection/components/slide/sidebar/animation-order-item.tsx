@@ -23,7 +23,7 @@ export const AnimationOrderItem = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.slideElementId });
+  } = useSortable({ id: item.slideElementId || `temp-${Date.now()}` });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -31,7 +31,7 @@ export const AnimationOrderItem = ({
     marginLeft: `${item.displayOrder * 12}px`, // Thụt lề theo displayOrder
   };
 
-  console.log('itemmmmmmmmm', item);
+  // console.log('itemmmmmmmmm', item);
 
   return (
     <div

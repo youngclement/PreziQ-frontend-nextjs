@@ -24,6 +24,7 @@
     PointerSensor,
     useSensor,
     useSensors,
+    UniqueIdentifier,
   } from '@dnd-kit/core';
   import {
     arrayMove,
@@ -33,19 +34,18 @@
   } from '@dnd-kit/sortable';
   import { AnimationOrderItem } from './animation-order-item';
   import type { SlideElementPayload } from '@/types/slideInterface';
-
   interface AnimationOrderListProps {
-    slideElements: SlideElementPayload[];
+    slideElements: SlideElementPayload[] | undefined;
     onOrderChange: (updatedElements: SlideElementPayload[]) => void;
     slideId: string;
   }
 
   export const AnimationOrderList = ({
-    slideElements,
+    slideElements = [],
     onOrderChange,
     slideId,
   }: AnimationOrderListProps) => {
-    const [items, setItems] = useState(slideElements);
+    const [items, setItems] = useState<SlideElementPayload[]>(slideElements);
     const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
 
     const updateItemsWithAnimation = useCallback(
@@ -62,24 +62,92 @@
     );
 
     useEffect(() => {
-      const hasChanged = slideElements.some((newItem, index) => {
-        const oldItem = items[index];
-        return (
-          !oldItem ||
-          newItem.slideElementId !== oldItem.slideElementId ||
-          newItem.displayOrder !== oldItem.displayOrder ||
-          // Chỉ cập nhật nếu entryAnimation từ slideElements mới hơn
-          (newItem.entryAnimation !== oldItem.entryAnimation &&
-            newItem.entryAnimation !== undefined)
-        );
-      });
-    
-      if (hasChanged) {
-        console.log('Updating items due to slideElements change:', slideElements);
-        setItems(slideElements);
-      }
-    }, [slideElements]);
 
+      // const hasChanged = slideElements.some((newItem, index) => {
+      //   const oldItem = items.find((item) => item.slideElementId === newItem.slideElementId);
+      //   return (
+      //     !oldItem ||
+      //     newItem.slideElementId !== oldItem.slideElementId ||
+      //     newItem.displayOrder !== oldItem.displayOrder ||
+      //     // Chỉ cập nhật nếu entryAnimation từ slideElements mới hơn
+      //     (newItem.entryAnimation !== oldItem.entryAnimation &&
+      //       newItem.entryAnimation !== undefined)
+      //   );
+      // });
+    
+      // if (hasChanged) {
+      //   //console.log('Updating items due to slideElements change:', slideElements);
+      //   setItems([...slideElements]);
+      // }
+      setItems([...slideElements]);
+    }, [slideElements, slideId]);
+
+    // useEffect(() => {
+    //   const handleSelectionChanged = (
+    //     e: CustomEvent<{
+    //       slideId: string;
+    //       objectId: string | null;
+    //       animationName: string;
+    //     }>
+    //   ) => {
+    //     if (e.detail.slideId !== slideId) return;
+
+    //     setSelectedElementId(e.detail.objectId);
+    //     if (e.detail.objectId && e.detail.animationName) {
+    //       updateItemsWithAnimation(e.detail.objectId, e.detail.animationName);
+          
+    //       console.log('Updated items with animation:', {
+    //         objectId: e.detail.objectId,
+    //         animationName: e.detail.animationName,
+    //       });
+    //     }
+    //   };
+
+    //   // const handleSetAnimation = (
+    //   //   e: CustomEvent<{
+    //   //     slideId: string;
+    //   //     animationName: string;
+    //   //     objectId: string;
+    //   //   }>
+    //   // ) => {
+    //   //   if (e.detail.slideId !== slideId) return;
+
+    //   //   console.log('Received fabric:selection-changed:', e.detail);
+
+    //   //   setSelectedElementId(e.detail.objectId);
+
+    //   //   // Update the items when animation changes
+    //   //   if (e.detail.objectId && e.detail.animationName) {
+    //   //     updateItemsWithAnimation(e.detail.objectId, e.detail.animationName);
+         
+    //   //     console.log('Updated items with animation:', {
+    //   //       objectId: e.detail.objectId,
+    //   //       animationName: e.detail.animationName,
+    //   //     });
+    //   //   }
+    //   // };
+
+    //   window.addEventListener(
+    //     'fabric:selection-changed',
+    //     handleSelectionChanged as EventListener
+    //   );
+    //   // window.addEventListener(
+    //   //   'fabric:set-animation',
+    //   //   handleSetAnimation as EventListener
+    //   // );
+
+    //   return () => {
+    //     window.removeEventListener(
+    //       'fabric:selection-changed',
+    //       handleSelectionChanged as EventListener
+    //     );
+    //     // window.removeEventListener(
+    //     //   'fabric:set-animation',
+    //     //   handleSetAnimation as EventListener
+    //     // );
+    //   };
+    // }, [slideId, updateItemsWithAnimation]);
+  
     useEffect(() => {
       const handleSelectionChanged = (
         e: CustomEvent<{
@@ -93,7 +161,7 @@
         setSelectedElementId(e.detail.objectId);
         if (e.detail.objectId && e.detail.animationName) {
           updateItemsWithAnimation(e.detail.objectId, e.detail.animationName);
-          
+
           console.log('Updated items with animation:', {
             objectId: e.detail.objectId,
             animationName: e.detail.animationName,
@@ -101,77 +169,42 @@
         }
       };
 
-      // const handleSetAnimation = (
-      //   e: CustomEvent<{
-      //     slideId: string;
-      //     animationName: string;
-      //     objectId: string;
-      //   }>
-      // ) => {
-      //   if (e.detail.slideId !== slideId) return;
-
-      //   console.log('Received fabric:selection-changed:', e.detail);
-
-      //   setSelectedElementId(e.detail.objectId);
-
-      //   // Update the items when animation changes
-      //   if (e.detail.objectId && e.detail.animationName) {
-      //     updateItemsWithAnimation(e.detail.objectId, e.detail.animationName);
-         
-      //     console.log('Updated items with animation:', {
-      //       objectId: e.detail.objectId,
-      //       animationName: e.detail.animationName,
-      //     });
-      //   }
-      // };
-
-      window.addEventListener(
-        'fabric:selection-changed',
-        handleSelectionChanged as EventListener
-      );
-      // window.addEventListener(
-      //   'fabric:set-animation',
-      //   handleSetAnimation as EventListener
-      // );
-
-      return () => {
-        window.removeEventListener(
-          'fabric:selection-changed',
-          handleSelectionChanged as EventListener
-        );
-        // window.removeEventListener(
-        //   'fabric:set-animation',
-        //   handleSetAnimation as EventListener
-        // );
-      };
-    }, [slideId, updateItemsWithAnimation]);
-  
-    useEffect(() => {
       const handleElementCreated = (e: SlideElementEvent) => {
         if (e.detail.slideId !== slideId) return;
   
         setItems((prev) => {
           const newItems = [...prev, e.detail.element];
-          return newItems.sort((a, b) => a.displayOrder - b.displayOrder);
+          const sortedItems = newItems.sort((a, b) => a.displayOrder - b.displayOrder);
+          onOrderChange(sortedItems); 
+          return sortedItems;
         });
       };
   
       const handleElementsChanged = (e: SlideElementEvent) => {
         if (e.detail.slideId !== slideId) return;
+
+        if (!Array.isArray(e.detail.elements)) {
+          console.warn('Invalid slide:elements:changed event: elements is not an array');
+          return;
+        }
   
         if (e.detail.elements) {
-          setItems(e.detail.elements);
+          const sortedElements = e.detail.elements.sort((a, b) => a.displayOrder - b.displayOrder);
+          setItems(sortedElements);
+          onOrderChange(sortedElements); // Notify parent of change
         }
       };
-  
+      
+      window.addEventListener('fabric:selection-changed', handleSelectionChanged as EventListener);
       window.addEventListener('slide:element:created', handleElementCreated);
       window.addEventListener('slide:elements:changed', handleElementsChanged);
   
       return () => {
+        window.removeEventListener('fabric:selection-changed', handleSelectionChanged as EventListener);
         window.removeEventListener('slide:element:created', handleElementCreated);
         window.removeEventListener('slide:elements:changed', handleElementsChanged);
       };
-    }, [slideId]);
+    }, [slideId, updateItemsWithAnimation, onOrderChange]);
 
     const sensors = useSensors(
       useSensor(PointerSensor),
@@ -403,11 +436,13 @@
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={items.map((item) => item.slideElementId)}
+            items={items
+              .filter((item) => item.slideElementId)
+              .map((item) => item.slideElementId as UniqueIdentifier)}
             strategy={verticalListSortingStrategy}
           >
             <div className="space-y-2">
-              {items.map((item) => (
+              {items?.map((item) => (
                 <AnimationOrderItem
                   key={item.slideElementId}
                   item={item}

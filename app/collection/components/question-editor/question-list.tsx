@@ -65,6 +65,10 @@ interface QuestionListProps {
   activities?: Activity[];
   onReorderActivities?: (newOrder: string[]) => void;
   onAddLocationQuestion?: (pointType?: string) => void;
+  slidesBackgrounds: Record<
+    string,
+    { backgroundImage: string; backgroundColor: string }
+  >;
 }
 
 // Sortable Activity Item
@@ -115,21 +119,47 @@ const SortableActivityItem = ({
   };
 
   // Find the associated question to get the most up-to-date text
-  const associatedQuestion = questions.find((q) => q.activity_id === activity.id);
+  const associatedQuestion = questions.find(
+    (q) => q.activity_id === activity.id
+  );
   const displayTitle =
-    associatedQuestion?.question_text || activity.title || `Activity ${index + 1}`;
+    associatedQuestion?.question_text ||
+    activity.title ||
+    `Activity ${index + 1}`;
+
+  const getBackgroundStyle = () => {
+    const style: React.CSSProperties = {};
+
+    if (activity.activity_type_id === 'INFO_SLIDE') {
+      // Chỉ áp dụng logic ưu tiên cho INFO_SLIDE
+      if (activity.backgroundImage) {
+        // Nếu có background image, ưu tiên hiển thị nó
+        style.backgroundImage = `url(${activity.backgroundImage})`;
+        style.backgroundSize = 'cover';
+        style.backgroundPosition = 'center';
+      } else {
+        // Nếu không có background image, sử dụng background color
+        style.backgroundColor = getBackgroundColor();
+      }
+    } else {
+      // Các activity type khác giữ nguyên logic cũ
+      style.backgroundColor = getBackgroundColor();
+      if (activity.backgroundImage) {
+        style.backgroundImage = `url(${activity.backgroundImage})`;
+        style.backgroundSize = 'cover';
+        style.backgroundPosition = 'center';
+      }
+    }
+
+    return style;
+  };
 
   return (
     <div
       ref={setNodeRef}
       style={{
         ...style,
-        backgroundImage: activity.backgroundImage
-          ? `url(${activity.backgroundImage})`
-          : undefined,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundColor: getBackgroundColor(),
+        ...getBackgroundStyle(),
       }}
       onClick={handleActivityClick}
       className={cn(
@@ -156,7 +186,6 @@ const SortableActivityItem = ({
           {activity.activity_type_id === 'INFO_SLIDE'
             ? 'Slide ' + (index + 1)
             : activity.title || `Activity ${index + 1}`}
-
         </h3>
       </div>
     </div>
@@ -506,8 +535,8 @@ export function QuestionList({
 
   // Question type icons
   const questionTypeIcons = {
-    slide: <FileText className='h-3.5 w-3.5' />,
-    info_slide: <FileText className='h-3.5 w-3.5' />,
+    slide: <FileText className="h-3.5 w-3.5" />,
+    info_slide: <FileText className="h-3.5 w-3.5" />,
   };
 
   // Filter questions to show only slides
@@ -653,8 +682,8 @@ export function QuestionList({
     >
       {/* Nút mũi tên luôn hiển thị ở viền trên của question-list */}
       <Button
-        size='sm'
-        variant='secondary'
+        size="sm"
+        variant="secondary"
         onClick={() => handleFullCollapseToggle(!isFullyCollapsed)}
         className={cn(
           'absolute left-1/2 -translate-x-1/2 z-50 shadow-md rounded-full flex items-center justify-center hover:scale-110 transition-all duration-300',
@@ -666,36 +695,36 @@ export function QuestionList({
       >
         {isFullyCollapsed ? (
           <svg
-            width='18'
-            height='14'
-            viewBox='0 0 18 14'
-            fill='none'
-            xmlns='http://www.w3.org/2000/svg'
-            className='text-primary dark:text-primary'
+            width="18"
+            height="14"
+            viewBox="0 0 18 14"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="text-primary dark:text-primary"
           >
             <path
-              d='M1 8L9 2L17 8'
-              stroke='currentColor'
-              strokeWidth='3'
-              strokeLinecap='round'
-              strokeLinejoin='round'
+              d="M1 8L9 2L17 8"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
           </svg>
         ) : (
           <svg
-            width='18'
-            height='14'
-            viewBox='0 0 18 14'
-            fill='none'
-            xmlns='http://www.w3.org/2000/svg'
-            className='text-primary dark:text-primary'
+            width="18"
+            height="14"
+            viewBox="0 0 18 14"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="text-primary dark:text-primary"
           >
             <path
-              d='M1 2L9 8L17 2'
-              stroke='currentColor'
-              strokeWidth='3'
-              strokeLinecap='round'
-              strokeLinejoin='round'
+              d="M1 2L9 8L17 2"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
           </svg>
         )}
@@ -707,13 +736,13 @@ export function QuestionList({
           isFullyCollapsed ? 'hidden' : ''
         )}
       >
-        <div className='w-5'></div> {/* Placeholder to maintain layout */}
-        <h3 className='text-xs font-medium text-gray-500'>Module Collection</h3>
+        <div className="w-5"></div> {/* Placeholder to maintain layout */}
+        <h3 className="text-xs font-medium text-gray-500">Module Collection</h3>
         <Button
-          size='sm'
-          variant='ghost'
+          size="sm"
+          variant="ghost"
           onClick={() => handleCollapseToggle(!isCollapsed)}
-          className='h-5 w-5 p-0 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-800'
+          className="h-5 w-5 p-0 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-800"
           title={isCollapsed ? 'Show slides' : 'Hide slides'}
         ></Button>
       </div>
@@ -737,7 +766,7 @@ export function QuestionList({
               >
                 <div
                   ref={scrollContainerRef}
-                  className='flex overflow-x-auto overflow-y-hidden gap-2 py-1 flex-nowrap cursor-grab'
+                  className="flex overflow-x-auto overflow-y-hidden gap-2 py-1 flex-nowrap cursor-grab"
                   style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
@@ -762,18 +791,22 @@ export function QuestionList({
                       questions={questions} // Add this prop
                     />
                   ))}
-                  <div className='relative'>
+                  <div className="relative">
                     <div
                       ref={addButtonRef}
-                      className='flex-shrink-0 cursor-pointer transition-all w-[100px] h-[70px] rounded-md overflow-hidden shadow-sm border border-dashed border-gray-300 dark:border-gray-700 hover:border-primary dark:hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800 flex flex-col items-center justify-center gap-1'
+                      className="flex-shrink-0 cursor-pointer transition-all w-[100px] h-[70px] rounded-md overflow-hidden shadow-sm border border-dashed border-gray-300 dark:border-gray-700 hover:border-primary dark:hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-800 flex flex-col items-center justify-center gap-1"
                       onClick={handleAddActivity}
                     >
                       {isLoading ? (
-                        <LoadingIndicator size="sm" variant="inline" text="Adding..." />
+                        <LoadingIndicator
+                          size="sm"
+                          variant="inline"
+                          text="Adding..."
+                        />
                       ) : (
                         <>
-                          <Plus className='h-5 w-5 text-primary' />
-                          <p className='text-xs font-medium text-primary'>
+                          <Plus className="h-5 w-5 text-primary" />
+                          <p className="text-xs font-medium text-primary">
                             Add Activity
                           </p>
                         </>
