@@ -22,11 +22,29 @@ interface UploadResponse {
   };
 }
 
+// const extractRelativePath = (fullUrl: string): string => {
+//   // Extract everything after the S3 bucket name
+//   const match = fullUrl.match(/[^/]+\/[^/]+$/);
+//   return match ? match[0] : fullUrl;
+// };
 const extractRelativePath = (fullUrl: string): string => {
-  // Extract everything after the S3 bucket name
+  const url = new URL(fullUrl);
+
+  // Kiểm tra nếu URL trỏ đến S3
+  if (url.hostname.includes('s3.amazonaws.com')) {
+    return url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+  }
+
+  // Trường hợp khác: giữ nguyên logic cũ
   const match = fullUrl.match(/[^/]+\/[^/]+$/);
   return match ? match[0] : fullUrl;
 };
+
+console.log(
+  extractRelativePath(
+    'https://preziq-spring-uploader.s3.amazonaws.com/sounds/custom/HolaHola-a2bb650f-f022-4863-bcb3-e45504b96a1a.mp3'
+  )
+);
 
 export const storageApi = {
   /**

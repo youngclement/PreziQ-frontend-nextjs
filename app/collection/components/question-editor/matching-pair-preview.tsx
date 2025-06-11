@@ -89,14 +89,17 @@ export function MatchingPairPreview({
 }: MatchingPairPreviewProps) {
   const { t } = useTranslation();
   const [connections, setConnections] = useState<Connection[]>([]);
-  const [selectedItem, setSelectedItem] = useState<{ id: string, type: 'left' | 'right' } | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{
+    id: string;
+    type: 'left' | 'right';
+  } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Create a color map for pairs
   const pairColorMap = useMemo(() => {
     const map = new Map<string, string>();
     const pairIds = new Set<string>();
-    question.options.forEach(opt => {
+    question.options.forEach((opt) => {
       if (opt.pair_id) {
         pairIds.add(opt.pair_id);
       }
@@ -118,8 +121,12 @@ export function MatchingPairPreview({
 
   // Add useEffect to handle initial shuffle only once
   useEffect(() => {
-    const columnA = question.options.filter((item) => item.type === 'left');
-    const columnB = question.options.filter((item) => item.type === 'right');
+    const columnA = question.options.filter(
+      (item) => item.type === 'left' && item.id
+    );
+    const columnB = question.options.filter(
+      (item) => item.type === 'right' && item.id
+    );
 
     // Sort both columns by display_order to maintain the correct order
     columnA.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
@@ -143,14 +150,14 @@ export function MatchingPairPreview({
   useEffect(() => {
     const newConnections: Connection[] = [];
     if (columnA.length > 0 && columnB.length > 0) {
-      const rightOptionsWithPairId = columnB.filter(item => item.pair_id);
+      const rightOptionsWithPairId = columnB.filter((item) => item.pair_id);
 
-      columnA.forEach(leftItem => {
+      columnA.forEach((leftItem) => {
         if (leftItem.pair_id) {
           const matchingRightItem = rightOptionsWithPairId.find(
-            rightItem => rightItem.pair_id === leftItem.pair_id
+            (rightItem) => rightItem.pair_id === leftItem.pair_id
           );
-          if (matchingRightItem) {
+          if (matchingRightItem && leftItem.id && matchingRightItem.id) {
             newConnections.push({
               columnA: leftItem.id,
               columnB: matchingRightItem.id,
@@ -209,42 +216,64 @@ export function MatchingPairPreview({
     }
 
     // Editor logic
-    const clickedOption = question.options.find(opt => opt.id === itemId);
+    const clickedOption = question.options.find((opt) => opt.id === itemId);
     if (!clickedOption) return;
 
     if (selectedItem) {
       // An item is already selected
       if (selectedItem.type !== type) {
         // A different column item was clicked, form a pair
-        const leftOption = type === 'right' ? question.options.find(o => o.id === selectedItem.id) : clickedOption;
-        const rightOption = type === 'left' ? question.options.find(o => o.id === selectedItem.id) : clickedOption;
+        const leftOption =
+          type === 'right'
+            ? question.options.find((o) => o.id === selectedItem.id)
+            : clickedOption;
+        const rightOption =
+          type === 'left'
+            ? question.options.find((o) => o.id === selectedItem.id)
+            : clickedOption;
 
         if (!leftOption || !rightOption) {
           setSelectedItem(null);
           return;
         }
 
-        const leftOptionIndex = question.options.findIndex(o => o.id === leftOption.id);
-        const rightOptionIndex = question.options.findIndex(o => o.id === rightOption.id);
+        const leftOptionIndex = question.options.findIndex(
+          (o) => o.id === leftOption.id
+        );
+        const rightOptionIndex = question.options.findIndex(
+          (o) => o.id === rightOption.id
+        );
 
         // If they are already connected, disconnect them
-        if (leftOption.pair_id && rightOption.pair_id && leftOption.pair_id === rightOption.pair_id) {
+        if (
+          leftOption.pair_id &&
+          rightOption.pair_id &&
+          leftOption.pair_id === rightOption.pair_id
+        ) {
           onOptionChange(questionIndex, leftOptionIndex, 'pair_id', null);
           onOptionChange(questionIndex, rightOptionIndex, 'pair_id', null);
         } else {
           // Check if right option is already paired, if so, break that pair
           if (rightOption.pair_id) {
-            const previouslyPairedLeftOption = question.options.find(o => o.pair_id === rightOption.pair_id && o.type === 'left');
+            const previouslyPairedLeftOption = question.options.find(
+              (o) => o.pair_id === rightOption.pair_id && o.type === 'left'
+            );
             if (previouslyPairedLeftOption) {
-              const prevIndex = question.options.findIndex(o => o.id === previouslyPairedLeftOption.id);
+              const prevIndex = question.options.findIndex(
+                (o) => o.id === previouslyPairedLeftOption.id
+              );
               onOptionChange(questionIndex, prevIndex, 'pair_id', null);
             }
           }
           // Check if left option is already paired, if so, break that pair
           if (leftOption.pair_id) {
-            const previouslyPairedRightOption = question.options.find(o => o.pair_id === leftOption.pair_id && o.type === 'right');
+            const previouslyPairedRightOption = question.options.find(
+              (o) => o.pair_id === leftOption.pair_id && o.type === 'right'
+            );
             if (previouslyPairedRightOption) {
-              const prevIndex = question.options.findIndex(o => o.id === previouslyPairedRightOption.id);
+              const prevIndex = question.options.findIndex(
+                (o) => o.id === previouslyPairedRightOption.id
+              );
               onOptionChange(questionIndex, prevIndex, 'pair_id', null);
             }
           }
@@ -256,7 +285,6 @@ export function MatchingPairPreview({
         }
 
         setSelectedItem(null);
-
       } else {
         // Same column item was clicked, change selection
         setSelectedItem({ id: itemId, type });
@@ -302,7 +330,11 @@ export function MatchingPairPreview({
     if (!itemA || !itemB) return false;
 
     // A connection is correct if their pair_ids match and are not null/empty
-    return !!(itemA.pair_id && itemB.pair_id && itemA.pair_id === itemB.pair_id);
+    return !!(
+      itemA.pair_id &&
+      itemB.pair_id &&
+      itemA.pair_id === itemB.pair_id
+    );
   };
 
   const getItemConnections = (itemId: string): Connection[] => {
@@ -336,7 +368,9 @@ export function MatchingPairPreview({
           <div className="w-full space-y-2">
             {columnA.map((item, index) => {
               const pairId = item.pair_id;
-              const connectionColor = pairId ? pairColorMap.get(pairId) : undefined;
+              const connectionColor = pairId
+                ? pairColorMap.get(pairId)
+                : undefined;
 
               return (
                 <motion.div
@@ -345,23 +379,26 @@ export function MatchingPairPreview({
                   className={cn(
                     'p-2 md:p-3 rounded-lg text-center transition-all duration-200 w-full border-2',
                     !previewMode && editMode && 'cursor-pointer',
-                    selectedItem?.id === item.id
-                      ? 'ring-2 ring-blue-500'
-                      : '',
+                    selectedItem?.id === item.id ? 'ring-2 ring-blue-500' : '',
                     connectionColor
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                   )}
-                  style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
-                  onClick={() => handleItemClick('left', item.id)}
+                  style={
+                    connectionColor
+                      ? {
+                          backgroundColor: connectionColor,
+                          borderColor: connectionColor,
+                        }
+                      : {}
+                  }
+                  onClick={() => item.id && handleItemClick('left', item.id)}
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout
                 >
-                  <p className="text-sm md:text-base">
-                    {item.option_text}
-                  </p>
+                  <p className="text-sm md:text-base">{item.option_text}</p>
                 </motion.div>
-              )
+              );
             })}
           </div>
         </div>
@@ -374,7 +411,9 @@ export function MatchingPairPreview({
           <div className="w-full space-y-2">
             {columnB.map((item, index) => {
               const pairId = item.pair_id;
-              const connectionColor = pairId ? pairColorMap.get(pairId) : undefined;
+              const connectionColor = pairId
+                ? pairColorMap.get(pairId)
+                : undefined;
 
               return (
                 <motion.div
@@ -390,16 +429,21 @@ export function MatchingPairPreview({
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                   )}
-                  style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
-                  onClick={() => handleItemClick('right', item.id)}
+                  style={
+                    connectionColor
+                      ? {
+                          backgroundColor: connectionColor,
+                          borderColor: connectionColor,
+                        }
+                      : {}
+                  }
+                  onClick={() => item.id && handleItemClick('right', item.id)}
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout
                 >
-                  <p className="text-sm md:text-base">
-                    {item.option_text}
-                  </p>
+                  <p className="text-sm md:text-base">{item.option_text}</p>
                 </motion.div>
-              )
+              );
             })}
           </div>
         </div>
@@ -413,15 +457,31 @@ export function MatchingPairPreview({
         key={previewUpdate}
       >
         <defs>
-          {PAIR_COLORS.map(color => (
-            <marker key={color} id={`marker-${color.replace('#', '')}`} markerWidth="8" markerHeight="8" refX="4" refY="4">
-              <circle cx="4" cy="4" r="3" stroke={color} className="fill-white" strokeWidth="1.5" />
+          {PAIR_COLORS.map((color) => (
+            <marker
+              key={color}
+              id={`marker-${color.replace('#', '')}`}
+              markerWidth="8"
+              markerHeight="8"
+              refX="4"
+              refY="4"
+            >
+              <circle
+                cx="4"
+                cy="4"
+                r="3"
+                stroke={color}
+                className="fill-white"
+                strokeWidth="1.5"
+              />
             </marker>
           ))}
         </defs>
         <g>
           {connections.map((conn, index) => {
-            const leftItem = question.options.find(o => o.id === conn.columnA);
+            const leftItem = question.options.find(
+              (o) => o.id === conn.columnA
+            );
             const pairId = leftItem?.pair_id;
             const pathColor = pairId ? pairColorMap.get(pairId) : '#3b82f6';
 
@@ -429,17 +489,25 @@ export function MatchingPairPreview({
               <motion.path
                 key={`${conn.columnA}-${conn.columnB}-${index}`}
                 d={getConnectionPath(conn.columnA, conn.columnB)}
-                className='stroke-2 transition-all duration-300'
+                className="stroke-2 transition-all duration-300"
                 stroke={pathColor}
                 strokeWidth="2.5"
                 fill="none"
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 1 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                markerStart={pathColor ? `url(#marker-${pathColor.replace('#', '')})` : undefined}
-                markerEnd={pathColor ? `url(#marker-${pathColor.replace('#', '')})` : undefined}
+                markerStart={
+                  pathColor
+                    ? `url(#marker-${pathColor.replace('#', '')})`
+                    : undefined
+                }
+                markerEnd={
+                  pathColor
+                    ? `url(#marker-${pathColor.replace('#', '')})`
+                    : undefined
+                }
               />
-            )
+            );
           })}
         </g>
       </svg>
@@ -449,7 +517,10 @@ export function MatchingPairPreview({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="outline" className="flex items-center gap-1.5 py-1 px-2.5 bg-background/80 backdrop-blur-sm">
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-1.5 py-1 px-2.5 bg-background/80 backdrop-blur-sm"
+                >
                   <Info className="h-3.5 w-3.5" />
                   <span>Edit Mode</span>
                 </Badge>
