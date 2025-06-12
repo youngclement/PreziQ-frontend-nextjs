@@ -18,10 +18,10 @@ interface CollectionListItemProps {
   collection: Collection;
   activities?: Activity[];
   onEdit?: () => void;
-  onView?: () => void;
+  onView?: (id: string) => void;
   onViewCollection?: () => void;
   onDelete?: (id: string) => void;
-  onTogglePublish?: (e: React.MouseEvent) => void;
+  onTogglePublish?: () => void;
   showPublishToggle?: boolean;
 }
 
@@ -49,7 +49,9 @@ export function CollectionListItem({
 
   const handleViewDetails = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onView(collection.collectionId);
+    if (onView) {
+      onView(collection.collectionId);
+    }
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -108,10 +110,9 @@ export function CollectionListItem({
         <div
           className="sm:w-64 h-40 sm:h-auto bg-cover bg-center relative"
           style={{
-            backgroundImage: `url(${
-              collection.coverImage ||
+            backgroundImage: `url(${collection.coverImage ||
               'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=400&h=250&auto=format&fit=crop'
-            })`,
+              })`,
           }}
         >
           {/* Topic Badge */}
@@ -202,9 +203,8 @@ export function CollectionListItem({
               </span>
               <Switch
                 checked={collection.isPublished}
-                onCheckedChange={(checked, e) => {
-                  e?.stopPropagation();
-                  onTogglePublish(e as React.MouseEvent);
+                onCheckedChange={() => {
+                  onTogglePublish();
                 }}
                 onClick={(e) => e.stopPropagation()}
               />
