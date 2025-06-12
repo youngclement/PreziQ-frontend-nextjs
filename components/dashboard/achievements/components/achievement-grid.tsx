@@ -16,42 +16,11 @@ import {
 import type { Achievement } from '../data/schema';
 import { AchievementCard } from './achievement-card';
 import { DataTablePagination } from '../../users/components/data-table-pagination';
-import { AchievementToolbar } from './achievement-toolbar'
-// Define columns for filtering and sorting
-const columns = [
-  {
-    id: 'select',
-    header: 'Select',
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: 'name',
-    header: 'Tên thành tựu',
-    enableSorting: true,
-    enableHiding: true,
-  },
-  {
-    accessorKey: 'description',
-    header: 'Mô tả',
-    enableSorting: true,
-    enableHiding: true,
-  },
-  {
-    accessorKey: 'requiredPoints',
-    header: 'Điểm yêu cầu',
-    enableSorting: true,
-    enableHiding: true,
-  },
-  {
-    accessorKey: 'createdAt',
-    header: 'Ngày tạo',
-    enableSorting: true,
-    enableHiding: true,
-  },
-];
+import { AchievementToolbar } from './achievement-toolbar';
+import { useLanguage } from '@/contexts/language-context';
 
 export function AchievementGrid({ data }: { data: Achievement[] }) {
+  const { t } = useLanguage();
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -71,7 +40,38 @@ export function AchievementGrid({ data }: { data: Achievement[] }) {
 
   const table = useReactTable({
     data: validData,
-    columns,
+    columns: [
+      {
+        id: 'select',
+        header: t('achievementSelect'),
+        enableSorting: false,
+        enableHiding: false,
+      },
+      {
+        accessorKey: 'name',
+        header: t('achievementName'),
+        enableSorting: true,
+        enableHiding: true,
+      },
+      {
+        accessorKey: 'description',
+        header: t('achievementDescription'),
+        enableSorting: true,
+        enableHiding: true,
+      },
+      {
+        accessorKey: 'requiredPoints',
+        header: t('achievementRequiredPoints'),
+        enableSorting: true,
+        enableHiding: true,
+      },
+      {
+        accessorKey: 'createdAt',
+        header: t('achievementCreatedAt'),
+        enableSorting: true,
+        enableHiding: true,
+      },
+    ],
     state: {
       sorting,
       columnVisibility,
@@ -108,7 +108,7 @@ export function AchievementGrid({ data }: { data: Achievement[] }) {
             ))
         ) : (
           <div className="col-span-full h-24 flex items-center justify-center text-slate-500 bg-slate-50 rounded-md border border-slate-200">
-            Không tìm thấy kết quả
+            {t('achievementNoResults')}
           </div>
         )}
       </div>

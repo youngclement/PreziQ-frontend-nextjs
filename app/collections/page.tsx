@@ -11,6 +11,7 @@ import {
 import { collectionsApi } from '@/api-client';
 import { getTopicImageUrl } from './constants/topic-images';
 import Image from 'next/image';
+import { useLanguage } from '@/contexts/language-context';
 
 // Import các component đã tách
 import { CollectionHeader } from './components/collection-header';
@@ -21,18 +22,21 @@ import { CollectionListItem } from './components/collection-list-item';
 import { JoinSessionBanner } from './components/join-session-banner';
 import { Button } from '@/components/ui/button';
 
-// Topic mapping from API format to display format
-const mapTopicName = (apiTopic: string): string => {
-  // If already in display format, return as is
-  if (apiTopic === "All Topics") return apiTopic;
-
-  // Return the API format directly as that's what we use in our topic-images.ts
-  return apiTopic;
-};
-
 export default function PublishedCollectionsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useLanguage();
+
+  // Topic mapping from API format to display format
+  const mapTopicName = (apiTopic: string): string => {
+    // If already in display format, return as is
+    if (apiTopic === 'All Topics' || apiTopic === t('collections.allTopics'))
+      return t('collections.allTopics');
+
+    // Return the API format directly as that's what we use in our topic-images.ts
+    return apiTopic;
+  };
+
   const [collections, setCollections] = useState<Collection[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<string>('');
@@ -43,6 +47,9 @@ export default function PublishedCollectionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
+  const [collectionActivities, setCollectionActivities] = useState<
+    Record<string, Activity[]>
+  >({});
   const [pagination, setPagination] = useState({
     currentPage: 1,
     pageSize: 10,
@@ -60,12 +67,11 @@ export default function PublishedCollectionsPage() {
     const container = carouselRefs.current.get(topicId);
     if (!container) return;
 
-
     const scrollAmount = 320; // Scroll by approximately 2 cards at once
-    const scrollPosition = direction === 'left'
-      ? container.scrollLeft - scrollAmount
-      : container.scrollLeft + scrollAmount;
-
+    const scrollPosition =
+      direction === 'left'
+        ? container.scrollLeft - scrollAmount
+        : container.scrollLeft + scrollAmount;
 
     container.scrollTo({
       left: scrollPosition,
@@ -92,10 +98,10 @@ export default function PublishedCollectionsPage() {
       }
     } catch (err) {
       console.error('Error fetching topics:', err);
-      setError('Could not load topics. Please try again later.');
+      setError(t('collections.errorLoadingTopics'));
       toast({
-        title: 'Error',
-        description: 'Could not load topics.',
+        title: t('error'),
+        description: t('collections.errorLoadingTopics'),
         variant: 'destructive',
       });
     }
@@ -129,23 +135,81 @@ export default function PublishedCollectionsPage() {
         });
 
         setCollections(allCollections);
+
+        // Lấy activities cho mỗi collection
+        allCollections.forEach((collection) => {
+          fetchCollectionActivities(collection.collectionId);
+        });
+
         setIsLoading(false);
       }
     } catch (err) {
       console.error('Error fetching collections by topic:', err);
-      setError('Could not load collections. Please try again later.');
+      setError(t('collections.errorLoadingCollections'));
       toast({
-        title: 'Error',
-        description: 'Could not load collections.',
+        title: t('error'),
+        description: t('collections.errorLoadingCollections'),
         variant: 'destructive',
       });
       setIsLoading(false);
     }
   };
 
+  const fetchCollectionActivities = async (collectionId: string) => {
+    try {
+      const response = await collectionsApi.getCollectionById(collectionId);
+      if (response?.data?.success && response.data.data) {
+        const collection = response.data.data;
+        // Kiểm tra xem collection có thuộc tính activities không
+        if (collection.activities && Array.isArray(collection.activities)) {
+          setCollectionActivities((prev) => ({
+            ...prev,
+            [collectionId]: collection.activities,
+          }));
+        }
+      }
+    } catch (err) {
+      console.error(
+        `Error fetching activities for collection ${collectionId}:`,
+        err
+      );
+    }
+  };
+
   const getCollectionActivities = (collectionId: string): Activity[] => {
-    // Return empty array for now as we don't have actual activities data yet
+    // Kiểm tra nếu đã có activities trong state
+    if (collectionActivities[collectionId]) {
+      return collectionActivities[collectionId];
+    }
+
+    // Tìm collection trong danh sách để lấy activities nếu có
+    const collection = collections.find((c) => c.collectionId === collectionId);
+    if (collection?.activities) {
+      return collection.activities;
+    }
+
     return [];
+  };
+
+  // Lấy số lượng hoạt động của một collection
+  const getActivityCount = (collectionId: string): number => {
+    // Nếu đã có activities trong state, dùng độ dài của mảng đó
+    if (collectionActivities[collectionId]) {
+      return collectionActivities[collectionId].length;
+    }
+
+    // Nếu collection có sẵn số lượng hoạt động
+    const collection = collections.find((c) => c.collectionId === collectionId);
+    if (collection?._activityCount !== undefined) {
+      return collection._activityCount;
+    }
+
+    // Nếu collection có sẵn mảng activities
+    if (collection?.activities) {
+      return collection.activities.length;
+    }
+
+    return 0;
   };
 
   const handleCreateCollection = () => {
@@ -171,8 +235,8 @@ export default function PublishedCollectionsPage() {
 
       if (response?.data?.success) {
         toast({
-          title: 'Thành công',
-          description: 'Đã xóa bộ sưu tập thành công.',
+          title: t('success'),
+          description: t('collections.deleteSuccess'),
           variant: 'default',
         });
 
@@ -188,13 +252,15 @@ export default function PublishedCollectionsPage() {
         });
         setCollectionsByTopic(updatedCollectionsByTopic);
       } else {
-        throw new Error(response?.data?.message || 'Có lỗi xảy ra khi xóa');
+        throw new Error(
+          response?.data?.message || t('collections.deleteErrorGeneric')
+        );
       }
     } catch (err) {
       console.error('Error deleting collection:', err);
       toast({
-        title: 'Lỗi',
-        description: 'Không thể xóa bộ sưu tập. Vui lòng thử lại sau.',
+        title: t('error'),
+        description: t('collections.deleteError'),
         variant: 'destructive',
       });
     } finally {
@@ -205,13 +271,13 @@ export default function PublishedCollectionsPage() {
   // Filter collections by search query
   const filteredCollections = searchQuery
     ? collections.filter(
-      (collection) =>
-        collection.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (collection.description &&
-          collection.description
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()))
-    )
+        (collection) =>
+          collection.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (collection.description &&
+            collection.description
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()))
+      )
     : collections;
 
   // Handle topic change
@@ -224,7 +290,7 @@ export default function PublishedCollectionsPage() {
     if (searchQuery) {
       // If searching, just return filtered collections in a single group
       return {
-        'Search Results': filteredCollections,
+        [t('collections.searchResults')]: filteredCollections,
       };
     }
 
@@ -243,14 +309,14 @@ export default function PublishedCollectionsPage() {
       {/* Search and View Mode Controls */}
       <div className='flex flex-col md:flex-row justify-between items-center gap-4 mb-8'>
         <h1 className='text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent'>
-          Collections
+          {t('collections.title')}
         </h1>
 
         <div className='flex items-center gap-4'>
           <div className='relative w-full sm:w-60'>
             <input
               type='text'
-              placeholder='Search collections...'
+              placeholder={t('collections.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className='w-full h-10 pl-8 pr-4 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500'
@@ -273,10 +339,11 @@ export default function PublishedCollectionsPage() {
 
           <div className='flex items-center space-x-2 border rounded-lg overflow-hidden'>
             <button
-              className={`flex items-center justify-center w-10 h-10 ${viewMode === 'grid'
-                ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
-                : 'text-gray-600 dark:text-gray-400'
-                }`}
+              className={`flex items-center justify-center w-10 h-10 ${
+                viewMode === 'grid'
+                  ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}
               onClick={() => setViewMode('grid')}
             >
               <svg
@@ -295,10 +362,11 @@ export default function PublishedCollectionsPage() {
               </svg>
             </button>
             <button
-              className={`flex items-center justify-center w-10 h-10 ${viewMode === 'list'
-                ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
-                : 'text-gray-600 dark:text-gray-400'
-                }`}
+              className={`flex items-center justify-center w-10 h-10 ${
+                viewMode === 'list'
+                  ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}
               onClick={() => setViewMode('list')}
             >
               <svg
@@ -347,7 +415,7 @@ export default function PublishedCollectionsPage() {
                 fetchGroupedCollections();
               }}
             >
-              Try Again
+              {t('collections.tryAgain')}
             </Button>
           </div>
         ) : Object.keys(groupedCollections()).length === 0 ? (
@@ -379,7 +447,9 @@ export default function PublishedCollectionsPage() {
                           className='w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
                           onClick={() => scrollCarousel(topic, 'left')}
                         >
-                          <span className='sr-only'>Scroll left</span>
+                          <span className='sr-only'>
+                            {t('collections.scrollLeft')}
+                          </span>
                           <svg
                             xmlns='http://www.w3.org/2000/svg'
                             className='h-4 w-4'
@@ -399,7 +469,9 @@ export default function PublishedCollectionsPage() {
                           className='w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
                           onClick={() => scrollCarousel(topic, 'right')}
                         >
-                          <span className='sr-only'>Scroll right</span>
+                          <span className='sr-only'>
+                            {t('collections.scrollRight')}
+                          </span>
                           <svg
                             xmlns='http://www.w3.org/2000/svg'
                             className='h-4 w-4'

@@ -19,9 +19,11 @@ import QuizCheckboxViewer from './QuizCheckboxViewer';
 import QuizTypeAnswerViewer from './QuizTypeAnswerViewer';
 import { QuizReorderViewer } from './QuizReorderViewer';
 import QuizTrueOrFalseViewer from './QuizTrueOrFalseViewer';
+import QuizLocationViewer from './QuizLocationViewer';
 import CountdownOverlay from './CountdownOverlay';
 import RealtimeLeaderboard from './RealtimeLeaderboard';
 import { motion, AnimatePresence } from 'framer-motion';
+import QuizMatchingPairViewer from './QuizMatchingPairViewer';
 
 interface ParticipantActivitiesProps {
   sessionCode: string;
@@ -387,18 +389,18 @@ export default function ParticipantActivities({
     if (!isSessionEnded || !sessionSummary) return null;
 
     return (
-      <Card className='p-6 mb-6 bg-green-50'>
-        <h2 className='text-xl font-bold mb-4'>Kết quả của bạn</h2>
-        <div className='space-y-2'>
+      <Card className="p-6 mb-6 bg-green-50">
+        <h2 className="text-xl font-bold mb-4">Kết quả của bạn</h2>
+        <div className="space-y-2">
           <p>
-            <span className='font-medium'>Tổng điểm:</span>{' '}
+            <span className="font-medium">Tổng điểm:</span>{' '}
             {sessionSummary.finalScore}
           </p>
           <p>
-            <span className='font-medium'>Xếp hạng cuối cùng:</span>{' '}
+            <span className="font-medium">Xếp hạng cuối cùng:</span>{' '}
             {sessionSummary.finalRanking}
           </p>
-          <p className='mt-4 text-sm text-gray-500'>
+          <p className="mt-4 text-sm text-gray-500">
             Cảm ơn bạn đã tham gia phiên này!
           </p>
         </div>
@@ -409,9 +411,9 @@ export default function ParticipantActivities({
   const renderActivityContent = () => {
     if (!currentActivity) {
       return (
-        <div className='text-center py-12'>
-          <p className='mb-2 text-lg text-white/70'>Chưa có hoạt động nào</p>
-          <p className='text-sm text-white/50'>Đợi host bắt đầu phiên học</p>
+        <div className="text-center py-12">
+          <p className="mb-2 text-lg text-white/70">Chưa có hoạt động nào</p>
+          <p className="text-sm text-white/50">Đợi host bắt đầu phiên học</p>
         </div>
       );
     }
@@ -477,21 +479,39 @@ export default function ParticipantActivities({
                   sessionWebSocket={sessionWs}
                 />
               );
+            case 'QUIZ_LOCATION':
+              return (
+                <QuizLocationViewer
+                  key={currentActivity.activityId}
+                  activity={currentActivity}
+                  sessionId={sessionCode}
+                  sessionWebSocket={sessionWs}
+                />
+              );
+            case 'QUIZ_MATCHING_PAIR':
+              return (
+                <QuizMatchingPairViewer
+                  key={currentActivity.activityId}
+                  activity={currentActivity}
+                  sessionId={sessionCode}
+                  sessionWebSocket={sessionWs}
+                />
+              );
             default:
               return (
-                <div className='p-6 bg-black bg-opacity-20 rounded-lg border border-white/10'>
-                  <h3 className='font-medium text-lg mb-2 text-white/90'>
+                <div className="p-6 bg-black bg-opacity-20 rounded-lg border border-white/10">
+                  <h3 className="font-medium text-lg mb-2 text-white/90">
                     {currentActivity.title || 'Hoạt động chưa được hỗ trợ'}
                   </h3>
-                  <p className='mb-4 text-white/70'>
+                  <p className="mb-4 text-white/70">
                     {currentActivity.description ||
                       'Không có mô tả cho hoạt động này'}
                   </p>
-                  <div className='bg-black bg-opacity-30 p-4 rounded-md border border-white/10'>
-                    <p className='text-sm text-white/50 mb-2'>
+                  <div className="bg-black bg-opacity-30 p-4 rounded-md border border-white/10">
+                    <p className="text-sm text-white/50 mb-2">
                       Chi tiết hoạt động:
                     </p>
-                    <pre className='text-xs whitespace-pre-wrap overflow-auto max-h-60 bg-black bg-opacity-40 p-2 rounded border border-white/10 text-white/60'>
+                    <pre className="text-xs whitespace-pre-wrap overflow-auto max-h-60 bg-black bg-opacity-40 p-2 rounded border border-white/10 text-white/60">
                       {JSON.stringify(currentActivity, null, 2)}
                     </pre>
                   </div>
@@ -504,19 +524,19 @@ export default function ParticipantActivities({
   };
 
   return (
-    <div className='min-h-screen bg-black text-white'>
+    <div className="min-h-screen bg-black text-white">
       {/* Hiển thị CountdownOverlay ở mức cao nhất để che phủ toàn màn hình khi KHÔNG ở chế độ toàn màn hình */}
       {showCountdown && !isFullscreenMode && (
-        <div className='fixed inset-0 z-[9999]'>
+        <div className="fixed inset-0 z-[9999]">
           <CountdownOverlay onComplete={handleCountdownComplete} />
         </div>
       )}
 
       {/* Animated background elements */}
-      <div className='absolute inset-0 overflow-hidden pointer-events-none'>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Gradient orbs with reduced opacity */}
         <motion.div
-          className='absolute top-10 left-10 w-32 h-32 bg-[rgb(198,234,132)] rounded-full filter blur-[80px]'
+          className="absolute top-10 left-10 w-32 h-32 bg-[rgb(198,234,132)] rounded-full filter blur-[80px]"
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.05, 0.1, 0.05],
@@ -528,7 +548,7 @@ export default function ParticipantActivities({
           }}
         />
         <motion.div
-          className='absolute bottom-10 right-10 w-32 h-32 bg-[rgb(255,244,180)] rounded-full filter blur-[80px]'
+          className="absolute bottom-10 right-10 w-32 h-32 bg-[rgb(255,244,180)] rounded-full filter blur-[80px]"
           animate={{
             scale: [1.2, 1, 1.2],
             opacity: [0.05, 0.1, 0.05],
@@ -542,11 +562,11 @@ export default function ParticipantActivities({
         />
 
         {/* Dotted grid */}
-        <div className='absolute inset-0 bg-[radial-gradient(rgba(198,234,132,0.03)_1px,transparent_1px)] bg-[size:20px_20px]' />
+        <div className="absolute inset-0 bg-[radial-gradient(rgba(198,234,132,0.03)_1px,transparent_1px)] bg-[size:20px_20px]" />
 
         {/* Moving light beam with reduced opacity */}
         <motion.div
-          className='absolute top-0 left-0 w-[200vw] h-[200vh] bg-[radial-gradient(circle,rgba(198,234,132,0.015)_0%,transparent_20%)] pointer-events-none'
+          className="absolute top-0 left-0 w-[200vw] h-[200vh] bg-[radial-gradient(circle,rgba(198,234,132,0.015)_0%,transparent_20%)] pointer-events-none"
           animate={{
             x: ['-50%', '0%'],
             y: ['-50%', '0%'],
@@ -561,16 +581,16 @@ export default function ParticipantActivities({
 
       {/* Header - ẩn trong chế độ toàn màn hình */}
       {!isFullscreenMode && (
-        <div className='bg-[#0e1c26]/90 backdrop-blur-md border-b border-white/5 p-4 shadow-lg sticky top-0 z-50'>
-          <div className='container mx-auto flex items-center justify-between'>
-            <div className='flex items-center space-x-4'>
+        <div className="bg-[#0e1c26]/90 backdrop-blur-md border-b border-white/5 p-4 shadow-lg sticky top-0 z-50">
+          <div className="container mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-4">
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: 'spring', stiffness: 400 }}
-                className='relative'
+                className="relative"
               >
                 <motion.div
-                  className='absolute inset-0 bg-gradient-to-br from-[#aef359]/30 to-[#e4f88d]/30 rounded-full blur-md -z-10'
+                  className="absolute inset-0 bg-gradient-to-br from-[#aef359]/30 to-[#e4f88d]/30 rounded-full blur-md -z-10"
                   animate={{
                     scale: [1, 1.2, 1],
                     opacity: [0.3, 0.6, 0.3],
@@ -581,24 +601,24 @@ export default function ParticipantActivities({
                     ease: 'easeInOut',
                   }}
                 />
-                <Avatar className='h-10 w-10 border-2 border-white/10 shadow-inner group'>
-                  <AvatarFallback className='bg-[#0e2838]/80 text-white group-hover:bg-[#0e2838]/60 transition-colors'>
+                <Avatar className="h-10 w-10 border-2 border-white/10 shadow-inner group">
+                  <AvatarFallback className="bg-[#0e2838]/80 text-white group-hover:bg-[#0e2838]/60 transition-colors">
                     {displayName.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
               </motion.div>
               <div>
                 <motion.p
-                  className='font-semibold text-white bg-gradient-to-r from-[#aef359]/90 to-[#e4f88d]/90 text-transparent bg-clip-text'
+                  className="font-semibold text-white bg-gradient-to-r from-[#aef359]/90 to-[#e4f88d]/90 text-transparent bg-clip-text"
                   whileHover={{ scale: 1.05 }}
                   transition={{ type: 'spring', stiffness: 400 }}
                 >
                   {displayName}
                 </motion.p>
-                <div className='flex items-center'>
-                  <span className='text-xs text-white/50'>Điểm: </span>
+                <div className="flex items-center">
+                  <span className="text-xs text-white/50">Điểm: </span>
                   <motion.span
-                    className='text-xs font-bold ml-1 bg-[#0e2838]/80 text-[#aef359] px-2 py-0.5 rounded-full border border-[#aef359]/20'
+                    className="text-xs font-bold ml-1 bg-[#0e2838]/80 text-[#aef359] px-2 py-0.5 rounded-full border border-[#aef359]/20"
                     key={myScore}
                     initial={{ scale: 1.2 }}
                     animate={{ scale: 1 }}
@@ -610,25 +630,25 @@ export default function ParticipantActivities({
               </div>
             </div>
 
-            <div className='text-xs text-white/50 hidden md:block'>
+            <div className="text-xs text-white/50 hidden md:block">
               {connectionStatus}
             </div>
 
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
-                variant='secondary'
+                variant="secondary"
                 onClick={handleLeaveSession}
                 disabled={!isConnected || isSubmitting}
-                className='bg-[#0e2838]/50 text-white hover:bg-[#0e2838]/70 border border-white/10 flex items-center gap-2'
+                className="bg-[#0e2838]/50 text-white hover:bg-[#0e2838]/70 border border-white/10 flex items-center gap-2"
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className='h-4 w-4 animate-spin text-[#aef359]' />
+                    <Loader2 className="h-4 w-4 animate-spin text-[#aef359]" />
                     <span>Đang xử lý...</span>
                   </>
                 ) : (
                   <>
-                    <LogOut className='h-4 w-4 text-[#aef359]' />
+                    <LogOut className="h-4 w-4 text-[#aef359]" />
                     <span>Rời phiên</span>
                   </>
                 )}
@@ -639,11 +659,12 @@ export default function ParticipantActivities({
       )}
 
       <div
-        className={`${isFullscreenMode ? 'p-0' : 'container mx-auto px-4 py-6'
-          }`}
+        className={`${
+          isFullscreenMode ? 'p-0' : 'container mx-auto px-4 py-6'
+        }`}
       >
         {!isFullscreenMode && (
-          <div className='text-xs text-center text-white/50 mb-4 md:hidden'>
+          <div className="text-xs text-center text-white/50 mb-4 md:hidden">
             {connectionStatus}
           </div>
         )}
@@ -655,7 +676,7 @@ export default function ParticipantActivities({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className='mb-6'
+              className="mb-6"
             >
               <Alert
                 variant={isSessionEnded ? 'default' : 'destructive'}
@@ -673,7 +694,7 @@ export default function ParticipantActivities({
 
         {/* Floating Controls - fixed position buttons for fullscreen & sidebar toggle */}
         <motion.div
-          className='fixed top-4 right-4 z-50 flex flex-col gap-2'
+          className="fixed top-4 right-4 z-50 flex flex-col gap-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
@@ -683,38 +704,39 @@ export default function ParticipantActivities({
             onClick={toggleFullscreen}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            className={`p-2 rounded-full ${isFullscreenMode
+            className={`p-2 rounded-full ${
+              isFullscreenMode
                 ? 'bg-[#aef359] text-[#0a1b25]'
                 : 'bg-[#0e2838] text-[#aef359]'
-              } shadow-lg border border-white/10`}
+            } shadow-lg border border-white/10`}
             title={
               isFullscreenMode ? 'Thoát toàn màn hình' : 'Chế độ toàn màn hình'
             }
           >
             <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='24'
-              height='24'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
               {isFullscreenMode ? (
                 <>
-                  <path d='M8 3v4a1 1 0 0 1-1 1H3'></path>
-                  <path d='M21 8h-4a1 1 0 0 1-1-1V3'></path>
-                  <path d='M3 16h4a1 1 0 0 1 1 1v4'></path>
-                  <path d='M16 21v-4a1 1 0 0 1 1-1h4'></path>
+                  <path d="M8 3v4a1 1 0 0 1-1 1H3"></path>
+                  <path d="M21 8h-4a1 1 0 0 1-1-1V3"></path>
+                  <path d="M3 16h4a1 1 0 0 1 1 1v4"></path>
+                  <path d="M16 21v-4a1 1 0 0 1 1-1h4"></path>
                 </>
               ) : (
                 <>
-                  <path d='M3 8V5a2 2 0 0 1 2-2h3'></path>
-                  <path d='M19 8V5a2 2 0 0 0-2-2h-3'></path>
-                  <path d='M3 16v3a2 2 0 0 0 2 2h3'></path>
-                  <path d='M19 16v3a2 2 0 0 1-2 2h-3'></path>
+                  <path d="M3 8V5a2 2 0 0 1 2-2h3"></path>
+                  <path d="M19 8V5a2 2 0 0 0-2-2h-3"></path>
+                  <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+                  <path d="M19 16v3a2 2 0 0 1-2 2h-3"></path>
                 </>
               )}
             </svg>
@@ -724,30 +746,30 @@ export default function ParticipantActivities({
         {/* Floating Controls for fullscreen mode - fixed position always visible */}
         {isFullscreenMode && (
           <motion.div
-            className='fixed top-4 left-4 z-50 flex items-center gap-3 bg-[#0e1c26]/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-xl'
+            className="fixed top-4 left-4 z-50 flex items-center gap-3 bg-[#0e1c26]/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-xl"
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           >
-            <div className='flex items-center gap-2'>
-              <Avatar className='h-8 w-8 border-2 border-white/10 shadow-inner'>
-                <AvatarFallback className='bg-[#0e2838]/80 text-white text-xs'>
+            <div className="flex items-center gap-2">
+              <Avatar className="h-8 w-8 border-2 border-white/10 shadow-inner">
+                <AvatarFallback className="bg-[#0e2838]/80 text-white text-xs">
                   {displayName.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className='text-sm font-medium text-white'>{displayName}</p>
-                <div className='flex items-center'>
-                  <span className='text-xs text-white/50'>Điểm: </span>
-                  <span className='text-xs font-bold ml-1 bg-[#0e2838]/80 text-[#aef359] px-2 py-0.5 rounded-full'>
+                <p className="text-sm font-medium text-white">{displayName}</p>
+                <div className="flex items-center">
+                  <span className="text-xs text-white/50">Điểm: </span>
+                  <span className="text-xs font-bold ml-1 bg-[#0e2838]/80 text-[#aef359] px-2 py-0.5 rounded-full">
                     {myScore}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className='bg-[#0e2838]/80 px-3 py-1 rounded-full text-sm text-white/80 border border-white/10 shadow-inner'>
+            <div className="bg-[#0e2838]/80 px-3 py-1 rounded-full text-sm text-white/80 border border-white/10 shadow-inner">
               Mã: {sessionCode}
             </div>
 
@@ -756,17 +778,17 @@ export default function ParticipantActivities({
               disabled={!isConnected || isSubmitting}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className='bg-red-500/80 hover:bg-red-600/90 text-white border border-red-600/30 flex items-center gap-1 px-3 py-1.5 rounded-full shadow-md'
+              className="bg-red-500/80 hover:bg-red-600/90 text-white border border-red-600/30 flex items-center gap-1 px-3 py-1.5 rounded-full shadow-md"
             >
-              <LogOut className='h-4 w-4' />
-              <span className='text-sm font-medium'>Rời phiên</span>
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm font-medium">Rời phiên</span>
             </motion.button>
           </motion.div>
         )}
 
         {/* Main layout with sidebar */}
-        <div className='relative' ref={quizContainerRef}>
-          <div className='w-full'>
+        <div className="relative" ref={quizContainerRef}>
+          <div className="w-full">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -777,9 +799,9 @@ export default function ParticipantActivities({
               `}
             >
               {!isFullscreenMode && (
-                <div className='bg-gradient-to-r from-[#0e2838]/80 to-[#183244]/80 px-6 py-4 border-b border-white/10'>
-                  <h2 className='text-xl font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text flex items-center'>
-                    <span className='mr-2'>Hoạt động hiện tại</span>
+                <div className="bg-gradient-to-r from-[#0e2838]/80 to-[#183244]/80 px-6 py-4 border-b border-white/10">
+                  <h2 className="text-xl font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text flex items-center">
+                    <span className="mr-2">Hoạt động hiện tại</span>
                     {isLoading && (
                       <motion.div
                         animate={{ rotate: 360 }}
@@ -789,30 +811,32 @@ export default function ParticipantActivities({
                           ease: 'linear',
                         }}
                       >
-                        <Loader2 className='h-4 w-4 text-[#aef359]' />
+                        <Loader2 className="h-4 w-4 text-[#aef359]" />
                       </motion.div>
                     )}
                   </h2>
                 </div>
               )}
               <div
-                className={`${isFullscreenMode
+                className={`${
+                  isFullscreenMode
                     ? 'h-screen flex items-center justify-center'
                     : 'p-6'
-                  }`}
+                }`}
               >
                 {/* Hiển thị CountdownOverlay trong phần nội dung khi ở chế độ toàn màn hình */}
                 {showCountdown && isFullscreenMode && (
-                  <div className='absolute inset-0 z-50'>
+                  <div className="absolute inset-0 z-50">
                     <CountdownOverlay onComplete={handleCountdownComplete} />
                   </div>
                 )}
 
                 <div
                   className={`
-                    ${isFullscreenMode
-                      ? 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
-                      : ''
+                    ${
+                      isFullscreenMode
+                        ? 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
+                        : ''
                     }
                   `}
                 >
@@ -837,46 +861,46 @@ export default function ParticipantActivities({
               pointerEvents: isSidebarCollapsed ? 'none' : 'auto',
             }}
           >
-            <div className='p-4 h-full flex flex-col'>
-              <div className='mb-4 flex items-center justify-between'>
-                <h2 className='text-lg font-semibold flex items-center gap-2 text-white/90'>
-                  <Users className='h-5 w-5 text-[#aef359]' />
+            <div className="p-4 h-full flex flex-col">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-white/90">
+                  <Users className="h-5 w-5 text-[#aef359]" />
                   <span>Người tham gia</span>
                   <motion.span
                     key={participants.length}
                     initial={{ scale: 1.2 }}
                     animate={{ scale: 1 }}
-                    className='ml-2 bg-[#0e2838]/80 px-2 py-0.5 rounded-full text-sm text-[#aef359] border border-[#aef359]/20'
+                    className="ml-2 bg-[#0e2838]/80 px-2 py-0.5 rounded-full text-sm text-[#aef359] border border-[#aef359]/20"
                   >
                     {participants.length}
                   </motion.span>
                 </h2>
 
                 <motion.button
-                  className='bg-[#0e2838]/50 p-1.5 rounded-full border border-white/10 shadow-inner'
+                  className="bg-[#0e2838]/50 p-1.5 rounded-full border border-white/10 shadow-inner"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setIsSidebarCollapsed(true)}
                 >
                   <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    width='16'
-                    height='16'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    className='text-[#aef359]'
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-[#aef359]"
                   >
-                    <line x1='18' y1='6' x2='6' y2='18'></line>
-                    <line x1='6' y1='6' x2='18' y2='18'></line>
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
                   </svg>
                 </motion.button>
               </div>
 
-              <div className='flex-grow overflow-auto pr-1 custom-scrollbar'>
+              <div className="flex-grow overflow-auto pr-1 custom-scrollbar">
                 <RealtimeLeaderboard
                   participants={participants}
                   currentUserName={displayName}
@@ -893,43 +917,44 @@ export default function ParticipantActivities({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1, duration: 0.5 }}
-            className='mt-8 text-center'
+            className="mt-8 text-center"
           >
-            <p className='text-xs text-white/30'>
-              PreziQ &copy; {new Date().getFullYear()}
+            <p className="text-xs text-white/30">
+              PreziQ! &copy; {new Date().getFullYear()}
             </p>
           </motion.div>
         )}
 
         {/* Sidebar toggle button positioned on the boundary */}
-        <div className='fixed right-0 top-1/2 transform -translate-y-1/2 z-50'>
+        <div className="fixed right-0 top-1/2 transform -translate-y-1/2 z-50">
           <motion.button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`p-3 rounded-l-xl ${isSidebarCollapsed
+            className={`p-3 rounded-l-xl ${
+              isSidebarCollapsed
                 ? 'bg-[#aef359] text-[#0e1c26]'
                 : 'bg-[#0e2838] text-[#aef359]'
-              } shadow-lg border border-r-0 border-[#aef359]/30 flex items-center justify-center`}
+            } shadow-lg border border-r-0 border-[#aef359]/30 flex items-center justify-center`}
             title={
               isSidebarCollapsed ? 'Hiện bảng xếp hạng' : 'Ẩn bảng xếp hạng'
             }
           >
             {isSidebarCollapsed ? (
-              <Users className='h-5 w-5' />
+              <Users className="h-5 w-5" />
             ) : (
               <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='20'
-                height='20'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <polyline points='15 18 9 12 15 6'></polyline>
+                <polyline points="15 18 9 12 15 6"></polyline>
               </svg>
             )}
           </motion.button>

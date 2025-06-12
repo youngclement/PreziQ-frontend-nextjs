@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -31,6 +32,7 @@ import { Permission } from '../data/schema';
 import { toast } from 'react-toastify';
 import { usePermissions } from '@/components/dashboard/permissions/context/permissions-context';
 import { permissionsApi } from '@/api-client';
+import { useLanguage } from '@/contexts/language-context';
 
 // Schema cho form thêm mới
 const addPermissionSchema = z.object({
@@ -69,6 +71,7 @@ export function PermissionsFormDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [availableModules, setAvailableModules] = useState<string[]>([]);
   const { refetch } = usePermissions();
+  const { t } = useLanguage();
 
   const isEditMode = !!currentRow;
   const schema = isEditMode ? editPermissionSchema : addPermissionSchema;
@@ -193,25 +196,26 @@ export function PermissionsFormDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {currentRow ? 'Chỉnh sửa' : 'Thêm'} Permission
+            {currentRow ? t('permissionEditTitle') : t('permissionAddTitle')}
           </DialogTitle>
           <DialogDescription>
-            {currentRow
-              ? 'Chỉnh sửa thông tin permission hiện tại.'
-              : 'Thêm một permission mới vào hệ thống.'}
+            {currentRow ? t('permissionEditDesc') : t('permissionAddDesc')}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name='name'
+              name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tên Permission</FormLabel>
+                  <FormLabel>{t('permissionName')}</FormLabel>
                   <FormControl>
-                    <Input placeholder='Nhập tên permission' {...field} />
+                    <Input
+                      placeholder={t('permissionNamePlaceholder')}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -220,12 +224,15 @@ export function PermissionsFormDialog({
 
             <FormField
               control={form.control}
-              name='apiPath'
+              name="apiPath"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>API Path</FormLabel>
+                  <FormLabel>{t('permissionApiPath')}</FormLabel>
                   <FormControl>
-                    <Input placeholder='Nhập API path' {...field} />
+                    <Input
+                      placeholder={t('permissionApiPathPlaceholder')}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -234,15 +241,17 @@ export function PermissionsFormDialog({
 
             <FormField
               control={form.control}
-              name='httpMethod'
+              name="httpMethod"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>HTTP Method</FormLabel>
+                  <FormLabel>{t('permissionHttpMethod')}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue>
-                          {field.value ? field.value : 'Chọn HTTP method'}
+                          {field.value
+                            ? field.value
+                            : t('permissionHttpMethodPlaceholder')}
                         </SelectValue>
                       </SelectTrigger>
                     </FormControl>
@@ -261,23 +270,23 @@ export function PermissionsFormDialog({
 
             <FormField
               control={form.control}
-              name='module'
+              name="module"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Module</FormLabel>
+                  <FormLabel>{t('permissionModule')}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value || 'none'}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder='Chọn module' />
+                        <SelectValue
+                          placeholder={t('permissionModulePlaceholder')}
+                        />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value='none'>
-                        Không thuộc module nào
-                      </SelectItem>
+                      <SelectItem value="none">{t('none')}</SelectItem>
                       {availableModules.map((module) => (
                         <SelectItem key={module} value={module}>
                           {module}
@@ -290,18 +299,18 @@ export function PermissionsFormDialog({
               )}
             />
 
-            <div className='flex justify-end gap-2'>
+            <DialogFooter>
               <Button
-                type='button'
-                variant='outline'
+                type="button"
+                variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                Hủy
+                {t('cancel')}
               </Button>
-              <Button type='submit' disabled={isLoading}>
-                {isLoading ? 'Đang xử lý...' : currentRow ? 'Cập nhật' : 'Tạo'}
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? t('permissionUpdating') : t('submit')}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </Form>
       </DialogContent>

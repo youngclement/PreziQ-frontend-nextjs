@@ -16,6 +16,7 @@ export interface Collection {
   views?: number;
   likes?: number;
   participants?: number;
+  activities?: Activity[]; // Danh sách activities của collection
 }
 
 export interface Category {
@@ -35,16 +36,16 @@ export interface Activity {
   updated_at?: string;
   duration?: number; // in minutes
   activity_type?:
-    | "Quiz"
-    | "Poll"
-    | "Discussion"
-    | "Case Study"
-    | "Assignment"
-    | "Presentation"
-    | "Video"
-    | "Reading"
-    | "Exercise"
-    | "Game";
+    | 'Quiz'
+    | 'Poll'
+    | 'Discussion'
+    | 'Case Study'
+    | 'Assignment'
+    | 'Presentation'
+    | 'Video'
+    | 'Reading'
+    | 'Exercise'
+    | 'Game';
 }
 
 // Interface để mapping dữ liệu từ API

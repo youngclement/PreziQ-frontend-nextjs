@@ -17,6 +17,7 @@ import { DataTableRowActions } from './data-table-row-actions';
 import { Button } from '@/components/ui/button';
 import { useDroppable } from '@dnd-kit/core';
 import { DragOverlay } from '@dnd-kit/core';
+import { useLanguage } from '@/contexts/language-context';
 
 interface TreeItemProps {
   id: UniqueIdentifier;
@@ -79,6 +80,8 @@ export function SortableTreeItem({
     transition,
   };
 
+  const { t } = useLanguage();
+
   return (
     <div
       ref={setRefs}
@@ -89,7 +92,7 @@ export function SortableTreeItem({
         isModule && 'bg-muted/30',
         isModule && 'hover:bg-muted/50',
         isOver && 'ring-2 ring-primary ring-offset-2 bg-muted/60',
-        isModule && isOver && 'scale-[1.02]',
+        isModule && isOver && 'scale-[1.02]'
       )}
     >
       <div className="flex items-center justify-between py-2 px-3">
@@ -109,7 +112,7 @@ export function SortableTreeItem({
               <IconChevronRight
                 className={cn(
                   'h-4 w-4 shrink-0 transition-transform duration-200',
-                  !collapsed && 'rotate-90',
+                  !collapsed && 'rotate-90'
                 )}
               />
             </button>

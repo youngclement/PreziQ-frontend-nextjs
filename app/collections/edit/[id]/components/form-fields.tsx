@@ -19,12 +19,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { collectionsApi } from '@/api-client';
+import { Loader2 } from 'lucide-react';
 
 interface FormFieldsProps {
   control: Control<CollectionFormValues>;
+  form: any;
+  collectionId: string;
 }
 
-export function FormFields({ control }: FormFieldsProps) {
+export function FormFields({ control, form, collectionId }: FormFieldsProps) {
+  const [isUpdatingPublishStatus, setIsUpdatingPublishStatus] = useState(false);
+  const { toast } = useToast();
+
   const topics: TopicType[] = [
     'ART',
     'SCIENCE',
@@ -46,6 +55,42 @@ export function FormFields({ control }: FormFieldsProps) {
 
   const getTopicLabel = (topic: TopicType): string => {
     return topic.charAt(0) + topic.slice(1).toLowerCase();
+  };
+
+  const handlePublishToggle = async (checked: boolean) => {
+    if (!collectionId) return;
+
+    setIsUpdatingPublishStatus(true);
+    try {
+      // Call API to update just the isPublished field
+      const response = await collectionsApi.updateCollection(collectionId, {
+        isPublished: checked,
+      });
+
+      // Update the form value
+      form.setValue('isPublished', checked);
+
+      toast({
+        title: checked ? 'Đã xuất bản bộ sưu tập' : 'Đã hủy xuất bản bộ sưu tập',
+        description: checked
+          ? 'Bộ sưu tập của bạn hiện đang công khai'
+          : 'Bộ sưu tập của bạn đang ở chế độ riêng tư',
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error updating publish status:', error);
+
+      // Revert the form value on error
+      form.setValue('isPublished', !checked);
+
+      toast({
+        title: 'Cập nhật thất bại',
+        description: 'Không thể cập nhật trạng thái bộ sưu tập. Vui lòng thử lại.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdatingPublishStatus(false);
+    }
   };
 
   return (
@@ -165,11 +210,17 @@ export function FormFields({ control }: FormFieldsProps) {
               </FormDescription>
             </div>
             <FormControl>
-              <Switch
-                checked={field.value}
-                onCheckedChange={field.onChange}
-                className='data-[state=checked]:bg-indigo-600'
-              />
+              <div className='flex items-center'>
+                {isUpdatingPublishStatus && (
+                  <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                )}
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={handlePublishToggle}
+                  disabled={isUpdatingPublishStatus}
+                  className='data-[state=checked]:bg-indigo-600'
+                />
+              </div>
             </FormControl>
           </FormItem>
         )}

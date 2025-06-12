@@ -9,6 +9,7 @@ import { SlideElementPayload } from '@/types/slideInterface';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import LoadingIndicator from '@/components/common/loading-indicator';
 
 interface SlideElement {
     slideElementId: string;
@@ -71,133 +72,133 @@ const SlideShow: React.FC<SlideShowProps> = ({ activities, editMode = false }) =
     const currentSlide = currentActivity?.slide;
 
     // Khởi tạo canvas
-    const initCanvas = (canvasEl: HTMLCanvasElement, backgroundColor: string) => {
-        const canvas = new fabric.Canvas(canvasEl, {
-            width: 1200, // Kích thước mới cho preview
-            height: 680,
-            backgroundColor,
-            selection: editMode, // Cho phép chọn chỉ trong chế độ chỉnh sửa
-        });
+    // const initCanvas = (canvasEl: HTMLCanvasElement, backgroundColor: string) => {
+    //     const canvas = new fabric.Canvas(canvasEl, {
+    //         width: 1200, // Kích thước mới cho preview
+    //         height: 680,
+    //         backgroundColor,
+    //         selection: editMode, // Cho phép chọn chỉ trong chế độ chỉnh sửa
+    //     });
 
-        // Thêm sự kiện cho chế độ chỉnh sửa
-        if (editMode) {
-            canvas.on('object:modified', handleObjectModified);
-            canvas.on('object:added', () => {
-                hasChanges.current = true;
-            });
-            canvas.on('text:changed', handleTextChanged);
-        }
+    //     // Thêm sự kiện cho chế độ chỉnh sửa
+    //     if (editMode) {
+    //         canvas.on('object:modified', handleObjectModified);
+    //         canvas.on('object:added', () => {
+    //             hasChanges.current = true;
+    //         });
+    //         canvas.on('text:changed', handleTextChanged);
+    //     }
 
-        fabricCanvas.current = canvas;
-        return canvas;
-    };
+    //     fabricCanvas.current = canvas;
+    //     return canvas;
+    // };
 
-    // Xử lý khi đối tượng được chỉnh sửa
-    const handleObjectModified = (options: any) => {
-        if (!editMode || !options.target) return;
-        hasChanges.current = true;
+    // // Xử lý khi đối tượng được chỉnh sửa
+    // const handleObjectModified = (options: any) => {
+    //     if (!editMode || !options.target) return;
+    //     hasChanges.current = true;
 
-        const obj = options.target;
-        const slideElementId = obj.get('slideElementId');
-        if (!slideElementId) return;
+    //     const obj = options.target;
+    //     const slideElementId = obj.get('slideElementId');
+    //     if (!slideElementId) return;
 
-        updateSlideElement(obj);
-    };
+    //     updateSlideElement(obj);
+    // };
 
-    // Xử lý khi text thay đổi
-    const handleTextChanged = (options: any) => {
-        if (!editMode || !options.target) return;
-        hasChanges.current = true;
+    // // Xử lý khi text thay đổi
+    // const handleTextChanged = (options: any) => {
+    //     if (!editMode || !options.target) return;
+    //     hasChanges.current = true;
 
-        const obj = options.target;
-        const slideElementId = obj.get('slideElementId');
-        if (!slideElementId) return;
+    //     const obj = options.target;
+    //     const slideElementId = obj.get('slideElementId');
+    //     if (!slideElementId) return;
 
-        updateSlideElement(obj);
-    };
+    //     updateSlideElement(obj);
+    // };
 
     // Hàm cập nhật slide element thông qua API
-    const updateSlideElement = debounce((obj: fabric.Object) => {
-        if (!obj || !currentSlide) return;
+    // const updateSlideElement = debounce((obj: fabric.Object) => {
+    //     if (!obj || !currentSlide) return;
 
-        const slideElementId = obj.get('slideElementId');
-        if (!slideElementId) return;
+    //     const slideElementId = obj.get('slideElementId');
+    //     if (!slideElementId) return;
 
-        const canvas = fabricCanvas.current;
-        if (!canvas) return;
+    //     const canvas = fabricCanvas.current;
+    //     if (!canvas) return;
 
-        setIsSaving(true);
+    //     setIsSaving(true);
 
-        const zoom = canvas.getZoom();
-        const cw = canvas.getWidth()! / zoom;
-        const ch = canvas.getHeight()! / zoom;
+    //     const zoom = canvas.getZoom();
+    //     const cw = canvas.getWidth()! / zoom;
+    //     const ch = canvas.getHeight()! / zoom;
 
-        const rawLeft = obj.left! / zoom;
-        const rawTop = obj.top! / zoom;
+    //     const rawLeft = obj.left! / zoom;
+    //     const rawTop = obj.top! / zoom;
 
-        let w: number, h: number;
-        if (obj.type === 'image') {
-            w = (obj as fabric.Image).getScaledWidth() / zoom;
-            h = (obj as fabric.Image).getScaledHeight() / zoom;
-        } else {
-            w = obj.width!;
-            h = (obj as fabric.Textbox).getScaledHeight() / zoom;
-        }
+    //     let w: number, h: number;
+    //     if (obj.type === 'image') {
+    //         w = (obj as fabric.Image).getScaledWidth() / zoom;
+    //         h = (obj as fabric.Image).getScaledHeight() / zoom;
+    //     } else {
+    //         w = obj.width!;
+    //         h = (obj as fabric.Textbox).getScaledHeight() / zoom;
+    //     }
 
-        const base = {
-            positionX: (rawLeft / cw) * 100,
-            positionY: (rawTop / ch) * 100,
-            width: (w / cw) * 100,
-            height: (h / ch) * 100,
-            rotation: obj.angle || 0,
-            layerOrder: canvas.getObjects().indexOf(obj),
-        };
+    //     const base = {
+    //         positionX: (rawLeft / cw) * 100,
+    //         positionY: (rawTop / ch) * 100,
+    //         width: (w / cw) * 100,
+    //         height: (h / ch) * 100,
+    //         rotation: obj.angle || 0,
+    //         layerOrder: canvas.getObjects().indexOf(obj),
+    //     };
 
-        let payload: SlideElementPayload;
-        if (obj.type === 'textbox') {
-            const fontSizePercent =
-                ((obj as fabric.Textbox).fontSize! / ORIGINAL_CANVAS_WIDTH) * 100;
-            const textboxJson = {
-                ...obj.toJSON(),
-                fontSize: fontSizePercent,
-            };
-            if (textboxJson.styles && Object.keys(textboxJson.styles).length > 0) {
-                for (const lineIndex in textboxJson.styles) {
-                    const line = textboxJson.styles[lineIndex];
-                    for (const charIndex in line) {
-                        if (line[charIndex].fontSize) {
-                            line[charIndex].fontSize =
-                                (line[charIndex].fontSize / ORIGINAL_CANVAS_WIDTH) * 100;
-                        }
-                    }
-                }
-            }
-            payload = {
-                ...base,
-                slideElementType: 'TEXT',
-                content: JSON.stringify(textboxJson),
-            };
-        } else {
-            payload = {
-                ...base,
-                slideElementType: 'IMAGE',
-                sourceUrl: obj.get('sourceUrl') || (obj as fabric.Image).getSrc(),
-            };
-        }
+    //     let payload: SlideElementPayload;
+    //     if (obj.type === 'textbox') {
+    //         const fontSizePercent =
+    //             ((obj as fabric.Textbox).fontSize! / ORIGINAL_CANVAS_WIDTH) * 100;
+    //         const textboxJson = {
+    //             ...obj.toJSON(),
+    //             fontSize: fontSizePercent,
+    //         };
+    //         if (textboxJson.styles && Object.keys(textboxJson.styles).length > 0) {
+    //             for (const lineIndex in textboxJson.styles) {
+    //                 const line = textboxJson.styles[lineIndex];
+    //                 for (const charIndex in line) {
+    //                     if (line[charIndex].fontSize) {
+    //                         line[charIndex].fontSize =
+    //                             (line[charIndex].fontSize / ORIGINAL_CANVAS_WIDTH) * 100;
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //         payload = {
+    //             ...base,
+    //             slideElementType: 'TEXT',
+    //             content: JSON.stringify(textboxJson),
+    //         };
+    //     } else {
+    //         payload = {
+    //             ...base,
+    //             slideElementType: 'IMAGE',
+    //             sourceUrl: obj.get('sourceUrl') || (obj as fabric.Image).getSrc(),
+    //         };
+    //     }
 
-        slidesApi
-            .updateSlidesElement(currentSlide.slideId, slideElementId, payload)
-            .then(() => {
-                console.log('Element updated successfully');
-                hasChanges.current = false;
-            })
-            .catch((err) => {
-                console.error('Error updating element:', err);
-            })
-            .finally(() => {
-                setIsSaving(false);
-            });
-    }, 500);
+    //     slidesApi
+    //         .updateSlidesElement(currentSlide.slideId, slideElementId, payload)
+    //         .then(() => {
+    //             console.log('Element updated successfully');
+    //             hasChanges.current = false;
+    //         })
+    //         .catch((err) => {
+    //             console.error('Error updating element:', err);
+    //         })
+    //         .finally(() => {
+    //             setIsSaving(false);
+    //         });
+    // }, 500);
 
     // Thêm phần tử mới vào slide
     const addSlideElement = async (element: any) => {
@@ -408,22 +409,22 @@ const SlideShow: React.FC<SlideShowProps> = ({ activities, editMode = false }) =
     };
 
     // Khởi tạo canvas và render slide hiện tại
-    useEffect(() => {
-        if (!canvasRef.current || !activities || activities.length === 0) return;
+    // useEffect(() => {
+    //     if (!canvasRef.current || !activities || activities.length === 0) return;
 
-        const canvas = initCanvas(
-            canvasRef.current,
-            activities[currentSlideIndex]?.backgroundColor || '#fff'
-        );
+    //     const canvas = initCanvas(
+    //         canvasRef.current,
+    //         activities[currentSlideIndex]?.backgroundColor || '#fff'
+    //     );
 
-        renderSlide(activities[currentSlideIndex]);
+    //     renderSlide(activities[currentSlideIndex]);
 
-        return () => {
-            if (canvas) {
-                canvas.dispose();
-            }
-        };
-    }, [activities, currentSlideIndex]);
+    //     return () => {
+    //         if (canvas) {
+    //             canvas.dispose();
+    //         }
+    //     };
+    // }, [activities, currentSlideIndex]);
 
     // Xử lý phím khi xem slide
     useEffect(() => {
@@ -493,8 +494,8 @@ const SlideShow: React.FC<SlideShowProps> = ({ activities, editMode = false }) =
                 }}
             >
                 {loading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
-                        <Spinner />
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10">
+                        <LoadingIndicator variant="default" size="lg" />
                     </div>
                 )}
                 <canvas ref={canvasRef} />
@@ -533,4 +534,4 @@ const SlideShow: React.FC<SlideShowProps> = ({ activities, editMode = false }) =
     );
 };
 
-export default SlideShow; 
+export default SlideShow;

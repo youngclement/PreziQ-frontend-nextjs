@@ -9,6 +9,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { useLanguage } from '@/contexts/language-context';
+import { SlidersHorizontal } from 'lucide-react';
 
 interface DataTableViewOptionsProps<TData> {
   table: Table<TData>;
@@ -17,6 +19,8 @@ interface DataTableViewOptionsProps<TData> {
 export function DataTableViewOptions<TData>({
   table,
 }: DataTableViewOptionsProps<TData>) {
+  const { t } = useLanguage();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -25,18 +29,18 @@ export function DataTableViewOptions<TData>({
           size="sm"
           className="ml-auto hidden h-8 lg:flex"
         >
-          <MixerHorizontalIcon className="mr-2 h-4 w-4" />
-          View
+          <SlidersHorizontal className="mr-2 h-4 w-4" />
+          {t('tableView')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[150px]">
-        <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('tableColumns')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()
           .filter(
             (column) =>
-              typeof column.accessorFn !== 'undefined' && column.getCanHide(),
+              typeof column.accessorFn !== 'undefined' && column.getCanHide()
           )
           .map((column) => {
             return (
@@ -46,7 +50,7 @@ export function DataTableViewOptions<TData>({
                 checked={column.getIsVisible()}
                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
               >
-                {column.id}
+                {t(column.id)}
               </DropdownMenuCheckboxItem>
             );
           })}

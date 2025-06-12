@@ -7,6 +7,7 @@ import { Permission } from '../data/schema';
 import { IconChevronRight } from '@tabler/icons-react';
 import { cn } from '@/lib/utils';
 import { Row } from '@tanstack/react-table';
+import { useLanguage } from '@/contexts/language-context';
 
 interface TableItem {
   id: string;
@@ -25,7 +26,9 @@ interface TableItem {
 export const createColumns = (
   expandedModules: Record<string, boolean>,
   onDelete: (permission: Permission) => void,
-): ColumnDef<TableItem>[] => [
+  t: (key: string) => string
+): ColumnDef<TableItem>[] => {
+  return [
     {
       id: 'select',
       header: ({ table }) => (
@@ -48,7 +51,7 @@ export const createColumns = (
     {
       accessorKey: 'name',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Tên" />
+        <DataTableColumnHeader column={column} title={t('permissionName')} />
       ),
       cell: ({ row }) => {
         const item = row.original;
@@ -58,7 +61,7 @@ export const createColumns = (
               <IconChevronRight
                 className={cn(
                   'h-4 w-4 shrink-0 transition-transform duration-200',
-                  expandedModules[item.id] && 'rotate-90',
+                  expandedModules[item.id] && 'rotate-90'
                 )}
               />
               <Badge variant="outline" className="font-semibold">
@@ -73,7 +76,7 @@ export const createColumns = (
     {
       accessorKey: 'apiPath',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="API Path" />
+        <DataTableColumnHeader column={column} title={t('permissionApiPath')} />
       ),
     },
     {
@@ -91,7 +94,8 @@ export const createColumns = (
             permissionId: row.original.permissionId,
             name: row.original.name,
             apiPath: row.original.apiPath || '',
-            httpMethod: (row.original.httpMethod as Permission['httpMethod']) || 'GET',
+            httpMethod:
+              (row.original.httpMethod as Permission['httpMethod']) || 'GET',
             module: row.original.module || '',
             createdAt: row.original.createdAt || '',
             updatedAt: row.original.updatedAt || '',
@@ -111,3 +115,4 @@ export const createColumns = (
       },
     },
   ];
+};

@@ -107,7 +107,7 @@ const TextEditorToolbar = React.memo(({ slideId }: { slideId: string }) => {
 
   useEffect(() => {
     const handler = (e: CustomEvent<any>) => {
-      console.log('got format:', e.detail);
+      // console.log('got format:', e.detail);
       setFormatting((prev) => ({
         ...prev,
         ...e.detail,

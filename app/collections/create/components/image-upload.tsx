@@ -16,6 +16,7 @@ import { CollectionFormValues } from '../types';
 import { storageApi } from '@/api-client/storage-api';
 import dynamic from 'next/dynamic';
 import { getCroppedImg } from '@/utils/crop-image';
+import { useLanguage } from '@/contexts/language-context';
 
 // Import Cropper một cách dynamic để tránh lỗi SSR
 const Cropper = dynamic(
@@ -40,6 +41,7 @@ interface ImageUploadProps {
 export function ImageUpload({ control }: ImageUploadProps) {
   const { toast } = useToast();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const { t } = useLanguage();
 
   // State cho crop
   const [showCropper, setShowCropper] = useState(false);
@@ -59,31 +61,28 @@ export function ImageUpload({ control }: ImageUploadProps) {
   ) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Kiểm tra định dạng file
       if (!file.type.startsWith('image/')) {
         toast({
-          title: 'Định dạng tệp không hợp lệ',
-          description: 'Vui lòng tải lên tệp hình ảnh',
+          title: t('collectionForm.imageUpload.invalidFormat'),
+          description: t('collectionForm.imageUpload.invalidFormatDesc'),
           variant: 'destructive',
         });
         return;
       }
 
-      // Kiểm tra kích thước file (ví dụ: giới hạn 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({
-          title: 'Tệp quá lớn',
-          description: 'Vui lòng tải lên ảnh nhỏ hơn 5MB',
+          title: t('collectionForm.imageUpload.fileTooLarge'),
+          description: t('collectionForm.imageUpload.fileTooLargeDesc'),
           variant: 'destructive',
         });
         return;
       }
 
-      // Kiểm tra kích thước tối thiểu
       if (file.size < 1024) {
         toast({
-          title: 'Tệp quá nhỏ',
-          description: 'Vui lòng tải lên ảnh lớn hơn 1KB',
+          title: t('collectionForm.imageUpload.fileTooSmall'),
+          description: t('collectionForm.imageUpload.fileTooSmallDesc'),
           variant: 'destructive',
         });
         return;
@@ -142,40 +141,34 @@ export function ImageUpload({ control }: ImageUploadProps) {
       const responseData = response.data as any;
 
       if (responseData && responseData.success === true && responseData.data) {
-        // Lấy URL từ response data
         const fileUrl = responseData.data.fileUrl;
 
         if (fileUrl) {
-          // Cập nhật trường coverImage trong form
           onChange(fileUrl);
-
-          // Hiển thị thông báo thành công
           toast({
-            title: 'Thành công',
-            description: 'Đã tải lên ảnh bìa đã cắt',
+            title: t('collectionForm.imageUpload.uploadSuccess'),
+            description: t('collectionForm.imageUpload.uploadSuccessDesc'),
           });
-
-          // Đóng cropper
           setShowCropper(false);
         } else {
           toast({
-            title: 'Lỗi',
-            description: 'Không tìm thấy URL file trong phản hồi',
+            title: t('collectionForm.imageUpload.uploadError'),
+            description: t('collectionForm.imageUpload.noFileUrl'),
             variant: 'destructive',
           });
         }
       } else {
         toast({
-          title: 'Lỗi',
-          description: 'Không thể tải lên hình ảnh. Vui lòng thử lại.',
+          title: t('collectionForm.imageUpload.uploadError'),
+          description: t('collectionForm.imageUpload.uploadErrorDesc'),
           variant: 'destructive',
         });
       }
     } catch (error) {
       console.error('Error uploading cropped file:', error);
       toast({
-        title: 'Lỗi',
-        description: 'Đã xảy ra lỗi khi tải lên. Vui lòng thử lại.',
+        title: t('collectionForm.imageUpload.uploadError'),
+        description: t('collectionForm.imageUpload.uploadErrorDesc'),
         variant: 'destructive',
       });
     } finally {
@@ -194,7 +187,7 @@ export function ImageUpload({ control }: ImageUploadProps) {
   return (
     <FormField
       control={control}
-      name='coverImage'
+      name="coverImage"
       render={({
         field,
       }: {
@@ -209,16 +202,15 @@ export function ImageUpload({ control }: ImageUploadProps) {
 
         return (
           <FormItem>
-            <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-              Ảnh bìa
+            <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {t('collectionForm.imageUpload.label')}
             </FormLabel>
-            <div className='space-y-4'>
-              <div className='flex flex-col gap-4'>
-                {/* Input URL */}
+            <div className="space-y-4">
+              <div className="flex flex-col gap-4">
                 <FormControl>
                   <Input
-                    placeholder='Dán URL hình ảnh (vd: https://example.com/image.jpg)'
-                    className='border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 rounded-md'
+                    placeholder={t('collectionForm.imageUpload.urlPlaceholder')}
+                    className="border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 rounded-md"
                     {...field}
                     onChange={(e) => {
                       field.onChange(e);
@@ -228,20 +220,19 @@ export function ImageUpload({ control }: ImageUploadProps) {
                   />
                 </FormControl>
 
-                {/* Upload Button */}
-                <div className='relative'>
+                <div className="relative">
                   <Input
-                    type='file'
-                    accept='image/*'
-                    className='hidden'
-                    id='image-upload'
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    id="image-upload"
                     onChange={(e) => handleFileChange(e, field.onChange)}
                     disabled={isUploading}
                   />
                   <Button
-                    type='button'
-                    variant='outline'
-                    className='w-full'
+                    type="button"
+                    variant="outline"
+                    className="w-full"
                     onClick={() =>
                       document.getElementById('image-upload')?.click()
                     }
@@ -250,56 +241,57 @@ export function ImageUpload({ control }: ImageUploadProps) {
                     {isUploading ? (
                       <>
                         <svg
-                          className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'
-                          xmlns='http://www.w3.org/2000/svg'
-                          fill='none'
-                          viewBox='0 0 24 24'
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
                         >
                           <circle
-                            className='opacity-25'
-                            cx='12'
-                            cy='12'
-                            r='10'
-                            stroke='currentColor'
-                            strokeWidth='4'
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
                           ></circle>
                           <path
-                            className='opacity-75'
-                            fill='currentColor'
-                            d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                           ></path>
                         </svg>
-                        Đang tải lên...
+                        {t('collectionForm.imageUpload.uploading')}
                       </>
                     ) : (
                       <>
-                        <Upload className='mr-2 h-4 w-4' />
-                        Tải ảnh lên
+                        <Upload className="mr-2 h-4 w-4" />
+                        {t('collectionForm.imageUpload.uploadButton')}
                       </>
                     )}
                   </Button>
                 </div>
               </div>
 
-              {/* Cropper */}
               {showCropper && (
-                <div className='mt-4 border rounded-md p-4 bg-white dark:bg-gray-800'>
-                  <div className='flex justify-between items-center mb-3'>
-                    <h4 className='text-sm font-medium'>Cắt ảnh bìa</h4>
+                <div className="mt-4 border rounded-md p-4 bg-white dark:bg-gray-800">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-sm font-medium">
+                      {t('collectionForm.imageUpload.cropTitle')}
+                    </h4>
                     <Button
-                      type='button'
-                      variant='ghost'
-                      size='sm'
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => {
                         setShowCropper(false);
                         setOriginalImageUrl('');
                         setLocalFile(null);
                       }}
                     >
-                      <X className='h-4 w-4' />
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className='relative h-[300px] w-full mb-4'>
+                  <div className="relative h-[300px] w-full mb-4">
                     {originalImageUrl && (
                       <Cropper
                         image={originalImageUrl}
@@ -312,79 +304,81 @@ export function ImageUpload({ control }: ImageUploadProps) {
                         rotation={0}
                         minZoom={1}
                         maxZoom={3}
-                        cropShape='rect'
+                        cropShape="rect"
                         {...({} as any)}
                       />
                     )}
                   </div>
-                  <div className='flex items-center justify-between mb-4'>
-                    <span className='text-xs'>Phóng to:</span>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs">
+                      {t('collectionForm.imageUpload.zoomLabel')}
+                    </span>
                     <input
-                      type='range'
+                      type="range"
                       value={zoom}
                       min={1}
                       max={3}
                       step={0.1}
-                      aria-labelledby='Zoom'
+                      aria-labelledby="Zoom"
                       onChange={(e) => setZoom(Number(e.target.value))}
-                      className='w-full mx-2'
+                      className="w-full mx-2"
                     />
                   </div>
-                  <div className='flex justify-end gap-2'>
+                  <div className="flex justify-end gap-2">
                     <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
+                      type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={() => {
                         setShowCropper(false);
                         setOriginalImageUrl('');
                         setLocalFile(null);
                       }}
                     >
-                      Hủy
+                      {t('collectionForm.imageUpload.cancelButton')}
                     </Button>
                     <Button
-                      type='button'
-                      variant='default'
-                      size='sm'
+                      type="button"
+                      variant="default"
+                      size="sm"
                       onClick={() => uploadCroppedImage(field.onChange)}
                       disabled={isUploading}
                     >
-                      {isUploading ? 'Đang tải lên...' : 'Cắt và tải lên'}
+                      {isUploading
+                        ? t('collectionForm.imageUpload.uploading')
+                        : t('collectionForm.imageUpload.cropButton')}
                     </Button>
                   </div>
                 </div>
               )}
 
-              {/* Image Preview */}
               {!showCropper && (
-                <div className='relative rounded-md overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 aspect-video'>
+                <div className="relative rounded-md overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 aspect-video">
                   {imagePreview ? (
                     <img
                       src={imagePreview}
-                      alt='Preview'
-                      className='w-full h-full object-cover transition-opacity hover:opacity-90'
+                      alt="Preview"
+                      className="w-full h-full object-cover transition-opacity hover:opacity-90"
                       onError={() => setImagePreview(null)}
                     />
                   ) : (
-                    <div className='h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 p-4'>
-                      <ImagePlus className='h-12 w-12 mb-3' />
-                      <span className='text-sm text-center'>
-                        Xem trước hình ảnh
+                    <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 p-4">
+                      <ImagePlus className="h-12 w-12 mb-3" />
+                      <span className="text-sm text-center">
+                        {t('collectionForm.imageUpload.previewText')}
                       </span>
-                      <span className='text-xs mt-1 text-center'>
-                        Khuyến nghị: 1200x630px
+                      <span className="text-xs mt-1 text-center">
+                        {t('collectionForm.imageUpload.recommendedSize')}
                       </span>
                     </div>
                   )}
                 </div>
               )}
             </div>
-            <FormDescription className='text-xs text-gray-500 dark:text-gray-400 mt-2'>
-              Sử dụng một hình ảnh ấn tượng đại diện cho bộ sưu tập của bạn (tối
-              đa 5MB)
+            <FormDescription className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              {t('collectionForm.imageUpload.description')}
             </FormDescription>
-            <FormMessage className='text-xs' />
+            <FormMessage className="text-xs" />
           </FormItem>
         );
       }}

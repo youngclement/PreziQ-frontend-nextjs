@@ -4,6 +4,7 @@ import {
   IconUsersGroup,
 } from '@tabler/icons-react';
 import { ComponentType } from 'react';
+import { useLanguage } from '@/contexts/language-context';
 
 interface Option {
   label: string;
@@ -11,43 +12,52 @@ interface Option {
   icon?: ComponentType<{ className?: string }>;
 }
 
-export const roleStatuses: Option[] = [
-  { label: 'Hoạt động', value: 'active' },
-  { label: 'Không hoạt động', value: 'inactive' },
-];
+export const useRoleStatuses = () => {
+  const { t } = useLanguage();
+  return [
+    { label: t('roleStatus.active'), value: 'active' },
+    { label: t('roleStatus.inactive'), value: 'inactive' },
+  ];
+};
 
-export const roleLevels = [
-  {
-    value: 'high',
-    label: 'Cao',
-  },
-  {
-    value: 'medium',
-    label: 'Trung bình',
-  },
-  {
-    value: 'low',
-    label: 'Thấp',
-  },
-] as const;
+export const useRoleLevels = () => {
+  const { t } = useLanguage();
+  return [
+    {
+      value: 'high',
+      label: t('roleLevel.high'),
+    },
+    {
+      value: 'medium',
+      label: t('roleLevel.medium'),
+    },
+    {
+      value: 'low',
+      label: t('roleLevel.low'),
+    },
+  ] as const;
+};
 
-export const roleTypes: Option[] = [
-  {
-    label: 'Superadmin',
-    value: 'superadmin',
-    icon: IconShield,
-  },
-  {
-    label: 'Admin',
-    value: 'admin',
-    icon: IconUserShield,
-  },
-  {
-    label: 'Manager',
-    value: 'manager',
-    icon: IconUsersGroup,
-  },
-];
+export const useRoleTypes = () => {
+  const { t } = useLanguage();
+  return [
+    {
+      label: t('roleType.superadmin'),
+      value: 'superadmin',
+      icon: IconShield,
+    },
+    {
+      label: t('roleType.admin'),
+      value: 'admin',
+      icon: IconUserShield,
+    },
+    {
+      label: t('roleType.manager'),
+      value: 'manager',
+      icon: IconUsersGroup,
+    },
+  ];
+};
 
 export const modulePermissions: Record<
   string,

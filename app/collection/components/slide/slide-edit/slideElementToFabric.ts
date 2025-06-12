@@ -10,7 +10,6 @@ export const slideElementToFabric = (
   const canvasWidth = canvas.getWidth() / zoom;
   const canvasHeight = canvas.getHeight() / zoom;
 
-  // Tính toán vị trí và kích thước dựa trên phần trăm
   const left = (element.positionX / 100) * canvasWidth * zoom;
   const top = (element.positionY / 100) * canvasHeight * zoom;
   const width = (element.width / 100) * canvasWidth;
@@ -19,36 +18,86 @@ export const slideElementToFabric = (
   if (element.slideElementType === 'TEXT' && element.content) {
     try {
       const textboxJson = JSON.parse(element.content);
-      const fontSizePercent = textboxJson.fontSize || 2.4630541871921183; // Giá trị mặc định nếu không có
-      const fontSize = (fontSizePercent / 100) * 812; // ORIGINAL_CANVAS_WIDTH = 812
+      const fontSizePercent = textboxJson.fontSize || 2.4630541871921183;
+      const fontSize = (fontSizePercent / 100) * 812;
 
-      // Chuẩn bị styles cho Textbox
+      // Xử lý styles
       const styles: { [line: string]: { [char: string]: any } } = {};
+
       if (textboxJson.styles && Array.isArray(textboxJson.styles)) {
-        textboxJson.styles.forEach((styleEntry: any, index: number) => {
+        const lines = (textboxJson.text || '').split('\n');
+        let currentPos = 0;
+        let charPosWithoutNewlines = 0; // Vị trí ký tự không tính \n
+
+        textboxJson.styles.forEach((styleEntry: any) => {
           if (styleEntry.start !== undefined && styleEntry.end !== undefined) {
-            const lineIndex = '0'; // Giả sử văn bản chỉ có một dòng, cần điều chỉnh nếu hỗ trợ nhiều dòng
-            styles[lineIndex] = styles[lineIndex] || {};
-            for (let i = styleEntry.start; i < styleEntry.end; i++) {
-              const style = { ...styleEntry.style };
-              // Chuyển đổi fontSize trong styles từ phần trăm sang pixel
-              if (style.fontSize) {
-                style.fontSize = (style.fontSize / 100) * 812;
+            currentPos = 0;
+            charPosWithoutNewlines = 0;
+
+            // Duyệt qua từng dòng để ánh xạ style
+            for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+              const lineLength = lines[lineIndex].length;
+
+              // Kiểm tra nếu style có giao với dòng hiện tại
+              if (
+                styleEntry.start < charPosWithoutNewlines + lineLength &&
+                styleEntry.end > charPosWithoutNewlines
+              ) {
+                const startInLine = Math.max(
+                  0,
+                  styleEntry.start - charPosWithoutNewlines
+                );
+                const endInLine = Math.min(
+                  lineLength,
+                  styleEntry.end - charPosWithoutNewlines
+                );
+
+                if (startInLine < endInLine) {
+                  const lineKey = lineIndex.toString();
+                  styles[lineKey] = styles[lineKey] || {};
+
+                  // Áp dụng style cho các ký tự trong dòng
+                  for (
+                    let charIndex = startInLine;
+                    charIndex < endInLine;
+                    charIndex++
+                  ) {
+                    const style = { ...styleEntry.style };
+                    if (style.fontSize) {
+                      style.fontSize = (style.fontSize / 100) * 812;
+                    }
+                    styles[lineKey][charIndex] = style;
+                  }
+                }
               }
-              styles[lineIndex][i] = style;
+
+              currentPos += lineLength + 1; // +1 cho ký tự \n
+              charPosWithoutNewlines += lineLength; // Không tính \n
             }
           }
         });
       }
 
-      // Tính width và height ban đầu từ dữ liệu server
-      const baseWidth = (element.width / 100) * canvasWidth;
-      const baseHeight = (element.height / 100) * canvasHeight;
+      // Xử lý styles theo định dạng cũ (nếu có)
+      if (
+        textboxJson.styles &&
+        !Array.isArray(textboxJson.styles) &&
+        typeof textboxJson.styles === 'object'
+      ) {
+        for (const lineIndex in textboxJson.styles) {
+          const line = textboxJson.styles[lineIndex];
+          styles[lineIndex] = {};
+          for (const charIndex in line) {
+            const style = { ...line[charIndex] };
+            if (style.fontSize) {
+              style.fontSize = (style.fontSize / 100) * 812;
+            }
+            styles[lineIndex][charIndex] = style;
+          }
+        }
+      }
 
-      // Lấy scaleX và scaleY từ content
-      const scaleX = textboxJson.scaleX || 1;
-      const scaleY = textboxJson.scaleY || 1;
-
+      // Tạo Textbox
       const textbox = new fabric.Textbox(textboxJson.text || 'New Text', {
         left,
         top,
@@ -77,8 +126,8 @@ export const slideElementToFabric = (
         pathStartOffset: textboxJson.pathStartOffset || 0,
         pathSide: textboxJson.pathSide || 'left',
         pathAlign: textboxJson.pathAlign || 'baseline',
-        scaleX,
-        scaleY
+        scaleX: textboxJson.scaleX || 1,
+        scaleY: textboxJson.scaleY || 1,
       });
 
       textbox.set('slideElementId', element.slideElementId);

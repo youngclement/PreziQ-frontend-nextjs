@@ -1,36 +1,39 @@
-import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu'
-import { MixerHorizontalIcon } from '@radix-ui/react-icons'
-import { Table } from '@tanstack/react-table'
-import { Button } from '@/components/ui/button'
+import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
+import { MixerHorizontalIcon } from '@radix-ui/react-icons';
+import { Table } from '@tanstack/react-table';
+import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/contexts/language-context';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu'
+} from '@/components/ui/dropdown-menu';
 
 interface DataTableViewOptionsProps<TData> {
-  table: Table<TData>
+  table: Table<TData>;
 }
 
 export function DataTableViewOptions<TData>({
   table,
 }: DataTableViewOptionsProps<TData>) {
+  const { t } = useLanguage();
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
-          variant='outline'
-          size='sm'
-          className='ml-auto hidden h-8 lg:flex'
+          variant="outline"
+          size="sm"
+          className="ml-auto hidden h-8 lg:flex"
         >
-          <MixerHorizontalIcon className='mr-2 h-4 w-4' />
-          View
+          <MixerHorizontalIcon className="mr-2 h-4 w-4" />
+          {t('tableView')}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align='end' className='w-[150px]'>
-        <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-[150px]">
+        <DropdownMenuLabel>{t('tableColumns')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()
@@ -42,15 +45,15 @@ export function DataTableViewOptions<TData>({
             return (
               <DropdownMenuCheckboxItem
                 key={column.id}
-                className='capitalize'
+                className="capitalize"
                 checked={column.getIsVisible()}
                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
               >
-                {column.id}
+                {t(`column.${column.id}`)}
               </DropdownMenuCheckboxItem>
-            )
+            );
           })}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

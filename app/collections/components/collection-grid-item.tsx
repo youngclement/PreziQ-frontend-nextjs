@@ -6,6 +6,7 @@ import {
   MoreVertical,
   Presentation,
   Trash2,
+  Copy,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,8 @@ import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { getTopicImageUrl } from '../constants/topic-images';
+import { collectionsApi } from '@/api-client/collections-api';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +35,7 @@ interface CollectionGridItemProps {
   onView: (id: string) => void;
   onViewCollection?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onCopy?: (id: string) => void;
 }
 
 export function CollectionGridItem({
@@ -41,10 +45,13 @@ export function CollectionGridItem({
   onView,
   onViewCollection,
   onDelete,
+  onCopy,
 }: CollectionGridItemProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isCoying, setIsCoying] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Default image if collection.coverImage is empty
@@ -53,7 +60,9 @@ export function CollectionGridItem({
     'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=400&h=250&auto=format&fit=crop';
 
   // Get topic image
-  const topicImageUrl = collection.topic ? getTopicImageUrl(collection.topic) : null;
+  const topicImageUrl = collection.topic
+    ? getTopicImageUrl(collection.topic)
+    : null;
 
   // Close dropdown menu when clicking outside
   useEffect(() => {
@@ -104,6 +113,46 @@ export function CollectionGridItem({
       onDelete(collection.collectionId);
     }
     setShowDeleteDialog(false);
+  };
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsCoying(true);
+    setShowMenu(false);
+
+    try {
+      const response = await collectionsApi.copyCollection(
+        collection.collectionId
+      );
+
+      // Hiển thị toast thành công
+      toast({
+        title: 'Sao chép thành công!',
+        description: `Collection "${response.data.data.title}" đã được sao chép.`,
+        duration: 3000,
+      });
+
+      // Redirect đến collection mới
+      router.push(
+        `/collection?collectionId=${response.data.data.collectionId}`
+      );
+
+      if (onCopy) {
+        onCopy(collection.collectionId);
+      }
+    } catch (error) {
+      console.error('Error copying collection:', error);
+
+      // Hiển thị toast lỗi
+      toast({
+        title: 'Lỗi sao chép',
+        description: 'Không thể sao chép collection. Vui lòng thử lại.',
+        variant: 'destructive',
+        duration: 3000,
+      });
+    } finally {
+      setIsCoying(false);
+    }
   };
 
   const toggleMenu = (e: React.MouseEvent) => {
@@ -177,12 +226,20 @@ export function CollectionGridItem({
                 {showMenu && (
                   <div className='absolute right-0 top-8 z-10 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-xl overflow-hidden w-32 animate-in fade-in zoom-in-95 duration-200'>
                     <button
+                      onClick={handleCopy}
+                      disabled={isCoying}
+                      className='flex items-center w-full px-4 py-2.5 text-sm text-blue-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed'
+                    >
+                      <Copy className='h-4 w-4 mr-2' />
+                      {isCoying ? 'Đang sao chép...' : 'Sao chép'}
+                    </button>
+                    {/* <button
                       onClick={handleOpenDeleteDialog}
                       className='flex items-center w-full px-4 py-2.5 text-sm text-red-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150'
                     >
                       <Trash2 className='h-4 w-4 mr-2' />
                       Xoá
-                    </button>
+                    </button> */}
                   </div>
                 )}
               </div>

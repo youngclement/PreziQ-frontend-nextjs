@@ -10,6 +10,12 @@ declare global {
       activityId: string,
       properties: { backgroundImage?: string; backgroundColor?: string }
     ) => void;
+    lastLocationUpdate?: {
+      timestamp: number;
+      activityId: string;
+      locationData: any[];
+      source?: string;
+    };
   }
 }
 
@@ -42,10 +48,7 @@ import {
   Image,
   Zap,
   Pencil,
-  ChevronDown,
-  ArrowUp,
   FileText,
-  Search,
   Monitor,
   Tablet,
   Smartphone,
@@ -61,37 +64,21 @@ import {
   Plus,
   Trash,
   Info,
+  Link2,
 } from 'lucide-react';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { QuizQuestion, QuizOption, Activity } from '../types';
-import { motion, AnimatePresence } from 'framer-motion';
+import type { QuizQuestion, QuizOption, Activity } from '../types';
+import { motion } from 'framer-motion';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-
-import { slidesApi } from '@/api-client/slides-api';
-import { storageApi } from '@/api-client/storage-api';
 import { debounce } from 'lodash';
-import { SlideElementPayload } from '@/types/slideInterface';
-import { activitiesApi, ActivityType } from '@/api-client/activities-api';
+import type { SlideElementPayload } from '@/types/slideInterface';
+import { activitiesApi, type ActivityType } from '@/api-client/activities-api';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
@@ -100,7 +87,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 
 // First, let's import the needed drag and drop components from react-beautiful-dnd
@@ -108,7 +94,10 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { slideBackgroundManager } from '@/utils/slideBackgroundManager';
 
 // Import the useToast hook at the top of the file
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from '@/hooks/use-toast';
+
+// Add import at the top
+import { MatchingPairPreview } from './matching-pair-preview';
 
 interface QuestionPreviewProps {
   questions: QuizQuestion[];
@@ -142,6 +131,15 @@ interface QuestionPreviewProps {
   onAddOption?: () => void;
   onDeleteOption?: (index: number) => void;
   onReorderOptions?: (fromIndex: number, toIndex: number) => void;
+  leftColumnName?: string;
+  rightColumnName?: string;
+  slideElements?: Record<string, SlideElementPayload[]>;
+  slidesData?: Record<string, any>;
+  slidesBackgrounds?: Record<string, { backgroundImage: string; backgroundColor: string }>;
+  onSlideElementsUpdate?: (
+    activityId: string,
+    elements: SlideElementPayload[]
+  ) => void;
 }
 
 interface SlideData {
@@ -160,6 +158,15 @@ interface SlideData {
   slide?: {
     slideElements: SlideElementPayload[];
   };
+}
+
+interface LocationAnswer {
+  quizLocationAnswerId?: string;
+  longitude: number;
+  latitude: number;
+  radius: number;
+  lng?: number;
+  lat?: number;
 }
 
 // Update the QuestionPreview component to include a hardcoded location quiz
@@ -186,6 +193,12 @@ export function QuestionPreview({
   onAddOption = () => { },
   onDeleteOption = () => { },
   onReorderOptions,
+  leftColumnName,
+  rightColumnName,
+  slideElements,
+  onSlideElementsUpdate,
+  slidesData,
+  slidesBackgrounds,
 }: QuestionPreviewProps) {
   const [viewMode, setViewMode] = React.useState('desktop');
   const [showScrollTop, setShowScrollTop] = React.useState(false);
@@ -197,14 +210,16 @@ export function QuestionPreview({
   const [editingOptionIndex, setEditingOptionIndex] = useState<number | null>(
     null
   );
+
+  const [activeQuestionPairIndex, setActiveQuestionPairIndex] = useState(0);
   const [isAddActivityOpen, setIsAddActivityOpen] = useState(false);
   // Add state for delete confirmation dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
-  const [slidesData, setSlidesData] = useState<Record<string, SlideData>>({});
-  const [slidesElements, setSlidesElements] = useState<
-    Record<string, SlideElementPayload[]>
-  >({});
+  // const [slidesData, setSlidesData] = useState<Record<string, SlideData>>({});
+  // const [slidesElements, setSlidesElements] = useState<
+  //   Record<string, SlideElementPayload[]>
+  // >({});
 
   // React to changes in activity props to update UI
   const [backgroundState, setBackgroundState] = React.useState({
@@ -212,9 +227,9 @@ export function QuestionPreview({
     backgroundColor: activity?.backgroundColor || '#FFFFFF',
   });
 
-  const [slidesBackgrounds, setSlidesBackgrounds] = useState<
-    Record<string, { backgroundImage: string; backgroundColor: string }>
-  >({});
+  // const [slidesBackgrounds, setSlidesBackgrounds] = useState<
+  //   Record<string, { backgroundImage: string; backgroundColor: string }>
+  // >({});
 
   // Map to store activity-specific backgrounds
   const [activityBackgrounds, setActivityBackgrounds] = React.useState<
@@ -227,93 +242,130 @@ export function QuestionPreview({
     >
   >({});
 
-  const [slideBackgrounds, setSlideBackgrounds] = useState<
-    Record<string, { backgroundImage: string; backgroundColor: string }>
-  >({});
-
   // Add this state to track when we need to force re-render
   const [renderKey, setRenderKey] = useState(0);
 
   // Add toast hook
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchActivityData = async (
-      activityId: string,
-      questionIndex: number
-    ) => {
-      if (!activityId) {
-        console.warn(
-          'No activity_id found for question at index',
-          questionIndex
-        );
-        return;
+
+  const activeQuestion = questions[activeQuestionIndex];
+  const [currentQuestion, setCurrentQuestion] = useState(activeQuestion);
+
+  // Handler functions
+  const handleCorrectAnswerChange = (value: string) => {
+    console.log('Correct answers:', value);
+    // You can implement logic to save the score or update state
+  };
+
+  const saveBackgroundToServer = async (
+    activityId: string,
+    backgroundData: { backgroundImage: string; backgroundColor: string }
+  ) => {
+    try {
+      setIsSaving(true);
+      await activitiesApi.updateActivity(activityId, {
+        backgroundColor: backgroundData.backgroundColor,
+        backgroundImage: backgroundData.backgroundImage,
+      });
+
+      // Cập nhật global storage
+      if (typeof window !== 'undefined') {
+        if (!window.savedBackgroundColors) window.savedBackgroundColors = {};
+        window.savedBackgroundColors[activityId] = backgroundData.backgroundColor;
       }
+    } catch (error) {
+      console.error("Error saving background:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-      try {
-        const response = await activitiesApi.getActivityById(activityId);
-        const activityData = response.data.data;
-        // console.log('activityData', activityData);
 
-        // Lưu dữ liệu slide riêng cho từng activityId
-        setSlidesData((prev) => ({
-          ...prev,
-          [activityId]: activityData,
-        }));
+  // useEffect(() => {
+  //   const fetchActivityData = async (
+  //     activityId: string,
+  //     questionIndex: number
+  //   ) => {
+  //     if (!activityId) {
+  //       console.warn(
+  //         'No activity_id found for question at index',
+  //         questionIndex
+  //       );
+  //       return;
+  //     }
 
-        // Cập nhật activityBackgrounds
-        if (
-          ['slide', 'info_slide'].includes(
-            questions[questionIndex].question_type
-          ) &&
-          activityData.slide?.slideElements
-        ) {
-          setSlidesElements((prev) => ({
-            ...prev,
-            [activityId]: activityData.slide.slideElements,
-          }));
+  //     try {
+  //       const response = await activitiesApi.getActivityById(activityId);
+  //       const activityData = response.data.data;
+  //       // console.log('activityData', activityData);
 
-          // Cập nhật slidesBackgrounds
-          setSlidesBackgrounds((prev) => ({
-            ...prev,
-            [activityId]: {
-              backgroundImage: activityData.backgroundImage || '',
-              backgroundColor: activityData.backgroundColor || '#fff',
-            },
-          }));
-        }
+  //       // Lưu dữ liệu slide riêng cho từng activityId
+  //       setSlidesData((prev) => ({
+  //         ...prev,
+  //         [activityId]: activityData,
+  //       }));
 
-        // Cập nhật localSlideElements nếu là slide
-        // if (
-        //   ['slide', 'info_slide'].includes(currentQuestion.question_type) &&
-        //   activityData.slide?.slideElements
-        // ) {
-        //   setLocalSlideElements((prev) => ({
-        //     ...prev,
-        //     [currentQuestion.activity_id]: activityData.slide.slideElements,
-        //   }));
-        // }
+  //       // Cập nhật activityBackgrounds
+  //       if (
+  //         ['slide', 'info_slide'].includes(
+  //           questions[questionIndex].question_type
+  //         ) &&
+  //         activityData.slide?.slideElements
+  //       ) {
+  //         setSlidesElements((prev) => ({
+  //           ...prev,
+  //           [activityId]: activityData.slide.slideElements,
+  //         }));
 
-        // Cập nhật question text và slide content nếu cần
-        // if (activityData.title !== currentQuestion.question_text) {
-        //   onQuestionTextChange(activityData.title, activeQuestionIndex);
-        // }
-        // if (
-        //   activityData.description !== currentQuestion.slide_content &&
-        //   onSlideContentChange
-        // ) {
-        //   onSlideContentChange(activityData.description);
-        // }
-      } catch (error) {
-        console.error('Error fetching activity data:', error);
-      }
-    };
-    questions.forEach((question, index) => {
-      if (question.activity_id && !slidesData[question.activity_id]) {
-        fetchActivityData(question.activity_id, index);
-      }
-    });
-  }, [questions, slidesData]);
+  //         // Cập nhật slidesBackgrounds
+  //         setSlidesBackgrounds((prev) => ({
+  //           ...prev,
+  //           [activityId]: {
+  //             backgroundImage: activityData.backgroundImage || '',
+  //             backgroundColor: activityData.backgroundColor || '#fff',
+  //           },
+  //         }));
+  //       }
+
+  //       // Cập nhật localSlideElements nếu là slide
+  //       // if (
+  //       //   ['slide', 'info_slide'].includes(currentQuestion.question_type) &&
+  //       //   activityData.slide?.slideElements
+  //       // ) {
+  //       //   setLocalSlideElements((prev) => ({
+  //       //     ...prev,
+  //       //     [currentQuestion.activity_id]: activityData.slide.slideElements,
+  //       //   }));
+  //       // }
+
+  //       // Cập nhật question text và slide content nếu cần
+  //       // if (activityData.title !== currentQuestion.question_text) {
+  //       //   onQuestionTextChange(activityData.title, activeQuestionIndex);
+  //       // }
+  //       // if (
+  //       //   activityData.description !== currentQuestion.slide_content &&
+  //       //   onSlideContentChange
+  //       // ) {
+  //       //   onSlideContentChange(activityData.description);
+  //       // }
+  //       if (typeof window !== 'undefined') {
+  //         if (!window.savedBackgroundColors) {
+  //           window.savedBackgroundColors = {};
+  //         }
+  //         window.savedBackgroundColors[activityId] = activityData.backgroundColor || '#FFFFFF';
+  //       }
+
+  //     } catch (error) {
+  //       console.error('Error fetching activity data:', error);
+  //     }
+  //   };
+  //   questions.forEach((question, index) => {
+  //     if (question.activity_id && !slidesData[question.activity_id]) {
+  //       fetchActivityData(question.activity_id, index);
+  //     }
+  //   });
+  // }, [questions, slidesData]);
 
   // Add this useEffect to listen for time limit update events
   useEffect(() => {
@@ -366,12 +418,6 @@ export function QuestionPreview({
       backgroundColor?: string;
     }
   ) => {
-    console.log(
-      'QuestionPreview: Updating background for activity:',
-      activityId,
-      properties
-    );
-
     // Lưu vào global storage ngay lập tức để đảm bảo đồng bộ
     if (typeof window !== 'undefined' && properties.backgroundColor) {
       // Đảm bảo object đã được khởi tạo
@@ -413,7 +459,6 @@ export function QuestionPreview({
         };
       });
     }
-
   };
 
   // Update background state when activity changes
@@ -540,7 +585,6 @@ export function QuestionPreview({
   // Expose the function to parent component through the prop callback
   useEffect(() => {
     if (onUpdateActivityBackground) {
-      console.log('Registering updateActivityBackground with parent component');
       onUpdateActivityBackground(updateActivityBackground);
     }
   }, [onUpdateActivityBackground]);
@@ -614,7 +658,7 @@ export function QuestionPreview({
 
   // Setup scroll event listener with a flag to prevent circular updates
   useEffect(() => {
-    let isScrolling = false;
+    const isScrolling = false;
 
     const handleScroll = () => {
       if (isScrolling) return; // Skip if this is a programmatic scroll
@@ -724,6 +768,7 @@ export function QuestionPreview({
       location: 'bg-cyan-500 text-white',
       slide: 'bg-indigo-500 text-white',
       info_slide: 'bg-indigo-500 text-white',
+      matching_pair: 'bg-purple-500 text-white',
     };
 
     return (
@@ -749,6 +794,7 @@ export function QuestionPreview({
       location: <MapPin className="h-4 w-4" />,
       slide: slideIcon,
       info_slide: slideIcon,
+      matching_pair: <Link2 className="h-4 w-4" />,
     };
 
     return (
@@ -769,14 +815,15 @@ export function QuestionPreview({
       question.question_type === 'slide' ||
       question.question_type === 'info_slide';
 
-    const slideData = question.activity_id
+    const slideData = question.activity_id && slidesData
       ? slidesData[question.activity_id]
       : undefined;
-    const slideElements = question.activity_id
-      ? slidesElements[question.activity_id] ||
-      slidesData[question.activity_id]?.slide?.slideElements ||
-      []
-      : [];
+
+    // const slideElements = question.activity_id
+    //   ? slidesData[question.activity_id] ||
+    //   slidesData[question.activity_id]?.slide?.slideElements ||
+    //   []
+    //   : [];
 
     // Find activity specific background for this question
     let actualBackgroundImage = ''; // Initialize with empty string
@@ -789,7 +836,11 @@ export function QuestionPreview({
     // 4. Từ activity hiện tại
 
     // 1. Ưu tiên lấy từ slidesBackgrounds trước nếu đây là slide
-    if (isSlideType && question.activity_id && slidesBackgrounds[question.activity_id]) {
+    if (
+      isSlideType &&
+      question.activity_id &&
+      slidesBackgrounds?.[question.activity_id]
+    ) {
       const slideBg = slidesBackgrounds[question.activity_id];
       actualBackgroundImage = slideBg.backgroundImage;
       actualBackgroundColor = slideBg.backgroundColor;
@@ -812,7 +863,10 @@ export function QuestionPreview({
       }
     }
     // 3. Sau đó mới kiểm tra trong activityBackgrounds
-    else if (question.activity_id && activityBackgrounds[question.activity_id]) {
+    else if (
+      question.activity_id &&
+      activityBackgrounds[question.activity_id]
+    ) {
       const actBg = activityBackgrounds[question.activity_id];
       actualBackgroundImage = actBg.backgroundImage || '';
       actualBackgroundColor = actBg.backgroundColor;
@@ -840,23 +894,9 @@ export function QuestionPreview({
     const hasBackgroundImage =
       actualBackgroundImage && actualBackgroundImage.trim() !== '';
 
-    // console.log(`Rendering slide ${question.activity_id}:`, {
-    //   actualBackgroundColor,
-    //   actualBackgroundImage,
-    //   fromGlobal: window.savedBackgroundColors?.[question.activity_id],
-    //   fromActivityBackgrounds: activityBackgrounds[question.activity_id],
-    //   fromSlidesBackgrounds: slidesBackgrounds[question.activity_id],
-    // });
-
     if (isSlideType) {
       const slideTypeText =
         question.question_type === 'info_slide' ? 'Info Slide' : 'Slide';
-
-      // console.log(
-      //   'activityBackgrounds[question.activity_id]',
-      //   activityBackgrounds[question.activity_id],
-      //   question.activity_id
-      // );
 
       return (
         <div
@@ -905,30 +945,33 @@ export function QuestionPreview({
                   if (data.content && onSlideContentChange) {
                     onSlideContentChange(data.content);
                   }
-                  if (data.slideElements && question.activity_id) {
-                    setSlidesElements((prev) => {
-                      const id = question.activity_id!;
-                      const oldList = prev[id] || [];
-                      const incoming = data.slideElements ?? [];
+                  if (data.slideElements && question.activity_id && onSlideElementsUpdate) {
+                    onSlideElementsUpdate(question.activity_id, data.slideElements);
+                  }
 
-                      // ghép và loại bỏ trùng
-                      const merged = [...oldList];
-                      incoming.forEach((el) => {
-                        if (
-                          !merged.find(
-                            (x) => x.slideElementId === el.slideElementId
-                          )
-                        ) {
-                          merged.push(el);
-                        }
-                      });
-
-                      return {
-                        ...prev,
-                        [id]: merged,
-                      };
-                    });
-                    console.log('data nhậnnnn: ', data.slideElements);
+                  if (
+                    data.backgroundImage !== undefined ||
+                    data.backgroundColor !== undefined
+                  ) {
+                    const updatedBackground = {
+                      backgroundImage:
+                        data.backgroundColor !== undefined
+                          ? ''
+                          : data.backgroundImage ?? '',
+                      backgroundColor:
+                        data.backgroundImage !== undefined
+                          ? ''
+                          : data.backgroundColor ?? '',
+                    };
+                    updateActivityBackground(
+                      question.activity_id,
+                      updatedBackground
+                    );
+                    console.log('updatedBackground', updatedBackground);
+                    saveBackgroundToServer(
+                      question.activity_id,
+                      updatedBackground
+                    );
                   }
                 }}
                 width={
@@ -947,9 +990,9 @@ export function QuestionPreview({
                 height={460}
                 zoom={1}
                 slideId={question.activity_id}
-                slideElements={slideElements}
-                backgroundImage={actualBackgroundImage}
+                slideElements={question.activity_id ? slideElements?.[question.activity_id] || [] : []}
                 backgroundColor={actualBackgroundColor}
+                backgroundImage={actualBackgroundImage}
               />
             </div>
           </div>
@@ -958,7 +1001,7 @@ export function QuestionPreview({
     }
 
     // Simplified location question type
-    if (question.question_type === "location") {
+    if (question.question_type === 'location') {
       return (
         <Card
           className={cn(
@@ -972,13 +1015,12 @@ export function QuestionPreview({
           )}
           key={`question-card-location-${questionIndex}-${renderKey}`}
         >
-
           <motion.div
             className={cn(
               'aspect-[16/5] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
             )}
             style={{
-              backgroundColor: actualBackgroundColor // Always apply background color
+              backgroundColor: actualBackgroundColor, // Always apply background color
             }}
             initial={{ opacity: 0.8 }}
             whileInView={{ opacity: 1 }}
@@ -991,10 +1033,12 @@ export function QuestionPreview({
             {/* Simplified Status Bar */}
             <div className="absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10">
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  "h-7 w-7 rounded-full flex items-center justify-center shadow-sm",
-                  getQuestionTypeColor(question.question_type)
-                )}>
+                <div
+                  className={cn(
+                    'h-7 w-7 rounded-full flex items-center justify-center shadow-sm',
+                    getQuestionTypeColor(question.question_type)
+                  )}
+                >
                   {getQuestionTypeIcon(question.question_type)}
                 </div>
                 <div>
@@ -1010,7 +1054,10 @@ export function QuestionPreview({
                 <div className="flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium">
                   <Clock className="h-3.5 w-3.5" />
                   <span className="time-limit-display">
-                    {(activity && activity.quiz?.timeLimitSeconds) || question.time_limit_seconds || timeLimit}s
+                    {(activity && activity.quiz?.timeLimitSeconds) ||
+                      question.time_limit_seconds ||
+                      timeLimit}
+                    s
                   </span>
                 </div>
               </div>
@@ -1021,15 +1068,21 @@ export function QuestionPreview({
               {editMode !== null ? (
                 <div className="w-full max-w-2xl">
                   <Textarea
-                    value={question.question_text || `Location Question ${questionIndex + 1}`}
-                    onChange={(e) => onQuestionTextChange(e.target.value, questionIndex)}
+                    value={
+                      question.question_text ||
+                      `Location Question ${questionIndex + 1}`
+                    }
+                    onChange={(e) =>
+                      onQuestionTextChange(e.target.value, questionIndex)
+                    }
                     className="text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
                   />
                 </div>
               ) : (
                 <div className="relative w-full max-w-2xl">
                   <h2 className="text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4">
-                    {question.question_text || `Location Question ${questionIndex + 1}`}
+                    {question.question_text ||
+                      `Location Question ${questionIndex + 1}`}
                   </h2>
                 </div>
               )}
@@ -1045,19 +1098,147 @@ export function QuestionPreview({
               <div className="w-full mt-2">
                 {!previewMode ? (
                   <DynamicLocationQuestionEditor
-                    questionText={question.question_text || ""}
+                    questionText={question.question_text || ''}
                     locationAnswers={getLocationAnswers(question, activity)}
-                    onLocationChange={(questionIndex, locationData) => onQuestionLocationChange?.(questionIndex, locationData)}
+
+                    onLocationChange={(questionIndex, locationData) =>
+                      onQuestionLocationChange?.(questionIndex, locationData)
+                    }
+
                     questionIndex={questionIndex}
                   />
                 ) : (
                   <DynamicLocationQuestionPlayer
-                    questionText={question.question_text || ""}
+                    questionText={question.question_text || ''}
                     locationData={getLocationData(question, activity)}
-                    onAnswer={(isCorrect) => console.log("Answer:", isCorrect)}
+                    onAnswer={(isCorrect: boolean) => console.log('Answer:', isCorrect)}
                   />
                 )}
               </div>
+            </div>
+          </CardContent>
+
+        </Card>
+      );
+    }
+
+    // Handle matching_pair question type FIRST
+    if (question.question_type === 'matching_pair') {
+      console.log('Rendering matching pair question:', question);
+
+      return (
+        <Card
+          className={cn(
+            'border-none rounded-xl shadow-lg overflow-hidden transition-all duration-300 mx-auto',
+            isActive
+              ? 'ring-2 ring-primary/20 scale-100'
+              : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
+            viewMode === 'desktop' && 'max-w-5xl',
+            viewMode === 'tablet' && 'max-w-2xl',
+            viewMode === 'mobile' && 'max-w-sm'
+          )}
+          key={`question-card-matching-${questionIndex}-${renderKey}`}
+        >
+          <motion.div
+            className={cn(
+              'aspect-[16/5] rounded-t-xl flex flex-col shadow-md relative overflow-hidden',
+              hasBackgroundImage && 'bg-cover bg-center'
+            )}
+            style={{
+              backgroundImage: hasBackgroundImage
+                ? `url(${actualBackgroundImage})`
+                : undefined,
+              backgroundColor: actualBackgroundColor,
+            }}
+            initial={{ opacity: 0.8 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            key={`question-bg-${questionIndex}-${renderKey}-${actualBackgroundColor}`}
+          >
+            {/* Light overlay */}
+            <div className="absolute inset-0 bg-black/30" />
+
+            {/* Status Bar */}
+            <div className="absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10">
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    'h-7 w-7 rounded-full flex items-center justify-center shadow-sm',
+                    getQuestionTypeColor(question.question_type)
+                  )}
+                >
+                  {getQuestionTypeIcon(question.question_type)}
+                </div>
+                <div>
+                  <div className="text-xs capitalize font-medium">
+                    {question.question_type.replace(/_/g, ' ')}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full text-xs font-medium">
+                  Q{questionIndex + 1}
+                </div>
+                <div className="flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="time-limit-display">
+                    {(activity && activity.quiz?.timeLimitSeconds) ||
+                      question.time_limit_seconds ||
+                      timeLimit}
+                    s
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Question Text */}
+            <div className="flex-1 flex flex-col items-center justify-center z-10 py-6 px-5">
+              {editMode !== null ? (
+                <div className="w-full max-w-2xl">
+                  <Textarea
+                    value={
+                      question.question_text ||
+                      `Matching Pair Question ${questionIndex + 1}`
+                    }
+                    onChange={(e) =>
+                      onQuestionTextChange(e.target.value, questionIndex)
+                    }
+                    className="text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
+                  />
+                </div>
+              ) : (
+                <div className="relative w-full max-w-2xl">
+                  <h2 className="text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4">
+                    {question.question_text ||
+                      `Matching Pair Question ${questionIndex + 1}`}
+                  </h2>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Matching Pair Content */}
+          <CardContent className="p-0 bg-white dark:bg-gray-800">
+            <div className="w-full" key={question.id}>
+              <MatchingPairPreview
+                question={question}
+                questionIndex={questionIndex}
+                isActive={isActive}
+                viewMode={viewMode as 'desktop' | 'tablet' | 'mobile'}
+                onCorrectAnswerChange={handleCorrectAnswerChange}
+                editMode={editMode}
+                setEditMode={setEditMode}
+                editingText={editingText}
+                setEditingText={setEditingText}
+                editingOptionIndex={editingOptionIndex}
+                setEditingOptionIndex={setEditingOptionIndex}
+                onQuestionTextChange={onQuestionTextChange}
+                onOptionChange={onOptionChange}
+                onChangeQuestion={onChangeQuestion}
+                leftColumnName={leftColumnName}
+                rightColumnName={rightColumnName}
+                previewMode={previewMode}
+              />
             </div>
           </CardContent>
 
@@ -1210,9 +1391,7 @@ export function QuestionPreview({
                             );
                           });
 
-
-                          console.log("Correct answer updated");
-
+                          console.log('Correct answer updated');
                         }
                       }}
                     >
@@ -1271,7 +1450,9 @@ export function QuestionPreview({
                 <div className="mt-2 text-sm text-gray-600 dark:text-white italic relative group">
                   {editMode !== null ? (
                     <div className="flex items-center">
-                      <span className="font-medium mr-2 text-gray-700 dark:text-white">Correct answer:</span>
+                      <span className="font-medium mr-2 text-gray-700 dark:text-white">
+                        Correct answer:
+                      </span>
                       <Input
                         value={
                           question.correct_answer_text ||
@@ -1753,26 +1934,28 @@ export function QuestionPreview({
           title: text,
         },
         questions[questionIndex].activity_id
-      ).then(() => {
-        // Dispatch an event to notify other components about the title change
-        if (typeof window !== 'undefined') {
-          const event = new CustomEvent('activity:title:updated', {
-            detail: {
-              activityId: questions[questionIndex].activity_id,
-              title: text,
-              questionIndex: questionIndex
-            },
-          });
-          window.dispatchEvent(event);
-        }
 
-       
-      }).catch((error) => {
-        console.error('Error updating question title:', error);
-       
-      }).finally(() => {
-        setIsSaving(false);
-      });
+      )
+        .then(() => {
+          // Dispatch an event to notify other components about the title change
+          if (typeof window !== 'undefined') {
+            const event = new CustomEvent('activity:title:updated', {
+              detail: {
+                activityId: questions[questionIndex].activity_id,
+                title: text,
+                questionIndex: questionIndex,
+              },
+            });
+            window.dispatchEvent(event);
+          }
+        })
+        .catch((error) => {
+          console.error('Error updating question title:', error);
+        })
+        .finally(() => {
+          setIsSaving(false);
+        });
+
     }
   };
 
@@ -1789,9 +1972,7 @@ export function QuestionPreview({
 
     onOptionChange(questionIndex, optionIndex, 'option_text', text);
 
-
-    console.log("Option text updated successfully");
-
+    console.log('Option text updated successfully');
   };
 
   // Function to toggle correct answer
@@ -1820,9 +2001,7 @@ export function QuestionPreview({
       });
     }
 
-
-    console.log("Correct answer updated");
-
+    console.log('Correct answer updated');
   };
 
   // Function to update activity via API
@@ -1832,22 +2011,26 @@ export function QuestionPreview({
 
       // Nếu đang cập nhật màu nền hoặc hình nền và đây là slide
       const currentQuestion = questions[activeQuestionIndex];
-      const isSlide = currentQuestion && ['slide', 'info_slide'].includes(currentQuestion.question_type);
+      const isSlide =
+        currentQuestion &&
+        ['slide', 'info_slide'].includes(currentQuestion.question_type);
 
-      if (isSlide && (data.backgroundColor || data.backgroundImage)) {
-        // Cập nhật slidesBackgrounds trước
-        setSlidesBackgrounds((prev) => ({
-          ...prev,
-          [activityId]: {
-            backgroundImage: data.backgroundImage !== undefined
-              ? data.backgroundImage
-              : prev[activityId]?.backgroundImage || '',
-            backgroundColor: data.backgroundColor !== undefined
-              ? data.backgroundColor
-              : prev[activityId]?.backgroundColor || '#FFFFFF',
-          },
-        }));
-      }
+      // if (isSlide && (data.backgroundColor || data.backgroundImage)) {
+      //   // Cập nhật slidesBackgrounds trước
+      //   setSlidesBackgrounds((prev) => ({
+      //     ...prev,
+      //     [activityId]: {
+      //       backgroundImage:
+      //         data.backgroundImage !== undefined
+      //           ? data.backgroundImage
+      //           : prev[activityId]?.backgroundImage || '',
+      //       backgroundColor:
+      //         data.backgroundColor !== undefined
+      //           ? data.backgroundColor
+      //           : prev[activityId]?.backgroundColor || '#FFFFFF',
+      //     },
+      //   }));
+      // }
 
       // Nếu đang cập nhật màu nền, cập nhật UI ngay lập tức trước khi gọi API
       if (data.backgroundColor && typeof data.backgroundColor === 'string') {
@@ -1886,7 +2069,6 @@ export function QuestionPreview({
         }
       }
 
-
       if (data.backgroundImage && typeof data.backgroundImage === 'string') {
         slideBackgroundManager.set(activityId, {
           backgroundImage: data.backgroundImage,
@@ -1894,12 +2076,11 @@ export function QuestionPreview({
         });
       }
 
-     
 
       return response;
     } catch (error) {
       console.error('Error updating activity:', error);
-   
+
 
       throw error;
     } finally {
@@ -1952,21 +2133,21 @@ export function QuestionPreview({
 
       // Create the payload for the API
       const payload = {
-        type: "TYPE_ANSWER" as const,
+        type: 'TYPE_ANSWER' as const,
         questionText: question.question_text || '',
         timeLimitSeconds: question.time_limit_seconds || timeLimit || 30,
-        pointType: "STANDARD" as const,
-        correctAnswer: text
+        pointType: 'STANDARD' as const,
+        correctAnswer: text,
       };
 
       // Call the API
-      activitiesApi.updateTypeAnswerQuiz(question.activity_id, payload)
-        .then(() => {
-       
-        })
+
+      activitiesApi
+        .updateTypeAnswerQuiz(question.activity_id, payload)
+        .then(() => { })
         .catch((error) => {
           console.error('Error updating correct answer:', error);
-         
+
         })
         .finally(() => {
           setIsSaving(false);
@@ -2047,7 +2228,6 @@ export function QuestionPreview({
     questionType: string
   ): ActivityType => {
     switch (questionType) {
-
       case 'multiple_choice':
         return 'QUIZ_BUTTONS';
       case 'multiple_response':
@@ -2065,9 +2245,10 @@ export function QuestionPreview({
         return 'INFO_SLIDE';
       case 'info_slide':
         return 'INFO_SLIDE';
+      case 'matching_pair':
+        return 'QUIZ_MATCHING_PAIR';
       default:
         return 'INFO_SLIDE';
-
     }
   };
 
@@ -2078,9 +2259,9 @@ export function QuestionPreview({
 
       // Get the collection ID from current activity if available
       if (!activity?.collection_id) {
-
-        console.error("Cannot add activity: collection information not available.");
-
+        console.error(
+          'Cannot add activity: collection information not available.'
+        );
         return;
       }
 
@@ -2113,192 +2294,29 @@ export function QuestionPreview({
         };
       }
 
-      // Step 1: Create activity with the appropriate type
-      const activityType = mapQuestionTypeToActivityType(
-        questionData.question_type
-      );
-      console.log(
-        `Creating activity with type ${questionData.question_type} -> ${activityType}`
-      );
-
-      const activityPayload = {
-        collectionId: activity.collection_id,
-        activityType: activityType,
-        title: questionData.question_text,
-        description: questionData.slide_content || '',
-        isPublished: false,
-        backgroundColor: '#FFFFFF',
-      };
-
-      // Create the activity first
-      const activityResponse = await activitiesApi.createActivity(
-        activityPayload
-      );
-      console.log('Activity created:', activityResponse);
-
-      // Make sure we have a valid response with an activity ID
-      if (!activityResponse.data?.data?.activityId) {
-        throw new Error('No activity ID returned from server');
-      }
-
-      const newActivityId = activityResponse.data.data.activityId;
+      // Generate a temporary activity ID
+      const tempActivityId = `temp_${Date.now()}`;
 
       // Create the new activity object to add to local state
       const newActivity = {
-        id: newActivityId,
+        id: tempActivityId,
         title: questionData.question_text,
         collection_id: activity.collection_id,
         description: questionData.slide_content || '',
         is_published: false,
-        activity_type_id: activityType,
+        activity_type_id: mapQuestionTypeToActivityType(
+          questionData.question_type
+        ),
         backgroundColor: '#FFFFFF',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: '',
       };
 
-      // Step 2: Initialize the appropriate quiz data based on question type
-      try {
-        let quizPayload;
-
-        switch (questionData.question_type) {
-          case 'multiple_choice':
-            quizPayload = {
-              type: 'CHOICE' as const,
-              questionText: questionData.question_text,
-              timeLimitSeconds: questionData.time_limit_seconds || 30,
-              pointType: 'STANDARD' as const,
-              answers: questionData.options.map((option) => ({
-                answerText: option.option_text,
-                isCorrect: option.is_correct,
-                explanation: option.explanation || '',
-              })),
-            };
-            await activitiesApi.updateButtonsQuiz(newActivityId, quizPayload);
-            break;
-
-          case 'multiple_response':
-            quizPayload = {
-              type: 'CHOICE' as const,
-              questionText: questionData.question_text,
-              timeLimitSeconds: questionData.time_limit_seconds || 30,
-              pointType: 'STANDARD' as const,
-              answers: questionData.options.map((option) => ({
-                answerText: option.option_text,
-                isCorrect: option.is_correct,
-                explanation: option.explanation || '',
-              })),
-            };
-            await activitiesApi.updateCheckboxesQuiz(
-              newActivityId,
-              quizPayload
-            );
-            break;
-
-          case 'true_false':
-            // For true/false, we find which option is marked as true
-            const trueOption = questionData.options.find(
-              (o) => o.option_text.toLowerCase() === 'true'
-            );
-            quizPayload = {
-              type: 'TRUE_FALSE' as const,
-              questionText: questionData.question_text,
-              timeLimitSeconds: questionData.time_limit_seconds || 30,
-              pointType: 'STANDARD' as const,
-              correctAnswer: trueOption?.is_correct || false,
-            };
-            await activitiesApi.updateTrueFalseQuiz(newActivityId, quizPayload);
-            break;
-
-          case 'text_answer':
-            quizPayload = {
-              type: 'TYPE_ANSWER' as const,
-              questionText: questionData.question_text,
-              timeLimitSeconds: questionData.time_limit_seconds || 30,
-              pointType: 'STANDARD' as const,
-              correctAnswer:
-                questionData.correct_answer_text ||
-                'Enter the correct answer here',
-            };
-            console.log('Creating text answer quiz with payload:', quizPayload);
-            try {
-              const quizResponse = await activitiesApi.updateTypeAnswerQuiz(
-                newActivityId,
-                quizPayload
-              );
-              console.log(
-                'Text answer quiz created successfully:',
-                quizResponse
-              );
-            } catch (quizError) {
-              console.error('Error creating text answer quiz:', quizError);
-              throw quizError; // Re-throw to trigger the error handling
-            }
-            break;
-
-          case 'reorder':
-            quizPayload = {
-              type: 'REORDER' as const,
-              questionText: questionData.question_text,
-              timeLimitSeconds: questionData.time_limit_seconds || 30,
-              pointType: 'STANDARD' as const,
-              correctOrder: questionData.options.map(
-                (option) => option.option_text
-              ),
-            };
-            await activitiesApi.updateReorderQuiz(newActivityId, quizPayload);
-            break;
-
-          case 'location':
-            quizPayload = {
-              type: "LOCATION" as const,
-              questionText: questionData.question_text,
-              timeLimitSeconds: questionData.time_limit_seconds || 30,
-              pointType: "STANDARD" as const,
-              locationAnswers: (questionData.location_data as any)?.quizLocationAnswers || [{
-                longitude: 105.804817, // Default longitude (Hanoi)
-                latitude: 21.028511,   // Default latitude (Hanoi) 
-                radius: 10             // Default radius in km
-              }]
-            };
-            console.log("Creating location quiz with payload:", quizPayload);
-            try {
-              const quizResponse = await activitiesApi.updateLocationQuiz(newActivityId, quizPayload);
-              console.log("Location quiz created successfully:", quizResponse);
-            } catch (quizError) {
-              console.error("Error creating location quiz:", quizError);
-              // We still continue even if there's an error
-            }
-            break;
-
-          case 'slide':
-          case 'info_slide':
-            // Slides don't need quiz data initialization
-            break;
-
-          default:
-            console.log(
-              `No specific initialization for question type: ${questionData.question_type}`
-            );
-        }
-
-        console.log(`Quiz data initialized for ${questionData.question_type}`);
-      } catch (quizError) {
-        console.error(
-          `Error initializing quiz data for ${questionData.question_type}:`,
-          quizError
-        );
-        // We don't throw here to avoid stopping the flow if quiz initialization fails
-        // The activity is still created and can be edited by the user
-
-        console.warn("Activity created but quiz data initialization failed. You may need to set up the questions manually.");
-
-      }
-
-      // Step 3: Update the local state with the new question
+      // Update the question with the temporary activity ID
       const newQuestion = {
         ...questionData,
-        activity_id: newActivityId,
+        activity_id: tempActivityId,
       };
 
       // If the parent component provides onAddQuestion, call it to update state
@@ -2315,21 +2333,18 @@ export function QuestionPreview({
         if (!window.savedBackgroundColors) {
           window.savedBackgroundColors = {};
         }
-        window.savedBackgroundColors[newActivityId] = '#FFFFFF';
+        window.savedBackgroundColors[tempActivityId] = '#FFFFFF';
 
         // Update the activity backgrounds map
-        updateActivityBackground(newActivityId, {
+        updateActivityBackground(tempActivityId, {
           backgroundColor: '#FFFFFF',
           backgroundImage: '',
         });
       }
 
-      // Handle success
-
-      console.log("New question added successfully");
+      console.log('New question added successfully');
     } catch (error) {
-      console.error("Error adding question:", error);
-
+      console.error('Error adding question:', error);
     } finally {
       setIsSaving(false);
     }
@@ -2427,11 +2442,9 @@ export function QuestionPreview({
 
       // Show success notification
 
-      console.log("Activity deleted successfully");
-
+      console.log('Activity deleted successfully');
     } catch (error) {
-      console.error("Error deleting activity:", error);
-
+      console.error('Error deleting activity:', error);
 
       // Re-enable scrolling in case of error
       if (typeof document !== 'undefined') {
@@ -2474,7 +2487,6 @@ export function QuestionPreview({
     };
   }, [scrollToNewestQuestion]);
 
-
   // Sử dụng handleSlideImageChange từ use-slide-operations.ts
   // Thêm hàm mới để cập nhật background cho slide
   const updateSlideBackground = async (
@@ -2488,22 +2500,28 @@ export function QuestionPreview({
 
     // Chỉ xử lý cho các slide
     const currentQuestion = questions[activeQuestionIndex];
-    if (!currentQuestion || !['slide', 'info_slide'].includes(currentQuestion.question_type)) return;
+    if (
+      !currentQuestion ||
+      !['slide', 'info_slide'].includes(currentQuestion.question_type)
+    )
+      return;
 
     console.log('Updating slide background:', activityId, properties);
 
     // Cập nhật local state slidesBackgrounds
-    setSlidesBackgrounds((prev) => ({
-      ...prev,
-      [activityId]: {
-        backgroundImage: properties.backgroundImage !== undefined
-          ? properties.backgroundImage
-          : (prev[activityId]?.backgroundImage || ''),
-        backgroundColor: properties.backgroundColor !== undefined
-          ? properties.backgroundColor
-          : (prev[activityId]?.backgroundColor || '#FFFFFF'),
-      },
-    }));
+    // setSlidesBackgrounds((prev) => ({
+    //   ...prev,
+    //   [activityId]: {
+    //     backgroundImage:
+    //       properties.backgroundImage !== undefined
+    //         ? properties.backgroundImage
+    //         : prev[activityId]?.backgroundImage || '',
+    //     backgroundColor:
+    //       properties.backgroundColor !== undefined
+    //         ? properties.backgroundColor
+    //         : prev[activityId]?.backgroundColor || '#FFFFFF',
+    //   },
+    // }));
 
     try {
       // Cập nhật trong activityBackgrounds để đảm bảo đồng bộ
@@ -2528,57 +2546,191 @@ export function QuestionPreview({
         });
       }
 
-    
-
 
       // Force re-render bằng cách cập nhật renderKey
       setRenderKey((prev) => prev + 1);
     } catch (error) {
       console.error('Error updating slide background:', error);
-    
 
     }
   };
 
+  // Add debounced version for location updates
+  const debouncedUpdateLocationQuiz = React.useCallback(
+    debounce(async (activityId: string, locationPayload: import('@/api-client/activities-api').LocationQuizPayload) => {
+      try {
+        setIsSaving(true);
+        const response = await activitiesApi.updateLocationQuiz(activityId, locationPayload);
+        console.log('Location quiz updated successfully:', response);
+
+        // **ENHANCED**: Properly extract and format location data from response
+        if (response.data?.quiz?.quizLocationAnswers) {
+          const updatedLocationAnswers = response.data.quiz.quizLocationAnswers;
+
+          // Update the question's location data directly to ensure UI reflects new points
+          const questionIndex = questions.findIndex(q => q.activity_id === activityId);
+          if (questionIndex >= 0 && onQuestionLocationChange) {
+            // Format location data to match expected structure
+            const formattedLocationData = {
+              quizLocationAnswers: updatedLocationAnswers.map((answer: any) => ({
+                quizLocationAnswerId: answer.quizLocationAnswerId || "",
+                longitude: answer.longitude,
+                latitude: answer.latitude,
+                radius: answer.radius
+              }))
+            };
+
+            // Update parent state
+            onQuestionLocationChange(questionIndex, formattedLocationData);
+          }
+
+          // Dispatch multiple events to ensure all components update
+          if (typeof window !== 'undefined') {
+            // Event for keeping UI position updated
+            const keepUIEvent = new CustomEvent('location:keep:ui:position', {
+              detail: {
+                locationAnswers: updatedLocationAnswers,
+                timestamp: Date.now(),
+                source: 'preview-debounced-success'
+              }
+            });
+            window.dispatchEvent(keepUIEvent);
+
+            // Additional event specifically for new points added
+            const pointsUpdatedEvent = new CustomEvent('location:points:updated', {
+              detail: {
+                activityId,
+                locationAnswers: updatedLocationAnswers,
+                timestamp: Date.now()
+              }
+            });
+            window.dispatchEvent(pointsUpdatedEvent);
+
+            // Force editor to refresh markers
+            const refreshMarkersEvent = new CustomEvent('location:refresh:markers', {
+              detail: {
+                activityId,
+                locationAnswers: updatedLocationAnswers
+              }
+            });
+            window.dispatchEvent(refreshMarkersEvent);
+          }
+        }
+
+        // Show success toast
+        toast({
+          title: "Location saved",
+          description: "The location has been updated successfully.",
+          duration: 2000
+        });
+      } catch (error) {
+        console.error('Error updating location quiz:', error);
+
+        // On error, revert to original position
+        if (typeof window !== 'undefined') {
+          const revertEvent = new CustomEvent('location:revert:position', {
+            detail: {
+              error: true,
+              timestamp: Date.now()
+            }
+          });
+          window.dispatchEvent(revertEvent);
+        }
+
+        // Show error toast
+        toast({
+          title: "Error saving location",
+          description: "Failed to save the location. Position reverted.",
+          variant: "destructive",
+          duration: 3000
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    }, 1000), // 1 second debounce
+    [toast, questions, onQuestionLocationChange]
+  );
+
   // Add or update the handleQuestionLocationChange function:
 
-  const handleQuestionLocationChange = (questionIndex: number, locationData: any) => {
+
+  const handleQuestionLocationChange = (
+    questionIndex: number,
+    locationData: any
+  ) => {
     console.log('Handling location change:', questionIndex, locationData);
 
-    // Clone questions array to avoid direct state mutation
-    const updatedQuestions = [...questions];
+    const question = questions[questionIndex];
 
-    // For multiple location answers format
-    if (Array.isArray(locationData)) {
-      // This is the new format with multiple location answers
-      updatedQuestions[questionIndex] = {
-        ...updatedQuestions[questionIndex],
-        location_data: {
-          ...updatedQuestions[questionIndex].location_data,
-          lat: updatedQuestions[questionIndex].location_data?.lat || 0,
-          lng: updatedQuestions[questionIndex].location_data?.lng || 0,
-          radius: updatedQuestions[questionIndex].location_data?.radius || 20,
-          quizLocationAnswers: locationData
-        }
-      };
-
-      // Call the parent's onQuestionLocationChange if available
-      if (onQuestionLocationChange) {
-        onQuestionLocationChange(questionIndex, locationData);
-      }
+    if (onQuestionLocationChange) {
+      onQuestionLocationChange(questionIndex, locationData);
     }
-    // For backward compatibility with single location format
-    else {
-      updatedQuestions[questionIndex] = {
-        ...updatedQuestions[questionIndex],
-        location_data: locationData
-      };
 
-      // Call the parent's onQuestionLocationChange if available
-      if (onQuestionLocationChange) {
-        onQuestionLocationChange(questionIndex, locationData);
+    try {
+      setIsSaving(true);
+      let locationAnswers;
+
+      if (Array.isArray(locationData)) {
+        console.log('Detected array format for location data');
+        locationAnswers = locationData.map((loc: LocationAnswer) => ({
+          longitude: loc.longitude || loc.lng,
+          latitude: loc.latitude || loc.lat,
+          radius: loc.radius || 10
+        }));
+      } else if (locationData && locationData.quizLocationAnswers) {
+        console.log('Detected object with quizLocationAnswers property');
+        locationAnswers = locationData.quizLocationAnswers.map((loc: LocationAnswer) => ({
+          longitude: loc.longitude || loc.lng,
+          latitude: loc.latitude || loc.lat,
+          radius: loc.radius || 10
+        }));
+      } else if (locationData && (locationData.longitude || locationData.lat)) {
+        console.log('Detected legacy format with direct coordinates');
+        locationAnswers = [{
+          longitude: locationData.longitude || locationData.lng,
+          latitude: locationData.latitude || locationData.lat,
+          radius: locationData.radius || 10
+        }];
+      } else {
+        console.log('Using existing location data from question');
+        const existingData = getLocationAnswers(question, activity);
+        locationAnswers = existingData.map((loc: LocationAnswer) => ({
+          longitude: loc.longitude,
+          latitude: loc.latitude,
+          radius: loc.radius || 10
+        }));
       }
 
+      if (!locationAnswers || locationAnswers.length === 0) {
+        throw new Error('No valid location answers found');
+      }
+
+      console.log('Calling API with location answers:', locationAnswers);
+
+      const locationPayload = {
+        type: "LOCATION" as const,
+        questionText: question.question_text || "Location Question",
+        timeLimitSeconds: question.time_limit_seconds || timeLimit || 60,
+        pointType: "STANDARD" as const,
+        locationAnswers: locationAnswers
+      };
+
+      debouncedUpdateLocationQuiz(question.activity_id, locationPayload);
+
+      toast({
+        title: "Updating location",
+        description: "Saving new coordinates...",
+        duration: 2000
+      });
+    } catch (error) {
+      console.error('Error preparing location update:', error);
+      toast({
+        title: "Error updating location",
+        description: "Failed to update the location data",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -2594,10 +2746,13 @@ export function QuestionPreview({
       ) {
         // Find the question with this activity ID
         const questionIndex = questions.findIndex(
-          q => q.activity_id === event.detail.activityId
+          (q) => q.activity_id === event.detail.activityId
         );
 
-        if (questionIndex >= 0 && questions[questionIndex].question_text !== event.detail.title) {
+        if (
+          questionIndex >= 0 &&
+          questions[questionIndex].question_text !== event.detail.title
+        ) {
           // Update the question text without calling the API again (since it was already updated)
           onQuestionTextChange(event.detail.title, questionIndex);
         }
@@ -2617,17 +2772,26 @@ export function QuestionPreview({
     };
   }, [questions, onQuestionTextChange]);
 
+  // Cleanup debounced function on unmount
+  useEffect(() => {
+    return () => {
+      debouncedUpdateLocationQuiz.cancel();
+    };
+  }, [debouncedUpdateLocationQuiz]);
+
   return (
     <Card
       className={cn(
-        "overflow-hidden transition-all w-full h-full border-none shadow-md",
-        isQuestionListCollapsed && "max-w-full"
+        'overflow-hidden transition-all w-full h-full border-none shadow-md',
+        isQuestionListCollapsed && 'max-w-full'
       )}
       key={`preview-card-${renderKey}`}
     >
       <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
         <div className="flex items-center gap-4">
-          <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">Preview</CardTitle>
+          <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Preview
+          </CardTitle>
           <div className="flex items-center space-x-2">
             <Switch
               id="edit-mode"
@@ -2640,10 +2804,15 @@ export function QuestionPreview({
                 }
               }}
             />
-            <Label htmlFor="edit-mode" className="text-xs">Edit Mode</Label>
+            <Label htmlFor="edit-mode" className="text-xs">
+              Edit Mode
+            </Label>
           </div>
           {isSaving && (
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            <Badge
+              variant="outline"
+              className="bg-blue-50 text-blue-700 border-blue-200"
+            >
               Saving...
             </Badge>
           )}
@@ -2705,7 +2874,13 @@ export function QuestionPreview({
 
               {/* Conditional rendering based on question_type */}
               <div className="w-full">
-                {renderQuestionContent(question, questionIndex, questionIndex === activeQuestionIndex, viewMode, backgroundImage)}
+                {renderQuestionContent(
+                  question,
+                  questionIndex,
+                  questionIndex === activeQuestionIndex,
+                  viewMode,
+                  backgroundImage
+                )}
               </div>
             </div>
           ))}
@@ -2964,7 +3139,6 @@ function OptionItem({
   );
 }
 
-
 // Add these helper functions after the renderQuestionContent function:
 
 // Helper function to get location answers from question or activity
@@ -2975,46 +3149,72 @@ function getLocationAnswers(question: any, activity: any) {
       quizLocationAnswerId: answer.quizLocationAnswerId,
       longitude: answer.longitude,
       latitude: answer.latitude,
-      radius: answer.radius
+      radius: answer.radius,
     }));
   }
 
   // Then try to get from the question location_data if it has quizLocationAnswers
   if (question.location_data?.quizLocationAnswers?.length > 0) {
     return question.location_data.quizLocationAnswers.map((answer: any) => ({
-      quizLocationAnswerId: answer.quizLocationAnswerId || "",
+      quizLocationAnswerId: answer.quizLocationAnswerId || '',
       longitude: answer.longitude,
       latitude: answer.latitude,
-      radius: answer.radius
+      radius: answer.radius,
     }));
   }
 
   // For backward compatibility, handle the old location_answer format
   if (question.location_answer) {
     const locationData = question.location_answer;
-    return [{
-      longitude: locationData.lng,
-      latitude: locationData.lat,
-      radius: locationData.radius || 10
-    }];
+
+    return [
+      {
+        longitude: locationData.lng,
+        latitude: locationData.lat,
+        radius: locationData.radius || 10,
+      },
+    ];
+
   }
 
   // For even older format with location_data
   if (question.location_data) {
-    return [{
-      longitude: question.location_data.lng || 0,
-      latitude: question.location_data.lat || 0,
-      radius: question.location_data.radius || 10
-    }];
+
+    return [
+      {
+        longitude: question.location_data.lng || 0,
+        latitude: question.location_data.lat || 0,
+        radius: question.location_data.radius || 10,
+      },
+    ];
+
   }
 
-  // Default empty array, should never reach here because we initialize with defaults
-  return [];
+  // Default single location if nothing is found
+  return [{
+    quizLocationAnswerId: "",
+    longitude: 105.804817,
+    latitude: 21.028511,
+    radius: 10
+  }];
 }
 
-// Helper function to get a single location for the player view
-// In preview mode, we just use the first location answer
+// Helper function to get location data for the map component
+// This now supports multiple locations
 function getLocationData(question: any, activity: any) {
+  const locationAnswers = getLocationAnswers(question, activity);
+
+  // Return all location answers for the map to display
+  return locationAnswers.map((answer: LocationAnswer) => ({
+    lat: answer.latitude,
+    lng: answer.longitude,
+    radius: answer.radius,
+    id: answer.quizLocationAnswerId
+  }));
+}
+
+// Helper function to get the first location for preview display
+function getFirstLocationData(question: any, activity: any) {
   const locationAnswers = getLocationAnswers(question, activity);
 
   if (locationAnswers.length > 0) {
@@ -3022,11 +3222,10 @@ function getLocationData(question: any, activity: any) {
     return {
       lat: firstAnswer.latitude,
       lng: firstAnswer.longitude,
-      radius: firstAnswer.radius
+      radius: firstAnswer.radius,
     };
   }
 
   // Default location
   return { lat: 21.028511, lng: 105.804817, radius: 10 };
 }
-

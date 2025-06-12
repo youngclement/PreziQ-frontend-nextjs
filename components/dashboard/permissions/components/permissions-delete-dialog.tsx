@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { usePermissions } from '../context/permissions-context';
 import { permissionsApi } from '@/api-client';
+import { useLanguage } from '@/contexts/language-context';
 
 interface Props {
   open: boolean;
@@ -30,32 +31,21 @@ export function PermissionsDeleteDialog({
   type,
   data,
 }: Props) {
-  const [isLoading, setIsLoading] = useState(false);
   const { refetch } = usePermissions();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { t } = useLanguage();
 
   const handleDelete = async () => {
-    setIsLoading(true);
     try {
-      let response;
-      if (type === 'module') {
-        response = await permissionsApi.deleteModule(data.module!);
-      } else {
-        response = await permissionsApi.deletePermission(data.permissionId!);
-      }
-
-      if (!response.data.success) {
-        toast.error(response.data.message || 'Có lỗi xảy ra khi xóa');
-        return;
-      }
-
-      toast.success(response.data.message);
-      await refetch();
+      setIsDeleting(true);
+      await permissionsApi.deletePermission(data.permissionId!);
+      toast.success(t('permissionDeleteSuccess'));
+      refetch();
       onOpenChange(false);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Có lỗi xảy ra';
-      toast.error(message);
+      toast.error(t('permissionDeleteError'));
     } finally {
-      setIsLoading(false);
+      setIsDeleting(false);
     }
   };
 
@@ -63,24 +53,19 @@ export function PermissionsDeleteDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Bạn có chắc chắn muốn xóa{' '}
-            {type === 'module' ? 'module' : 'permission'} này?
-          </AlertDialogTitle>
+          <AlertDialogTitle>{t('permissionConfirmDelete')}</AlertDialogTitle>
           <AlertDialogDescription>
-            {type === 'module'
-              ? 'Các permission trong module này sẽ không còn thuộc module nào.'
-              : 'Hành động này không thể hoàn tác.'}
+            {t('permissionDeleteDesc')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>Hủy</AlertDialogCancel>
+          <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
-            disabled={isLoading}
-            className='bg-red-600 hover:bg-red-700'
+            disabled={isDeleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            Xóa
+            {isDeleting ? t('permissionDeleting') : t('delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
