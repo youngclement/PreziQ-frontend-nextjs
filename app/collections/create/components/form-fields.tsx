@@ -184,7 +184,7 @@ export function FormFields({ control }: FormFieldsProps) {
       />
 
       {/* Tips Section */}
-      <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-md border border-indigo-200 dark:border-indigo-900/50">
+      {/* <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-md border border-indigo-200 dark:border-indigo-900/50">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           <h3 className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
@@ -192,13 +192,13 @@ export function FormFields({ control }: FormFieldsProps) {
           </h3>
         </div>
         <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-1 ml-6 list-disc">
-          {t('collectionForm.tips', { returnObjects: true } as any).map(
+          {((t('collectionForm.tips', { returnObjects: true }) as any) || []).map(
             (tip: string, index: number) => (
               <li key={index}>{tip}</li>
             )
           )}
         </ul>
-      </div>
+      </div> */}
     </div>
   );
 }
