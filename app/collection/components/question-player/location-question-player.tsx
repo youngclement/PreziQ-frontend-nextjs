@@ -11,6 +11,40 @@ import { useDrag, useDrop, DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { toast } from "sonner";
 
+interface LocationData {
+  lat: number;
+  lng: number;
+  radius: number;
+}
+
+// Define a basic interface for LocationQuestionPlayer props
+interface LocationQuestionPlayerProps {
+  questionText: string;
+  locationData: any;
+  onAnswer: (isCorrect: boolean, distance: number, userLocation?: LocationData) => void;
+  showCorrectLocation?: boolean;
+  disabled?: boolean;
+  userSelectedLocations?: LocationData[];
+  correctAnswers?: any[];
+}
+
+// Create and export the LocationQuestionPlayer component
+export const LocationQuestionPlayer: React.FC<LocationQuestionPlayerProps> = ({
+  questionText,
+  locationData,
+  onAnswer,
+}) => {
+  // Placeholder implementation
+  return (
+    <div>
+      <h4>{questionText}</h4>
+      <p>Location Player Placeholder</p>
+      <button onClick={() => onAnswer(true, 0, undefined)}>Correct</button>
+      <button onClick={() => onAnswer(false, 0, undefined)}>Incorrect</button>
+    </div>
+  );
+};
+
 // Define item types for drag and drop
 const ItemTypes = {
   QUESTION: 'question'
