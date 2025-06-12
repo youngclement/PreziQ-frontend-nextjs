@@ -54,7 +54,7 @@ export function RolesTable<TData, TValue>({
 
   const table = useReactTable({
     data: tableData,
-    columns,
+    columns: columns as ColumnDef<TData>[],
     state: {
       sorting,
       columnVisibility,
@@ -105,9 +105,9 @@ export function RolesTable<TData, TValue>({
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                   </TableHead>
                 ))}
               </TableRow>

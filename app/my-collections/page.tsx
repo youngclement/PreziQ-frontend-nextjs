@@ -332,7 +332,7 @@ export default function MyCollectionsPage() {
                                                 onEdit={() => handleEditCollection(collection.id)}
                                                 onView={() => handleViewCollection(collection.id)}
                                                 onDelete={() => handleDeleteCollection(collection.id)}
-                                                onTogglePublish={(e: React.MouseEvent) => handleTogglePublish(collection, e)}
+                                                onTogglePublish={() => handleTogglePublish(collection)}
                                                 showPublishToggle={true}
                                             />
                                         ))}

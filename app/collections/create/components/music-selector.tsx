@@ -139,14 +139,15 @@ export function MusicSelector({ value, onChange }: MusicSelectorProps) {
         }
       }
 
-      const response = await storageApi.uploadSingleFile(file, 'sounds/custom');
-      const responseUpload = response.data?.data;
+      const response = await storageApi.uploadSingleFile(
+        file,
+        'sounds/custom'
+      ) as any;
 
-      if (responseUpload?.fileUrl) {
-        const newName =
-          responseUpload.name || responseUpload.fileName || file.name;
+      if (response?.fileUrl) {
+        const newName = response.name || response.fileName || file.name;
         const newCustomMusic = {
-          fileUrl: responseUpload.fileUrl,
+          fileUrl: response.fileUrl,
           name: newName.replace('.mp3', ''),
           fileName: file.name,
         };

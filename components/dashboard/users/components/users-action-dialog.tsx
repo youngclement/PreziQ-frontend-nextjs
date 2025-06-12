@@ -1,11 +1,7 @@
 'use client';
 
-import { useUsers } from '../context/users-context';
-import { useRoles } from '../../roles/context/roles-context';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { toast } from '@/hooks/use-toast';
+import { storageApi } from '@/api-client/storage-api';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,11 +21,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PasswordInput } from '@/components/dashboard/password-input';
-import { SelectDropdown } from '@/components/dashboard/select-dropdown';
-import { userTypes } from '../../users/data/data';
-import { User } from '../data/schema';
-import { useState, useEffect, useMemo } from 'react';
 import {
   Select,
   SelectContent,
@@ -37,26 +28,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useLanguage } from '@/contexts/language-context';
+import { toast } from '@/hooks/use-toast';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  IconMail,
-  IconPhone,
-  IconUser,
+  IconAlertCircle,
   IconCalendar,
   IconFlag,
-  IconShield,
+  IconMail,
+  IconPhone,
   IconPhoto,
-  IconUserCircle,
+  IconShield,
   IconUpload,
-  IconAlertCircle,
+  IconUser,
+  IconUserCircle,
 } from '@tabler/icons-react';
 import { motion } from 'framer-motion';
-import { storageApi } from '@/api-client/storage-api';
 import dynamic from 'next/dynamic';
+import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 import { getCroppedImg } from '../../../../utils/crop-image';
-import { useLanguage } from '@/contexts/language-context';
+import { useRoles } from '../../roles/context/roles-context';
+import { useUsers } from '../context/users-context';
+import { User } from '../data/schema';
 
 // Dùng any thay vì CropperProps để tránh lỗi
 const Cropper = dynamic(

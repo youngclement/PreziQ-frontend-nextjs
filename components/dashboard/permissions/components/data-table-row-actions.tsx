@@ -11,12 +11,12 @@ import { Permission } from '../data/schema';
 import { usePermissions } from '../context/permissions-context';
 import { useLanguage } from '@/contexts/language-context';
 
-interface DataTableRowActionsProps<TData> {
+interface DataTableRowActionsProps<TData extends Permission> {
   row: Row<TData>;
   onDelete?: (permission: TData) => void;
 }
 
-export function DataTableRowActions<TData>({
+export function DataTableRowActions<TData extends Permission>({
   row,
   onDelete,
 }: DataTableRowActionsProps<TData>) {

@@ -105,7 +105,7 @@ export default function EditCollectionPage({
 
       const currentCollection = await collectionsApi.getCollectionById(collectionId);
       const currentData = currentCollection.data.data;
-  
+
       // Kiểm tra và xóa ảnh cũ nếu có thay đổi
       if (data.coverImage !== currentData.coverImage && currentData.coverImage) {
         try {
@@ -199,15 +199,19 @@ export default function EditCollectionPage({
               <form onSubmit={form.handleSubmit(onSubmit)}>
                 <CollectionFormHeader
                   title='Chỉnh sửa bộ sưu tập'
-                  description='Chỉnh sửa thông tin bộ sưu tập của bạn'
+                  subtitle='Chỉnh sửa thông tin bộ sưu tập của bạn'
                 />
                 <div className='p-6 space-y-6'>
                   <ImageUpload control={form.control} />
-                  <FormFields form={form} collectionId={params.id} />
+                  <FormFields
+                    control={form.control}
+                    form={form}
+                    collectionId={collectionId}
+                  />
                 </div>
                 <FormActions
                   isSubmitting={isSubmitting}
-                  onCancel={() => router.push('/collections')}
+                  collectionId={collectionId}
                 />
               </form>
             </Form>
