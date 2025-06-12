@@ -1111,7 +1111,7 @@ export function QuestionPreview({
                   <DynamicLocationQuestionPlayer
                     questionText={question.question_text || ''}
                     locationData={getLocationData(question, activity)}
-                    onAnswer={(isCorrect) => console.log('Answer:', isCorrect)}
+                    onAnswer={(isCorrect: boolean) => console.log('Answer:', isCorrect)}
                   />
                 )}
               </div>
