@@ -48,11 +48,11 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
   slideId,
   slideElements,
   onSlideElementsUpdate,
-}) => {
-  const [selectedAnimation, setSelectedAnimation] = useState<string>('none');
+}) => {  const [selectedAnimation, setSelectedAnimation] = useState<string>('none');
   const [animationMap, setAnimationMap] = useState<Record<string, string>>({});
   const [currentObjectId, setCurrentObjectId] = useState<string | null>(null);
   const [animationDuration, setAnimationDuration] = useState<number>(1);
+  const [animationDelay, setAnimationDelay] = useState<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   
   const animationOptions = [
@@ -233,6 +233,57 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
     [slideId, slideElements, onSlideElementsUpdate]
   );
 
+  // Debounced function để update animation delay
+  const debouncedUpdateDelay = useCallback(
+    (objectId: string, delay: number) => {
+      const timer = setTimeout(async () => {
+        try {
+          // Tìm element trong slideElements
+          const element = slideElements.find(
+            (el) => el.slideElementId === objectId
+          );
+          if (!element) return;
+
+          // Cập nhật API
+          const updatedElement = {
+            ...element,
+            entryAnimationDelay: delay,
+          };
+
+          await slidesApi.updateSlidesElement(
+            slideId,
+            objectId,
+            updatedElement
+          );
+
+          // Cập nhật fabric object
+          const fabricUpdateEvent = new CustomEvent('fabric:update-delay', {
+            detail: {
+              slideId,
+              objectId,
+              delay,
+            },
+          });
+          window.dispatchEvent(fabricUpdateEvent);
+
+          // Cập nhật local state
+          const updatedElements = slideElements.map((el) =>
+            el.slideElementId === objectId
+              ? { ...el, entryAnimationDelay: delay }
+              : el
+          );
+          onSlideElementsUpdate(updatedElements);
+
+          console.log(`Updated delay for ${objectId} to ${delay}s`);
+        } catch (error) {
+          console.error('Failed to update animation delay:', error);
+        }
+      }, 500);
+
+      return () => clearTimeout(timer);
+    },
+    [slideId, slideElements, onSlideElementsUpdate]
+  );
   const handleDurationSliderChange = (value: number[]) => {
     const newDuration = value[0];
     setAnimationDuration(newDuration);
@@ -242,6 +293,18 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
     setIsDragging(false);
     if (currentObjectId) {
       debouncedUpdateDuration(currentObjectId, animationDuration);
+    }
+  };
+
+  const handleDelaySliderChange = (value: number[]) => {
+    const newDelay = value[0];
+    setAnimationDelay(newDelay);
+  };
+
+  const handleDelaySliderRelease = () => {
+    setIsDragging(false);
+    if (currentObjectId) {
+      debouncedUpdateDelay(currentObjectId, animationDelay);
     }
   };
 
@@ -266,16 +329,16 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
         setAnimationMap((prev) => ({
           ...prev,
           [currentObjectId]: animationValue,
-        }));
-
-        // Cập nhật slideElements với animation mới và duration mặc định
+        }));        // Cập nhật slideElements với animation mới và duration mặc định
         const defaultDuration = animationDefaultDurations[animationValue] || 1; // Lấy duration mặc định
+        const defaultDelay = 0; // Delay mặc định
         const updatedElements = slideElements.map((item) =>
           item.slideElementId === currentObjectId
             ? {
                 ...item,
                 entryAnimation: animationValue,
                 entryAnimationDuration: defaultDuration, // Cập nhật duration
+                entryAnimationDelay: defaultDelay, // Cập nhật delay
               }
             : item
         );
@@ -283,6 +346,7 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
 
         // Cập nhật Slider
         setAnimationDuration(defaultDuration); // Cập nhật animationDuration cho Slider
+        setAnimationDelay(defaultDelay); // Cập nhật animationDelay cho Slider
 
         if (animationValue !== 'none') {
           const previewEvent = new CustomEvent('fabric:preview-animation', {
@@ -323,14 +387,13 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
       if (e.detail.elements) {
         onSlideElementsUpdate(e.detail.elements);
       }
-    };
-
-    const handleSelectionChanged = (
+    };    const handleSelectionChanged = (
       e: CustomEvent<{
         slideId: string;
         objectId: string | null;
         animationName: string;
         duration?: number;
+        delay?: number;
       }>
     ) => {
       if (e.detail.slideId !== slideId) return;
@@ -338,7 +401,7 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
         'AnimationToolbar received fabric:selection-changed:',
         e.detail
       );
-      const { objectId, animationName, duration } = e.detail;
+      const { objectId, animationName, duration, delay } = e.detail;
       if (objectId) {
         setAnimationMap((prev) => ({
           ...prev,
@@ -346,13 +409,17 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
         }));
         setCurrentObjectId(objectId);
 
-        // Tìm element hiện tại và set duration
+        // Tìm element hiện tại và set duration & delay
         const currentElement = slideElements.find(
           (el) => el.slideElementId === objectId
         );
         const defaultDuration = animationDefaultDurations[animationName] || 1;
+        const defaultDelay = 0;
         setAnimationDuration(
           duration ?? currentElement?.entryAnimationDuration ?? defaultDuration
+        );
+        setAnimationDelay(
+          delay ?? currentElement?.entryAnimationDelay ?? defaultDelay
         );
 
         const updatedElements = slideElements.map((item) =>
@@ -364,6 +431,10 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
                   duration ??
                   currentElement?.entryAnimationDuration ??
                   defaultDuration,
+                entryAnimationDelay:
+                  delay ??
+                  currentElement?.entryAnimationDelay ??
+                  defaultDelay,
               }
             : item
         );
@@ -371,6 +442,7 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
       } else {
         setCurrentObjectId(null);
         setAnimationDuration(1); // Reset về default
+        setAnimationDelay(0); // Reset về default
       }
       setSelectedAnimation(animationName || 'none');
     };
@@ -415,11 +487,11 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
     });
     window.dispatchEvent(event);
   };
-
   useEffect(() => {
     setCurrentObjectId(null);
     setSelectedAnimation('none');
     setAnimationMap({});
+    setAnimationDelay(0);
   }, [slideId]);
 
   return (
@@ -506,9 +578,7 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
                 </span>
               </span>
             </p>
-          </div>
-
-          {/* Animation Duration Slider */}
+          </div>          {/* Animation Duration Slider */}
           {currentObjectId && (
             <div className="p-3 bg-white dark:bg-blue-950/30 rounded-md border border-blue-200 dark:border-blue-700">
               <div className="flex items-center justify-between mb-2">
@@ -532,6 +602,39 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
               <div className="flex justify-between text-xs text-blue-500 dark:text-blue-400 mt-1">
                 <span>0.1s</span>
                 <span>3.0s</span>
+              </div>
+            </div>
+          )}
+
+          {/* Animation Delay Slider */}
+          {currentObjectId && (
+            <div className="p-3 bg-white dark:bg-red-950/30 rounded-md border border-red-200 dark:border-red-700">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-xs font-medium text-red-800 dark:text-red-200 flex items-center">
+                  <Clock className="w-3 h-3 mr-1" />
+                  Độ trễ hiệu ứng
+                </Label>
+                <span className="text-xs text-red-600 dark:text-red-300 font-mono">
+                  {animationDelay.toFixed(1)}s
+                </span>
+              </div>
+              <Slider
+                value={[animationDelay]}
+                onValueChange={handleDelaySliderChange}
+                onValueCommit={() => handleDelaySliderRelease()}
+                min={0}
+                max={5}
+                step={0.1}
+                className="w-full [&_.lucide-clock]:text-red-500 [&>[role=slider]]:bg-red-500 [&>[role=slider]]:border-red-500 [&_.lucide-clock]:dark:text-red-400"
+                style={{
+                  '--slider-track': 'rgb(239 68 68)',
+                  '--slider-range': 'rgb(239 68 68)',
+                  '--slider-thumb': 'rgb(239 68 68)',
+                } as React.CSSProperties}
+              />
+              <div className="flex justify-between text-xs text-red-500 dark:text-red-400 mt-1">
+                <span>0.0s</span>
+                <span>5.0s</span>
               </div>
             </div>
           )}

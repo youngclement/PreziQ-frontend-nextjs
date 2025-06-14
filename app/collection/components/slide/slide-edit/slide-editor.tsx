@@ -205,12 +205,14 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         (el) => el.slideElementId === slideElementId
       );
       const displayOrder =
-        obj.get('displayOrder') || currentElement?.displayOrder || 0;
-
-      // Lấy animation duration từ object hoặc currentElement để giữ lại
+        obj.get('displayOrder') || currentElement?.displayOrder || 0; // Lấy animation duration từ object hoặc currentElement để giữ lại
       const entryAnimationDuration =
         obj.get('entryAnimationDuration') ||
         currentElement?.entryAnimationDuration;
+
+      // Lấy animation delay từ object hoặc currentElement để giữ lại
+      const entryAnimationDelay =
+        obj.get('entryAnimationDelay') || currentElement?.entryAnimationDelay;
 
       let w: number, h: number;
       if (obj.type === 'image') {
@@ -258,6 +260,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           content: JSON.stringify(textboxJson),
           entryAnimation: obj.get('entryAnimation') || undefined,
           entryAnimationDuration: entryAnimationDuration,
+          entryAnimationDelay: entryAnimationDelay,
           ...updates,
         } as SlideElementPayload;
       } else {
@@ -267,6 +270,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           sourceUrl: obj.get('sourceUrl') || (obj as fabric.Image).getSrc(),
           entryAnimation: obj.get('entryAnimation') || undefined,
           entryAnimationDuration: entryAnimationDuration,
+          entryAnimationDelay: entryAnimationDelay,
           ...updates,
         } as SlideElementPayload;
       }
@@ -388,6 +392,9 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           }
           if (el.entryAnimationDuration) {
             obj.set('entryAnimationDuration', el.entryAnimationDuration);
+          }
+          if (el.entryAnimationDelay) {
+            obj.set('entryAnimationDelay', el.entryAnimationDelay);
           }
           canvas.add(obj);
         }
@@ -635,16 +642,22 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         isPreviewingRef.current = true;
 
         // Chạy animation và reset khi hoàn tất
-        animationMap[animationName](activeObject, fabricCanvas.current, async () => {
-          resetElement(activeObject);
-          isPreviewingRef.current = false;
-          setPreviewAnimation(null);
+        animationMap[animationName](
+          activeObject,
+          fabricCanvas.current,
+          async () => {
+            resetElement(activeObject);
+            isPreviewingRef.current = false;
+            setPreviewAnimation(null);
 
-          await updateSlideElement(activeObject, {
-            entryAnimation: animationName,
-            entryAnimationDuration: activeObject.get('entryAnimationDuration'),
-          });
-        });
+            await updateSlideElement(activeObject, {
+              entryAnimation: animationName,
+              entryAnimationDuration: activeObject.get(
+                'entryAnimationDuration'
+              ),
+            });
+          }
+        );
 
         setPreviewAnimation(animationName);
       }
@@ -666,13 +679,13 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         resetElement(activeObject);
         isPreviewingRef.current = false;
         setPreviewAnimation(null);
-      }
-
-      // Set animation mới
+      } // Set animation mới
       const animationName = e.detail.animationName;
       const defaultDuration = animationDefaultDurations[animationName] || 1;
+      const defaultDelay = 0;
       activeObject.set('entryAnimation', animationName);
       activeObject.set('entryAnimationDuration', defaultDuration);
+      activeObject.set('entryAnimationDelay', defaultDelay);
 
       const slideElementId = activeObject.get('slideElementId');
 
@@ -683,6 +696,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           animationName: e.detail.animationName,
           objectId: slideElementId,
           duration: defaultDuration,
+          delay: defaultDelay,
         },
       });
       window.dispatchEvent(event);
@@ -693,6 +707,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
               ...el,
               entryAnimation: animationName,
               entryAnimationDuration: defaultDuration,
+              entryAnimationDelay: defaultDelay,
             }
           : el
       );
@@ -709,7 +724,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       // Preview animation mới
       handlePreviewAnimation(e);
     };
-    
+
     window.addEventListener(
       'fabric:reset-animation',
       handleResetAnimation as EventListener
@@ -931,7 +946,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         return false;
       }
     });
-
     canvas.on('after:render', () => {
       if (history.length === 0) {
         saveState();
@@ -942,11 +956,15 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       const activeObject = e.selected?.[0];
       if (activeObject) {
         const animationName = activeObject.get('entryAnimation') || 'none';
+        const duration = activeObject.get('entryAnimationDuration');
+        const delay = activeObject.get('entryAnimationDelay');
         const event = new CustomEvent('fabric:selection-changed', {
           detail: {
             slideId,
             animationName,
             objectId: activeObject.get('slideElementId'), // Thêm objectId
+            duration,
+            delay,
           },
         });
         window.dispatchEvent(event);
@@ -959,11 +977,15 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       const activeObject = e.selected?.[0];
       if (activeObject) {
         const animationName = activeObject.get('entryAnimation') || 'none';
+        const duration = activeObject.get('entryAnimationDuration');
+        const delay = activeObject.get('entryAnimationDelay');
         const event = new CustomEvent('fabric:selection-changed', {
           detail: {
             slideId,
             animationName,
             objectId: activeObject.get('slideElementId'),
+            duration,
+            delay,
           },
         });
         window.dispatchEvent(event);

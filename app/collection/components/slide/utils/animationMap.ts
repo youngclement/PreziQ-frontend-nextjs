@@ -26,13 +26,16 @@ export const animationMap: Record<string, AnimationFunction> = {
   ) => {
     gsap.killTweensOf(target);
     const initialOpacity = target.opacity ?? 1;
-    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.Fade;
+    const duration =
+      target.get('entryAnimationDuration') || animationDefaultDurations.Fade;
+    const delay = target.get('entryAnimationDelay') || 0;
 
     gsap.fromTo(
       target,
       { opacity: 0 },
       {
         duration: duration,
+        delay: delay,
         opacity: initialOpacity,
         ease: 'sine.inOut',
         onUpdate: () => canvas.renderAll(),
@@ -40,7 +43,6 @@ export const animationMap: Record<string, AnimationFunction> = {
       }
     );
   },
-
   SlideInLeft: (
     target: fabric.Object,
     canvas: fabric.Canvas,
@@ -48,13 +50,17 @@ export const animationMap: Record<string, AnimationFunction> = {
   ) => {
     gsap.killTweensOf(target);
     const initialLeft = target.left ?? 0;
-    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.SlideInLeft;
+    const duration =
+      target.get('entryAnimationDuration') ||
+      animationDefaultDurations.SlideInLeft;
+    const delay = target.get('entryAnimationDelay') || 0;
 
     target.set('left', initialLeft - 100);
     target.set('opacity', 0);
     canvas.renderAll();
     gsap.to(target, {
       duration: duration * 0.6,
+      delay: delay,
       left: initialLeft,
       opacity: 1,
       ease: 'power2.out',
@@ -62,7 +68,6 @@ export const animationMap: Record<string, AnimationFunction> = {
       onComplete: callback,
     });
   },
-
   SlideInRight: (
     target: fabric.Object,
     canvas: fabric.Canvas,
@@ -71,13 +76,17 @@ export const animationMap: Record<string, AnimationFunction> = {
     gsap.killTweensOf(target);
 
     const initialLeft = target.left ?? 0;
-    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.SlideInRight;
+    const duration =
+      target.get('entryAnimationDuration') ||
+      animationDefaultDurations.SlideInRight;
+    const delay = target.get('entryAnimationDelay') || 0;
 
     target.set('left', initialLeft + 100);
     target.set('opacity', 0);
     canvas.renderAll();
     gsap.to(target, {
       duration: duration * 0.6,
+      delay: delay,
       left: initialLeft,
       opacity: 1,
       ease: 'power2.out',
@@ -105,8 +114,8 @@ export const animationMap: Record<string, AnimationFunction> = {
   //     ease: 'elastic.out(1, 0.75)',
   //     onUpdate: () => canvas.renderAll(),
   //     onComplete: callback,
-  //   });
-  // },
+  //   });  // },
+
   RotateIn: (
     target: fabric.Object,
     canvas: fabric.Canvas,
@@ -115,13 +124,17 @@ export const animationMap: Record<string, AnimationFunction> = {
     gsap.killTweensOf(target);
 
     const initialAngle = target.angle ?? 0;
-    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.RotateIn;
+    const duration =
+      target.get('entryAnimationDuration') ||
+      animationDefaultDurations.RotateIn;
+    const delay = target.get('entryAnimationDelay') || 0;
 
     gsap.fromTo(
       target,
       { angle: -90, opacity: 0 },
       {
         duration: duration * 0.8,
+        delay: delay,
         angle: initialAngle,
         opacity: 1,
         ease: 'power3.out',
@@ -243,8 +256,8 @@ export const animationMap: Record<string, AnimationFunction> = {
   //     ease: 'power2.inOut',
   //     onUpdate: () => canvas.renderAll(),
   //     onComplete: callback,
-  //   });
-  // },
+  //   });  // },
+
   FlipIn: (
     target: fabric.Object,
     canvas: fabric.Canvas,
@@ -255,7 +268,9 @@ export const animationMap: Record<string, AnimationFunction> = {
       return animationMap.RotateIn(target, canvas, callback);
     }
     gsap.killTweensOf(target);
-    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.FlipIn;
+    const duration =
+      target.get('entryAnimationDuration') || animationDefaultDurations.FlipIn;
+    const delay = target.get('entryAnimationDelay') || 0;
 
     target.set({
       scaleY: 0,
@@ -264,6 +279,7 @@ export const animationMap: Record<string, AnimationFunction> = {
     canvas.renderAll();
     gsap.to(target, {
       duration: duration * 0.7,
+      delay: delay,
       scaleY: 1,
       opacity: 1,
       ease: 'back.out(1.7)',
@@ -279,13 +295,16 @@ export const animationMap: Record<string, AnimationFunction> = {
     gsap.killTweensOf(target);
 
     const initialTop = target.top ?? 0;
-    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.Bounce;
+    const duration =
+      target.get('entryAnimationDuration') || animationDefaultDurations.Bounce;
+    const delay = target.get('entryAnimationDelay') || 0;
 
     target.set('top', initialTop - 100);
     target.set('opacity', 0);
     canvas.renderAll();
     gsap.to(target, {
       duration: duration * 0.5,
+      delay: delay,
       top: initialTop,
       opacity: 1,
       ease: 'bounce.out',

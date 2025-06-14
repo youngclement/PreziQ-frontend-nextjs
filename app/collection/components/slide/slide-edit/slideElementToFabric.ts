@@ -129,14 +129,15 @@ export const slideElementToFabric = (
         scaleX: textboxJson.scaleX || 1,
         scaleY: textboxJson.scaleY || 1,
       });
-      textbox.set('slideElementId', element.slideElementId);
-
-      // Set animation properties
+      textbox.set('slideElementId', element.slideElementId); // Set animation properties
       if (element.entryAnimation) {
         textbox.set('entryAnimation', element.entryAnimation);
       }
       if (element.entryAnimationDuration) {
         textbox.set('entryAnimationDuration', element.entryAnimationDuration);
+      }
+      if (element.entryAnimationDelay) {
+        textbox.set('entryAnimationDelay', element.entryAnimationDelay);
       }
 
       return textbox;
@@ -178,14 +179,15 @@ export const slideElementToFabric = (
       originY: 'top',
     });
     image.set('slideElementId', element.slideElementId);
-    image.set('sourceUrl', element.sourceUrl);
-
-    // Set animation properties
+    image.set('sourceUrl', element.sourceUrl); // Set animation properties
     if (element.entryAnimation) {
       image.set('entryAnimation', element.entryAnimation);
     }
     if (element.entryAnimationDuration) {
       image.set('entryAnimationDuration', element.entryAnimationDuration);
+    }
+    if (element.entryAnimationDelay) {
+      image.set('entryAnimationDelay', element.entryAnimationDelay);
     }
 
     return image;

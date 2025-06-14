@@ -81,15 +81,22 @@ export const AnimationOrderItem = ({
         ) : (
           'Phần tử khác'
         )}
-      </div>
+      </div>{' '}
       <div className="text-xs text-gray-500 text-right">
         <div>{item.entryAnimation || 'Không có hiệu ứng'}</div>
         {item.entryAnimation && item.entryAnimation !== 'none' && (
-          <div className="text-xs text-gray-400 mt-0.5">
-            {item.entryAnimationDuration
-              ? `${item.entryAnimationDuration}s`
-              : '1.0s'}
-          </div>
+          <>
+            <div className="text-xs text-gray-400 mt-0.5">
+              {item.entryAnimationDuration
+                ? `${item.entryAnimationDuration}s`
+                : '1.0s'}
+            </div>
+            {item.entryAnimationDelay && item.entryAnimationDelay > 0 && (
+              <div className="text-xs text-red-500 mt-0.5">
+                Trễ: {item.entryAnimationDelay.toFixed(1)}s
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
