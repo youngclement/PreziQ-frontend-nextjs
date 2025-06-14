@@ -8,6 +8,15 @@ export type AnimationFunction = (
   callback?: () => void
 ) => void;
 
+export const animationDefaultDurations: Record<string, number> = {
+  Fade: 1,
+  SlideInLeft: 0.8,
+  SlideInRight: 0.8,
+  RotateIn: 1,
+  FlipIn: 0.7,
+  Bounce: 1.2,
+};
+
 export const animationMap: Record<string, AnimationFunction> = {
   // Hiệu ứng chung (cả TEXT và IMAGE)
   Fade: (
@@ -16,13 +25,14 @@ export const animationMap: Record<string, AnimationFunction> = {
     callback?: () => void
   ) => {
     gsap.killTweensOf(target);
-
     const initialOpacity = target.opacity ?? 1;
+    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.Fade;
+
     gsap.fromTo(
       target,
       { opacity: 0 },
       {
-        duration: 1,
+        duration: duration,
         opacity: initialOpacity,
         ease: 'sine.inOut',
         onUpdate: () => canvas.renderAll(),
@@ -30,19 +40,21 @@ export const animationMap: Record<string, AnimationFunction> = {
       }
     );
   },
+
   SlideInLeft: (
     target: fabric.Object,
     canvas: fabric.Canvas,
     callback?: () => void
   ) => {
     gsap.killTweensOf(target);
-
     const initialLeft = target.left ?? 0;
+    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.SlideInLeft;
+
     target.set('left', initialLeft - 100);
     target.set('opacity', 0);
     canvas.renderAll();
     gsap.to(target, {
-      duration: 0.6,
+      duration: duration * 0.6,
       left: initialLeft,
       opacity: 1,
       ease: 'power2.out',
@@ -59,11 +71,13 @@ export const animationMap: Record<string, AnimationFunction> = {
     gsap.killTweensOf(target);
 
     const initialLeft = target.left ?? 0;
+    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.SlideInRight;
+
     target.set('left', initialLeft + 100);
     target.set('opacity', 0);
     canvas.renderAll();
     gsap.to(target, {
-      duration: 0.6,
+      duration: duration * 0.6,
       left: initialLeft,
       opacity: 1,
       ease: 'power2.out',
@@ -93,7 +107,6 @@ export const animationMap: Record<string, AnimationFunction> = {
   //     onComplete: callback,
   //   });
   // },
-
   RotateIn: (
     target: fabric.Object,
     canvas: fabric.Canvas,
@@ -102,11 +115,13 @@ export const animationMap: Record<string, AnimationFunction> = {
     gsap.killTweensOf(target);
 
     const initialAngle = target.angle ?? 0;
+    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.RotateIn;
+
     gsap.fromTo(
       target,
       { angle: -90, opacity: 0 },
       {
-        duration: 0.8,
+        duration: duration * 0.8,
         angle: initialAngle,
         opacity: 1,
         ease: 'power3.out',
@@ -230,7 +245,6 @@ export const animationMap: Record<string, AnimationFunction> = {
   //     onComplete: callback,
   //   });
   // },
-
   FlipIn: (
     target: fabric.Object,
     canvas: fabric.Canvas,
@@ -240,13 +254,16 @@ export const animationMap: Record<string, AnimationFunction> = {
       // Nếu không phải Image, fallback về RotateIn
       return animationMap.RotateIn(target, canvas, callback);
     }
+    gsap.killTweensOf(target);
+    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.FlipIn;
+
     target.set({
       scaleY: 0,
       opacity: 0,
     });
     canvas.renderAll();
     gsap.to(target, {
-      duration: 0.7,
+      duration: duration * 0.7,
       scaleY: 1,
       opacity: 1,
       ease: 'back.out(1.7)',
@@ -262,11 +279,13 @@ export const animationMap: Record<string, AnimationFunction> = {
     gsap.killTweensOf(target);
 
     const initialTop = target.top ?? 0;
+    const duration = target.get('entryAnimationDuration') || animationDefaultDurations.Bounce;
+
     target.set('top', initialTop - 100);
     target.set('opacity', 0);
     canvas.renderAll();
     gsap.to(target, {
-      duration: 0.5,
+      duration: duration * 0.5,
       top: initialTop,
       opacity: 1,
       ease: 'bounce.out',

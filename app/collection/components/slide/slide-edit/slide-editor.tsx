@@ -13,7 +13,7 @@ import { debounce } from 'lodash';
 import { FabricImage } from 'fabric';
 import { slideElementToFabric } from './slideElementToFabric';
 import { gsap } from 'gsap';
-import { animationMap } from '../utils/animationMap';
+import { animationMap, animationDefaultDurations } from '../utils/animationMap';
 
 const ORIGINAL_CANVAS_WIDTH = 812;
 
@@ -201,12 +201,16 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
 
       const rawLeft = obj.left! / zoom;
       const rawTop = obj.top! / zoom;
-
       const currentElement = slideElementsRef.current.find(
         (el) => el.slideElementId === slideElementId
       );
       const displayOrder =
         obj.get('displayOrder') || currentElement?.displayOrder || 0;
+
+      // Lấy animation duration từ object hoặc currentElement để giữ lại
+      const entryAnimationDuration =
+        obj.get('entryAnimationDuration') ||
+        currentElement?.entryAnimationDuration;
 
       let w: number, h: number;
       if (obj.type === 'image') {
@@ -253,6 +257,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           slideElementType: 'TEXT',
           content: JSON.stringify(textboxJson),
           entryAnimation: obj.get('entryAnimation') || undefined,
+          entryAnimationDuration: entryAnimationDuration,
           ...updates,
         } as SlideElementPayload;
       } else {
@@ -261,6 +266,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           slideElementType: 'IMAGE',
           sourceUrl: obj.get('sourceUrl') || (obj as fabric.Image).getSrc(),
           entryAnimation: obj.get('entryAnimation') || undefined,
+          entryAnimationDuration: entryAnimationDuration,
           ...updates,
         } as SlideElementPayload;
       }
@@ -373,13 +379,15 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         );
 
       const loadedImages = await Promise.all(imagePromises);
-
       for (const el of sortedElements) {
         const obj = slideElementToFabric(el, canvas, loadedImages);
         if (obj) {
           // Đảm bảo animation được set khi load
           if (el.entryAnimation) {
             obj.set('entryAnimation', el.entryAnimation);
+          }
+          if (el.entryAnimationDuration) {
+            obj.set('entryAnimationDuration', el.entryAnimationDuration);
           }
           canvas.add(obj);
         }
@@ -627,10 +635,15 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         isPreviewingRef.current = true;
 
         // Chạy animation và reset khi hoàn tất
-        animationMap[animationName](activeObject, fabricCanvas.current, () => {
+        animationMap[animationName](activeObject, fabricCanvas.current, async () => {
           resetElement(activeObject);
           isPreviewingRef.current = false;
           setPreviewAnimation(null);
+
+          await updateSlideElement(activeObject, {
+            entryAnimation: animationName,
+            entryAnimationDuration: activeObject.get('entryAnimationDuration'),
+          });
         });
 
         setPreviewAnimation(animationName);
@@ -656,12 +669,31 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       }
 
       // Set animation mới
-      activeObject.set('entryAnimation', e.detail.animationName);
+      const animationName = e.detail.animationName;
+      const defaultDuration = animationDefaultDurations[animationName] || 1;
+      activeObject.set('entryAnimation', animationName);
+      activeObject.set('entryAnimationDuration', defaultDuration);
 
       const slideElementId = activeObject.get('slideElementId');
+
+      // Dispatch event
+      const event = new CustomEvent('fabric:selection-changed', {
+        detail: {
+          slideId,
+          animationName: e.detail.animationName,
+          objectId: slideElementId,
+          duration: defaultDuration,
+        },
+      });
+      window.dispatchEvent(event);
+
       const updatedElements = slideElementsRef.current.map((el) =>
         el.slideElementId === slideElementId
-          ? { ...el, entryAnimation: e.detail.animationName }
+          ? {
+              ...el,
+              entryAnimation: animationName,
+              entryAnimationDuration: defaultDuration,
+            }
           : el
       );
 
@@ -671,27 +703,13 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         slideElements: updatedElements,
       });
 
-      // Dispatch event
-      const event = new CustomEvent('fabric:selection-changed', {
-        detail: {
-          slideId,
-          animationName: e.detail.animationName,
-          objectId: slideElementId,
-        },
-      });
-      window.dispatchEvent(event);
-
-      // Cập nhật server
-      await updateSlideElement(activeObject, {
-        entryAnimation: e.detail.animationName,
-      });
-
       // Lưu trạng thái canvas
       saveState();
 
       // Preview animation mới
       handlePreviewAnimation(e);
     };
+    
     window.addEventListener(
       'fabric:reset-animation',
       handleResetAnimation as EventListener

@@ -3,6 +3,7 @@
 import { CSS } from '@dnd-kit/utilities';
 import { useSortable } from '@dnd-kit/sortable';
 import { GripVertical } from 'lucide-react';
+import Image from 'next/image';
 import type { SlideElementPayload } from '@/types/slideInterface';
 
 interface AnimationOrderItemProps {
@@ -33,6 +34,17 @@ export const AnimationOrderItem = ({
 
   // console.log('itemmmmmmmmm', item);
 
+  let textContent = '';
+  if (item.slideElementType === 'TEXT' && item.content) {
+    try {
+      const parsedContent = JSON.parse(item.content);
+      textContent = parsedContent.text || 'Văn bản';
+    } catch (error) {
+      console.error('Error parsing content:', error);
+      textContent = 'Văn bản';
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -54,16 +66,31 @@ export const AnimationOrderItem = ({
       />
       <button className="cursor-move hover:text-blue-500" {...listeners}>
         <GripVertical size={16} />
-      </button>
+      </button>{' '}
       <div className="flex-1 text-sm">
-        {item.slideElementType === 'TEXT'
-          ? 'Văn bản'
-          : item.slideElementType === 'IMAGE'
-          ? 'Hình ảnh'
-          : 'Phần tử khác'}
+        {item.slideElementType === 'TEXT' ? (
+          textContent
+        ) : item.slideElementType === 'IMAGE' && item.sourceUrl ? (
+          <Image
+            src={item.sourceUrl}
+            alt="Slide element"
+            width={32}
+            height={32}
+            className="h-8 w-8 object-contain"
+          />
+        ) : (
+          'Phần tử khác'
+        )}
       </div>
-      <div className="text-xs text-gray-500">
-        {item.entryAnimation || 'Không có hiệu ứng'}
+      <div className="text-xs text-gray-500 text-right">
+        <div>{item.entryAnimation || 'Không có hiệu ứng'}</div>
+        {item.entryAnimation && item.entryAnimation !== 'none' && (
+          <div className="text-xs text-gray-400 mt-0.5">
+            {item.entryAnimationDuration
+              ? `${item.entryAnimationDuration}s`
+              : '1.0s'}
+          </div>
+        )}
       </div>
     </div>
   );

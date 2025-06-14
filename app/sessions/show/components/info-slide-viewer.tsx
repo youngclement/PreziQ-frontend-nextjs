@@ -297,6 +297,9 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
         });
 
         textbox.set('slideElementId', element.slideElementId);
+        textbox.set('entryAnimation', element.entryAnimation);
+        textbox.set('entryAnimationDuration', element.entryAnimationDuration || 1);
+
         return textbox;
       } catch (err) {
         console.error('Lỗi khi parse content của TEXT element:', err);
@@ -331,6 +334,8 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
         originY: 'top',
         selectable: false,
         slideElementId: element.slideElementId,
+        entryAnimation: element.entryAnimation,
+        entryAnimationDuration: element.entryAnimationDuration || 1,
       });
 
       return img;
@@ -354,9 +359,11 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     }
 
     const animation = animationMap[element.entryAnimation];
-    const duration = (element.entryAnimationDuration || 1000) / 1000; // Chuyển ms thành giây
+    const duration = element.entryAnimationDuration || obj.get('entryAnimationDuration') || 1; // Chuyển ms thành giây
     const delay = (element.entryAnimationDelay || 0) / 1000; // Chuyển ms thành giây
 
+    obj.set('entryAnimationDuration', duration);
+    
     // Điều chỉnh GSAP animation để tôn trọng duration và delay
     setTimeout(() => {
       animation(obj, fabricCanvas.current!, () => {
