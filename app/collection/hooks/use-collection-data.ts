@@ -338,11 +338,6 @@ export function useCollectionData(collectionId: string, activityId?: string) {
               }
             }
           } else {
-            toast({
-              title: 'Info',
-              description:
-                'No activities found in this collection. Add one to get started.',
-            });
           }
         } else {
           // No activities in collection

@@ -2,12 +2,12 @@
  * Custom hook for managing question options
  */
 
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { activitiesApi } from '@/api-client';
 import { Activity, QuizQuestion } from '../components/types';
 import { reorderOptions } from '../utils/question-helpers';
-
+import { debounce } from 'lodash';
 
 export function useOptionOperations(
   questions: QuizQuestion[],
@@ -16,25 +16,88 @@ export function useOptionOperations(
   activity: Activity | null,
   timeLimit: number
 ) {
+  // Thêm hàm cập nhật API với debounce
+  const debouncedUpdateAPI = useCallback(
+    debounce(
+      async (
+        activityId: string,
+        activityTypeId: string,
+        question: QuizQuestion
+      ) => {
+        try {
+          const options = question.options;
+
+          switch (activityTypeId) {
+            case 'QUIZ_BUTTONS':
+              await activitiesApi.updateButtonsQuiz(activityId, {
+                type: 'CHOICE',
+                questionText: question.question_text,
+                timeLimitSeconds: timeLimit,
+                pointType: 'STANDARD',
+                answers: options.map((opt) => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || '',
+                })),
+              });
+              console.log(
+                'Cập nhật API thành công cho câu hỏi CHOICE (đã debounce)'
+              );
+              break;
+
+            case 'QUIZ_CHECKBOXES':
+              await activitiesApi.updateCheckboxesQuiz(activityId, {
+                type: 'CHOICE',
+                questionText: question.question_text,
+                timeLimitSeconds: timeLimit,
+                pointType: 'STANDARD',
+                answers: options.map((opt) => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || '',
+                })),
+              });
+              console.log(
+                'Cập nhật API thành công cho câu hỏi CHOICE (đã debounce)'
+              );
+              break;
+
+            // Giữ nguyên các trường hợp khác...
+          }
+        } catch (error) {
+          console.error(
+            'Lỗi trong quá trình cập nhật API với debounce:',
+            error
+          );
+        }
+      },
+      500 // Thời gian debounce 500ms
+    ),
+    [timeLimit]
+  );
+
   /**
-   * Handle option text/value changes
+   * Xử lý thay đổi văn bản/giá trị tùy chọn
    */
   const handleOptionChange = async (
     questionIndex: number,
     optionIndex: number,
     field: string,
-    value: any
+    value: any,
+    isTyping: boolean = false
   ) => {
     if (!activity) return;
 
-    console.log(`Changing option ${optionIndex}, field ${field} to:`, value);
+    console.log(
+      `Thay đổi tùy chọn ${optionIndex}, trường ${field} thành:`,
+      value
+    );
 
-    // Create deep copies to avoid reference issues
+    // Tạo bản sao sâu để tránh vấn đề tham chiếu
     const updatedQuestions = JSON.parse(JSON.stringify(questions));
     const activeQuestion = updatedQuestions[questionIndex];
 
-
-    // Skip updates for INFO_SLIDE type as they don't have options
+    // Bỏ qua cập nhật cho loại INFO_SLIDE vì chúng không có tùy chọn
     if (activity.activity_type_id === 'INFO_SLIDE') {
       console.log(
         `Updating INFO_SLIDE with options:`,
@@ -45,69 +108,103 @@ export function useOptionOperations(
       return;
     }
 
-    // Check if options array exists and has the required index
+    if (
+      field === 'correct_answer_text' ||
+      (field === 'option_text' &&
+        activeQuestion.question_type === 'text_answer')
+    ) {
+      // Cập nhật trực tiếp vào question object, không phải options
+      activeQuestion.correct_answer_text = value;
+
+      if (activeQuestion.options && activeQuestion.options.length > 0) {
+        activeQuestion.options[0].option_text = value;
+        activeQuestion.options[0].is_correct = true;
+      }
+
+      setQuestions(updatedQuestions);
+
+      // Nếu đang typing thì không gọi API
+      if (isTyping) {
+        return;
+      }
+
+      // Gọi API cho text_answer question
+      if (activity.activity_type_id === 'QUIZ_TYPE_ANSWER') {
+        try {
+          await activitiesApi.updateTypeAnswerQuiz(activity.id, {
+            type: 'TYPE_ANSWER',
+            questionText: activeQuestion.question_text,
+            timeLimitSeconds: timeLimit,
+            pointType: 'STANDARD',
+            correctAnswer: value,
+          });
+          console.log(
+            'API update successful for TYPE_ANSWER correct_answer_text'
+          );
+        } catch (error) {
+          console.error(
+            'Error updating TYPE_ANSWER correct_answer_text:',
+            error
+          );
+        }
+      }
+      return;
+    }
+
+    // Kiểm tra xem mảng tùy chọn có tồn tại và có chỉ mục yêu cầu không
     if (
       !activeQuestion.options ||
       !Array.isArray(activeQuestion.options) ||
       activeQuestion.options.length <= optionIndex
     ) {
-      console.error(`Option at index ${optionIndex} does not exist`);
+      console.error(`Tùy chọn tại chỉ mục ${optionIndex} không tồn tại`);
       return;
-
     }
 
-    // Special handling for multiple_choice and true_false questions - only one correct answer allowed
+    // Xử lý đặc biệt cho câu hỏi multiple_choice và true_false
     if (
       field === 'is_correct' &&
       value === true &&
       (activeQuestion.question_type === 'multiple_choice' ||
         activeQuestion.question_type === 'true_false')
     ) {
-      // First set all options to incorrect
+      // Đầu tiên đặt tất cả các tùy chọn là không chính xác
       activeQuestion.options.forEach((opt: any) => {
         opt.is_correct = false;
       });
-      // Then set just the selected one to correct
+      // Sau đó chỉ đặt tùy chọn được chọn là chính xác
       activeQuestion.options[optionIndex][field] = value;
     } else {
-      // For other question types or fields, just update normally
+      // Đối với các loại câu hỏi hoặc trường khác, chỉ cập nhật bình thường
       activeQuestion.options[optionIndex][field] = value;
     }
 
-    // Update local state
+    // Cập nhật trạng thái cục bộ
     setQuestions(updatedQuestions);
 
+    if (isTyping && field === 'option_text') {
+      return;
+    }
+
+    // Sử dụng API call với debounce cho câu hỏi loại CHOICE
+    if (
+      activity.activity_type_id === 'QUIZ_BUTTONS' ||
+      activity.activity_type_id === 'QUIZ_CHECKBOXES'
+    ) {
+      debouncedUpdateAPI(
+        activity.id,
+        activity.activity_type_id,
+        activeQuestion
+      );
+      return;
+    }
+
+    // Đối với các loại câu hỏi khác, tiếp tục với các API call ngay lập tức
     try {
       const options = activeQuestion.options;
-      console.log(
-        `Updating ${activity.activity_type_id} with options:`,
-        options
-      );
 
-      // Now handle API update based on question type
+      // Xử lý cập nhật API dựa trên loại câu hỏi
       switch (activity.activity_type_id) {
-        case 'QUIZ_BUTTONS':
-        case 'QUIZ_CHECKBOXES':
-          await activitiesApi.updateCheckboxesQuiz(activity.id, {
-            type: 'CHOICE',
-            questionText: activeQuestion.question_text,
-            timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
-            answers: options.map(
-              (opt: {
-                option_text: string;
-                is_correct: boolean;
-                explanation: string;
-              }) => ({
-                answerText: opt.option_text,
-                isCorrect: opt.is_correct,
-                explanation: opt.explanation || '',
-              })
-            ),
-          });
-          console.log('API update successful for CHOICE question');
-          break;
-
         case 'QUIZ_TRUE_OR_FALSE':
           const correctOption = options.find(
             (opt: { is_correct: boolean }) => opt.is_correct
@@ -119,7 +216,7 @@ export function useOptionOperations(
             pointType: 'STANDARD',
             correctAnswer: correctOption?.option_text.toLowerCase() === 'true',
           });
-          console.log('API update successful for TRUE_FALSE question');
+          console.log('Cập nhật API thành công cho câu hỏi TRUE_FALSE');
           break;
 
         case 'QUIZ_TYPE_ANSWER':
@@ -150,13 +247,18 @@ export function useOptionOperations(
           break;
       }
 
-
-      console.log("Answer text updated successfully");
+      console.log('Đã cập nhật văn bản câu trả lời thành công');
     } catch (error) {
-      console.error("Error updating answer text:", error);
-
+      console.error('Lỗi khi cập nhật văn bản câu trả lời:', error);
     }
   };
+
+  // Thêm đoạn dọn dẹp cho hàm debounced
+  React.useEffect(() => {
+    return () => {
+      debouncedUpdateAPI.cancel();
+    };
+  }, [debouncedUpdateAPI]);
 
   /**
    * Handle reordering of options (specifically for reorder question type)
@@ -203,11 +305,10 @@ export function useOptionOperations(
         correctOrder: reorderedOptions.map((opt) => opt.option_text),
       });
 
-      console.log("Reorder update response:", response);
-      console.log("Reorder steps updated successfully");
+      console.log('Reorder update response:', response);
+      console.log('Reorder steps updated successfully');
     } catch (error) {
-      console.error("Error updating reorder steps:", error);
-
+      console.error('Error updating reorder steps:', error);
     }
   };
 
@@ -222,7 +323,6 @@ export function useOptionOperations(
 
     // Don't allow more than 8 options
     if (activeQuestion.options.length >= 8) {
-
       console.log("Maximum options reached: You can't add more than 8 options");
 
       return;
@@ -288,11 +388,9 @@ export function useOptionOperations(
           break;
       }
 
-
-      console.log("New option added successfully");
+      console.log('New option added successfully');
     } catch (error) {
-      console.error("Error adding option:", error);
-
+      console.error('Error adding option:', error);
     }
   };
 
@@ -311,9 +409,8 @@ export function useOptionOperations(
       (activeQuestion.question_type === 'multiple_choice' ||
         activeQuestion.question_type === 'multiple_response')
     ) {
-
       console.log(
-        "Minimum options required: You need at least 2 options for this question type"
+        'Minimum options required: You need at least 2 options for this question type'
       );
 
       return;
@@ -387,10 +484,9 @@ export function useOptionOperations(
           break;
       }
 
-      console.log("Option deleted successfully");
+      console.log('Option deleted successfully');
     } catch (error) {
-      console.error("Error deleting option:", error);
-
+      console.error('Error deleting option:', error);
     }
   };
 
@@ -422,12 +518,10 @@ export function useOptionOperations(
           correctAnswer: value,
         });
 
-
-        console.log("Successfully updated text answer question:", response);
+        console.log('Successfully updated text answer question:', response);
       }
     } catch (error) {
-      console.error("Error updating correct answer:", error);
-
+      console.error('Error updating correct answer:', error);
     }
   };
 
@@ -457,11 +551,9 @@ export function useOptionOperations(
         correctOrder: activeQuestion.options.map((opt) => opt.option_text),
       });
 
-
-      console.log("API update successful for REORDER question option");
+      console.log('API update successful for REORDER question option');
     } catch (error) {
-      console.error("Error updating reorder option:", error);
-
+      console.error('Error updating reorder option:', error);
     }
   };
 

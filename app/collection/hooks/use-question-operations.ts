@@ -574,7 +574,8 @@ export function useQuestionOperations(
    */
   const handleQuestionTextChange = async (
     value: string,
-    questionIndex: number
+    questionIndex: number,
+    isTyping: boolean = false
   ) => {
     if (!activity) return;
 
@@ -604,6 +605,8 @@ export function useQuestionOperations(
 
     // If not the active index, don't update API
     if (questionIndex !== activeQuestionIndex) return;
+
+    if (isTyping) return;
 
     try {
       const activityType = activity.activity_type_id;

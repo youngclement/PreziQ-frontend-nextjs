@@ -199,21 +199,11 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
-      toast({
-        title: 'Invalid format',
-        description: 'Please select an image in PNG or JPG format.',
-        variant: 'destructive',
-      });
       return;
     }
 
     // Validate file size (1KB to 5MB)
     if (file.size < 1024 || file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'Invalid file size',
-        description: 'Image must be between 1KB and 5MB.',
-        variant: 'destructive',
-      });
       return;
     }
 
@@ -241,11 +231,6 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
       await onBackgroundImageChange(fileUrl);
     } catch (error) {
       console.error('Error uploading file:', error);
-      toast({
-        title: 'Upload error',
-        description: 'Could not upload the image. Please try again.',
-        variant: 'destructive',
-      });
     }
   };
 

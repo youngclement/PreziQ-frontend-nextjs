@@ -99,6 +99,7 @@ export default function QuestionsPageContent() {
   const [slidesBackgrounds, setSlidesBackgrounds] = useState<
     Record<string, { backgroundImage: string; backgroundColor: string }>
   >({});
+  const [correctAnswerText, setCorrectAnswerText] = useState('');
 
   // Use question operations hook
   const {
@@ -262,7 +263,8 @@ export default function QuestionsPageContent() {
   // Centralized question text update function to ensure consistency
   const handleCentralizedQuestionTextChange = (
     value: string,
-    questionIndex: number
+    questionIndex: number,
+    isTyping: boolean = false
   ) => {
     // Update question text in local state
     const updatedQuestions = [...questions];
@@ -270,7 +272,7 @@ export default function QuestionsPageContent() {
     setQuestions(updatedQuestions);
 
     // Call the API update function
-    handleQuestionTextChange(value, questionIndex);
+    handleQuestionTextChange(value, questionIndex, isTyping);
 
     // Also update activity title if this is a newly created question (title matches the default)
     if (
@@ -307,7 +309,8 @@ export default function QuestionsPageContent() {
     questionIndex: number,
     optionIndex: number,
     field: string,
-    value: any
+    value: any,
+    isTyping: boolean = false
   ) => {
     // Make a copy of the current questions
     const updatedQuestions = [...questions];
@@ -346,7 +349,7 @@ export default function QuestionsPageContent() {
       }
 
       // Call the API update function
-      handleOptionChange(questionIndex, optionIndex, field, value);
+      handleOptionChange(questionIndex, optionIndex, field, value, isTyping);
     }
   };
 
@@ -626,10 +629,14 @@ export default function QuestionsPageContent() {
     const fetchActivityData = async () => {
       for (const question of questions) {
         const activityId = question.activity_id;
-        if (activityId && !slidesData[activityId]) {
+
+        const shouldFetchData = ['slide', 'info_slide'].includes(question.question_type);
+
+        if (activityId && !slidesData[activityId] && shouldFetchData) {
           try {
             const response = await activitiesApi.getActivityById(activityId);
             const activityData = response.data.data;
+            console.log('Fetched activity data:', activityData);
 
             // Lưu dữ liệu slide
             setSlidesData((prev) => ({
@@ -724,6 +731,49 @@ export default function QuestionsPageContent() {
       );
     };
   }, []);
+
+  useEffect(() => {
+    if (questions[activeQuestionIndex]) {
+      setCorrectAnswerText(
+        questions[activeQuestionIndex].correct_answer_text ||
+          (questions[activeQuestionIndex].options &&
+            questions[activeQuestionIndex].options.length > 0 &&
+            questions[activeQuestionIndex].options.find((opt) => opt.is_correct)
+              ?.option_text) ||
+          ''
+      );
+    }
+  }, [activeQuestionIndex, questions]);
+
+  const handleCorrectAnswerTextChange = (value: string) => {
+    setCorrectAnswerText(value);
+  };
+
+  const handleCorrectAnswerTextBlur = (value: string) => {
+    if (!activity?.id || !questions[activeQuestionIndex]) return;
+
+    const currentQuestion = questions[activeQuestionIndex];
+
+    // Cập nhật local state trước
+    const updatedQuestions = [...questions];
+    updatedQuestions[activeQuestionIndex].correct_answer_text = value;
+    setQuestions(updatedQuestions);
+
+    // Gọi API nếu là text_answer
+    if (currentQuestion.question_type === 'text_answer') {
+      try {
+        activitiesApi.updateTypeAnswerQuiz(activity.id, {
+          type: 'TYPE_ANSWER',
+          questionText: currentQuestion.question_text,
+          pointType: 'STANDARD',
+          timeLimitSeconds: timeLimit,
+          correctAnswer: value,
+        });
+      } catch (error) {
+        console.error('Error updating text answer:', error);
+      }
+    }
+  };
 
   // Display loading state
   if (isLoading) {
@@ -885,6 +935,9 @@ export default function QuestionsPageContent() {
                   slidesBackgrounds={slidesBackgrounds}
                   slideElements={slideElements}
                   onSlideElementsUpdate={handleSlideElementsUpdate}
+                  correctAnswerText={correctAnswerText}
+                  onCorrectAnswerTextChange={handleCorrectAnswerTextChange}
+                  onCorrectAnswerTextBlur={handleCorrectAnswerTextBlur}
                 />
               )}
             </div>
@@ -925,6 +978,9 @@ export default function QuestionsPageContent() {
                 rightColumnName={matchingPairColumnNames.right}
                 slideElements={slideElements}
                 onSlideElementsUpdate={handleSlideElementsUpdate}
+                correctAnswerText={correctAnswerText}
+                onCorrectAnswerTextChange={handleCorrectAnswerTextChange}
+                onCorrectAnswerTextBlur={handleCorrectAnswerTextBlur}
               />
             </div>
           </div>
