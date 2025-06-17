@@ -166,7 +166,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                 }
 
                 // Handle matching pair questions - FOR MOCKING
-                if (act.activity_type_id === 'QUIZ_MATCHING_PAIR') {
+                if (act.activity_type_id === 'QUIZ_MATCHING_PAIRS') {
                   question.question_type = 'matching_pair';
                   question.question_text = act.title || 'Match the pairs';
                   question.options = [
@@ -244,55 +244,56 @@ export function useCollectionData(collectionId: string, activityId?: string) {
               }
             );
 
+            /* COMMENTED OUT MOCK DATA 
             // MOCK DATA INJECTION
             const mockActivity: Activity = {
-              id: 'mock-activity-1',
-              title: 'Mock Matching Pair Question',
+              id: "mock-activity-1",
+              title: "Mock Matching Pair Question",
               collection_id: collectionId,
-              description: 'This is a mock question for testing.',
-              is_published: true,
-              activity_type_id: 'QUIZ_MATCHING_PAIR',
-              orderIndex: -1, // To ensure it's at the top
+              description: "This is a mock question for testing.",
+              is_published: true, 
+              activity_type_id: "QUIZ_MATCHING_PAIRS",
+              orderIndex: -1,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              createdBy: 'mock-user',
+              createdBy: "mock-user",
             };
 
             const mockQuestion: QuizQuestion = {
-              id: 'mock-activity-1',
-              activity_id: 'mock-activity-1',
-              question_text: 'Match the capitals to their countries',
-              question_type: 'matching_pair',
+              id: "mock-activity-1",
+              activity_id: "mock-activity-1", 
+              question_text: "Match the capitals to their countries",
+              question_type: "matching_pair",
               options: [
                 {
-                  id: 'left-1',
-                  pair_id: 'pair-1',
-                  type: 'left',
-                  option_text: 'Hanoi',
+                  id: "left-1",
+                  pair_id: "pair-1",
+                  type: "left",
+                  option_text: "Hanoi",
                   is_correct: true,
                   display_order: 0,
                 },
                 {
-                  id: 'right-1',
-                  pair_id: 'pair-1',
-                  type: 'right',
-                  option_text: 'Vietnam',
-                  is_correct: true,
+                  id: "right-1",
+                  pair_id: "pair-1",
+                  type: "right",
+                  option_text: "Vietnam",
+                  is_correct: true, 
                   display_order: 1,
                 },
                 {
-                  id: 'left-2',
-                  pair_id: 'pair-2',
-                  type: 'left',
-                  option_text: 'Tokyo',
+                  id: "left-2",
+                  pair_id: "pair-2",
+                  type: "left",
+                  option_text: "Tokyo",
                   is_correct: true,
                   display_order: 2,
                 },
                 {
-                  id: 'right-2',
-                  pair_id: 'pair-2',
-                  type: 'right',
-                  option_text: 'Japan',
+                  id: "right-2",
+                  pair_id: "pair-2",
+                  type: "right",
+                  option_text: "Japan",
                   is_correct: true,
                   display_order: 3,
                 },
@@ -305,29 +306,34 @@ export function useCollectionData(collectionId: string, activityId?: string) {
 
             setActivities(finalActivities);
             setQuestions(finalQuestions);
+            */
+
+            // Replace mock data usage with original data
+            setActivities(mappedActivities);
+            setQuestions(allQuestions);
 
             // Find index of the first question if we have questions
-            if (finalQuestions.length > 0) {
+            if (allQuestions.length > 0) {
               // If we have an activity ID in params, select that activity
               if (activityId) {
-                const targetActivity = finalActivities.find(
+                const targetActivity = mappedActivities.find(
                   (a: { id: string }) => a.id === activityId
                 );
                 if (targetActivity) {
                   setActivity(targetActivity);
-                  const targetIndex = finalQuestions.findIndex(
+                  const targetIndex = allQuestions.findIndex(
                     (q: { activity_id: string }) =>
                       q.activity_id === targetActivity.id
                   );
                   setActiveQuestionIndex(targetIndex >= 0 ? targetIndex : 0);
                 } else {
                   // If no matching activity, select first
-                  setActivity(finalActivities[0]);
+                  setActivity(mappedActivities[0]);
                   setActiveQuestionIndex(0);
                 }
               } else {
                 // No specific activity in URL, use first
-                setActivity(finalActivities[0]);
+                setActivity(mappedActivities[0]);
                 setActiveQuestionIndex(0);
               }
             }

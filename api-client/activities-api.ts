@@ -9,7 +9,7 @@ export type ActivityType =
   | 'QUIZ_REORDER'
   | 'INFO_SLIDE'
   | 'QUIZ_LOCATION'
-  | 'QUIZ_MATCHING_PAIR';
+  | 'QUIZ_MATCHING_PAIRS';
 
 export interface ActivityTypeInfo {
   key: ActivityType;
@@ -101,16 +101,33 @@ export interface LocationQuizPayload {
   }[];
 }
 
+export interface QuizMatchingPairItem {
+  quizMatchingPairItemId?: string;
+  content?: string;
+  isLeftColumn: boolean;
+  displayOrder: number;
+}
+
+export interface QuizMatchingPairConnection {
+  quizMatchingPairConnectionId?: string;
+  leftItem: QuizMatchingPairItem;
+  rightItem: QuizMatchingPairItem;
+}
+
+export interface QuizMatchingPairAnswer {
+  quizMatchingPairAnswerId: string;
+  leftColumnName: string;
+  rightColumnName: string;
+  items: QuizMatchingPairItem[];
+  connections: QuizMatchingPairConnection[];
+}
+
 export interface MatchingPairQuizPayload {
   type: 'MATCHING_PAIR';
   questionText: string;
   timeLimitSeconds?: number;
   pointType?: 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS';
-  pairs: {
-    leftText: string;
-    rightText: string;
-    isCorrect: boolean;
-  }[];
+  quizMatchingPairAnswer: QuizMatchingPairAnswer;
 }
 
 export type QuizPayload =
@@ -295,5 +312,37 @@ export const activitiesApi = {
    */
   updateMatchingPairQuiz(activityId: string, payload: MatchingPairQuizPayload) {
     return axiosClient.put(`/activities/${activityId}/quiz`, payload);
+  },
+  addMatchingPair(activityId: string) {
+    return axiosClient.post(`/quizzes/${activityId}/matching-pairs/items`, {});
+  },
+  updateReorderQuizItem(
+    activityId: string,
+    itemId: string,
+    payload: QuizMatchingPairItem
+  ) {
+    return axiosClient.patch(
+      `/quizzes/${activityId}/matching-pairs/items/${itemId}`,
+      payload
+    );
+  },
+  deleteMatchingPairItem(activityId: string, itemId: string) {
+    return axiosClient.delete(
+      `/quizzes/${activityId}/matching-pairs/items/${itemId}`
+    );
+  },
+  addMatchingPairConnection(
+    activityId: string,
+    payload: QuizMatchingPairConnection
+  ) {
+    return axiosClient.post(
+      `/quizzes/${activityId}/matching-pairs/connections`,
+      payload
+    );
+  },
+  deleteMatchingPairConnection(activityId: string, connectionId: string) {
+    return axiosClient.delete(
+      `/quizzes/${activityId}/matching-pairs/connections/${connectionId}`
+    );
   },
 };
