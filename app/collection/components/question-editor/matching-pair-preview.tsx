@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Info } from 'lucide-react';
@@ -15,6 +15,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useTranslation } from 'react-i18next';
+import type {
+  QuizMatchingPairAnswer,
+  QuizMatchingPairItem,
+  QuizMatchingPairConnection,
+} from '@/api-client/activities-api';
 
 // Add this shuffle function
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -35,11 +40,6 @@ const PAIR_COLORS = [
   '#ec4899', // pink
   '#6366f1', // indigo
 ];
-
-interface Connection {
-  columnA: string;
-  columnB: string;
-}
 
 interface MatchingPairPreviewProps {
   question: QuizQuestion;
@@ -65,6 +65,8 @@ interface MatchingPairPreviewProps {
   leftColumnName?: string;
   rightColumnName?: string;
   previewMode?: boolean;
+  // Thêm prop để theo dõi thay đổi từ settings
+  settingsUpdateTrigger?: number;
 }
 
 export function MatchingPairPreview({
@@ -86,49 +88,66 @@ export function MatchingPairPreview({
   leftColumnName = 'Column A',
   rightColumnName = 'Column B',
   previewMode = true,
+  settingsUpdateTrigger = 0,
 }: MatchingPairPreviewProps) {
   const { t } = useTranslation();
-  const [connections, setConnections] = useState<Connection[]>([]);
+  const [connections, setConnections] = useState<QuizMatchingPairConnection[]>(
+    []
+  );
   const [selectedItem, setSelectedItem] = useState<{
     id: string;
     type: 'left' | 'right';
   } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Create a color map for pairs
+  // Get matching pair data from the question
+  const matchingData =
+    question.quizMatchingPairAnswer || question.matching_data;
+
+  // Create a color map for pairs based on connection IDs
   const pairColorMap = useMemo(() => {
     const map = new Map<string, string>();
-    const pairIds = new Set<string>();
-    question.options.forEach((opt) => {
-      if (opt.pair_id) {
-        pairIds.add(opt.pair_id);
-      }
-    });
-
-    Array.from(pairIds).forEach((pairId, index) => {
-      map.set(pairId, PAIR_COLORS[index % PAIR_COLORS.length]);
-    });
+    if (matchingData?.connections) {
+      matchingData.connections.forEach((connection, index) => {
+        if (connection.quizMatchingPairConnectionId) {
+          map.set(
+            connection.quizMatchingPairConnectionId,
+            PAIR_COLORS[index % PAIR_COLORS.length]
+          );
+        }
+      });
+    }
     return map;
-  }, [question.options]);
+  }, [matchingData?.connections]);
 
   // Add new state for shuffled columns - only shuffle once
   const [shuffledColumnA, setShuffledColumnA] = useState<
-    typeof question.options
+    QuizMatchingPairItem[]
   >([]);
   const [shuffledColumnB, setShuffledColumnB] = useState<
-    typeof question.options
+    QuizMatchingPairItem[]
   >([]);
 
-  // Add useEffect to handle initial shuffle only once
+  // Thêm state để theo dõi kích thước container
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Thêm state để theo dõi thay đổi của preview
+  const [previewUpdate, setPreviewUpdate] = useState(0);
+
+  // Thêm state để theo dõi version của dữ liệu
+  const [dataVersion, setDataVersion] = useState(0);
+
+  // Cải thiện useEffect để xử lý cập nhật dữ liệu từ settings
   useEffect(() => {
+    if (!matchingData?.items) return;
 
-    const columnA = question.options.filter((item) => item.type === 'left' && item.id);
-    const columnB = question.options.filter((item) => item.type === 'right' && item.id);
+    const columnA = matchingData.items.filter((item) => item.isLeftColumn);
+    const columnB = matchingData.items.filter((item) => !item.isLeftColumn);
 
-
-    // Sort both columns by display_order to maintain the correct order
-    columnA.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-    columnB.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    // Sort both columns by displayOrder to maintain the correct order
+    columnA.sort((a, b) => a.displayOrder - b.displayOrder);
+    columnB.sort((a, b) => a.displayOrder - b.displayOrder);
 
     // Only shuffle if in player mode
     if (previewMode) {
@@ -138,41 +157,17 @@ export function MatchingPairPreview({
       setShuffledColumnA(columnA);
       setShuffledColumnB(columnB);
     }
-  }, [question.options, previewMode]); // Re-evaluate when options or previewMode change
 
-  // Replace the direct column assignments with state values
-  const columnA = shuffledColumnA;
-  const columnB = shuffledColumnB;
+    // Cập nhật version để trigger re-render
+    setDataVersion((prev) => prev + 1);
+  }, [matchingData?.items, previewMode, settingsUpdateTrigger]);
 
-  // Auto-connect matching pairs based on pair_id
+  // Auto-connect matching pairs based on connections
   useEffect(() => {
-    const newConnections: Connection[] = [];
-    if (columnA.length > 0 && columnB.length > 0) {
-      const rightOptionsWithPairId = columnB.filter((item) => item.pair_id);
-
-      columnA.forEach((leftItem) => {
-        if (leftItem.pair_id) {
-          const matchingRightItem = rightOptionsWithPairId.find(
-            (rightItem) => rightItem.pair_id === leftItem.pair_id
-          );
-          if (matchingRightItem && leftItem.id && matchingRightItem.id) {
-            newConnections.push({
-              columnA: leftItem.id,
-              columnB: matchingRightItem.id,
-            });
-          }
-        }
-      });
+    if (matchingData?.connections) {
+      setConnections(matchingData.connections);
     }
-    setConnections(newConnections);
-  }, [question.options, columnA, columnB]);
-
-  // Thêm state để theo dõi kích thước container
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Thêm state để theo dõi thay đổi của preview
-  const [previewUpdate, setPreviewUpdate] = useState(0);
+  }, [matchingData?.connections, settingsUpdateTrigger]);
 
   // Cập nhật useEffect để theo dõi kích thước và cập nhật preview
   useEffect(() => {
@@ -207,145 +202,101 @@ export function MatchingPairPreview({
     };
   }, []);
 
-  const handleItemClick = (type: 'left' | 'right', itemId: string) => {
-    // Only allow connections in edit mode, not in player/preview mode
-    if (previewMode || !editMode) {
-      return;
-    }
+  // Thêm useEffect để theo dõi thay đổi từ settings
+  useEffect(() => {
+    // Trigger re-render khi có thay đổi từ settings
+    setPreviewUpdate((prev) => prev + 1);
+  }, [settingsUpdateTrigger]);
 
-    // Editor logic
-    const clickedOption = question.options.find((opt) => opt.id === itemId);
-    if (!clickedOption) return;
+  const handleItemClick = useCallback(
+    (type: 'left' | 'right', itemId: string) => {
+      // Only allow connections in edit mode, not in player/preview mode
+      if (previewMode || !editMode) {
+        return;
+      }
 
-    if (selectedItem) {
-      // An item is already selected
-      if (selectedItem.type !== type) {
-        // A different column item was clicked, form a pair
-        const leftOption =
-          type === 'right'
-            ? question.options.find((o) => o.id === selectedItem.id)
-            : clickedOption;
-        const rightOption =
-          type === 'left'
-            ? question.options.find((o) => o.id === selectedItem.id)
-            : clickedOption;
-
-        if (!leftOption || !rightOption) {
+      // Editor logic - this would need to be implemented based on your API structure
+      // For now, we'll just handle the selection state
+      if (selectedItem) {
+        // An item is already selected
+        if (selectedItem.type !== type) {
+          // A different column item was clicked, form a pair
+          // This would need to be implemented based on your API structure
           setSelectedItem(null);
-          return;
-        }
-
-        const leftOptionIndex = question.options.findIndex(
-          (o) => o.id === leftOption.id
-        );
-        const rightOptionIndex = question.options.findIndex(
-          (o) => o.id === rightOption.id
-        );
-
-        // If they are already connected, disconnect them
-        if (
-          leftOption.pair_id &&
-          rightOption.pair_id &&
-          leftOption.pair_id === rightOption.pair_id
-        ) {
-          onOptionChange(questionIndex, leftOptionIndex, 'pair_id', null);
-          onOptionChange(questionIndex, rightOptionIndex, 'pair_id', null);
         } else {
-          // Check if right option is already paired, if so, break that pair
-          if (rightOption.pair_id) {
-            const previouslyPairedLeftOption = question.options.find(
-              (o) => o.pair_id === rightOption.pair_id && o.type === 'left'
-            );
-            if (previouslyPairedLeftOption) {
-              const prevIndex = question.options.findIndex(
-                (o) => o.id === previouslyPairedLeftOption.id
-              );
-              onOptionChange(questionIndex, prevIndex, 'pair_id', null);
-            }
-          }
-          // Check if left option is already paired, if so, break that pair
-          if (leftOption.pair_id) {
-            const previouslyPairedRightOption = question.options.find(
-              (o) => o.pair_id === leftOption.pair_id && o.type === 'right'
-            );
-            if (previouslyPairedRightOption) {
-              const prevIndex = question.options.findIndex(
-                (o) => o.id === previouslyPairedRightOption.id
-              );
-              onOptionChange(questionIndex, prevIndex, 'pair_id', null);
-            }
-          }
-
-          // Create new connection
-          const newPairId = crypto.randomUUID();
-          onOptionChange(questionIndex, leftOptionIndex, 'pair_id', newPairId);
-          onOptionChange(questionIndex, rightOptionIndex, 'pair_id', newPairId);
+          // Same column item was clicked, change selection
+          setSelectedItem({ id: itemId, type });
         }
-
-        setSelectedItem(null);
       } else {
-        // Same column item was clicked, change selection
+        // No item selected, select this one
         setSelectedItem({ id: itemId, type });
       }
-    } else {
-      // No item selected, select this one
-      setSelectedItem({ id: itemId, type });
-    }
-  };
+    },
+    [previewMode, editMode, selectedItem]
+  );
 
   // Cập nhật hàm getConnectionPath để tạo đường nối đẹp hơn
-  const getConnectionPath = (aId: string, bId: string) => {
-    const aElement = document.getElementById(`item-${aId}`);
-    const bElement = document.getElementById(`item-${bId}`);
-    const svgElement = svgRef.current;
+  const getConnectionPath = useCallback(
+    (leftItemId: string, rightItemId: string) => {
+      const leftElement = document.getElementById(`item-${leftItemId}`);
+      const rightElement = document.getElementById(`item-${rightItemId}`);
+      const svgElement = svgRef.current;
 
-    if (!aElement || !bElement || !svgElement) return '';
+      if (!leftElement || !rightElement || !svgElement) return '';
 
-    const svgRect = svgElement.getBoundingClientRect();
-    const aRect = aElement.getBoundingClientRect();
-    const bRect = bElement.getBoundingClientRect();
+      const svgRect = svgElement.getBoundingClientRect();
+      const leftRect = leftElement.getBoundingClientRect();
+      const rightRect = rightElement.getBoundingClientRect();
 
-    const startX = aRect.right - svgRect.left;
-    const startY = aRect.top + aRect.height / 2 - svgRect.top;
-    const endX = bRect.left - svgRect.left;
-    const endY = bRect.top + bRect.height / 2 - svgRect.top;
+      const startX = leftRect.right - svgRect.left;
+      const startY = leftRect.top + leftRect.height / 2 - svgRect.top;
+      const endX = rightRect.left - svgRect.left;
+      const endY = rightRect.top + rightRect.height / 2 - svgRect.top;
 
-    // Tính toán control points cho đường cong mượt mà hơn
-    const controlY = startY + (endY - startY) / 2;
-    const controlX1 = startX + (endX - startX) * 0.25;
-    const controlX2 = startX + (endX - startX) * 0.75;
+      // Tính toán control points cho đường cong mượt mà hơn
+      const controlY = startY + (endY - startY) / 2;
+      const controlX1 = startX + (endX - startX) * 0.25;
+      const controlX2 = startX + (endX - startX) * 0.75;
 
-    return `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
-  };
+      return `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
+    },
+    []
+  );
 
-  const isConnectionCorrect = (
-    columnAId: string,
-    columnBId: string
-  ): boolean => {
-    const itemA = question.options.find((item) => item.id === columnAId);
-    const itemB = question.options.find((item) => item.id === columnBId);
+  const getItemConnections = useCallback(
+    (itemId: string): QuizMatchingPairConnection[] => {
+      return connections.filter(
+        (c) =>
+          c.leftItem.quizMatchingPairItemId === itemId ||
+          c.rightItem.quizMatchingPairItemId === itemId
+      );
+    },
+    [connections]
+  );
 
-    if (!itemA || !itemB) return false;
+  const connectionCount = useCallback(
+    (itemId: string): number => {
+      return connections.filter(
+        (c) =>
+          c.leftItem.quizMatchingPairItemId === itemId ||
+          c.rightItem.quizMatchingPairItemId === itemId
+      ).length;
+    },
+    [connections]
+  );
 
-    // A connection is correct if their pair_ids match and are not null/empty
-    return !!(
-      itemA.pair_id &&
-      itemB.pair_id &&
-      itemA.pair_id === itemB.pair_id
+  // Replace the direct column assignments with state values
+  const columnA = shuffledColumnA;
+  const columnB = shuffledColumnB;
+
+  // If no matching data, show empty state
+  if (!matchingData) {
+    return (
+      <div className="flex items-center justify-center h-32 text-gray-500">
+        No matching pair data available
+      </div>
     );
-  };
-
-  const getItemConnections = (itemId: string): Connection[] => {
-    return connections.filter(
-      (c) => c.columnA === itemId || c.columnB === itemId
-    );
-  };
-
-  const connectionCount = (itemId: string): number => {
-    return connections.filter(
-      (c) => c.columnA === itemId || c.columnB === itemId
-    ).length;
-  };
+  }
 
   return (
     <div
@@ -356,40 +307,61 @@ export function MatchingPairPreview({
         viewMode === 'tablet' && 'p-6',
         viewMode === 'mobile' && 'p-4'
       )}
+      key={`preview-${dataVersion}-${settingsUpdateTrigger}`}
     >
       <div className="flex justify-between items-start gap-4 md:gap-8">
         {/* Column A */}
         <div className="w-1/2 flex flex-col items-center gap-2 md:gap-3">
           <h3 className="font-bold text-lg text-center text-gray-700 dark:text-gray-300">
-            {leftColumnName}
+            {matchingData.leftColumnName || leftColumnName}
           </h3>
           <div className="w-full space-y-2">
             {columnA.map((item, index) => {
-              const pairId = item.pair_id;
-              const connectionColor = pairId
-                ? pairColorMap.get(pairId)
+              // Find the connection for this item
+              const connection = connections.find(
+                (c) =>
+                  c.leftItem.quizMatchingPairItemId ===
+                  item.quizMatchingPairItemId
+              );
+              const connectionColor = connection?.quizMatchingPairConnectionId
+                ? pairColorMap.get(connection.quizMatchingPairConnectionId)
                 : undefined;
 
               return (
                 <motion.div
-                  key={item.id || `a-${index}`}
-                  id={`item-${item.id}`}
+                  key={`${
+                    item.quizMatchingPairItemId || `a-${index}`
+                  }-${dataVersion}`}
+                  id={`item-${item.quizMatchingPairItemId}`}
                   className={cn(
                     'p-2 md:p-3 rounded-lg text-center transition-all duration-200 w-full border-2',
                     !previewMode && editMode && 'cursor-pointer',
-                    selectedItem?.id === item.id ? 'ring-2 ring-blue-500' : '',
+                    selectedItem?.id === item.quizMatchingPairItemId
+                      ? 'ring-2 ring-blue-500'
+                      : '',
                     connectionColor
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                   )}
-
-                  style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
-
-                  onClick={() => item.id && handleItemClick('left', item.id)}
+                  style={
+                    connectionColor
+                      ? {
+                          backgroundColor: connectionColor,
+                          borderColor: connectionColor,
+                        }
+                      : {}
+                  }
+                  onClick={() =>
+                    item.quizMatchingPairItemId &&
+                    handleItemClick('left', item.quizMatchingPairItemId)
+                  }
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
-                  <p className="text-sm md:text-base">{item.option_text}</p>
+                  <p className="text-sm md:text-base">{item.content}</p>
                 </motion.div>
               );
             })}
@@ -399,37 +371,55 @@ export function MatchingPairPreview({
         {/* Column B */}
         <div className="w-1/2 flex flex-col items-center gap-2 md:gap-3">
           <h3 className="font-bold text-lg text-center text-gray-700 dark:text-gray-300">
-            {rightColumnName}
+            {matchingData.rightColumnName || rightColumnName}
           </h3>
           <div className="w-full space-y-2">
             {columnB.map((item, index) => {
-              const pairId = item.pair_id;
-              const connectionColor = pairId
-                ? pairColorMap.get(pairId)
+              // Find the connection for this item
+              const connection = connections.find(
+                (c) =>
+                  c.rightItem.quizMatchingPairItemId ===
+                  item.quizMatchingPairItemId
+              );
+              const connectionColor = connection?.quizMatchingPairConnectionId
+                ? pairColorMap.get(connection.quizMatchingPairConnectionId)
                 : undefined;
 
               return (
                 <motion.div
-                  key={item.id || `b-${index}`}
-                  id={`item-${item.id}`}
+                  key={`${
+                    item.quizMatchingPairItemId || `b-${index}`
+                  }-${dataVersion}`}
+                  id={`item-${item.quizMatchingPairItemId}`}
                   className={cn(
                     'p-2 md:p-3 rounded-lg text-center transition-all duration-200 w-full border-2',
                     !previewMode && editMode && 'cursor-pointer',
-                    selectedItem?.id === item.id
+                    selectedItem?.id === item.quizMatchingPairItemId
                       ? 'ring-2 ring-purple-500'
                       : '',
                     connectionColor
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                   )}
-
-                  style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
-
-                  onClick={() => item.id && handleItemClick('right', item.id)}
+                  style={
+                    connectionColor
+                      ? {
+                          backgroundColor: connectionColor,
+                          borderColor: connectionColor,
+                        }
+                      : {}
+                  }
+                  onClick={() =>
+                    item.quizMatchingPairItemId &&
+                    handleItemClick('right', item.quizMatchingPairItemId)
+                  }
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
-                  <p className="text-sm md:text-base">{item.option_text}</p>
+                  <p className="text-sm md:text-base">{item.content}</p>
                 </motion.div>
               );
             })}
@@ -442,7 +432,7 @@ export function MatchingPairPreview({
         ref={svgRef}
         className="absolute top-0 left-0 w-full h-full pointer-events-none"
         style={{ zIndex: 1 }}
-        key={previewUpdate}
+        key={`svg-${previewUpdate}-${dataVersion}-${settingsUpdateTrigger}`}
       >
         <defs>
           {PAIR_COLORS.map((color) => (
@@ -467,16 +457,17 @@ export function MatchingPairPreview({
         </defs>
         <g>
           {connections.map((conn, index) => {
-            const leftItem = question.options.find(
-              (o) => o.id === conn.columnA
-            );
-            const pairId = leftItem?.pair_id;
-            const pathColor = pairId ? pairColorMap.get(pairId) : '#3b82f6';
+            const pathColor = conn.quizMatchingPairConnectionId
+              ? pairColorMap.get(conn.quizMatchingPairConnectionId)
+              : '#3b82f6';
 
             return (
               <motion.path
-                key={`${conn.columnA}-${conn.columnB}-${index}`}
-                d={getConnectionPath(conn.columnA, conn.columnB)}
+                key={`${conn.leftItem.quizMatchingPairItemId}-${conn.rightItem.quizMatchingPairItemId}-${index}-${dataVersion}`}
+                d={getConnectionPath(
+                  conn.leftItem.quizMatchingPairItemId!,
+                  conn.rightItem.quizMatchingPairItemId!
+                )}
                 className="stroke-2 transition-all duration-300"
                 stroke={pathColor}
                 strokeWidth="2.5"

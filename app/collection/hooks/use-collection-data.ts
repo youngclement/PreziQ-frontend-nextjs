@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { collectionsApi } from '@/api-client';
-import { Activity, QuizQuestion } from '../components/types';
+import { Activity, QuizQuestion, QuizOption } from '../components/types';
 import { createEmptyQuestion } from '../utils/question-helpers';
 import { mapActivityTypeToQuestionType } from '../utils/question-type-mapping';
 
@@ -165,44 +165,77 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                   return question;
                 }
 
-                // Handle matching pair questions - FOR MOCKING
+                // Handle matching pair questions - UPDATED TO USE API DATA
                 if (act.activity_type_id === 'QUIZ_MATCHING_PAIRS') {
                   question.question_type = 'matching_pair';
-                  question.question_text = act.title || 'Match the pairs';
-                  question.options = [
-                    {
-                      id: 'left-1',
-                      pair_id: 'pair-1',
-                      type: 'left',
-                      option_text: 'Hanoi',
-                      is_correct: true,
-                      display_order: 0,
-                    },
-                    {
-                      id: 'right-1',
-                      pair_id: 'pair-1',
-                      type: 'right',
-                      option_text: 'Vietnam',
-                      is_correct: true,
-                      display_order: 1,
-                    },
-                    {
-                      id: 'left-2',
-                      pair_id: 'pair-2',
-                      type: 'left',
-                      option_text: 'Tokyo',
-                      is_correct: true,
-                      display_order: 2,
-                    },
-                    {
-                      id: 'right-2',
-                      pair_id: 'pair-2',
-                      type: 'right',
-                      option_text: 'Japan',
-                      is_correct: true,
-                      display_order: 3,
-                    },
-                  ];
+                  question.question_text =
+                    act.quiz?.questionText || act.title || 'Match the pairs';
+                  question.time_limit_seconds = act.quiz?.timeLimitSeconds;
+                  question.pointType = act.quiz?.pointType;
+
+                  // Use the actual matching pair data from API
+                  if (act.quiz?.quizMatchingPairAnswer) {
+                    const matchingData = act.quiz.quizMatchingPairAnswer;
+                    question.matching_data = matchingData;
+
+                    // Convert API structure to the expected options format
+                    const options: QuizOption[] = [];
+
+                    // Process left column items
+                    matchingData.items
+                      .filter((item: QuizOption) => item.isLeftColumn)
+                      .forEach((item: QuizOption) => {
+                        options.push({
+                          id: item.quizMatchingPairItemId,
+                          quizMatchingPairItemId: item.quizMatchingPairItemId,
+                          content: item.content,
+
+                          isLeftColumn: true,
+                          display_order: item.display_order,
+                        });
+                      });
+
+                    // Process right column items
+                    matchingData.items
+                      .filter((item: QuizOption) => !item.isLeftColumn)
+                      .forEach((item: QuizOption) => {
+                        options.push({
+                          id: item.quizMatchingPairItemId,
+                          quizMatchingPairItemId: item.quizMatchingPairItemId,
+                          content: item.content,
+
+                          isLeftColumn: false,
+                          display_order: item.display_order,
+                        });
+                      });
+
+                    // Sort options by display order
+                    options.sort((a, b) => a.display_order - b.display_order);
+                    question.options = options;
+
+                    console.log('Processed matching pair data from API:', {
+                      leftColumnName: matchingData.leftColumnName,
+                      rightColumnName: matchingData.rightColumnName,
+                      itemsCount: matchingData.items.length,
+                      connectionsCount: matchingData.connections.length,
+                      optionsCount: options.length,
+                    });
+                  } else {
+                    // Fallback: create empty matching pair structure
+                    question.question_text = act.title || 'Match the pairs';
+                    question.options = [];
+                    question.matching_data = {
+                      quizMatchingPairAnswerId: '',
+                      leftColumnName: 'Left Column',
+                      rightColumnName: 'Right Column',
+                      items: [],
+                      connections: [],
+                    };
+                    console.log(
+                      'No matching pair data found, created empty structure'
+                    );
+                  }
+
                   return question;
                 }
 

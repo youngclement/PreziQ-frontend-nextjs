@@ -143,6 +143,8 @@ interface QuestionPreviewProps {
     activityId: string,
     elements: SlideElementPayload[]
   ) => void;
+  // Thêm prop để theo dõi thay đổi từ settings
+  settingsUpdateTrigger?: number;
 }
 
 interface SlideData {
@@ -202,6 +204,8 @@ export function QuestionPreview({
   onSlideElementsUpdate,
   slidesData,
   slidesBackgrounds,
+  // Thêm prop để theo dõi thay đổi từ settings
+  settingsUpdateTrigger = 0,
 }: QuestionPreviewProps) {
   const [viewMode, setViewMode] = React.useState('desktop');
   const [showScrollTop, setShowScrollTop] = React.useState(false);
@@ -253,6 +257,14 @@ export function QuestionPreview({
 
   const activeQuestion = questions[activeQuestionIndex];
   const [currentQuestion, setCurrentQuestion] = useState(activeQuestion);
+
+  // Thêm state để theo dõi thay đổi từ settings
+  const [settingsUpdateCount, setSettingsUpdateCount] = useState(0);
+
+  // Thêm useEffect để cập nhật khi có thay đổi từ settings
+  useEffect(() => {
+    setSettingsUpdateCount((prev) => prev + 1);
+  }, [settingsUpdateTrigger]);
 
   // Handler functions
   const handleCorrectAnswerChange = (value: string) => {
@@ -1150,7 +1162,7 @@ export function QuestionPreview({
             viewMode === 'tablet' && 'max-w-2xl',
             viewMode === 'mobile' && 'max-w-sm'
           )}
-          key={`question-card-matching-${questionIndex}-${renderKey}`}
+          key={`question-card-matching-${questionIndex}-${renderKey}-${settingsUpdateCount}`}
         >
           <motion.div
             className={cn(
@@ -1232,7 +1244,10 @@ export function QuestionPreview({
 
           {/* Matching Pair Content */}
           <CardContent className="p-0 bg-white dark:bg-gray-800">
-            <div className="w-full" key={question.id}>
+            <div
+              className="w-full"
+              key={`${question.id}-${settingsUpdateCount}`}
+            >
               <MatchingPairPreview
                 question={question}
                 questionIndex={questionIndex}
@@ -1251,6 +1266,7 @@ export function QuestionPreview({
                 leftColumnName={leftColumnName}
                 rightColumnName={rightColumnName}
                 previewMode={previewMode}
+                settingsUpdateTrigger={settingsUpdateCount}
               />
             </div>
           </CardContent>
@@ -1369,7 +1385,8 @@ export function QuestionPreview({
               <div className="p-4 grid grid-cols-2 gap-4 bg-white dark:bg-gray-800">
                 {/* Direct rendering of true/false options */}
                 {question.options.map((option, optionIndex) => {
-                  const isTrue = option.option_text.toLowerCase() === 'true';
+                  const isTrue =
+                    (option.option_text || '').toLowerCase() === 'true';
                   return (
                     <div
                       key={optionIndex}
