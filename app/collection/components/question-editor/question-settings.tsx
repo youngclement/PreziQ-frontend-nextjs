@@ -867,7 +867,7 @@ export function QuestionSettings({
 
               if (matchingData) {
                 activitiesApi.updateMatchingPairQuiz(activity.id, {
-                  type: 'MATCHING_PAIR',
+                  type: 'MATCHING_PAIRS',
                   questionText:
                     activity.quiz?.questionText || activeQuestion.question_text,
                   timeLimitSeconds: value,
@@ -1527,7 +1527,7 @@ export function QuestionSettings({
 
             if (matchingData) {
               activitiesApi.updateMatchingPairQuiz(activity.id, {
-                type: 'MATCHING_PAIR',
+                type: 'MATCHING_PAIRS',
                 questionText:
                   activity.quiz?.questionText || activeQuestion.question_text,
                 timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,

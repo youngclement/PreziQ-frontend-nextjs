@@ -21,7 +21,7 @@ import type {
   QuizMatchingPairConnection,
 } from '@/api-client/activities-api';
 
-// Add this shuffle function
+// Shuffle function for randomizing items in preview mode
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
@@ -65,7 +65,6 @@ interface MatchingPairPreviewProps {
   leftColumnName?: string;
   rightColumnName?: string;
   previewMode?: boolean;
-  // Thêm prop để theo dõi thay đổi từ settings
   settingsUpdateTrigger?: number;
 }
 
@@ -99,12 +98,16 @@ export function MatchingPairPreview({
     type: 'left' | 'right';
   } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [dataVersion, setDataVersion] = useState(0);
 
-  // Get matching pair data from the question
-  const matchingData =
-    question.quizMatchingPairAnswer || question.matching_data;
+  // Get matching data from the question with fallback
+  const matchingData = useMemo(() => {
+    return question.quizMatchingPairAnswer || question.matching_data;
+  }, [question.quizMatchingPairAnswer, question.matching_data]);
 
-  // Create a color map for pairs based on connection IDs
+  // Create color map for pairs based on connection IDs
   const pairColorMap = useMemo(() => {
     const map = new Map<string, string>();
     if (matchingData?.connections) {
@@ -120,7 +123,7 @@ export function MatchingPairPreview({
     return map;
   }, [matchingData?.connections]);
 
-  // Add new state for shuffled columns - only shuffle once
+  // State for shuffled columns - only shuffle once per data update
   const [shuffledColumnA, setShuffledColumnA] = useState<
     QuizMatchingPairItem[]
   >([]);
@@ -128,28 +131,23 @@ export function MatchingPairPreview({
     QuizMatchingPairItem[]
   >([]);
 
-  // Thêm state để theo dõi kích thước container
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Thêm state để theo dõi thay đổi của preview
-  const [previewUpdate, setPreviewUpdate] = useState(0);
-
-  // Thêm state để theo dõi version của dữ liệu
-  const [dataVersion, setDataVersion] = useState(0);
-
-  // Cải thiện useEffect để xử lý cập nhật dữ liệu từ settings
+  // Update columns when matching data changes
   useEffect(() => {
-    if (!matchingData?.items) return;
+    if (!matchingData?.items) {
+      setShuffledColumnA([]);
+      setShuffledColumnB([]);
+      return;
+    }
 
-    const columnA = matchingData.items.filter((item) => item.isLeftColumn);
-    const columnB = matchingData.items.filter((item) => !item.isLeftColumn);
+    const columnA = matchingData.items
+      .filter((item) => item.isLeftColumn)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
 
-    // Sort both columns by displayOrder to maintain the correct order
-    columnA.sort((a, b) => a.displayOrder - b.displayOrder);
-    columnB.sort((a, b) => a.displayOrder - b.displayOrder);
+    const columnB = matchingData.items
+      .filter((item) => !item.isLeftColumn)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
 
-    // Only shuffle if in player mode
+    // Only shuffle if in preview mode
     if (previewMode) {
       setShuffledColumnA(shuffleArray(columnA));
       setShuffledColumnB(shuffleArray(columnB));
@@ -158,56 +156,41 @@ export function MatchingPairPreview({
       setShuffledColumnB(columnB);
     }
 
-    // Cập nhật version để trigger re-render
+    // Update data version to trigger re-render
     setDataVersion((prev) => prev + 1);
   }, [matchingData?.items, previewMode, settingsUpdateTrigger]);
 
-  // Auto-connect matching pairs based on connections
+  // Update connections when matching data changes
   useEffect(() => {
     if (matchingData?.connections) {
       setConnections(matchingData.connections);
     }
   }, [matchingData?.connections, settingsUpdateTrigger]);
 
-  // Cập nhật useEffect để theo dõi kích thước và cập nhật preview
+  // Update container size and handle resize
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
         setContainerSize({ width, height });
-        // Kích hoạt cập nhật preview
-        setPreviewUpdate((prev) => prev + 1);
       }
     };
 
-    // Cập nhật kích thước ban đầu
     updateSize();
-
-    // Thêm event listener cho resize
     window.addEventListener('resize', updateSize);
 
-    // Thêm ResizeObserver để theo dõi thay đổi kích thước của container
-    const resizeObserver = new ResizeObserver(() => {
-      updateSize();
-    });
-
+    const resizeObserver = new ResizeObserver(updateSize);
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
 
-    // Cleanup
     return () => {
       window.removeEventListener('resize', updateSize);
       resizeObserver.disconnect();
     };
   }, []);
 
-  // Thêm useEffect để theo dõi thay đổi từ settings
-  useEffect(() => {
-    // Trigger re-render khi có thay đổi từ settings
-    setPreviewUpdate((prev) => prev + 1);
-  }, [settingsUpdateTrigger]);
-
+  // Handle item click for edit mode
   const handleItemClick = useCallback(
     (type: 'left' | 'right', itemId: string) => {
       // Only allow connections in edit mode, not in player/preview mode
@@ -215,10 +198,7 @@ export function MatchingPairPreview({
         return;
       }
 
-      // Editor logic - this would need to be implemented based on your API structure
-      // For now, we'll just handle the selection state
       if (selectedItem) {
-        // An item is already selected
         if (selectedItem.type !== type) {
           // A different column item was clicked, form a pair
           // This would need to be implemented based on your API structure
@@ -235,7 +215,7 @@ export function MatchingPairPreview({
     [previewMode, editMode, selectedItem]
   );
 
-  // Cập nhật hàm getConnectionPath để tạo đường nối đẹp hơn
+  // Calculate connection path for SVG
   const getConnectionPath = useCallback(
     (leftItemId: string, rightItemId: string) => {
       const leftElement = document.getElementById(`item-${leftItemId}`);
@@ -253,7 +233,7 @@ export function MatchingPairPreview({
       const endX = rightRect.left - svgRect.left;
       const endY = rightRect.top + rightRect.height / 2 - svgRect.top;
 
-      // Tính toán control points cho đường cong mượt mà hơn
+      // Calculate control points for smooth curve
       const controlY = startY + (endY - startY) / 2;
       const controlX1 = startX + (endX - startX) * 0.25;
       const controlX2 = startX + (endX - startX) * 0.75;
@@ -263,6 +243,7 @@ export function MatchingPairPreview({
     []
   );
 
+  // Get connections for a specific item
   const getItemConnections = useCallback(
     (itemId: string): QuizMatchingPairConnection[] => {
       return connections.filter(
@@ -274,6 +255,7 @@ export function MatchingPairPreview({
     [connections]
   );
 
+  // Count connections for a specific item
   const connectionCount = useCallback(
     (itemId: string): number => {
       return connections.filter(
@@ -284,10 +266,6 @@ export function MatchingPairPreview({
     },
     [connections]
   );
-
-  // Replace the direct column assignments with state values
-  const columnA = shuffledColumnA;
-  const columnB = shuffledColumnB;
 
   // If no matching data, show empty state
   if (!matchingData) {
@@ -316,7 +294,7 @@ export function MatchingPairPreview({
             {matchingData.leftColumnName || leftColumnName}
           </h3>
           <div className="w-full space-y-2">
-            {columnA.map((item, index) => {
+            {shuffledColumnA.map((item, index) => {
               // Find the connection for this item
               const connection = connections.find(
                 (c) =>
@@ -374,7 +352,7 @@ export function MatchingPairPreview({
             {matchingData.rightColumnName || rightColumnName}
           </h3>
           <div className="w-full space-y-2">
-            {columnB.map((item, index) => {
+            {shuffledColumnB.map((item, index) => {
               // Find the connection for this item
               const connection = connections.find(
                 (c) =>
@@ -427,12 +405,12 @@ export function MatchingPairPreview({
         </div>
       </div>
 
-      {/* SVG for drawing lines */}
+      {/* SVG for drawing connection lines */}
       <svg
         ref={svgRef}
         className="absolute top-0 left-0 w-full h-full pointer-events-none"
         style={{ zIndex: 1 }}
-        key={`svg-${previewUpdate}-${dataVersion}-${settingsUpdateTrigger}`}
+        key={`svg-${dataVersion}-${settingsUpdateTrigger}`}
       >
         <defs>
           {PAIR_COLORS.map((color) => (

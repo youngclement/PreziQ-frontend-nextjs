@@ -123,11 +123,13 @@ export interface QuizMatchingPairAnswer {
 }
 
 export interface MatchingPairQuizPayload {
-  type: 'MATCHING_PAIR';
+  type: 'MATCHING_PAIRS';
   questionText: string;
   timeLimitSeconds?: number;
   pointType?: 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS';
-  quizMatchingPairAnswer: QuizMatchingPairAnswer;
+  leftColumnName?: string;
+  rightColumnName?: string;
+  quizMatchingPairAnswer?: QuizMatchingPairAnswer;
 }
 
 export type QuizPayload =

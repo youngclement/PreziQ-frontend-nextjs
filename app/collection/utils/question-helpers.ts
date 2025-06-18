@@ -71,7 +71,7 @@ export const createEmptyQuestion = (
     case 'matching_pair':
       return {
         ...baseQuestion,
-        question_type: 'matching_pair',
+        question_type: 'MATCHING_PAIRS',
         question_text: 'Matching Pairs Question',
         options: [
           {
