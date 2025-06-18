@@ -271,6 +271,22 @@ export default function QuestionsPageContent() {
     updatedQuestions[questionIndex].question_text = value;
     setQuestions(updatedQuestions);
 
+    if (questions[questionIndex].activity_id) {
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('activity:title:updated', {
+          detail: {
+            activityId: questions[questionIndex].activity_id,
+            title: value,
+            questionText: value,
+            questionIndex: questionIndex,
+            isTyping: isTyping,
+            sender: 'centralizedQuestionTextChange',
+          },
+        });
+        window.dispatchEvent(event);
+      }
+    }
+
     // Call the API update function
     handleQuestionTextChange(value, questionIndex, isTyping);
 
@@ -298,6 +314,7 @@ export default function QuestionsPageContent() {
       // Update in API
       try {
         activitiesApi.updateActivity(activity.id, { title: value });
+        console.log("Activity title updated successfully:", value);
       } catch (error) {
         console.error('Error updating activity title:', error);
       }
@@ -320,7 +337,7 @@ export default function QuestionsPageContent() {
       updatedQuestions[questionIndex].question_type === 'reorder' &&
       field === 'option_text'
     ) {
-      updateReorderOptionContent(questionIndex, optionIndex, value);
+      updateReorderOptionContent(questionIndex, optionIndex, value, isTyping);
     } else {
       // Update option directly in local state first
       if (updatedQuestions[questionIndex].options[optionIndex]) {

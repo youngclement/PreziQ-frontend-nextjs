@@ -186,70 +186,105 @@ export function useOptionOperations(
       return;
     }
 
-    // Sử dụng API call với debounce cho câu hỏi loại CHOICE
-    if (
-      activity.activity_type_id === 'QUIZ_BUTTONS' ||
-      activity.activity_type_id === 'QUIZ_CHECKBOXES'
-    ) {
-      debouncedUpdateAPI(
-        activity.id,
-        activity.activity_type_id,
-        activeQuestion
-      );
-      return;
-    }
+    // // Sử dụng API call với debounce cho câu hỏi loại CHOICE
+    // if (
+    //   activity.activity_type_id === 'QUIZ_BUTTONS' ||
+    //   activity.activity_type_id === 'QUIZ_CHECKBOXES'
+    // ) {
+    //   debouncedUpdateAPI(
+    //     activity.id,
+    //     activity.activity_type_id,
+    //     activeQuestion
+    //   );
+    //   return;
+    // }
+    console.log("isTypingggg:", isTyping);
 
-    // Đối với các loại câu hỏi khác, tiếp tục với các API call ngay lập tức
-    try {
-      const options = activeQuestion.options;
+    if (!isTyping) {
+      // Đối với các loại câu hỏi khác, tiếp tục với các API call ngay lập tức
+      try {
+        const options = activeQuestion.options;
 
-      // Xử lý cập nhật API dựa trên loại câu hỏi
-      switch (activity.activity_type_id) {
-        case 'QUIZ_TRUE_OR_FALSE':
-          const correctOption = options.find(
-            (opt: { is_correct: boolean }) => opt.is_correct
-          );
-          await activitiesApi.updateTrueFalseQuiz(activity.id, {
-            type: 'TRUE_FALSE',
-            questionText: activeQuestion.question_text,
-            timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
-            correctAnswer: correctOption?.option_text.toLowerCase() === 'true',
-          });
-          console.log('Cập nhật API thành công cho câu hỏi TRUE_FALSE');
-          break;
+        // Xử lý cập nhật API dựa trên loại câu hỏi
+        switch (activity.activity_type_id) {
+          case 'QUIZ_BUTTONS':
+            await activitiesApi.updateButtonsQuiz(activity.id, {
+              type: 'CHOICE',
+              questionText: activeQuestion.question_text,
+              timeLimitSeconds: timeLimit,
+              pointType: 'STANDARD',
+              answers: options.map((opt) => ({
+                answerText: opt.option_text,
+                isCorrect: opt.is_correct,
+                explanation: opt.explanation || '',
+              })),
+            });
+            console.log('Cập nhật API thành công cho câu hỏi QUIZ_BUTTONS');
+            break;
 
-        case 'QUIZ_TYPE_ANSWER':
-          // For text answer questions, use option_text as the correctAnswer
-          const answerText = activeQuestion.options[0]?.option_text || 'Answer';
-          await activitiesApi.updateTypeAnswerQuiz(activity.id, {
-            type: 'TYPE_ANSWER',
-            questionText: activeQuestion.question_text,
-            timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
-            correctAnswer: answerText,
-          });
-          console.log('API update successful for TYPE_ANSWER question');
-          break;
+          case 'QUIZ_CHECKBOXES':
+            await activitiesApi.updateCheckboxesQuiz(activity.id, {
+              type: 'CHOICE',
+              questionText: activeQuestion.question_text,
+              timeLimitSeconds: timeLimit,
+              pointType: 'STANDARD',
+              answers: options.map((opt) => ({
+                answerText: opt.option_text,
+                isCorrect: opt.is_correct,
+                explanation: opt.explanation || '',
+              })),
+            });
+            console.log('Cập nhật API thành công cho câu hỏi QUIZ_CHECKBOXES');
+            break;
 
-        case 'QUIZ_REORDER':
-          // For reorder questions, update with the current order
-          await activitiesApi.updateReorderQuiz(activity.id, {
-            type: 'REORDER',
-            questionText: activeQuestion.question_text,
-            timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
-            correctOrder: options.map(
-              (opt: { option_text: any }) => opt.option_text
-            ),
-          });
-          console.log('API update successful for REORDER question');
-          break;
+          case 'QUIZ_TRUE_OR_FALSE':
+            const correctOption = options.find(
+              (opt: { is_correct: boolean }) => opt.is_correct
+            );
+            await activitiesApi.updateTrueFalseQuiz(activity.id, {
+              type: 'TRUE_FALSE',
+              questionText: activeQuestion.question_text,
+              timeLimitSeconds: timeLimit,
+              pointType: 'STANDARD',
+              correctAnswer:
+                correctOption?.option_text.toLowerCase() === 'true',
+            });
+            console.log('Cập nhật API thành công cho câu hỏi TRUE_FALSE');
+            break;
+
+          case 'QUIZ_TYPE_ANSWER':
+            // For text answer questions, use option_text as the correctAnswer
+            const answerText =
+              activeQuestion.options[0]?.option_text || 'Answer';
+            await activitiesApi.updateTypeAnswerQuiz(activity.id, {
+              type: 'TYPE_ANSWER',
+              questionText: activeQuestion.question_text,
+              timeLimitSeconds: timeLimit,
+              pointType: 'STANDARD',
+              correctAnswer: answerText,
+            });
+            console.log('API update successful for TYPE_ANSWER question');
+            break;
+
+          case 'QUIZ_REORDER':
+            // For reorder questions, update with the current order
+            await activitiesApi.updateReorderQuiz(activity.id, {
+              type: 'REORDER',
+              questionText: activeQuestion.question_text,
+              timeLimitSeconds: timeLimit,
+              pointType: 'STANDARD',
+              correctOrder: options.map(
+                (opt: { option_text: any }) => opt.option_text
+              ),
+            });
+            console.log('API update successful for REORDER question');
+            break;
+        }
+
+        console.log('Đã cập nhật văn bản câu trả lời thành công');
+      } catch (error) {
+        console.error('Lỗi khi cập nhật văn bản câu trả lời:', error);
       }
-
-      console.log('Đã cập nhật văn bản câu trả lời thành công');
-    } catch (error) {
-      console.error('Lỗi khi cập nhật văn bản câu trả lời:', error);
     }
   };
 
@@ -482,6 +517,8 @@ export function useOptionOperations(
             correctOrder: updatedOptions.map((opt) => opt.option_text),
           });
           break;
+
+          
       }
 
       console.log('Option deleted successfully');
@@ -531,7 +568,8 @@ export function useOptionOperations(
   const updateReorderOptionContent = async (
     questionIndex: number,
     optionIndex: number,
-    value: string
+    value: string,
+    isTyping: boolean = false
   ) => {
     if (!activity || activity.activity_type_id !== 'QUIZ_REORDER') return;
 
@@ -540,20 +578,26 @@ export function useOptionOperations(
     updatedQuestions[questionIndex].options[optionIndex].option_text = value;
     setQuestions(updatedQuestions);
 
-    try {
-      const activeQuestion = updatedQuestions[questionIndex];
+    if (!isTyping) {
+      try {
+        const activeQuestion = updatedQuestions[questionIndex];
 
-      await activitiesApi.updateReorderQuiz(activity.id, {
-        type: 'REORDER',
-        questionText: activeQuestion.question_text,
-        timeLimitSeconds: timeLimit,
-        pointType: 'STANDARD',
-        correctOrder: activeQuestion.options.map((opt) => opt.option_text),
-      });
+        console.log('Gọi API cho REORDER question, isTyping:', isTyping);
 
-      console.log('API update successful for REORDER question option');
-    } catch (error) {
-      console.error('Error updating reorder option:', error);
+        await activitiesApi.updateReorderQuiz(activity.id, {
+          type: 'REORDER',
+          questionText: activeQuestion.question_text,
+          timeLimitSeconds: timeLimit,
+          pointType: 'STANDARD',
+          correctOrder: activeQuestion.options.map((opt) => opt.option_text),
+        });
+
+        console.log('API update successful for REORDER question option');
+      } catch (error) {
+        console.error('Error updating reorder option:', error);
+      }
+    } else {
+      console.log('Bỏ qua gọi API khi đang gõ cho REORDER option');
     }
   };
 

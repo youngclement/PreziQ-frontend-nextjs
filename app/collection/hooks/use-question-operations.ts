@@ -613,63 +613,63 @@ export function useQuestionOperations(
       const activeQuestion = updatedQuestions[activeQuestionIndex];
 
       switch (activityType) {
-        case "QUIZ_BUTTONS":
+        case 'QUIZ_BUTTONS':
           await activitiesApi.updateButtonsQuiz(activity.id, {
-            type: "CHOICE",
+            type: 'CHOICE',
             questionText: value,
             timeLimitSeconds: timeLimit,
-            pointType: "STANDARD",
+            pointType: 'STANDARD',
             answers: activeQuestion.options.map((opt) => ({
               answerText: opt.option_text,
               isCorrect: opt.is_correct,
-              explanation: opt.explanation || "",
+              explanation: opt.explanation || '',
             })),
           });
           break;
 
-        case "QUIZ_CHECKBOXES":
+        case 'QUIZ_CHECKBOXES':
           await activitiesApi.updateCheckboxesQuiz(activity.id, {
-            type: "CHOICE",
+            type: 'CHOICE',
             questionText: value,
             timeLimitSeconds: timeLimit,
-            pointType: "STANDARD",
+            pointType: 'STANDARD',
             answers: activeQuestion.options.map((opt) => ({
               answerText: opt.option_text,
               isCorrect: opt.is_correct,
-              explanation: opt.explanation || "",
+              explanation: opt.explanation || '',
             })),
           });
           break;
 
-        case "QUIZ_TRUE_OR_FALSE":
+        case 'QUIZ_TRUE_OR_FALSE':
           const correctOption = activeQuestion.options.find(
             (opt) => opt.is_correct
           );
           await activitiesApi.updateTrueFalseQuiz(activity.id, {
-            type: "TRUE_FALSE",
+            type: 'TRUE_FALSE',
             questionText: value,
             timeLimitSeconds: timeLimit,
-            pointType: "STANDARD",
-            correctAnswer: correctOption?.option_text.toLowerCase() === "true",
+            pointType: 'STANDARD',
+            correctAnswer: correctOption?.option_text.toLowerCase() === 'true',
           });
           break;
 
-        case "QUIZ_TYPE_ANSWER":
+        case 'QUIZ_TYPE_ANSWER':
           await activitiesApi.updateTypeAnswerQuiz(activity.id, {
-            type: "TYPE_ANSWER",
+            type: 'TYPE_ANSWER',
             questionText: value,
             timeLimitSeconds: timeLimit,
-            pointType: "STANDARD",
-            correctAnswer: activeQuestion.correct_answer_text || "Answer",
+            pointType: 'STANDARD',
+            correctAnswer: activeQuestion.correct_answer_text || 'Answer',
           });
           break;
 
-        case "QUIZ_REORDER":
+        case 'QUIZ_REORDER':
           await activitiesApi.updateReorderQuiz(activity.id, {
-            type: "REORDER",
+            type: 'REORDER',
             questionText: value,
             timeLimitSeconds: timeLimit,
-            pointType: "STANDARD",
+            pointType: 'STANDARD',
             correctOrder: activeQuestion.options.map((opt) => opt.option_text),
           });
           break;

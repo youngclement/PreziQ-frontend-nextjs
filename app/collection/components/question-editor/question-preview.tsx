@@ -1278,7 +1278,6 @@ export function QuestionPreview({
 
     // Modified for question cards without slide type
     if (!isSlideType) {
-      console.log("question.question_type", question);
       return (
         <Card
           className={cn(
@@ -1704,8 +1703,7 @@ export function QuestionPreview({
                                       >
                                         <Input
                                           value={
-                                            option.option_text ||
-                                            `Step ${idx + 1}`
+                                            option.option_text || ''                                            
                                           }
                                           onChange={(e) =>
                                             onOptionChange(
@@ -1843,7 +1841,7 @@ export function QuestionPreview({
                                     color.text
                                   )}
                                 >
-                                  {option.option_text || `Step ${idx + 1}`}
+                                  {option.option_text || `Enter Step ${idx + 1}`}
                                 </p>
                               </div>
                             </div>
@@ -2065,7 +2063,7 @@ export function QuestionPreview({
     const isMultipleResponse = question.question_type === 'multiple_response';
     const options = [...question.options];
 
-    if (isMultipleResponse) {
+    if (isMultipleResponse || question.question_type === 'multiple_choice' || question.question_type === 'true_false') {
       // For multiple response, toggle the current option
       onOptionChange(
         questionIndex,
@@ -2823,22 +2821,22 @@ export function QuestionPreview({
     // Handler for title updates from other components
     const handleTitleUpdate = (event: any) => {
       if (
-        event.detail &&
-        event.detail.activityId &&
-        event.detail.title &&
-        event.detail.sender !== 'questionPreview'
+        (event.detail && event.detail.activityId && event.detail.title) ||
+        (event.detail.questionText && event.detail.sender !== 'questionPreview')
       ) {
         // Find the question with this activity ID
         const questionIndex = questions.findIndex(
           (q) => q.activity_id === event.detail.activityId
         );
 
+        const newText = event.detail.questionText || event.detail.title;
+
         if (
           questionIndex >= 0 &&
-          questions[questionIndex].question_text !== event.detail.title
+          questions[questionIndex].question_text !== newText
         ) {
           // Update the question text without calling the API again (since it was already updated)
-          onQuestionTextChange(event.detail.title, questionIndex);
+          onQuestionTextChange(newText, questionIndex);
         }
       }
     };

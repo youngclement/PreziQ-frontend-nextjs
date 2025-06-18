@@ -145,7 +145,8 @@ const AnswerTextEditor = ({
     questionIndex: number,
     optionIndex: number,
     field: string,
-    value: any
+    value: any,
+    isTyping?: boolean
   ) => void;
 }) => {
   return (
@@ -186,7 +187,8 @@ interface QuestionSettingsProps {
     questionIndex: number,
     optionIndex: number,
     field: string,
-    value: any
+    value: any,
+    isTyping?: boolean
   ) => void;
   onDeleteOption: (index: number) => void;
   onCorrectAnswerChange?: (value: string) => void;
@@ -271,7 +273,6 @@ const TextAnswerForm = ({
           );
         }}
         onBlur={(e) => {
-          // Gọi API khi blur với isTyping = false
           onOptionChange(
             questionIndex,
             0,
@@ -423,31 +424,31 @@ export function QuestionSettings({
     activeQuestion.correct_answer_text,
   ]);
 
-  // Update text answer when changing
-  const handleTextAnswerChange = (value: string) => {
-    onCorrectAnswerTextChange(value);
-  };
+  // // Update text answer when changing
+  // const handleTextAnswerChange = (value: string) => {
+  //   onCorrectAnswerTextChange(value);
+  // };
 
-  // Send to API when input loses focus
-  const handleTextAnswerBlur = () => {
-    onCorrectAnswerTextBlur(correctAnswerText);
-  };
+  // // Send to API when input loses focus
+  // const handleTextAnswerBlur = () => {
+  //   onCorrectAnswerTextBlur(correctAnswerText);
+  // };
 
-  // Handler for slide content changes
-  const handleSlideContentChange = (value: string) => {
-    if (onSlideContentChange) {
-      onSlideContentChange(value);
+  // // Handler for slide content changes
+  // const handleSlideContentChange = (value: string) => {
+  //   if (onSlideContentChange) {
+  //     onSlideContentChange(value);
 
-      // If this is a slide activity, also update the activity description
-      if (
-        activity &&
-        (activeQuestion.question_type === 'slide' ||
-          activeQuestion.question_type === 'info_slide')
-      ) {
-        debouncedUpdateActivity({ description: value });
-      }
-    }
-  };
+  //     // If this is a slide activity, also update the activity description
+  //     if (
+  //       activity &&
+  //       (activeQuestion.question_type === 'slide' ||
+  //         activeQuestion.question_type === 'info_slide')
+  //     ) {
+  //       debouncedUpdateActivity({ description: value });
+  //     }
+  //   }
+  // };
 
   // Handler for slide image changes
   const handleSlideImageChange = (value: string, index: number) => {
@@ -2303,8 +2304,8 @@ export function QuestionSettings({
                 activeQuestionIndex={activeQuestionIndex}
                 questionType={activeQuestion.question_type}
                 onAddOption={onAddOption}
-                onOptionChange={(questionIndex, optionIndex, field, value) =>
-                  onOptionChange(questionIndex, optionIndex, field, value)
+                onOptionChange={(questionIndex, optionIndex, field, value, isTyping = false) =>
+                  onOptionChange(questionIndex, optionIndex, field, value, isTyping)
                 }
                 onDeleteOption={onDeleteOption}
               />
@@ -2338,8 +2339,8 @@ export function QuestionSettings({
             <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
               <ReorderOptions
                 options={activeQuestion.options}
-                onOptionChange={(index, field, value) =>
-                  onOptionChange(activeQuestionIndex, index, field, value)
+                onOptionChange={(index, field, value, isTyping = false) =>
+                  onOptionChange(activeQuestionIndex, index, field, value, isTyping)
                 }
                 onDeleteOption={onDeleteOption}
                 onAddOption={onAddOption}
@@ -2556,9 +2557,10 @@ export function QuestionSettings({
                         questionIndex,
                         optionIndex,
                         field,
-                        value
+                        value,
+                        isTyping = false
                       ) =>
-                        onOptionChange(questionIndex, optionIndex, field, value)
+                        onOptionChange(questionIndex, optionIndex, field, value, isTyping)
                       }
                       onDeleteOption={onDeleteOption}
                     />
@@ -2600,8 +2602,8 @@ export function QuestionSettings({
                   <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
                     <ReorderOptions
                       options={activeQuestion.options}
-                      onOptionChange={(index, field, value) =>
-                        onOptionChange(activeQuestionIndex, index, field, value)
+                      onOptionChange={(index, field, value, isTyping = false) =>
+                        onOptionChange(activeQuestionIndex, index, field, value, isTyping)
                       }
                       onDeleteOption={onDeleteOption}
                       onAddOption={onAddOption}

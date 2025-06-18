@@ -268,21 +268,21 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
 
         await updateUser(currentRow.userId, changedFields);
 
-        // if (oldAvatar && values.avatar && values.avatar !== oldAvatar) {
-        //   try {
-        //     console.log('Đang xóa avatar cũ:', oldAvatar);
-        //     await storageApi.deleteSingleFile(oldAvatar);
-        //     console.log('Đã xóa avatar cũ thành công');
-        //   } catch (deleteError) {
-        //     console.error('Lỗi khi xóa avatar cũ:', deleteError);
-        //     // Không throw lỗi vì cập nhật đã thành công, chỉ ghi log
-        //     toast({
-        //       title: 'Cảnh báo',
-        //       description: 'Cập nhật thành công nhưng không thể xóa avatar cũ.',
-        //       variant: 'destructive',
-        //     });
-        //   }
-        // }
+        if (oldAvatar && values.avatar && values.avatar !== oldAvatar) {
+          try {
+            console.log('Đang xóa avatar cũ:', oldAvatar);
+            await storageApi.deleteSingleFile(oldAvatar);
+            console.log('Đã xóa avatar cũ thành công');
+          } catch (deleteError) {
+            console.error('Lỗi khi xóa avatar cũ:', deleteError);
+            // Không throw lỗi vì cập nhật đã thành công, chỉ ghi log
+            toast({
+              title: 'Cảnh báo',
+              description: 'Cập nhật thành công nhưng không thể xóa avatar cũ.',
+              variant: 'destructive',
+            });
+          }
+        }
 
       } else {
         const userData = {

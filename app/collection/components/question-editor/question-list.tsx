@@ -122,8 +122,10 @@ const SortableActivityItem = ({
   const associatedQuestion = questions.find(
     (q) => q.activity_id === activity.id
   );
+
   const displayTitle =
     associatedQuestion?.question_text ||
+    activity.quiz?.questionText ||
     activity.title ||
     `Activity ${index + 1}`;
 
@@ -185,7 +187,7 @@ const SortableActivityItem = ({
         <h3 className="text-[9px] font-medium line-clamp-2 text-white drop-shadow-sm">
           {activity.activity_type_id === 'INFO_SLIDE'
             ? 'Slide ' + (index + 1)
-            : activity.title || `Activity ${index + 1}`}
+            : displayTitle}
         </h3>
       </div>
     </div>
@@ -652,7 +654,7 @@ export function QuestionList({
       if (
         event.detail &&
         event.detail.activityId &&
-        event.detail.title &&
+        event.detail.title || event.detail.questionText &&
         event.detail.sender !== 'questionList'
       ) {
         // Force re-render when question text changes
