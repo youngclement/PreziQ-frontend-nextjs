@@ -254,32 +254,41 @@ export function MatchingPairSettings({
       const reorderedItems = arrayMove(items, startIndex, endIndex);
       const updatedItems = [...matchingData.items];
 
-      // Update display order for reordered items
+      // Calculate new display orders for the reordered column
+      // Use sequential numbering starting from 1 for each column
       reorderedItems.forEach((item, index) => {
         const itemIndex = updatedItems.findIndex(
           (i) => i.quizMatchingPairItemId === item.quizMatchingPairItemId
         );
         if (itemIndex !== -1) {
+          // For left column: displayOrder = 1, 2, 3, 4, ...
+          // For right column: displayOrder = 1, 2, 3, 4, ...
+          // Each column has its own sequential numbering starting from 1
           updatedItems[itemIndex] = {
             ...updatedItems[itemIndex],
-            displayOrder: index * 2 + (side === 'right' ? 1 : 0),
+            displayOrder: index + 1, // Start from 1, not 0
           };
         }
       });
 
-      // Update API for each item
-      for (const item of updatedItems) {
+      // Update API for each item in the reordered column
+      for (const item of reorderedItems) {
         if (item.quizMatchingPairItemId) {
-          await activitiesApi.updateReorderQuizItem(
-            activityId,
-            item.quizMatchingPairItemId,
-            {
-              quizMatchingPairItemId: item.quizMatchingPairItemId,
-              content: item.content || '',
-              isLeftColumn: item.isLeftColumn,
-              displayOrder: item.displayOrder || 0,
-            }
+          const updatedItem = updatedItems.find(
+            (i) => i.quizMatchingPairItemId === item.quizMatchingPairItemId
           );
+          if (updatedItem) {
+            await activitiesApi.updateReorderQuizItem(
+              activityId,
+              item.quizMatchingPairItemId,
+              {
+                quizMatchingPairItemId: item.quizMatchingPairItemId,
+                content: updatedItem.content || '',
+                isLeftColumn: updatedItem.isLeftColumn,
+                displayOrder: updatedItem.displayOrder,
+              }
+            );
+          }
         }
       }
 
