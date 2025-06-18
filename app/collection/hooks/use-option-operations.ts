@@ -357,7 +357,7 @@ export function useOptionOperations(
     const activeQuestion = updatedQuestions[activeQuestionIndex];
 
     // Don't allow more than 8 options
-    if (activeQuestion.options.length >= 8) {
+    if (activeQuestion.options.length >= 9) {
       console.log("Maximum options reached: You can't add more than 8 options");
 
       return;

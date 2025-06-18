@@ -64,7 +64,7 @@ export function OptionList({
             size="sm"
             variant="outline"
             onClick={onAddOption}
-            disabled={options.length >= 6}
+            disabled={options.length > 9}
           >
             <Plus className="h-3.5 w-3.5 mr-2" /> Add Option
           </Button>

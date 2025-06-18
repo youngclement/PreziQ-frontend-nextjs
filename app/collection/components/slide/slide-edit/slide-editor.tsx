@@ -67,6 +67,11 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   const initialStateRef = useRef(null);
   const elementInitialStates = useRef<Map<string, any>>(new Map());
 
+  // Thêm vào phần đầu của component FabricEditor
+  const isTyping = useRef(false);
+  const textContentRef = useRef('');
+  const debouncedTextUpdateRef = useRef<ReturnType<typeof debounce>>();
+
   useEffect(() => {
     slideElementsRef.current = slideElements;
     // console.log('đã load: ', slideElements);
@@ -300,7 +305,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         console.error('Update failed:', err);
       }
     },
-    500
+    800
   );
 
   const loadSlideElements = async (maxRetries = 5) => {
@@ -725,6 +730,18 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       handlePreviewAnimation(e);
     };
 
+    debouncedTextUpdateRef.current = debounce(() => {
+      if (!isTyping.current) return;
+
+      const activeObject = canvas.getActiveObject();
+      if (activeObject && activeObject.type === 'textbox') {
+        updateSlideElement(activeObject);
+      }
+
+      isTyping.current = false;
+    }, 1500); 
+
+    ///
     window.addEventListener(
       'fabric:reset-animation',
       handleResetAnimation as EventListener
@@ -903,21 +920,25 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
 
       //console.log('Text changed:', obj.toJSON());
 
-      const elementId = obj.get('slideElementId');
-      if (elementId) {
-        elementInitialStates.current.set(elementId, {
-          opacity: obj.opacity,
-          left: obj.left,
-          top: obj.top,
-          scaleX: obj.scaleX,
-          scaleY: obj.scaleY,
-          angle: obj.angle,
-          rotation: obj.angle ?? 0,
-        });
-      }
+      // const elementId = obj.get('slideElementId');
+      // if (elementId) {
+      //   elementInitialStates.current.set(elementId, {
+      //     opacity: obj.opacity,
+      //     left: obj.left,
+      //     top: obj.top,
+      //     scaleX: obj.scaleX,
+      //     scaleY: obj.scaleY,
+      //     angle: obj.angle,
+      //     rotation: obj.angle ?? 0,
+      //   });
+      // }
+      isTyping.current = true;
+      textContentRef.current = obj.text || '';
 
-      updateSlideElement(obj);
+      // updateSlideElement(obj);
       saveState();
+
+      debouncedTextUpdateRef.current?.();
     });
 
     canvas.on('text:selection:changed', (e) => {
@@ -925,13 +946,19 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       if (!obj || obj.type !== 'textbox') return;
 
       //console.log('Text selection changed:', obj.toJSON());
-      updateSlideElement(obj);
+      //updateSlideElement(obj);
       saveState();
     });
 
     canvas.on('text:editing:exited', (e) => {
       const obj = e.target as fabric.Textbox;
       if (!obj || obj.type !== 'textbox') return;
+
+      // Hủy bỏ debounce đang chờ
+      debouncedTextUpdateRef.current?.cancel();
+
+      // Reset trạng thái gõ
+      isTyping.current = false;
 
       //console.log('Text editing exited:', obj.toJSON());
       updateSlideElement(obj);
@@ -1031,6 +1058,8 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         'fabric:reset-animation',
         handleResetAnimation as EventListener
       );
+
+      debouncedTextUpdateRef.current?.cancel();
 
       cleanupToolbar();
       isLoadingRef.current = false;

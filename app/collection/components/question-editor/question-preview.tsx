@@ -774,8 +774,8 @@ export function QuestionPreview({
   // Simplified color scheme with lighter, flatter colors
   const getQuestionTypeColor = (questionType: string) => {
     const colors = {
-      multiple_choice: 'bg-blue-500 text-white',
-      multiple_response: 'bg-violet-500 text-white',
+      multiple_choice: 'bg-violet-500 text-white',
+      multiple_response: 'bg-blue-500 text-white',
       true_false: 'bg-emerald-500 text-white',
       text_answer: 'bg-amber-500 text-white',
       reorder: 'bg-pink-500 text-white',
@@ -813,6 +813,26 @@ export function QuestionPreview({
 
     return (
       icons[questionType as keyof typeof icons] || <Zap className="h-4 w-4" />
+    );
+  };
+
+  const getQuestionTypeDisplayName = (questionType: string) => {
+    const displayNames = {
+      multiple_choice: 'Single Choice',
+      multiple_response: 'Multiple Choice',
+      // Keep others unchanged but formatted nicely
+      true_false: 'True False',
+      text_answer: 'Text Answer',
+      reorder: 'Reorder',
+      location: 'Location',
+      slide: 'Slide',
+      info_slide: 'Info Slide',
+      matching_pair: 'Matching Pair',
+    };
+
+    return (
+      displayNames[questionType as keyof typeof displayNames] ||
+      questionType.replace(/_/g, ' ')
     );
   };
 
@@ -1101,11 +1121,30 @@ export function QuestionPreview({
                     onChange={(e) =>
                       onQuestionTextChange(e.target.value, questionIndex, true)
                     }
-                    className="text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
+                    className="resize-none custom-scrollbar text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
                     onBlur={(e) =>
                       onQuestionTextChange(e.target.value, questionIndex, false)
                     }
                   />
+                  <style jsx global>{`
+                    .custom-scrollbar::-webkit-scrollbar {
+                      width: 16px; /* Tăng width lên */
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-track {
+                      background: transparent; /* Track trong suốt */
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb {
+                      background: rgba(255, 255, 255, 0.4);
+                      border-radius: 8px;
+                      border: 4px solid transparent; /* Tạo viền trong suốt */
+                      background-clip: padding-box;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                      background: rgba(255, 255, 255, 0.6);
+                      border: 4px solid transparent;
+                      background-clip: padding-box;
+                    }
+                  `}</style>
                 </div>
               ) : (
                 <div className="relative w-full max-w-2xl">
@@ -1231,11 +1270,30 @@ export function QuestionPreview({
                     onChange={(e) =>
                       onQuestionTextChange(e.target.value, questionIndex, true)
                     }
-                    className="text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
+                    className="resize-none custom-scrollbar text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
                     onBlur={(e) =>
                       onQuestionTextChange(e.target.value, questionIndex, false)
                     }
                   />
+                  <style jsx global>{`
+                    .custom-scrollbar::-webkit-scrollbar {
+                      width: 16px; /* Tăng width lên */
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-track {
+                      background: transparent; /* Track trong suốt */
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb {
+                      background: rgba(255, 255, 255, 0.4);
+                      border-radius: 8px;
+                      border: 4px solid transparent; /* Tạo viền trong suốt */
+                      background-clip: padding-box; 
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                      background: rgba(255, 255, 255, 0.6);
+                      border: 4px solid transparent;
+                      background-clip: padding-box;
+                    }
+                  `}</style>
                 </div>
               ) : (
                 <div className="relative w-full max-w-2xl">
@@ -1323,7 +1381,7 @@ export function QuestionPreview({
                 </div>
                 <div>
                   <div className="text-xs capitalize font-medium">
-                    {question.question_type.replace(/_/g, ' ')}
+                    {getQuestionTypeDisplayName(question.question_type)}
                   </div>
                 </div>
               </div>
@@ -1354,11 +1412,30 @@ export function QuestionPreview({
                     onChange={(e) =>
                       onQuestionTextChange(e.target.value, questionIndex, true)
                     }
-                    className="text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
+                    className="resize-none custom-scrollbar text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
                     onBlur={(e) =>
                       onQuestionTextChange(e.target.value, questionIndex, false)
                     }
                   />
+                  <style jsx global>{`
+                    .custom-scrollbar::-webkit-scrollbar {
+                      width: 16px; /* Tăng width lên */
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-track {
+                      background: transparent; /* Track trong suốt */
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb {
+                      background: rgba(255, 255, 255, 0.4);
+                      border-radius: 8px;
+                      border: 4px solid transparent; /* Tạo viền trong suốt */
+                      background-clip: padding-box; 
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                      background: rgba(255, 255, 255, 0.6);
+                      border: 4px solid transparent;
+                      background-clip: padding-box;
+                    }
+                  `}</style>
                 </div>
               ) : (
                 <div className="relative w-full max-w-2xl">
@@ -1498,11 +1575,14 @@ export function QuestionPreview({
                       </span>
                       <Input
                         value={
-                          question.correct_answer_text || 
-                          (question.options && question.options.length > 0 && 
-                           question.options.find(opt => opt.is_correct)?.option_text) || 
-                          (question.options && question.options.length > 0 && 
-                           question.options[0].option_text) || 
+                          question.correct_answer_text ||
+                          (question.options &&
+                            question.options.length > 0 &&
+                            question.options.find((opt) => opt.is_correct)
+                              ?.option_text) ||
+                          (question.options &&
+                            question.options.length > 0 &&
+                            question.options[0].option_text) ||
                           ''
                         }
                         onChange={(e) => {
@@ -1526,7 +1606,6 @@ export function QuestionPreview({
                           );
                         }}
                         className="flex-1 border-blue-200 focus:border-blue-400 focus:ring-blue-400 text-gray-800 dark:text-white dark:bg-gray-700"
-                        autoFocus
                       />
                     </div>
                   ) : (
@@ -1536,12 +1615,15 @@ export function QuestionPreview({
                     >
                       <span className="font-medium">Correct answer:</span>{' '}
                       <span className="ml-1 font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800">
-                      {question.correct_answer_text || 
-                      (question.options && question.options.length > 0 && 
-                        question.options.find(opt => opt.is_correct)?.option_text) || 
-                      (question.options && question.options.length > 0 && 
-                        question.options[0].option_text) || 
-                      'Not specified'}
+                        {question.correct_answer_text ||
+                          (question.options &&
+                            question.options.length > 0 &&
+                            question.options.find((opt) => opt.is_correct)
+                              ?.option_text) ||
+                          (question.options &&
+                            question.options.length > 0 &&
+                            question.options[0].option_text) ||
+                          'Not specified'}
                       </span>
                       <Pencil className="h-3.5 w-3.5 ml-2 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
@@ -1702,9 +1784,7 @@ export function QuestionPreview({
                                         )}
                                       >
                                         <Input
-                                          value={
-                                            option.option_text || ''                                            
-                                          }
+                                          value={option.option_text || ''}
                                           onChange={(e) =>
                                             onOptionChange(
                                               questionIndex,
@@ -1841,7 +1921,8 @@ export function QuestionPreview({
                                     color.text
                                   )}
                                 >
-                                  {option.option_text || `Enter Step ${idx + 1}`}
+                                  {option.option_text ||
+                                    `Enter Step ${idx + 1}`}
                                 </p>
                               </div>
                             </div>
@@ -1896,9 +1977,7 @@ export function QuestionPreview({
               >
                 {/* Direct rendering of choice options */}
                 {question.options.map((option, optionIndex) => {
-                  const optionLetter = ['A', 'B', 'C', 'D', 'E', 'F'][
-                    optionIndex
-                  ];
+                  const optionLetter = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'][optionIndex];
                   const optionColors = [
                     'bg-blue-500',
                     'bg-pink-500',
@@ -1906,6 +1985,9 @@ export function QuestionPreview({
                     'bg-orange-500',
                     'bg-purple-500',
                     'bg-cyan-500',
+                    'bg-red-500', 
+                    'bg-yellow-500', 
+                    'bg-teal-500', 
                   ];
 
                   return (
@@ -1977,7 +2059,7 @@ export function QuestionPreview({
                 })}
 
                 {/* Add Option button - visible only in edit mode */}
-                {editMode !== null && question.options.length < 6 && (
+                {editMode !== null && question.options.length <= 9 && (
                   <div
                     className="rounded-lg border border-dashed p-3 flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => onAddOption()}
@@ -3036,7 +3118,7 @@ function OptionItem({
   onOptionEdit,
   onToggleCorrect,
 }: OptionItemProps) {
-  const optionLetter = ['A', 'B', 'C', 'D', 'E', 'F'][index];
+  const optionLetter = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'][index];
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(
     option.option_text || `Option ${optionLetter}`
@@ -3310,4 +3392,4 @@ function getFirstLocationData(question: any, activity: any) {
 
   // Default location
   return { lat: 21.028511, lng: 105.804817, radius: 10 };
-}
+} 

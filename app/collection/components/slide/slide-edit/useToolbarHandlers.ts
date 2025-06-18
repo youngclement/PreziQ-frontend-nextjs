@@ -456,7 +456,7 @@ export const ToolbarHandlers = (
 
     textbox.dirty = true;
     canvas.requestRenderAll();
-    updateTextboxElement(textbox);
+    //updateTextboxElement(textbox);
   }
 
   function removeStyleProperty(
@@ -523,6 +523,7 @@ export const ToolbarHandlers = (
 
     textbox.dirty = true;
     canvas.requestRenderAll();
+    console.log("textboxxx", textbox);
     updateTextboxElement(textbox);
     emitFormatState(start, end);
   };
