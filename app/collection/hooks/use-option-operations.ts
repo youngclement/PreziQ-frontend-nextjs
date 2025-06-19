@@ -8,7 +8,6 @@ import { activitiesApi } from '@/api-client';
 import { Activity, QuizQuestion } from '../components/types';
 import { reorderOptions } from '../utils/question-helpers';
 
-
 export function useOptionOperations(
   questions: QuizQuestion[],
   setQuestions: (questions: QuizQuestion[]) => void,
@@ -33,7 +32,6 @@ export function useOptionOperations(
     const updatedQuestions = JSON.parse(JSON.stringify(questions));
     const activeQuestion = updatedQuestions[questionIndex];
 
-
     // Skip updates for INFO_SLIDE type as they don't have options
     if (activity.activity_type_id === 'INFO_SLIDE') {
       console.log(
@@ -53,7 +51,6 @@ export function useOptionOperations(
     ) {
       console.error(`Option at index ${optionIndex} does not exist`);
       return;
-
     }
 
     // Special handling for multiple_choice and true_false questions - only one correct answer allowed
@@ -150,11 +147,9 @@ export function useOptionOperations(
           break;
       }
 
-
-      console.log("Answer text updated successfully");
+      console.log('Answer text updated successfully');
     } catch (error) {
-      console.error("Error updating answer text:", error);
-
+      console.error('Error updating answer text:', error);
     }
   };
 
@@ -192,7 +187,7 @@ export function useOptionOperations(
         questionText: activeQuestion.question_text,
         timeLimitSeconds: timeLimit,
         pointType: 'STANDARD',
-        correctOrder: reorderedOptions.map((opt) => opt.option_text),
+        correctOrder: reorderedOptions.map((opt) => opt.option_text ?? ''),
       });
 
       const response = await activitiesApi.updateReorderQuiz(activity.id, {
@@ -200,14 +195,13 @@ export function useOptionOperations(
         questionText: activeQuestion.question_text,
         timeLimitSeconds: timeLimit,
         pointType: 'STANDARD',
-        correctOrder: reorderedOptions.map((opt) => opt.option_text),
+        correctOrder: reorderedOptions.map((opt) => opt.option_text ?? ''),
       });
 
-      console.log("Reorder update response:", response);
-      console.log("Reorder steps updated successfully");
+      console.log('Reorder update response:', response);
+      console.log('Reorder steps updated successfully');
     } catch (error) {
-      console.error("Error updating reorder steps:", error);
-
+      console.error('Error updating reorder steps:', error);
     }
   };
 
@@ -222,7 +216,6 @@ export function useOptionOperations(
 
     // Don't allow more than 8 options
     if (activeQuestion.options.length >= 8) {
-
       console.log("Maximum options reached: You can't add more than 8 options");
 
       return;
@@ -256,8 +249,8 @@ export function useOptionOperations(
             timeLimitSeconds: timeLimit,
             pointType: 'STANDARD',
             answers: updatedOptions.map((opt) => ({
-              answerText: opt.option_text,
-              isCorrect: opt.is_correct,
+              answerText: opt.option_text ?? '',
+              isCorrect: opt.is_correct ?? false,
               explanation: opt.explanation || '',
             })),
           });
@@ -270,8 +263,8 @@ export function useOptionOperations(
             timeLimitSeconds: timeLimit,
             pointType: 'STANDARD',
             answers: updatedOptions.map((opt) => ({
-              answerText: opt.option_text,
-              isCorrect: opt.is_correct,
+              answerText: opt.option_text ?? '',
+              isCorrect: opt.is_correct ?? false,
               explanation: opt.explanation || '',
             })),
           });
@@ -283,16 +276,14 @@ export function useOptionOperations(
             questionText: activeQuestion.question_text,
             timeLimitSeconds: timeLimit,
             pointType: 'STANDARD',
-            correctOrder: updatedOptions.map((opt) => opt.option_text),
+            correctOrder: updatedOptions.map((opt) => opt.option_text ?? ''),
           });
           break;
       }
 
-
-      console.log("New option added successfully");
+      console.log('New option added successfully');
     } catch (error) {
-      console.error("Error adding option:", error);
-
+      console.error('Error adding option:', error);
     }
   };
 
@@ -311,9 +302,8 @@ export function useOptionOperations(
       (activeQuestion.question_type === 'multiple_choice' ||
         activeQuestion.question_type === 'multiple_response')
     ) {
-
       console.log(
-        "Minimum options required: You need at least 2 options for this question type"
+        'Minimum options required: You need at least 2 options for this question type'
       );
 
       return;
@@ -355,8 +345,8 @@ export function useOptionOperations(
             timeLimitSeconds: timeLimit,
             pointType: 'STANDARD',
             answers: updatedOptions.map((opt) => ({
-              answerText: opt.option_text,
-              isCorrect: opt.is_correct,
+              answerText: opt.option_text ?? '',
+              isCorrect: opt.is_correct ?? false,
               explanation: opt.explanation || '',
             })),
           });
@@ -369,8 +359,8 @@ export function useOptionOperations(
             timeLimitSeconds: timeLimit,
             pointType: 'STANDARD',
             answers: updatedOptions.map((opt) => ({
-              answerText: opt.option_text,
-              isCorrect: opt.is_correct,
+              answerText: opt.option_text ?? '',
+              isCorrect: opt.is_correct ?? false,
               explanation: opt.explanation || '',
             })),
           });
@@ -382,15 +372,14 @@ export function useOptionOperations(
             questionText: activeQuestion.question_text,
             timeLimitSeconds: timeLimit,
             pointType: 'STANDARD',
-            correctOrder: updatedOptions.map((opt) => opt.option_text),
+            correctOrder: updatedOptions.map((opt) => opt.option_text ?? ''),
           });
           break;
       }
 
-      console.log("Option deleted successfully");
+      console.log('Option deleted successfully');
     } catch (error) {
-      console.error("Error deleting option:", error);
-
+      console.error('Error deleting option:', error);
     }
   };
 
@@ -422,12 +411,10 @@ export function useOptionOperations(
           correctAnswer: value,
         });
 
-
-        console.log("Successfully updated text answer question:", response);
+        console.log('Successfully updated text answer question:', response);
       }
     } catch (error) {
-      console.error("Error updating correct answer:", error);
-
+      console.error('Error updating correct answer:', error);
     }
   };
 
@@ -454,14 +441,14 @@ export function useOptionOperations(
         questionText: activeQuestion.question_text,
         timeLimitSeconds: timeLimit,
         pointType: 'STANDARD',
-        correctOrder: activeQuestion.options.map((opt) => opt.option_text),
+        correctOrder: activeQuestion.options.map(
+          (opt) => opt.option_text ?? ''
+        ),
       });
 
-
-      console.log("API update successful for REORDER question option");
+      console.log('API update successful for REORDER question option');
     } catch (error) {
-      console.error("Error updating reorder option:", error);
-
+      console.error('Error updating reorder option:', error);
     }
   };
 
