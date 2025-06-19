@@ -1002,123 +1002,39 @@ export function QuestionPreview({
 
     // Simplified location question type
     if (question.question_type === 'location') {
+      const locationAnswers = getLocationAnswers(question, activity);
       return (
-        <Card
-          className={cn(
-            'border-none rounded-xl shadow-lg overflow-hidden transition-all duration-300 mx-auto',
-            isActive
-              ? 'ring-2 ring-primary/20 scale-100'
-              : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
-            viewMode === 'desktop' && 'max-w-5xl',
-            viewMode === 'tablet' && 'max-w-2xl',
-            viewMode === 'mobile' && 'max-w-sm'
-          )}
-          key={`question-card-location-${questionIndex}-${renderKey}`}
-        >
-          <motion.div
-            className={cn(
-              'aspect-[16/5] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
-            )}
-            style={{
-              backgroundColor: actualBackgroundColor, // Always apply background color
-            }}
-            initial={{ opacity: 0.8 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-            key={`question-bg-${questionIndex}-${renderKey}-${actualBackgroundColor}`}
-          >
-            {/* Light overlay */}
-            <div className="absolute inset-0 bg-black/30" />
-
-            {/* Simplified Status Bar */}
-            <div className="absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10">
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    'h-7 w-7 rounded-full flex items-center justify-center shadow-sm',
-                    getQuestionTypeColor(question.question_type)
-                  )}
-                >
-                  {getQuestionTypeIcon(question.question_type)}
-                </div>
-                <div>
-                  <div className="text-xs capitalize font-medium">
-                    {question.question_type.replace(/_/g, ' ')}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full text-xs font-medium">
-                  Q{questionIndex + 1}
-                </div>
-                <div className="flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span className="time-limit-display">
-                    {(activity && activity.quiz?.timeLimitSeconds) ||
-                      question.time_limit_seconds ||
-                      timeLimit}
-                    s
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Question Text */}
-            <div className="flex-1 flex flex-col items-center justify-center z-10 py-6 px-5">
-              {editMode !== null ? (
-                <div className="w-full max-w-2xl">
-                  <Textarea
-                    value={
-                      question.question_text ||
-                      `Location Question ${questionIndex + 1}`
-                    }
-                    onChange={(e) =>
-                      onQuestionTextChange(e.target.value, questionIndex)
-                    }
-                    className="text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
-                  />
-                </div>
+        <div className='p-4'>
+          {locationAnswers && locationAnswers.length > 0 ? (
+            <div className="w-full mt-2">
+              {!previewMode ? (
+                <DynamicLocationQuestionEditor
+                  key={question.location_data?.quizLocationAnswers?.length || 0}
+                  questionText={question.question_text}
+                  locationAnswers={question.location_data?.quizLocationAnswers}
+                  onLocationChange={(index, data) =>
+                    onQuestionLocationChange?.(questionIndex, data)
+                  }
+                  questionIndex={questionIndex}
+                />
               ) : (
-                <div className="relative w-full max-w-2xl">
-                  <h2 className="text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4">
-                    {question.question_text ||
-                      `Location Question ${questionIndex + 1}`}
-                  </h2>
-                </div>
+                <DynamicLocationQuestionEditor
+                  questionText={question.question_text}
+                  locationAnswers={getLocationAnswers(question, activity)}
+                  onLocationChange={() => { }} // Read-only, so no-op
+                  questionIndex={questionIndex}
+                  readonly={true}
+                />
               )}
             </div>
-          </motion.div>
-
-          <CardContent className="p-4 bg-white dark:bg-gray-800">
-            <div className="flex flex-col items-center">
-              <div className="text-muted-foreground mb-2 text-sm text-center">
-                Find and mark the location on the map
-              </div>
-
-              <div className="w-full mt-2">
-                {!previewMode ? (
-                  <DynamicLocationQuestionEditor
-                    questionText={question.question_text || ''}
-                    locationAnswers={getLocationAnswers(question, activity)}
-
-                    onLocationChange={(questionIndex, locationData) =>
-                      onQuestionLocationChange?.(questionIndex, locationData)
-                    }
-
-                    questionIndex={questionIndex}
-                  />
-                ) : (
-                  <DynamicLocationQuestionPlayer
-                    questionText={question.question_text || ''}
-                    locationData={getLocationData(question, activity)}
-                    onAnswer={(isCorrect: boolean) => console.log('Answer:', isCorrect)}
-                  />
-                )}
-              </div>
+          ) : (
+            <div className='text-center p-8 bg-gray-50 rounded-lg'>
+              <p className='text-muted-foreground'>
+                No location data for this question yet.
+              </p>
             </div>
-          </CardContent>
-
-        </Card>
+          )}
+        </div>
       );
     }
 
