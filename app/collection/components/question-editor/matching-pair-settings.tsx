@@ -1,5 +1,7 @@
 'use client';
 
+import type React from 'react';
+
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +31,6 @@ import { toast } from '@/hooks/use-toast';
 import type {
   QuizMatchingPairAnswer,
   QuizMatchingPairItem,
-  QuizMatchingPairConnection,
 } from '@/api-client/activities-api';
 
 interface MatchingPairSettingsProps {
@@ -64,6 +65,47 @@ function SortableItem({
   isUpdating?: boolean;
   side: 'left' | 'right';
 }) {
+  // ✅ THÊM LOCAL STATE CHO INPUT
+  const [localValue, setLocalValue] = useState(item.content || '');
+  const updateTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // ✅ SYNC LOCAL VALUE VỚI ITEM CONTENT KHI ITEM THAY ĐỔI
+  useEffect(() => {
+    setLocalValue(item.content || '');
+  }, [item.content]);
+
+  // ✅ DEBOUNCED UPDATE FUNCTION
+  const debouncedUpdate = useCallback(
+    (value: string) => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+
+      updateTimeoutRef.current = setTimeout(() => {
+        if (item.quizMatchingPairItemId) {
+          onOptionChange(item.quizMatchingPairItemId, value);
+        }
+      }, 300); // Giảm delay xuống 300ms để responsive hơn
+    },
+    [item.quizMatchingPairItemId, onOptionChange]
+  );
+
+  // ✅ HANDLE INPUT CHANGE VỚI LOCAL STATE
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLocalValue(value); // Cập nhật ngay lập tức
+    debouncedUpdate(value); // Debounced API call
+  };
+
+  // ✅ CLEANUP TIMEOUT
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const {
     attributes,
     listeners,
@@ -109,12 +151,8 @@ function SortableItem({
         <Input
           id={`${side}-item-${index}`}
           placeholder={`Enter ${columnName.toLowerCase()}`}
-          value={item.content || ''}
-          onChange={(e) => {
-            if (item.quizMatchingPairItemId) {
-              onOptionChange(item.quizMatchingPairItemId, e.target.value);
-            }
-          }}
+          value={localValue} // ✅ SỬ DỤNG LOCAL VALUE
+          onChange={handleInputChange} // ✅ SỬ DỤNG LOCAL HANDLER
           className="w-full"
           disabled={isUpdating}
         />
@@ -149,28 +187,27 @@ export function MatchingPairSettings({
   settingsUpdateTrigger = 0,
 }: MatchingPairSettingsProps) {
   const isDraggingRef = useRef(false);
-  const [localLeftColumnName, setLocalLeftColumnName] =
-    useState(leftColumnName);
-  const [localRightColumnName, setLocalRightColumnName] =
-    useState(rightColumnName);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [localMatchingData, setLocalMatchingData] =
-    useState<QuizMatchingPairAnswer | null>(null);
+  const updateTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Get matching data from question
+  // Đơn giản hóa: chỉ sử dụng một nguồn dữ liệu duy nhất
   const matchingData = useMemo(() => {
-    return (
-      question.quizMatchingPairAnswer ||
-      question.matching_data ||
-      localMatchingData
-    );
-  }, [
-    question.quizMatchingPairAnswer,
-    question.matching_data,
-    localMatchingData,
-  ]);
+    return question.quizMatchingPairAnswer || question.matching_data;
+  }, [question.quizMatchingPairAnswer, question.matching_data]);
 
-  // Get left and right items from matching data
+  // State cho column names với local state
+  const [leftColumnTitle, setLeftColumnTitle] = useState('');
+  const [rightColumnTitle, setRightColumnTitle] = useState('');
+
+  // Cập nhật column titles khi matchingData thay đổi
+  useEffect(() => {
+    if (matchingData) {
+      setLeftColumnTitle(matchingData.leftColumnName || leftColumnName);
+      setRightColumnTitle(matchingData.rightColumnName || rightColumnName);
+    }
+  }, [matchingData, leftColumnName, rightColumnName]);
+
+  // Get left and right items từ matchingData
   const leftItems = useMemo(() => {
     if (!matchingData?.items) return [];
     return matchingData.items
@@ -184,15 +221,6 @@ export function MatchingPairSettings({
       .filter((item) => !item.isLeftColumn)
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
   }, [matchingData?.items]);
-
-  // Update local state when props change
-  useEffect(() => {
-    if (matchingData) {
-      setLocalMatchingData(matchingData);
-      setLocalLeftColumnName(matchingData.leftColumnName || leftColumnName);
-      setLocalRightColumnName(matchingData.rightColumnName || rightColumnName);
-    }
-  }, [matchingData, leftColumnName, rightColumnName]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -252,55 +280,27 @@ export function MatchingPairSettings({
     try {
       const items = side === 'left' ? leftItems : rightItems;
       const reorderedItems = arrayMove(items, startIndex, endIndex);
-      const updatedItems = [...matchingData.items];
-
-      // Calculate new display orders for the reordered column
-      // Use sequential numbering starting from 1 for each column
-      reorderedItems.forEach((item, index) => {
-        const itemIndex = updatedItems.findIndex(
-          (i) => i.quizMatchingPairItemId === item.quizMatchingPairItemId
-        );
-        if (itemIndex !== -1) {
-          // For left column: displayOrder = 1, 2, 3, 4, ...
-          // For right column: displayOrder = 1, 2, 3, 4, ...
-          // Each column has its own sequential numbering starting from 1
-          updatedItems[itemIndex] = {
-            ...updatedItems[itemIndex],
-            displayOrder: index + 1, // Start from 1, not 0
-          };
-        }
-      });
 
       // Update API for each item in the reordered column
-      for (const item of reorderedItems) {
+      for (let i = 0; i < reorderedItems.length; i++) {
+        const item = reorderedItems[i];
         if (item.quizMatchingPairItemId) {
-          const updatedItem = updatedItems.find(
-            (i) => i.quizMatchingPairItemId === item.quizMatchingPairItemId
+          await activitiesApi.updateReorderQuizItem(
+            activityId,
+            item.quizMatchingPairItemId,
+            {
+              quizMatchingPairItemId: item.quizMatchingPairItemId,
+              content: item.content || '',
+              isLeftColumn: item.isLeftColumn,
+              displayOrder: i + 1,
+            }
           );
-          if (updatedItem) {
-            await activitiesApi.updateReorderQuizItem(
-              activityId,
-              item.quizMatchingPairItemId,
-              {
-                quizMatchingPairItemId: item.quizMatchingPairItemId,
-                content: updatedItem.content || '',
-                isLeftColumn: updatedItem.isLeftColumn,
-                displayOrder: updatedItem.displayOrder,
-              }
-            );
-          }
         }
       }
 
-      // Update local state
-      const updatedMatchingData = {
-        ...matchingData,
-        items: updatedItems,
-      };
-
-      setLocalMatchingData(updatedMatchingData);
-      if (onMatchingDataUpdate) {
-        onMatchingDataUpdate(updatedMatchingData);
+      // Refresh data từ server
+      if (onRefreshActivity) {
+        await onRefreshActivity();
       }
 
       toast({
@@ -319,32 +319,16 @@ export function MatchingPairSettings({
     }
   };
 
+  // ✅ SIMPLIFIED INPUT CHANGE HANDLER
   const handleInputChange = useCallback(
     async (itemId: string, value: string) => {
       if (!matchingData?.items) return;
 
-      // Update local state immediately for better UX
-      const updatedItems = matchingData.items.map((item) => {
-        if (item.quizMatchingPairItemId === itemId) {
-          return { ...item, content: value };
-        }
-        return item;
-      });
-
-      const updatedMatchingData = {
-        ...matchingData,
-        items: updatedItems,
-      };
-
-      setLocalMatchingData(updatedMatchingData);
-      if (onMatchingDataUpdate) {
-        onMatchingDataUpdate(updatedMatchingData);
-      }
-
-      // Update API
-      const item = updatedItems.find(
+      // Tìm item để lấy thông tin
+      const item = matchingData.items.find(
         (item) => item.quizMatchingPairItemId === itemId
       );
+
       if (item?.quizMatchingPairItemId) {
         try {
           await activitiesApi.updateReorderQuizItem(
@@ -357,6 +341,12 @@ export function MatchingPairSettings({
               displayOrder: item.displayOrder || 0,
             }
           );
+
+          // ✅ CHỈ REFRESH KHI CẦN THIẾT (không phải mỗi lần gõ)
+          // Có thể bỏ dòng này để tránh refresh liên tục
+          // if (onRefreshActivity) {
+          //   await onRefreshActivity()
+          // }
         } catch (error) {
           console.error('Error updating item:', error);
           toast({
@@ -365,72 +355,91 @@ export function MatchingPairSettings({
             variant: 'destructive',
           });
 
-          // Revert local state if API fails
+          // Chỉ refresh khi có lỗi để revert
           if (onRefreshActivity) {
             await onRefreshActivity();
           }
         }
       }
     },
-    [matchingData, activityId, onMatchingDataUpdate, onRefreshActivity]
+    [matchingData, activityId, onRefreshActivity]
   );
 
-  const handleColumnNameChange = useCallback(
-    async (side: 'left' | 'right', value: string) => {
-      if (!matchingData) return;
-
-      const newLeftName = side === 'left' ? value : localLeftColumnName;
-      const newRightName = side === 'right' ? value : localRightColumnName;
-
-      if (side === 'left') {
-        setLocalLeftColumnName(value);
-      } else {
-        setLocalRightColumnName(value);
+  // ✅ DEBOUNCED COLUMN NAME UPDATE
+  const debouncedColumnUpdate = useCallback(
+    (side: 'left' | 'right', value: string) => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
       }
 
-      if (onColumnNamesChange) {
-        onColumnNamesChange(newLeftName, newRightName);
-      }
+      updateTimeoutRef.current = setTimeout(async () => {
+        if (!matchingData) return;
 
-      // Update API
-      try {
-        const updatedMatchingData = {
-          ...matchingData,
-          leftColumnName: newLeftName,
-          rightColumnName: newRightName,
-        };
+        const newLeftName = side === 'left' ? value : leftColumnTitle;
+        const newRightName = side === 'right' ? value : rightColumnTitle;
 
-        await activitiesApi.updateMatchingPairQuiz(activityId, {
-          type: 'MATCHING_PAIRS',
-          questionText: question.question_text,
-          timeLimitSeconds: question.time_limit_seconds,
-          pointType: question.pointType || 'STANDARD',
-          leftColumnName: newLeftName,
-          rightColumnName: newRightName,
-        });
-
-        setLocalMatchingData(updatedMatchingData);
-        if (onMatchingDataUpdate) {
-          onMatchingDataUpdate(updatedMatchingData);
+        if (onColumnNamesChange) {
+          onColumnNamesChange(newLeftName, newRightName);
         }
-      } catch (error) {
-        console.error('Error updating column names:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to update column names',
-          variant: 'destructive',
-        });
-      }
+
+        try {
+          await activitiesApi.updateMatchingPairQuiz(activityId, {
+            type: 'MATCHING_PAIRS',
+            questionText: question.question_text,
+            timeLimitSeconds: question.time_limit_seconds,
+            pointType: question.pointType || 'STANDARD',
+            leftColumnName: newLeftName,
+            rightColumnName: newRightName,
+          });
+
+          // Refresh data từ server
+          if (onRefreshActivity) {
+            await onRefreshActivity();
+          }
+        } catch (error) {
+          console.error('Error updating column names:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to update column names',
+            variant: 'destructive',
+          });
+
+          // Revert local state
+          if (matchingData) {
+            setLeftColumnTitle(matchingData.leftColumnName || leftColumnName);
+            setRightColumnTitle(
+              matchingData.rightColumnName || rightColumnName
+            );
+          }
+        }
+      }, 500);
     },
     [
       matchingData,
-      localLeftColumnName,
-      localRightColumnName,
+      leftColumnTitle,
+      rightColumnTitle,
       activityId,
       question,
       onColumnNamesChange,
-      onMatchingDataUpdate,
+      onRefreshActivity,
+      leftColumnName,
+      rightColumnName,
     ]
+  );
+
+  const handleColumnNameChange = useCallback(
+    (side: 'left' | 'right', value: string) => {
+      // Update local state immediately
+      if (side === 'left') {
+        setLeftColumnTitle(value);
+      } else {
+        setRightColumnTitle(value);
+      }
+
+      // Debounced API update
+      debouncedColumnUpdate(side, value);
+    },
+    [debouncedColumnUpdate]
   );
 
   const handleAddPair = useCallback(async () => {
@@ -438,6 +447,7 @@ export function MatchingPairSettings({
     try {
       await activitiesApi.addMatchingPair(activityId);
 
+      // Refresh data từ server
       if (onRefreshActivity) {
         await onRefreshActivity();
       } else {
@@ -466,6 +476,7 @@ export function MatchingPairSettings({
       try {
         await activitiesApi.deleteMatchingPairItem(activityId, itemId);
 
+        // Refresh data từ server
         if (onRefreshActivity) {
           await onRefreshActivity();
         }
@@ -488,12 +499,21 @@ export function MatchingPairSettings({
     [activityId, onRefreshActivity]
   );
 
-  // Force re-render when settings update trigger changes
+  // Force refresh when settings update trigger changes
   useEffect(() => {
     if (onRefreshActivity) {
       onRefreshActivity();
     }
   }, [settingsUpdateTrigger, onRefreshActivity]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -501,7 +521,7 @@ export function MatchingPairSettings({
         <div className="space-y-1">
           <Label>Left Column Title</Label>
           <Input
-            value={localLeftColumnName}
+            value={leftColumnTitle}
             onChange={(e) => handleColumnNameChange('left', e.target.value)}
             placeholder="e.g. Countries"
             disabled={isUpdating}
@@ -510,7 +530,7 @@ export function MatchingPairSettings({
         <div className="space-y-1">
           <Label>Right Column Title</Label>
           <Input
-            value={localRightColumnName}
+            value={rightColumnTitle}
             onChange={(e) => handleColumnNameChange('right', e.target.value)}
             placeholder="e.g. Capitals"
             disabled={isUpdating}
@@ -524,7 +544,7 @@ export function MatchingPairSettings({
           {/* Left Column Items */}
           <div className="space-y-3">
             <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
-              {localLeftColumnName} Items
+              {leftColumnTitle} Items
             </h3>
             <DndContext
               sensors={sensors}
@@ -551,7 +571,7 @@ export function MatchingPairSettings({
                           'left'
                         )
                       }
-                      columnName={localLeftColumnName}
+                      columnName={leftColumnTitle}
                       isUpdating={isUpdating}
                       side="left"
                     />
@@ -564,7 +584,7 @@ export function MatchingPairSettings({
           {/* Right Column Items */}
           <div className="space-y-3">
             <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
-              {localRightColumnName} Items
+              {rightColumnTitle} Items
             </h3>
             <DndContext
               sensors={sensors}
@@ -591,7 +611,7 @@ export function MatchingPairSettings({
                           'right'
                         )
                       }
-                      columnName={localRightColumnName}
+                      columnName={rightColumnTitle}
                       isUpdating={isUpdating}
                       side="right"
                     />
