@@ -213,7 +213,7 @@ export function useOptionOperations(
               questionText: activeQuestion.question_text,
               timeLimitSeconds: timeLimit,
               pointType: 'STANDARD',
-              answers: options.map((opt) => ({
+              answers: options.map((opt: any) => ({
                 answerText: opt.option_text,
                 isCorrect: opt.is_correct,
                 explanation: opt.explanation || '',
@@ -228,7 +228,7 @@ export function useOptionOperations(
               questionText: activeQuestion.question_text,
               timeLimitSeconds: timeLimit,
               pointType: 'STANDARD',
-              answers: options.map((opt) => ({
+              answers: options.map((opt: any) => ({
                 answerText: opt.option_text,
                 isCorrect: opt.is_correct,
                 explanation: opt.explanation || '',

@@ -266,8 +266,9 @@ export default function QuestionsPageContent() {
     questionIndex: number,
     isTyping: boolean = false
   ) => {
-    // Update question text in local state
-    const updatedQuestions = [...questions];
+    if (activity && activity.activity_type_id === 'INFO_SLIDE') {return}
+      // Update question text in local state
+      const updatedQuestions = [...questions];
     updatedQuestions[questionIndex].question_text = value;
     setQuestions(updatedQuestions);
 
@@ -290,6 +291,7 @@ export default function QuestionsPageContent() {
     // Call the API update function
     handleQuestionTextChange(value, questionIndex, isTyping);
 
+    console.log("activity:", activity);
     // Also update activity title if this is a newly created question (title matches the default)
     if (
       activity &&
