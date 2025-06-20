@@ -1,6 +1,6 @@
 export const mockMatchingPairQuiz = {
   id: 'mp-quiz-1',
-  question_type: 'MATCHING_PAIRS',
+  question_type: 'matching_pair',
   question_text: 'Match the following terms with their definitions',
   options: [
     {
