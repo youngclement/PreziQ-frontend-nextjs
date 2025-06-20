@@ -473,15 +473,6 @@ export function MatchingPairPreview({
         <div className="absolute top-2 right-2">
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge
-                  variant="outline"
-                  className="flex items-center gap-1.5 py-1 px-2.5 bg-background/80 backdrop-blur-sm"
-                >
-                  <Info className="h-3.5 w-3.5" />
-                  <span>Edit Mode</span>
-                </Badge>
-              </TooltipTrigger>
               <TooltipContent>
                 <div className="text-left">
                   <p className="font-bold">{t('matchingPair.title')}</p>
