@@ -125,9 +125,7 @@ const SortableActivityItem = ({
 
   const displayTitle =
     associatedQuestion?.question_text ||
-    activity.quiz?.questionText ||
-    activity.title ||
-    `Activity ${index + 1}`;
+    ``;
 
   const getBackgroundStyle = () => {
     const style: React.CSSProperties = {};

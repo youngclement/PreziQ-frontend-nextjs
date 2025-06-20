@@ -58,7 +58,8 @@ import {
   PaintBucket,
   ChevronsUpDown,
   Plus,
-  X
+  X,
+  Layers
 
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1012,9 +1013,6 @@ export function QuestionSettings({
     if (!activity?.id) return;
 
     if (activity.activity_type_id === 'INFO_SLIDE') {
-      console.log(
-        'Bỏ qua gọi API cho INFO_SLIDE, sẽ được xử lý bởi SlideSettings'
-      );
       return;
     }
 
@@ -2507,7 +2505,12 @@ export function QuestionSettings({
               Design
             </TabsTrigger>
             <TabsTrigger value="meta" className="text-xs">
-              <Info className="h-3.5 w-3.5 mr-1.5" />
+              {activeQuestion.question_type === 'slide' ||
+              activeQuestion.question_type === 'info_slide' ? (
+                <Layers className="h-3.5 w-3.5 mr-1.5" /> 
+              ) : (
+                <Info className="h-3.5 w-3.5 mr-1.5" />
+              )}
               {activeQuestion.question_type === 'slide' ||
               activeQuestion.question_type === 'info_slide'
                 ? 'Animation'
@@ -2560,7 +2563,13 @@ export function QuestionSettings({
                         value,
                         isTyping = false
                       ) =>
-                        onOptionChange(questionIndex, optionIndex, field, value, isTyping)
+                        onOptionChange(
+                          questionIndex,
+                          optionIndex,
+                          field,
+                          value,
+                          isTyping
+                        )
                       }
                       onDeleteOption={onDeleteOption}
                     />
@@ -2603,7 +2612,13 @@ export function QuestionSettings({
                     <ReorderOptions
                       options={activeQuestion.options}
                       onOptionChange={(index, field, value, isTyping = false) =>
-                        onOptionChange(activeQuestionIndex, index, field, value, isTyping)
+                        onOptionChange(
+                          activeQuestionIndex,
+                          index,
+                          field,
+                          value,
+                          isTyping
+                        )
                       }
                       onDeleteOption={onDeleteOption}
                       onAddOption={onAddOption}

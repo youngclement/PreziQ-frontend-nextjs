@@ -222,7 +222,6 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
           );
           onSlideElementsUpdate(updatedElements);
 
-          console.log(`Updated duration for ${objectId} to ${duration}s`);
         } catch (error) {
           console.error('Failed to update animation duration:', error);
         }
@@ -274,7 +273,6 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
           );
           onSlideElementsUpdate(updatedElements);
 
-          console.log(`Updated delay for ${objectId} to ${delay}s`);
         } catch (error) {
           console.error('Failed to update animation delay:', error);
         }
@@ -397,10 +395,7 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
       }>
     ) => {
       if (e.detail.slideId !== slideId) return;
-      console.log(
-        'AnimationToolbar received fabric:selection-changed:',
-        e.detail
-      );
+
       const { objectId, animationName, duration, delay } = e.detail;
       if (objectId) {
         setAnimationMap((prev) => ({

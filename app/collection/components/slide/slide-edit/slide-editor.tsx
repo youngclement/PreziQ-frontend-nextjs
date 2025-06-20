@@ -74,7 +74,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
 
   useEffect(() => {
     slideElementsRef.current = slideElements;
-    // console.log('đã load: ', slideElements);
   }, [slideElements]);
 
   useEffect(() => {
@@ -198,7 +197,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       if (!slideId) return;
 
       // if (onSavingStateChange) onSavingStateChange(true);
-      console.log('Updating slide element ở đây');
 
       const zoom = canvas.getZoom();
       const cw = canvas.getWidth()! / zoom;
@@ -281,13 +279,12 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       }
 
       try {
-        console.log('Sending payload:', payload);
         const res = await slidesApi.updateSlidesElement(
           slideId,
           slideElementId,
           payload
         );
-        //console.log('API response:', JSON.stringify(res.data, null, 2));
+
         const serverData = res.data.data;
         // Merge với mảng hiện tại
         const updatedList = slideElementsRef.current.map((el) =>
@@ -310,7 +307,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
 
   const loadSlideElements = async (maxRetries = 5) => {
     if (isLoadingRef.current) {
-      console.log('Already loading elements, skipping...');
       return;
     }
 
@@ -347,9 +343,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       let retries = 0;
 
       while ((!elements || elements.length === 0) && retries < maxRetries) {
-        console.log(
-          `Waiting for slideElements, retry ${retries + 1}/${maxRetries}`
-        );
         await new Promise((resolve) => setTimeout(resolve, 200)); // Chờ 200ms
         elements = slideElementsRef.current;
         retries++;
@@ -455,14 +448,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
 
-        console.log('Initializing canvas with:', {
-          backgroundColor,
-          backgroundImage,
-          width,
-          height,
-          zoom,
-        });
-
         await setCanvasBackground(canvas, backgroundColor, backgroundImage);
         while (
           slideElementsRef.current.length === 0 &&
@@ -489,13 +474,8 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       e: CustomEvent<{ color: string; slideId?: string }>
     ) => {
       if (e.detail.slideId && e.detail.slideId !== slideId) {
-        console.log(
-          `Bỏ qua fabric:set-background-color vì slideId không khớp: ${e.detail.slideId} !== ${slideId}`
-        );
         return;
       }
-
-      console.log('Received fabric:set-background-color:', e.detail.color);
 
       if (fabricCanvas.current) {
         fabricCanvas.current.backgroundImage = undefined;
@@ -513,7 +493,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     const handleSetBackgroundImage = async (
       e: CustomEvent<{ url: string; slideId?: string }>
     ) => {
-      console.log('Received fabric:set-background-image:', e.detail.url);
       if (!e.detail.slideId || e.detail.slideId !== slideId) {
         return;
       }
@@ -537,7 +516,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         }
 
         // loadSlideElements();
-        console.log('Updated canvas backgroundImage:', e.detail.url);
       }
     };
 
@@ -551,8 +529,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
 
       try {
         const currentElements = slideElementsRef.current;
-        console.log('Current elements:', currentElements);
-        console.log('New elements:', e.detail.elements);
 
         // Find elements with changed displayOrder
         const changedElements = e.detail.elements.filter((newElement) => {
@@ -561,8 +537,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           );
           return currentElement?.displayOrder !== newElement.displayOrder;
         });
-
-        console.log('Elements with changed displayOrder:', changedElements);
 
         for (const element of changedElements) {
           const obj = fabricCanvas.current
@@ -770,8 +744,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       handleSetAnimation as unknown as EventListener
     );
 
-    console.log('SlieCUUUUU: ', slideElementsRef);
-
     // const { title, content } = initFabricEvents(canvas, onUpdate);
     const cleanupToolbar = slideId
       ? ToolbarHandlers(canvas, slideId, onUpdate, slideElementsRef)
@@ -819,7 +791,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
 
             try {
               await slidesApi.deleteSlidesElement(slideId, slideElementId);
-              console.log('Xóa element thành công:', slideElementId);
 
               // Xóa element khỏi slide hiện tại
               canvas.remove(obj);
@@ -918,7 +889,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       const obj = e.target as fabric.Textbox;
       if (!obj || obj.type !== 'textbox') return;
 
-      //console.log('Text changed:', obj.toJSON());
 
       // const elementId = obj.get('slideElementId');
       // if (elementId) {
@@ -945,7 +915,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       const obj = e.target as fabric.Textbox;
       if (!obj || obj.type !== 'textbox') return;
 
-      //console.log('Text selection changed:', obj.toJSON());
       //updateSlideElement(obj);
       saveState();
     });
@@ -1127,7 +1096,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     }
 
     const target = e.target as HTMLElement;
-    console.log('target: ', target);
     const isInputOrTextarea =
       target.tagName === 'INPUT' ||
       target.tagName === 'TEXTAREA' ||
@@ -1143,7 +1111,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     e.stopPropagation();
 
     const url = e.dataTransfer.getData('image-url');
-    console.log('image-url: ', url);
     if (!url || !fabricCanvas.current) return;
 
     const canvas = fabricCanvas.current;

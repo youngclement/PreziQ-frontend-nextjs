@@ -46,10 +46,6 @@ export function useQuestionOperations(
         return Math.max(max, orderIndex);
       }, -1);
 
-      console.log(
-        "Adding new activity with orderIndex:",
-        highestOrderIndex + 1
-      );
       // Create a new activity in the collection with next orderIndex
       const payload = {
         collectionId: collectionId,
@@ -63,7 +59,6 @@ export function useQuestionOperations(
       const response = await activitiesApi.createActivity(payload);
 
       if (response && response.data && response.data.data) {
-        console.log("Created activity:", response.data);
 
         // Get the new activity data
         const newActivityData = response.data.data;
@@ -125,8 +120,6 @@ export function useQuestionOperations(
           ],
         });
 
-        console.log("New question added successfully");
-
         // Remove the call to refreshCollectionData to prevent page reload
         // This is not needed since we've already updated our local state
       }
@@ -140,9 +133,6 @@ export function useQuestionOperations(
    */
   const handleDeleteQuestion = async (index: number) => {
     if (!activity || questions.length <= 1) {
-      console.log(
-        "Cannot delete question: Activities must have at least one question"
-      );
       return;
     }
 
@@ -169,8 +159,6 @@ export function useQuestionOperations(
       } else if (index === activeQuestionIndex && index > 0) {
         setActiveQuestionIndex(index - 1);
       }
-
-      console.log("Question deleted successfully");
 
       // Use immediate async function to ensure state updates before refresh
       (async () => {
@@ -199,7 +187,6 @@ export function useQuestionOperations(
     const isSameData =
       JSON.stringify(existingLocationData) === JSON.stringify(locationData);
     if (isSameData) {
-      console.log("Skipping location update - no changes detected");
       return;
     }
 
@@ -238,14 +225,10 @@ export function useQuestionOperations(
 
         // If another component made an update within the last 2 seconds, skip this API call
         if (timeSinceLastUpdate < 2000) {
-          console.log(
-            "[DEBUG] Skipping use-question-operations API call - recent update detected"
-          );
           return;
         }
       }
 
-      console.log("Updating location quiz with:", locationAnswers);
       activitiesApi
         .updateLocationQuiz(questionActivityId, {
           type: "LOCATION",
@@ -258,8 +241,6 @@ export function useQuestionOperations(
           locationAnswers,
         })
         .then((response) => {
-          console.log("Location quiz updated successfully:", response);
-
           // If we received a response with updated location data from API
           if (response && response.data && response.data.quizLocationAnswers) {
             // Extract the updated location data from the API response
@@ -306,8 +287,6 @@ export function useQuestionOperations(
       // Update local state
       setActivities(activities.filter((a) => a.id !== activityId));
 
-      console.log("Activity deleted successfully");
-
       // Refresh collection data
       refreshCollectionData();
     } catch (error) {
@@ -348,9 +327,6 @@ export function useQuestionOperations(
 
     try {
       // Update the activity type in the API
-      console.log(
-        `Updating activity type for ${targetActivity.id} to ${activityType}`
-      );
 
       // Chỉ gọi API update activity type nếu không phải matching pair
       if (value !== "matching_pair") {
@@ -563,7 +539,6 @@ export function useQuestionOperations(
 
       setQuestions(updatedQuestions);
 
-      console.log("Question type updated successfully");
     } catch (error) {
       console.error("Error updating question type:", error);
     }
@@ -584,7 +559,6 @@ export function useQuestionOperations(
 
     // Make sure we're updating the right activity
     if (targetActivityId !== activity.id) {
-      console.log("Warning: Activity ID mismatch detected - fixing reference");
       // Find the correct activity from the activities array
       const correctActivity = activities.find((a) => a.id === targetActivityId);
       if (!correctActivity) {
@@ -770,9 +744,6 @@ export function useQuestionOperations(
             default:
               // For other activity types like slides, we can't set time directly in the API
               // So just update the local state and log a message
-              console.log(
-                `Time limit set to ${value}s for activity type ${activityType}, but API doesn't support direct time updates`
-              );
               break;
           }
         } catch (error) {
@@ -794,11 +765,6 @@ export function useQuestionOperations(
         return Math.max(max, orderIndex);
       }, -1);
 
-      console.log(
-        "Adding new location activity with orderIndex:",
-        highestOrderIndex + 1
-      );
-
       // Create a new location activity in the collection
       const payload = {
         collectionId: collectionId,
@@ -816,7 +782,6 @@ export function useQuestionOperations(
       );
 
       if (response && response.data && response.data.data) {
-        console.log("Created location activity:", response.data);
 
         // Get the new activity data
         const newActivityData = response.data.data;
@@ -885,10 +850,6 @@ export function useQuestionOperations(
           ],
         });
 
-        console.log(
-          "New location question added successfully with pointType:",
-          pointType
-        );
       }
     } catch (error) {
       console.error("Error adding location question:", error);

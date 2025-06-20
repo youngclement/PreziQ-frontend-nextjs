@@ -268,7 +268,6 @@ export function QuestionPreview({
 
   // Handler functions
   const handleCorrectAnswerChange = (value: string) => {
-    console.log('Correct answers:', value);
     // You can implement logic to save the score or update state
   };
 
@@ -1009,11 +1008,6 @@ export function QuestionPreview({
                       question.activity_id,
                       updatedBackground
                     );
-                    console.log('updatedBackground', updatedBackground);
-                    saveBackgroundToServer(
-                      question.activity_id,
-                      updatedBackground
-                    );
                   }
                 }}
                 width={
@@ -1407,7 +1401,7 @@ export function QuestionPreview({
                 <div className="w-full max-w-2xl">
                   <Textarea
                     value={
-                      question.question_text || `Question ${questionIndex + 1}`
+                      question.question_text || ''
                     }
                     onChange={(e) =>
                       onQuestionTextChange(e.target.value, questionIndex, true)
@@ -2059,7 +2053,7 @@ export function QuestionPreview({
                 })}
 
                 {/* Add Option button - visible only in edit mode */}
-                {editMode !== null && question.options.length <= 9 && (
+                {editMode !== null && question.options.length < 9 && (
                   <div
                     className="rounded-lg border border-dashed p-3 flex items-center justify-center gap-3 transition-all duration-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => onAddOption()}

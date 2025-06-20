@@ -96,7 +96,6 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
     }
   }, [slideId, backgroundColor, backgroundImage]);
 
-  console.log('BACKGROUND IMGGGGGGGGGG', currentBackgroundImage);
 
   const onBackgroundColorChange = async (color: string) => {
     setCustomColor(color);
@@ -139,7 +138,6 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
 
   const onBackgroundImageChange = async (url: string) => {
     setCurrentBackgroundImage(url);
-    console.log('setCurrentBackgroundImage 22222', currentBackgroundImage);
 
     setCustomColor('');
     if (typeof window !== 'undefined' && window.savedBackgroundColors) {
@@ -211,7 +209,6 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
       if (currentBackgroundImage) {
         try {
           await storageApi.deleteSingleFile(currentBackgroundImage);
-          console.log('XOA DUOC O DAY');
         } catch (error) {
           console.error('Error deleting old background image:', error);
         }
@@ -224,7 +221,6 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
       if (!fileUrl) {
         throw new Error('Invalid response: fileUrl not found');
       }
-      console.log('setCurrentBackgroundImage', fileUrl);
       setCurrentBackgroundImage(fileUrl);
 
       // Update canvas and activity

@@ -291,7 +291,6 @@ export default function QuestionsPageContent() {
     // Call the API update function
     handleQuestionTextChange(value, questionIndex, isTyping);
 
-    console.log("activity:", activity);
     // Also update activity title if this is a newly created question (title matches the default)
     if (
       activity &&
@@ -316,7 +315,6 @@ export default function QuestionsPageContent() {
       // Update in API
       try {
         activitiesApi.updateActivity(activity.id, { title: value });
-        console.log("Activity title updated successfully:", value);
       } catch (error) {
         console.error('Error updating activity title:', error);
       }

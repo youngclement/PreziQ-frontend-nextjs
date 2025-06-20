@@ -84,10 +84,6 @@ export const AnimationOrderList = ({
       setSelectedElementId(e.detail.objectId);
       if (e.detail.objectId && e.detail.animationName) {
         updateItemsWithAnimation(e.detail.objectId, e.detail.animationName);
-        console.log('Updated items with animation:', {
-          objectId: e.detail.objectId,
-          animationName: e.detail.animationName,
-        });
       }
     };
 
@@ -240,7 +236,6 @@ export const AnimationOrderList = ({
           }
 
           newItems.sort((a, b) => a.displayOrder - b.displayOrder);
-          console.log('Updated items:', newItems);
           onOrderChange(newItems);
           return newItems;
         });
@@ -348,7 +343,7 @@ export const AnimationOrderList = ({
         }
 
         newItems.sort((a, b) => a.displayOrder - b.displayOrder);
-        console.log('Updated items:', newItems);
+
         onOrderChange(newItems);
         return newItems;
       });

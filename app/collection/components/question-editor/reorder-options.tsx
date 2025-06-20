@@ -85,7 +85,6 @@ function SortableItem({ id, option, index, onOptionChange, onDeleteOption }: Sor
         <Input
           value={option.option_text}
           onChange={(e) => {
-            console.log('ReorderOptions onChange - isTyping:', true);
             onOptionChange(index, 'option_text', e.target.value, true);
           }}
           className="flex-1 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent p-0 text-sm"
@@ -134,7 +133,6 @@ export function ReorderOptions({
       const newIndex = options.findIndex(option => `option-${option.display_order}` === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1 && onReorder) {
-        console.log(`Reordering from ${oldIndex} to ${newIndex}`);
         onReorder(oldIndex, newIndex);
         // The parent will handle the API update
       }
