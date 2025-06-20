@@ -1932,23 +1932,15 @@ export function QuestionSettings({
       const updatedLocations = [...currentLocations, newLocation];
 
 
-   
+
       onQuestionLocationChange?.(activeQuestionIndex, updatedLocations);
 
     };
 
     // Handle deleting a location point
     const handleDeleteLocation = (indexToDelete: number) => {
-
-      if (currentLocations.length <= 1) {
-
-        return;
-      }
-
-
       const currentLocations =
         activeQuestion.location_data?.quizLocationAnswers || [];
-
       const updatedLocations = currentLocations.filter(
         (_, index) => index !== indexToDelete,
       );
@@ -2357,8 +2349,8 @@ export function QuestionSettings({
             </TabsTrigger>
             <TabsTrigger value="meta" className="text-xs">
               {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide' ? (
-                <Layers className="h-3.5 w-3.5 mr-1.5" /> 
+                activeQuestion.question_type === 'info_slide' ? (
+                <Layers className="h-3.5 w-3.5 mr-1.5" />
               ) : (
                 <Info className="h-3.5 w-3.5 mr-1.5" />
               )}
