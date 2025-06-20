@@ -1491,7 +1491,7 @@ export default function HostSessionPage() {
               <Button
                 onClick={handleRoleConfirm}
 
-                disabled={!participantName.trim() || isJoining}
+                disabled={(willParticipate && !participantName.trim()) || isJoining}
                 className='bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-black font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 {isJoining ? (

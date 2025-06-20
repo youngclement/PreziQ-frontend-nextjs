@@ -241,6 +241,9 @@ export function useCollectionData(collectionId: string, activityId?: string) {
               }
             );
 
+
+            setActivities(mappedActivities);
+
             setQuestions(allQuestions);
 
             // Find index of the first question if we have questions

@@ -9,6 +9,7 @@ import { Form } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { CollectionFormValues, collectionSchema } from './types';
 import { collectionsApi } from '@/api-client';
+import { useLanguage } from '@/contexts/language-context';
 
 // Import các component đã tách
 import { CollectionFormHeader } from './components/collection-form-header';
@@ -23,6 +24,7 @@ export default function EditCollectionPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useLanguage();
 
   const form = useForm<CollectionFormValues>({
     resolver: zodResolver(collectionSchema),
@@ -175,8 +177,8 @@ export default function EditCollectionPage() {
     <div className='min-h-screen bg-gradient-to-b from-indigo-50 to-white dark:from-gray-900 dark:to-gray-800 p-4'>
       <div className='max-w-screen-2xl mx-auto'>
         <CollectionFormHeader
-          title='Chỉnh sửa bộ sưu tập'
-          subtitle='Cập nhật thông tin cho bộ sưu tập của bạn'
+          title={t('collectionForm.title')}
+          subtitle={t('collectionForm.subtitle')}
         />
 
         <Card className='w-full shadow-xl border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm overflow-hidden rounded-xl'>
@@ -200,15 +202,13 @@ export default function EditCollectionPage() {
 
                   <div className='mt-8 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-indigo-100 dark:border-gray-700'>
                     <h3 className='text-sm font-semibold text-indigo-700 dark:text-indigo-300 mb-2'>
-                      Lưu ý quan trọng
+                      {t('collectionForm.importantNote.title')}
                     </h3>
                     <p className='text-xs text-gray-600 dark:text-gray-300 mb-3'>
-                      Khi chỉnh sửa bộ sưu tập, các hoạt động quiz hiện có sẽ
-                      được giữ nguyên. Bạn có thể quản lý các hoạt động sau khi
-                      cập nhật bộ sưu tập.
+                      {t('collectionForm.importantNote.content')}
                     </p>
                     <div className='text-xs text-indigo-600 dark:text-indigo-400 font-medium'>
-                      Các trường bắt buộc: Tiêu đề, Mô tả, Ảnh bìa, Chủ đề
+                      {t('collectionForm.importantNote.requiredFields')}
                     </div>
                   </div>
                 </div>

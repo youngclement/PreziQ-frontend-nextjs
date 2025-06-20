@@ -29,7 +29,7 @@ import {
   CheckCircle,
   X,
 } from 'lucide-react';
-import { LocationQuestionPlayer } from '@/app/collection/components/question-player/location-question-player';
+import { LocationQuestionPlayer } from './QuizLocationMap';
 
 interface LocationAnswer {
   longitude: number;
