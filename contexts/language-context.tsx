@@ -634,6 +634,8 @@ i18next
           collectionForm: {
             title: 'Create New Collection',
             subtitle: 'Build an amazing collection for your viewers',
+            editTitle: 'Edit Collection',
+            editSubtitle: 'Update the information for your collection',
             titleLabel: 'Title',
             titlePlaceholder: 'Enter collection title',
             titleDescription: 'Keep it short and memorable',
@@ -661,10 +663,14 @@ i18next
             cancel: 'Cancel',
             save: 'Save',
             creating: 'Creating...',
+            update: 'Update',
+            updating: 'Updating...',
             importantNote: {
               title: 'Important Note',
               content:
                 'When creating a new collection, the system will automatically add a default check activity. You can edit or delete this activity after creating the collection.',
+              editContent:
+                'When editing the collection, existing quiz activities will be preserved. You can manage activities after updating the collection.',
               requiredFields:
                 'Required fields: Title, Description, Cover Image, Topic',
             },
@@ -883,6 +889,36 @@ i18next
               'Try a different search term or clear your search to see all collections.',
             createFirstCollection:
               'Create your first collection to start building interactive learning experiences.',
+          },
+
+          // Login Page
+          login: {
+            welcomeBack: 'Welcome Back',
+            signInToContinue:
+              'Sign in to your PreziQ account to continue creating and sharing amazing presentations.',
+            email: 'Email',
+            phoneNumber: 'Phone Number',
+            password: 'Password',
+            signInWithInstead: 'Sign in with another method',
+            phoneNumberPlaceholder: 'e.g., 0886332809',
+            emailRequired: 'Email is required',
+            phoneRequired: 'Phone number is required',
+            passwordRequired: 'Password is required',
+            signingIn: 'Signing in...',
+            signIn: 'Sign In',
+            forgotPassword: 'Forgot password?',
+            dontHaveAccount: "Don't have an account?",
+            signUp: 'Sign up',
+            resendVerification: 'Resend verification email',
+            resendVerificationTitle: 'Confirm resend email',
+            resendVerificationDesc:
+              'Your account is not verified. Do you want to resend verification email to {email}?',
+            cancel: 'Cancel',
+            resend: 'Resend',
+            verificationEmailSent: 'Verification email sent!',
+            resendVerificationError: 'Error sending verification!',
+            pleaseTryAgain: 'Please try again.',
+            youMustEnterEmailOrPhone: 'You must enter email or phone number!',
           },
         },
       },
@@ -1479,6 +1515,8 @@ i18next
           collectionForm: {
             title: 'Tạo bộ sưu tập mới',
             subtitle: 'Xây dựng bộ sưu tập tuyệt vời cho người xem của bạn',
+            editTitle: 'Chỉnh sửa bộ sưu tập',
+            editSubtitle: 'Cập nhật thông tin cho bộ sưu tập của bạn',
             titleLabel: 'Tiêu đề',
             titlePlaceholder: 'Nhập tiêu đề bộ sưu tập',
             titleDescription: 'Giữ ngắn gọn và dễ nhớ',
@@ -1506,10 +1544,14 @@ i18next
             cancel: 'Hủy',
             save: 'Lưu',
             creating: 'Đang tạo...',
+            update: 'Cập nhật',
+            updating: 'Đang cập nhật...',
             importantNote: {
               title: 'Lưu ý quan trọng',
               content:
                 'Khi tạo bộ sưu tập mới, hệ thống sẽ tự động thêm một hoạt động kiểm tra mặc định. Bạn có thể chỉnh sửa hoặc xóa hoạt động này sau khi tạo bộ sưu tập.',
+              editContent:
+                'Khi chỉnh sửa bộ sưu tập, các hoạt động quiz hiện có sẽ được giữ nguyên. Bạn có thể quản lý các hoạt động sau khi cập nhật bộ sưu tập.',
               requiredFields:
                 'Các trường bắt buộc: Tiêu đề, Mô tả, Hình ảnh bìa, Chủ đề',
             },
@@ -1726,6 +1768,36 @@ i18next
               'Thử từ khóa tìm kiếm khác hoặc xóa tìm kiếm để xem tất cả bộ sưu tập.',
             createFirstCollection:
               'Tạo bộ sưu tập đầu tiên của bạn để bắt đầu xây dựng trải nghiệm học tập tương tác.',
+          },
+
+          // Login Page
+          login: {
+            welcomeBack: 'Chào mừng trở lại',
+            signInToContinue:
+              'Đăng nhập vào tài khoản PreziQ của bạn để tiếp tục tạo và chia sẻ những bài thuyết trình tuyệt vời.',
+            email: 'Email',
+            phoneNumber: 'Số điện thoại',
+            password: 'Mật khẩu',
+            signInWithInstead: 'Đăng nhập bằng phương pháp khác',
+            phoneNumberPlaceholder: 'ví dụ: 0886332809',
+            emailRequired: 'Email là bắt buộc',
+            phoneRequired: 'Số điện thoại là bắt buộc',
+            passwordRequired: 'Mật khẩu là bắt buộc',
+            signingIn: 'Đang đăng nhập...',
+            signIn: 'Đăng nhập',
+            forgotPassword: 'Quên mật khẩu?',
+            dontHaveAccount: 'Chưa có tài khoản?',
+            signUp: 'Đăng ký',
+            resendVerification: 'Gửi lại email xác thực',
+            resendVerificationTitle: 'Xác nhận gửi lại email',
+            resendVerificationDesc:
+              'Tài khoản của bạn chưa được xác thực. Bạn có muốn gửi lại email xác thực đến địa chỉ {email} không?',
+            cancel: 'Hủy',
+            resend: 'Gửi lại',
+            verificationEmailSent: 'Email xác thực đã được gửi!',
+            resendVerificationError: 'Lỗi gửi lại xác thực!',
+            pleaseTryAgain: 'Vui lòng thử lại.',
+            youMustEnterEmailOrPhone: 'Bạn phải nhập email hoặc số điện thoại!',
           },
         },
       },

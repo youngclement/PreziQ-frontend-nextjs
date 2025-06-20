@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { BodyLogin } from '@/models/auth';
 import ForgotPasswordDialog from '@/app/auth/forgot-password/component';
 import { useAuth } from '@/contexts/auth-context';
+import { useLanguage } from '@/contexts/language-context';
 import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -21,9 +22,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+
 export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const { t } = useLanguage();
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -50,14 +54,6 @@ export default function LoginPage() {
   const [resendEmail, setResendEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //     const { name, value } = e.target;
-  //     setFormData(prev => ({
-  //         ...prev,
-  //         [name]: value
-  //     }));
-  // };
-
   const toggleLoginMethod = () => {
     setLoginMethod((prev) => (prev === 'email' ? 'phone' : 'email'));
     // Reset the values when switching
@@ -68,13 +64,13 @@ export default function LoginPage() {
     try {
       const res = await authApi.resendEmail(email);
       toast({
-        title: 'Email xác thực đã được gửi!',
+        title: t('login.verificationEmailSent'),
         description: res.data?.message,
       });
     } catch (error: any) {
       toast({
-        title: 'Lỗi gửi lại xác thực!',
-        description: error.response?.data?.message || 'Vui lòng thử lại.',
+        title: t('login.resendVerificationError'),
+        description: error.response?.data?.message || t('login.pleaseTryAgain'),
       });
     }
   };
@@ -87,7 +83,7 @@ export default function LoginPage() {
     } else if (data.phoneNumber) {
       payload = { phoneNumber: data.phoneNumber, password: data.password };
     } else {
-      console.error('Bạn phải nhập email hoặc số điện thoại!');
+      console.error(t('login.youMustEnterEmailOrPhone'));
       return;
     }
     setIsLoading(true);
@@ -103,7 +99,7 @@ export default function LoginPage() {
       router.refresh();
       router.push('/');
     } catch (error: any) {
-      console.log("err: ", error)
+      console.log('err: ', error);
       setIsLoading(false);
       if (error.response && error.response.data) {
         const backendErrors = error.response.data.errors;
@@ -116,7 +112,6 @@ export default function LoginPage() {
           } else if (err.code === 1103) {
             setError('email', { type: 'server', message: err.message });
           } else {
-            //setError('email', { type: 'server', message: err.message });
             toast({
               variant: 'destructive',
               description: err.message,
@@ -128,7 +123,10 @@ export default function LoginPage() {
             setResendEmail(data.email);
             setIsResendDialogOpen(true);
           }
-        } else if (error.response.data.code === 1201 || error.response.data.code === 1002) {
+        } else if (
+          error.response.data.code === 1201 ||
+          error.response.data.code === 1002
+        ) {
           // toast({
           //   variant: 'destructive',
           //   description: error.response.data.message,
@@ -145,18 +143,15 @@ export default function LoginPage() {
   // If not mounted yet, render a minimal placeholder to match server-side rendering
   if (!mounted) {
     return (
-      <main className="flex items-center justify-center px-8 py-8 sm:px-12 lg:col-span-7 lg:px-16 lg:py-12 xl:col-span-6">
-        <div className="max-w-xl lg:max-w-3xl">
-          <div className="h-10 w-32"></div> {/* Logo placeholder */}
-          <h1 className="mt-6 text-2xl font-bold sm:text-3xl md:text-4xl">
-            Welcome Back
+      <main className='flex items-center justify-center px-8 py-8 sm:px-12 lg:col-span-7 lg:px-16 lg:py-12 xl:col-span-6'>
+        <div className='max-w-xl lg:max-w-3xl'>
+          <div className='h-10 w-32'></div> {/* Logo placeholder */}
+          <h1 className='mt-6 text-2xl font-bold sm:text-3xl md:text-4xl'>
+            {t('login.welcomeBack')}
           </h1>
-          <p className="mt-4 leading-relaxed">
-            Sign in to your PreziQ account to continue creating and sharing
-            amazing presentations.
-          </p>
+          <p className='mt-4 leading-relaxed'>{t('login.signInToContinue')}</p>
           {/* Form placeholder */}
-          <div className="mt-8 grid grid-cols-6 gap-6"></div>
+          <div className='mt-8 grid grid-cols-6 gap-6'></div>
         </div>
       </main>
     );
@@ -164,116 +159,119 @@ export default function LoginPage() {
 
   return (
     <>
-      <main className="flex items-center justify-center px-8 py-8 sm:px-12 lg:col-span-7 lg:px-16 lg:py-12 xl:col-span-6">
-        <div className="max-w-xl lg:max-w-3xl">
-          <Link className="block text-blue-600" href="/">
+      <main className='flex items-center justify-center px-8 py-8 sm:px-12 lg:col-span-7 lg:px-16 lg:py-12 xl:col-span-6'>
+        <div className='max-w-xl lg:max-w-3xl'>
+          <Link className='block text-blue-600' href='/'>
             <Logo />
           </Link>
 
-          <h1 className="mt-6 text-2xl font-bold sm:text-3xl md:text-4xl flex items-center gap-4">
-            Welcome Back <HeartHandshake className="size-6" />
+          <h1 className='mt-6 text-2xl font-bold sm:text-3xl md:text-4xl flex items-center gap-4'>
+            {t('login.welcomeBack')} <HeartHandshake className='size-6' />
           </h1>
 
-          <p className="mt-4 leading-relaxed">
-            Sign in to your PreziQ account to continue creating and sharing
-            amazing presentations.
-          </p>
+          <p className='mt-4 leading-relaxed'>{t('login.signInToContinue')}</p>
 
           <form
             onSubmit={handleSubmit(onSubmit)}
-            className="mt-8 grid grid-cols-6 gap-6"
+            className='mt-8 grid grid-cols-6 gap-6'
           >
             {loginMethod === 'email' ? (
-              <div className="col-span-6">
-                <Label htmlFor="email">Email</Label>
+              <div className='col-span-6'>
+                <Label htmlFor='email'>{t('login.email')}</Label>
                 <Input
-                  type="email"
-                  id="email"
-                  {...register('email', { required: 'Email is required' })}
-                  className="mt-1 w-full rounded-md shadow-sm"
+                  type='email'
+                  id='email'
+                  {...register('email', { required: t('login.emailRequired') })}
+                  className='mt-1 w-full rounded-md shadow-sm border-neutral-950'
                 />
                 {errors.email && (
-                  <p className="text-red-500 text-sm mt-2">
+                  <p className='text-red-500 text-sm mt-2'>
                     {errors.email.message}
                   </p>
                 )}
               </div>
             ) : (
-              <div className="col-span-6">
-                <Label htmlFor="phoneNumber">Phone Number</Label>
+              <div className='col-span-6'>
+                <Label htmlFor='phoneNumber'>{t('login.phoneNumber')}</Label>
                 <Input
-                  type="tel"
-                  id="phoneNumber"
+                  type='tel'
+                  id='phoneNumber'
                   {...register('phoneNumber', {
-                    required: 'Phone number is required',
+                    required: t('login.phoneRequired'),
                   })}
-                  className="mt-1 w-full rounded-md shadow-sm"
-                  placeholder="e.g., 0886332809"
+                  className='mt-1 w-full rounded-md shadow-sm border-neutral-950'
+                  placeholder={t('login.phoneNumberPlaceholder')}
                   required
                 />
                 {errors.phoneNumber && (
-                  <p className="text-red-500 text-sm mt-2">
+                  <p className='text-red-500 text-sm mt-2'>
                     {errors.phoneNumber.message}
                   </p>
                 )}
               </div>
             )}
 
-            <div className="col-span-6">
-              <Label htmlFor="password">Password</Label>
+            <div className='col-span-6'>
+              <Label htmlFor='password'>{t('login.password')}</Label>
               <Input
-                type="password"
-                id="password"
-                {...register('password', { required: 'Password is required' })}
-                className="mt-1 w-full rounded-md shadow-sm"
+                type='password'
+                id='password'
+                {...register('password', {
+                  required: t('login.passwordRequired'),
+                })}
+                className='mt-1 w-full rounded-md shadow-sm border-neutral-950'
               />
               {errors.password && (
-                <p className="text-red-500 text-sm mt-2">
+                <p className='text-red-500 text-sm mt-2'>
                   {errors.password.message}
                 </p>
               )}
             </div>
 
-            <div className="col-span-6">
+            <div className='col-span-6'>
               <Button
-                type="button"
-                variant="link"
-                className="p-0 h-auto text-sm"
+                type='button'
+                variant='link'
+                className='p-0 h-auto text-sm'
                 onClick={toggleLoginMethod}
               >
-                Sign in with{' '}
-                {loginMethod === 'email' ? 'phone number' : 'email'} instead
+                {t('login.signInWithInstead', {
+                  method:
+                    loginMethod === 'email'
+                      ? t('login.phoneNumber')
+                      : t('login.email'),
+                })}
               </Button>
             </div>
 
-            <div className="col-span-6 flex justify-between items-center">
-              <Button type="submit" className="px-10" disabled={isLoading}>
+            <div className='col-span-6 flex justify-between items-center'>
+              <Button type='submit' className='px-10' disabled={isLoading}>
                 {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
-                    Signing in...
+                  <span className='flex items-center gap-2'>
+                    <span className='h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent'></span>
+                    {t('login.signingIn')}
                   </span>
                 ) : (
-                  <span className="flex items-center gap-2">
-                    Sign In
-                    <LucideChevronRight className="h-4 w-4" />
+                  <span className='flex items-center gap-2'>
+                    {t('login.signIn')}
+                    <LucideChevronRight className='h-4 w-4' />
                   </span>
                 )}
               </Button>
               <button
-                type="button"
-                className="text-sm text-primary hover:underline"
+                type='button'
+                className='text-sm text-primary hover:underline'
                 onClick={() => setIsForgotPasswordOpen(true)}
               >
-                Forgot password?
+                {t('login.forgotPassword')}
               </button>
             </div>
 
-            <div className="col-span-6 text-center mt-4">
-              <p className="text-sm text-gray-500">
-                Don't have an account?{' '}
-                <Link href="/auth/register" className="underline text-primary">
-                  Sign up
+            <div className='col-span-6 text-center mt-4'>
+              <p className='text-sm text-gray-500'>
+                {t('login.dontHaveAccount')}{' '}
+                <Link href='/auth/register' className='underline text-primary'>
+                  {t('login.signUp')}
                 </Link>
               </p>
             </div>
@@ -286,17 +284,16 @@ export default function LoginPage() {
       </main>
       <Dialog open={isResendDialogOpen} onOpenChange={setIsResendDialogOpen}>
         <DialogContent>
-          <DialogTitle>Xác nhận gửi lại email</DialogTitle>
+          <DialogTitle>{t('login.resendVerificationTitle')}</DialogTitle>
           <DialogDescription>
-            Tài khoản của bạn chưa được xác thực. Bạn có muốn gửi lại email xác
-            thực đến địa chỉ {resendEmail} không?
+            {t('login.resendVerificationDesc', { email: resendEmail })}
           </DialogDescription>
           <DialogFooter>
             <Button
-              variant="secondary"
+              variant='secondary'
               onClick={() => setIsResendDialogOpen(false)}
             >
-              Hủy
+              {t('login.cancel')}
             </Button>
             <Button
               onClick={() => {
@@ -304,7 +301,7 @@ export default function LoginPage() {
                 setIsResendDialogOpen(false);
               }}
             >
-              Gửi lại
+              {t('login.resend')}
             </Button>
           </DialogFooter>
         </DialogContent>

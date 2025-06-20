@@ -90,7 +90,8 @@ import {
 } from '@/components/ui/dialog';
 
 // First, let's import the needed drag and drop components from react-beautiful-dnd
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+
 import { slideBackgroundManager } from '@/utils/slideBackgroundManager';
 
 // Import the useToast hook at the top of the file
@@ -1042,144 +1043,43 @@ export function QuestionPreview({
 
     // Simplified location question type
     if (question.question_type === 'location') {
+      const locationAnswers = getLocationAnswers(question, activity);
       return (
-        <Card
-          className={cn(
-            'border-none rounded-xl shadow-lg overflow-hidden transition-all duration-300 mx-auto',
-            isActive
-              ? 'ring-2 ring-primary/20 scale-100'
-              : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
-            viewMode === 'desktop' && 'max-w-5xl',
-            viewMode === 'tablet' && 'max-w-2xl',
-            viewMode === 'mobile' && 'max-w-sm'
-          )}
-          key={`question-card-location-${questionIndex}-${renderKey}`}
-        >
-          <motion.div
-            className={cn(
-              'aspect-[16/5] rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
-            )}
-            style={{
-              backgroundColor: actualBackgroundColor, // Always apply background color
-            }}
-            initial={{ opacity: 0.8 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-            key={`question-bg-${questionIndex}-${renderKey}-${actualBackgroundColor}`}
-          >
-            {/* Light overlay */}
-            <div className="absolute inset-0 bg-black/30" />
 
-            {/* Simplified Status Bar */}
-            <div className="absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10">
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    'h-7 w-7 rounded-full flex items-center justify-center shadow-sm',
-                    getQuestionTypeColor(question.question_type)
-                  )}
-                >
-                  {getQuestionTypeIcon(question.question_type)}
-                </div>
-                <div>
-                  <div className="text-xs capitalize font-medium">
-                    {question.question_type.replace(/_/g, ' ')}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full text-xs font-medium">
-                  Q{questionIndex + 1}
-                </div>
-                <div className="flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span className="time-limit-display">
-                    {(activity && activity.quiz?.timeLimitSeconds) ||
-                      question.time_limit_seconds ||
-                      timeLimit}
-                    s
-                  </span>
-                </div>
-              </div>
-            </div>
+        <div className='p-4'>
+          {locationAnswers && locationAnswers.length > 0 ? (
+            <div className="w-full mt-2">
+              {!previewMode ? (
+                <DynamicLocationQuestionEditor
+                  key={question.location_data?.quizLocationAnswers?.length || 0}
+                  questionText={question.question_text}
+                  locationAnswers={question.location_data?.quizLocationAnswers}
+                  onLocationChange={(index, data) =>
+                    onQuestionLocationChange?.(questionIndex, data)
+                  }
+                  questionIndex={questionIndex}
+                />
 
-            {/* Question Text */}
-            <div className="flex-1 flex flex-col items-center justify-center z-10 py-6 px-5">
-              {editMode !== null ? (
-                <div className="w-full max-w-2xl">
-                  <Textarea
-                    value={
-                      question.question_text ||
-                      `Location Question ${questionIndex + 1}`
-                    }
-                    onChange={(e) =>
-                      onQuestionTextChange(e.target.value, questionIndex, true)
-                    }
-                    className="resize-none custom-scrollbar text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
-                    onBlur={(e) =>
-                      onQuestionTextChange(e.target.value, questionIndex, false)
-                    }
-                  />
-                  <style jsx global>{`
-                    .custom-scrollbar::-webkit-scrollbar {
-                      width: 16px; /* Tăng width lên */
-                    }
-                    .custom-scrollbar::-webkit-scrollbar-track {
-                      background: transparent; /* Track trong suốt */
-                    }
-                    .custom-scrollbar::-webkit-scrollbar-thumb {
-                      background: rgba(255, 255, 255, 0.4);
-                      border-radius: 8px;
-                      border: 4px solid transparent; /* Tạo viền trong suốt */
-                      background-clip: padding-box;
-                    }
-                    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                      background: rgba(255, 255, 255, 0.6);
-                      border: 4px solid transparent;
-                      background-clip: padding-box;
-                    }
-                  `}</style>
-                </div>
               ) : (
-                <div className="relative w-full max-w-2xl">
-                  <h2 className="text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4">
-                    {question.question_text ||
-                      `Location Question ${questionIndex + 1}`}
-                  </h2>
-                </div>
+                <DynamicLocationQuestionEditor
+                  questionText={question.question_text}
+                  locationAnswers={getLocationAnswers(question, activity)}
+                  onLocationChange={() => { }} // Read-only, so no-op
+                  questionIndex={questionIndex}
+                  readonly={true}
+                />
               )}
             </div>
-          </motion.div>
 
-          <CardContent className="p-4 bg-white dark:bg-gray-800">
-            <div className="flex flex-col items-center">
-              <div className="text-muted-foreground mb-2 text-sm text-center">
-                Find and mark the location on the map
-              </div>
-
-              <div className="w-full mt-2">
-                {!previewMode ? (
-                  <DynamicLocationQuestionEditor
-                    questionText={question.question_text || ''}
-                    locationAnswers={getLocationAnswers(question, activity)}
-                    onLocationChange={(questionIndex, locationData) =>
-                      onQuestionLocationChange?.(questionIndex, locationData)
-                    }
-                    questionIndex={questionIndex}
-                  />
-                ) : (
-                  <DynamicLocationQuestionPlayer
-                    questionText={question.question_text || ''}
-                    locationData={getLocationData(question, activity)}
-                    onAnswer={(isCorrect: boolean) =>
-                      console.log('Answer:', isCorrect)
-                    }
-                  />
-                )}
-              </div>
+          ) : (
+            <div className='text-center p-8 bg-gray-50 rounded-lg'>
+              <p className='text-muted-foreground'>
+                No location data for this question yet.
+              </p>
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
+
       );
     }
 
@@ -1644,285 +1544,88 @@ export function QuestionPreview({
                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 flex items-center">
                   <MoveVertical className="h-3.5 w-3.5 mr-1.5" />
                   <span>
-                    {editMode !== null
-                      ? 'Drag items to reorder them'
-                      : 'These items need to be arranged in the correct order'}
+                    {editMode !== null ? 'Drag items to reorder them (drag & drop enabled in edit mode)' : 'Drag items to reorder them'}
                   </span>
                 </div>
 
                 {/* Pastel colors for steps */}
                 {editMode !== null ? (
                   <DragDropContext
-                    onDragEnd={(result) => {
-                      // Skip if not dropped in a droppable or dropped in same position
-                      if (
-                        !result.destination ||
-                        result.destination.index === result.source.index
-                      ) {
+                    onDragEnd={(result: DropResult) => {
+                      if (!result.destination || result.destination.index === result.source.index) {
                         return;
                       }
-
-                      // Call the parent's reorderOptions function if available
                       if (onReorderOptions) {
-                        onReorderOptions(
-                          result.source.index,
-                          result.destination.index
-                        );
+                        onReorderOptions(result.source.index, result.destination.index);
                       }
                     }}
                   >
-                    <Droppable droppableId={`reorder-${questionIndex}`}>
+                    <Droppable droppableId="reorder-preview-droppable">
                       {(provided) => (
                         <div
-                          ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className="mt-2 relative flex flex-col gap-2"
+                          ref={provided.innerRef}
+                          className="p-4 space-y-2"
                         >
-                          {/* Visual timeline line */}
-                          <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-black/20 dark:bg-white/10 z-0"></div>
-
-                          {question.options
+                          {[...question.options]
                             .sort((a, b) => a.display_order - b.display_order)
-                            .map((option, idx) => {
-                              // Define a set of cute pastel colors
-                              const pastelColors = [
-                                {
-                                  bg: 'bg-pink-100',
-                                  border: 'border-pink-200',
-                                  text: 'text-pink-800',
-                                  icon: 'text-pink-600',
-                                },
-                                {
-                                  bg: 'bg-blue-100',
-                                  border: 'border-blue-200',
-                                  text: 'text-blue-800',
-                                  icon: 'text-blue-600',
-                                },
-                                {
-                                  bg: 'bg-purple-100',
-                                  border: 'border-purple-200',
-                                  text: 'text-purple-800',
-                                  icon: 'text-purple-600',
-                                },
-                                {
-                                  bg: 'bg-green-100',
-                                  border: 'border-green-200',
-                                  text: 'text-green-800',
-                                  icon: 'text-green-600',
-                                },
-                                {
-                                  bg: 'bg-yellow-100',
-                                  border: 'border-yellow-200',
-                                  text: 'text-yellow-800',
-                                  icon: 'text-yellow-600',
-                                },
-                                {
-                                  bg: 'bg-orange-100',
-                                  border: 'border-orange-200',
-                                  text: 'text-orange-800',
-                                  icon: 'text-orange-600',
-                                },
-                                {
-                                  bg: 'bg-indigo-100',
-                                  border: 'border-indigo-200',
-                                  text: 'text-indigo-800',
-                                  icon: 'text-indigo-600',
-                                },
-                                {
-                                  bg: 'bg-red-100',
-                                  border: 'border-red-200',
-                                  text: 'text-red-800',
-                                  icon: 'text-red-600',
-                                },
-                              ];
 
-                              // Get color based on index
-                              const color =
-                                pastelColors[idx % pastelColors.length];
-
-                              return (
-                                <Draggable
-                                  key={option.id || idx}
-                                  draggableId={option.id || `option-${idx}`}
-                                  index={idx}
-                                >
-                                  {(provided, snapshot) => (
-                                    <div
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      {...provided.dragHandleProps}
-                                      className={cn(
-                                        'flex items-center gap-2 relative z-10 group transition-all',
-                                        snapshot.isDragging
-                                          ? 'opacity-80 scale-105'
-                                          : ''
-                                      )}
-                                      style={provided.draggableProps.style}
-                                    >
-                                      <div
-                                        className={cn(
-                                          'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border text-sm font-semibold shadow-sm',
-                                          color.bg,
-                                          color.border,
-                                          color.text
-                                        )}
-                                      >
-                                        {idx + 1}
-                                      </div>
-
-                                      <div
-                                        className={cn(
-                                          'flex-1 rounded-lg p-2.5 shadow-sm border flex items-center gap-2 relative transition-all',
-                                          color.bg,
-                                          color.border
-                                        )}
-                                      >
-                                        <Input
-                                          value={option.option_text || ''}
-                                          onChange={(e) =>
-                                            onOptionChange(
-                                              questionIndex,
-                                              idx,
-                                              'option_text',
-                                              e.target.value,
-                                              true
-                                            )
-                                          }
-                                          className={cn(
-                                            'flex-1 border-0 bg-white/50 focus:ring-1',
-                                            color.text
-                                          )}
-                                          onBlur={(e) =>
-                                            onOptionChange(
-                                              questionIndex,
-                                              idx,
-                                              'option_text',
-                                              e.target.value,
-                                              false
-                                            )
-                                          }
-                                        />
-
-                                        <div
-                                          className={cn(
-                                            'w-6 h-6 flex-shrink-0 rounded-md flex items-center justify-center cursor-grab text-gray-700 dark:text-gray-300 bg-white/50',
-                                            color.icon
-                                          )}
-                                        >
-                                          <GripVertical className="h-3.5 w-3.5" />
-                                        </div>
-                                      </div>
+                            .map((option, index) => (
+                              <Draggable
+                                key={option.id || `option-${option.display_order}`}
+                                draggableId={option.id || `option-${option.display_order}`}
+                                index={index}
+                              >
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className={cn(
+                                      "flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-md border transition-all",
+                                      snapshot.isDragging
+                                        ? "border-primary ring-1 ring-primary/30 bg-primary/5 shadow-xl scale-105"
+                                        : "border-gray-200 dark:border-gray-700"
+                                    )}
+                                    style={{
+                                      ...provided.draggableProps.style,
+                                      marginBottom: '8px'
+                                    }}
+                                  >
+                                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
+                                      {index + 1}
                                     </div>
-                                  )}
-                                </Draggable>
-                              );
-                            })}
+                                    <span className="text-sm">{option.option_text}</span>
+                                    <div className="ml-auto flex-shrink-0">
+                                      <GripVertical className="h-4 w-4 text-gray-400" />
+
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
                           {provided.placeholder}
                         </div>
                       )}
                     </Droppable>
                   </DragDropContext>
                 ) : (
-                  <div className="mt-2 relative flex flex-col gap-2">
-                    {/* Visual timeline line */}
-                    <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-black/20 dark:bg-white/10 z-0"></div>
-
-                    {question.options
+                  <div className="p-4 space-y-2">
+                    {[...question.options]
                       .sort((a, b) => a.display_order - b.display_order)
-                      .map((option, idx) => {
-                        // Define a set of cute pastel colors
-                        const pastelColors = [
-                          {
-                            bg: 'bg-pink-100',
-                            border: 'border-pink-200',
-                            text: 'text-pink-800',
-                            icon: 'text-pink-600',
-                          },
-                          {
-                            bg: 'bg-blue-100',
-                            border: 'border-blue-200',
-                            text: 'text-blue-800',
-                            icon: 'text-blue-600',
-                          },
-                          {
-                            bg: 'bg-purple-100',
-                            border: 'border-purple-200',
-                            text: 'text-purple-800',
-                            icon: 'text-purple-600',
-                          },
-                          {
-                            bg: 'bg-green-100',
-                            border: 'border-green-200',
-                            text: 'text-green-800',
-                            icon: 'text-green-600',
-                          },
-                          {
-                            bg: 'bg-yellow-100',
-                            border: 'border-yellow-200',
-                            text: 'text-yellow-800',
-                            icon: 'text-yellow-600',
-                          },
-                          {
-                            bg: 'bg-orange-100',
-                            border: 'border-orange-200',
-                            text: 'text-orange-800',
-                            icon: 'text-orange-600',
-                          },
-                          {
-                            bg: 'bg-indigo-100',
-                            border: 'border-indigo-200',
-                            text: 'text-indigo-800',
-                            icon: 'text-indigo-600',
-                          },
-                          {
-                            bg: 'bg-red-100',
-                            border: 'border-red-200',
-                            text: 'text-red-800',
-                            icon: 'text-red-600',
-                          },
-                        ];
 
-                        // Get color based on index
-                        const color = pastelColors[idx % pastelColors.length];
+                      .map((option, index) => (
+                        <div
+                          key={option.id || `option-${index}`}
+                          className="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
+                            {index + 1}
 
-                        return (
-                          <div
-                            key={option.id || idx}
-                            className="flex items-center gap-2 relative z-10 group"
-                          >
-                            <div
-                              className={cn(
-                                'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border text-sm font-semibold shadow-sm',
-                                color.bg,
-                                color.border,
-                                color.text
-                              )}
-                            >
-                              {idx + 1}
-                            </div>
-
-                            <div
-                              className={cn(
-                                'flex-1 rounded-lg p-2.5 shadow-sm border flex items-center gap-2 relative transition-all',
-                                color.bg,
-                                color.border
-                              )}
-                            >
-                              <div className="flex-1">
-                                <p
-                                  className={cn(
-                                    'font-medium text-sm',
-                                    color.text
-                                  )}
-                                >
-                                  {option.option_text ||
-                                    `Enter Step ${idx + 1}`}
-                                </p>
-                              </div>
-                            </div>
                           </div>
-                        );
-                      })}
+                          <span className="text-sm">{option.option_text}</span>
+                        </div>
+                      ))}
                   </div>
                 )}
 
@@ -2615,7 +2318,6 @@ export function QuestionPreview({
       setIsSaving(false);
       // Close the dialog after completion
       setIsDeleteDialogOpen(false);
-      setActivityToDelete(null);
     }
   };
 

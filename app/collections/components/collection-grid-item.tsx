@@ -281,11 +281,11 @@ export function CollectionGridItem({
                 </ViewButton>
               )}
 
-              {onEdit && (
+              {/* {onEdit && (
                 <EditButton onClick={handleEdit} className='flex-1'>
                   EDIT
                 </EditButton>
-              )}
+              )} */}
             </div>
           </div>
         </div>

@@ -37,7 +37,6 @@ interface LocationAnswer {
   longitude: number;
   latitude: number;
   radius: number;
-  hint?: string;
 }
 
 interface LocationQuestionEditorProps {
@@ -171,7 +170,7 @@ export function LocationQuestionEditor({
 
             return (
               current.quizLocationAnswerId ===
-                incomingLocation.quizLocationAnswerId &&
+              incomingLocation.quizLocationAnswerId &&
               current.radius !== incomingLocation.radius &&
               currentDataStr !== '[]'
             );
@@ -488,8 +487,7 @@ export function LocationQuestionEditor({
               Math.abs(latestPosition.lat - incomingAnswers[i].latitude);
             if (positionDiff > 0.000001) {
               console.log(
-                `⚠️ Position conflict detected for marker ${
-                  i + 1
+                `⚠️ Position conflict detected for marker ${i + 1
                 } - keeping drag position`
               );
               hasConflicts = true;
@@ -1148,9 +1146,8 @@ export function LocationQuestionEditor({
     // Add marker numbering for multiple points
     if (currentLocationAnswersRef.current.length > 1) {
       el.style.backgroundColor = getMarkerColor(index);
-      el.innerHTML = `<span style="color: white; font-size: 12px; font-weight: bold;">${
-        index + 1
-      }</span>`;
+      el.innerHTML = `<span style="color: white; font-size: 12px; font-weight: bold;">${index + 1
+        }</span>`;
       el.style.display = 'flex';
       el.style.alignItems = 'center';
       el.style.justifyContent = 'center';
@@ -1390,8 +1387,7 @@ export function LocationQuestionEditor({
 
         if (positionDiff > 0.000001) {
           console.log(
-            `🎯 Using latest drag position for marker ${
-              index + 1
+            `🎯 Using latest drag position for marker ${index + 1
             }: ${latestPosition.lng.toFixed(6)}, ${latestPosition.lat.toFixed(
               6
             )}`
@@ -1517,7 +1513,7 @@ export function LocationQuestionEditor({
         if (
           lastUpdate &&
           JSON.stringify(lastUpdate.locationData) ===
-            JSON.stringify(newLocationData)
+          JSON.stringify(newLocationData)
         ) {
           console.log('[DEBUG] Skipping API call - no data change');
           return;
@@ -1581,8 +1577,7 @@ export function LocationQuestionEditor({
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
           query
-        )}.json?access_token=${
-          mapboxgl.accessToken
+        )}.json?access_token=${mapboxgl.accessToken
         }&types=place,locality,neighborhood,address,poi&limit=5&country=vn`
       );
 
@@ -1737,6 +1732,24 @@ export function LocationQuestionEditor({
       }
     }
   };
+
+  useEffect(() => {
+    if (
+      !isDragging &&
+      locationAnswers &&
+      locationAnswers.length !== currentLocationAnswersRef.current.length
+    ) {
+      console.log(
+        'Location answers changed, forcing map refresh:',
+        locationAnswers
+      );
+      setLocationData(locationAnswers);
+      currentLocationAnswersRef.current = [...locationAnswers];
+      if (mapLoaded && mapRef.current) {
+        refreshMapMarkersWithData(locationAnswers);
+      }
+    }
+  }, [locationAnswers, isDragging, mapLoaded]);
 
   return (
     <div className="w-full relative">

@@ -179,9 +179,8 @@ export function useQuestionOperations(
   ) => {
     if (questionIndex < 0 || questionIndex >= questions.length) return;
 
-    // Get existing question and check if anything has actually changed
     const existingQuestion = questions[questionIndex];
-    const existingLocationData = existingQuestion.location_data;
+
 
     // Skip update if it's the same data (prevents updates when just scrolling)
     const isSameData =
@@ -206,77 +205,68 @@ export function useQuestionOperations(
         ];
 
     // Update the UI immediately with the new location data
+
     const updatedQuestions = [...questions];
     updatedQuestions[questionIndex] = {
       ...updatedQuestions[questionIndex],
-      location_data: locationData,
+      location_data: {
+        ...(updatedQuestions[questionIndex].location_data || {
+          lat: 0,
+          lng: 0,
+          radius: 0,
+        }),
+        quizLocationAnswers: Array.isArray(locationData)
+          ? locationData
+          : [locationData],
+      },
     };
     setQuestions(updatedQuestions);
 
-    // Get the activity ID from the question
     const questionActivityId = existingQuestion.activity_id || activity?.id;
 
-    // Only call API if we have an activity ID
     if (questionActivityId) {
-      // Check if another component just made an update to avoid conflicts
-      if (typeof window !== "undefined" && window.lastLocationUpdate) {
-        const lastUpdate = window.lastLocationUpdate;
-        const timeSinceLastUpdate = Date.now() - lastUpdate.timestamp;
 
-        // If another component made an update within the last 2 seconds, skip this API call
-        if (timeSinceLastUpdate < 2000) {
-          return;
+      if (typeof window !== "undefined") {
+        if (window.updateQuestionTimer) {
+          clearTimeout(window.updateQuestionTimer);
         }
-      }
-
-      activitiesApi
-        .updateLocationQuiz(questionActivityId, {
-          type: "LOCATION",
-          questionText: existingQuestion.question_text || "Location question",
-          timeLimitSeconds: existingQuestion.time_limit_seconds || 30,
-          pointType:
-            locationData.pointType ||
-            existingQuestion.location_data?.pointType ||
-            "STANDARD",
-          locationAnswers,
-        })
-        .then((response) => {
-          // If we received a response with updated location data from API
-          if (response && response.data && response.data.quizLocationAnswers) {
-            // Extract the updated location data from the API response
-            const apiUpdatedLocations = response.data.quizLocationAnswers.map(
-              (loc: {
-                quizLocationAnswerId: string;
-                longitude: number;
-                latitude: number;
-                radius: number;
-              }) => ({
-                quizLocationAnswerId: loc.quizLocationAnswerId,
-                longitude: loc.longitude,
-                latitude: loc.latitude,
-                radius: loc.radius,
-              })
-            );
-
-            // Dispatch event to notify components of API updates
-            if (typeof window !== "undefined") {
-              const event = new CustomEvent("location:answers:updated", {
-                detail: {
-                  locationAnswers: apiUpdatedLocations,
-                  questionIndex,
+        window.updateQuestionTimer = setTimeout(() => {
+          const locationAnswers = Array.isArray(locationData)
+            ? locationData.map((location) => ({
+                longitude: location.longitude,
+                latitude: location.latitude,
+                radius: location.radius || 10,
+                hint: location.hint || "",
+              }))
+            : [
+                {
+                  longitude: locationData.lng || locationData.longitude || 0,
+                  latitude: locationData.lat || locationData.latitude || 0,
+                  radius: locationData.radius || 10,
+                  hint: locationData.hint || "",
                 },
-              });
-              window.dispatchEvent(event);
-            }
-          }
-        })
-        .catch((error) => {
-          console.error("Error updating location quiz:", error);
-        });
+              ];
+
+          activitiesApi
+            .updateLocationQuiz(questionActivityId, {
+              type: "LOCATION",
+              questionText:
+                existingQuestion.question_text || "Location question",
+              timeLimitSeconds: existingQuestion.time_limit_seconds || 30,
+              pointType:
+                (locationData.pointType as any) ||
+                existingQuestion.location_data?.pointType ||
+                "STANDARD",
+              locationAnswers,
+            })
+            .catch((error) => {
+              console.error("Error updating location quiz:", error);
+            });
+        }, 500);
+      }
     }
   };
 
-  // Add handleQuestionLocationChange to the return object
   /**
    * Delete an activity by ID
    */
