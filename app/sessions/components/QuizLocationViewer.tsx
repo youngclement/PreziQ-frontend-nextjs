@@ -465,53 +465,63 @@ export default function QuizLocationViewer({
     isSubmitted,
   ]);
 
-  // Memoize handleLocationSelect để tránh tạo function mới mỗi lần render
+  // Fix for the handleLocationSelect function
   const handleLocationSelect = useCallback(
     (isCorrect: boolean, distance: number, userLocation?: LocationData) => {
       if (isSubmitted || isQuizEnded) return;
 
       // Lưu vị trí user chọn với validation
       if (userLocation) {
-        // Kiểm tra xem vị trí có trùng lặp không
-        if (isLocationDuplicate(userLocation)) {
-          setError('Vị trí này đã được chọn. Vui lòng chọn vị trí khác.');
-          return;
-        }
+        // Use functional update to get the latest state
+        setUserSelectedLocations(prevLocations => {
+          // Kiểm tra xem vị trí có trùng lặp không
+          const isDuplicate = prevLocations.some(
+            existing =>
+              Math.abs(existing.lat - userLocation.lat) < 0.001 &&
+              Math.abs(existing.lng - userLocation.lng) < 0.001
+          );
 
-        // Kiểm tra số lượng tối đa
-        if (userSelectedLocations.length >= correctAnswers.length) {
-          setError(`Chỉ được chọn tối đa ${correctAnswers.length} vị trí.`);
-          return;
-        }
+          if (isDuplicate) {
+            // Set error outside the functional update
+            setTimeout(() => setError('Vị trí này đã được chọn. Vui lòng chọn vị trí khác.'), 0);
+            return prevLocations; // Return unchanged
+          }
 
-        // Thêm vị trí mới vào danh sách
-        setUserSelectedLocations((prev) => [...prev, userLocation]);
-        setError(null); // Xóa lỗi nếu thêm thành công
-        console.log(
-          `[QuizLocation] Đã thêm vị trí ${userSelectedLocations.length + 1}/${
-            correctAnswers.length
-          }:`,
-          userLocation
-        );
+          // Kiểm tra số lượng tối đa
+          if (prevLocations.length >= correctAnswers.length) {
+            setTimeout(() => setError(`Chỉ được chọn tối đa ${correctAnswers.length} vị trí.`), 0);
+            return prevLocations; // Return unchanged
+          }
+
+          // Thêm vị trí mới vào danh sách
+          const newLocations = [...prevLocations, userLocation];
+
+          // Log after confirming we're going to add
+          console.log(
+            `[QuizLocation] Đã thêm vị trí ${newLocations.length}/${correctAnswers.length}:`,
+            userLocation
+          );
+
+          setError(null); // Clear errors
+          return newLocations;
+        });
       }
     },
-    [
-      isSubmitted,
-      isQuizEnded,
-      isLocationDuplicate,
-      userSelectedLocations.length,
-      correctAnswers.length,
-    ]
+    [isSubmitted, isQuizEnded, correctAnswers.length]
   );
 
-  // Hàm để xóa một vị trí đã chọn
+  // Fix for the removeSelectedLocation function
   const removeSelectedLocation = useCallback(
     (index: number) => {
       if (isSubmitted || isQuizEnded) return;
 
-      setUserSelectedLocations((prev) => prev.filter((_, i) => i !== index));
+      setUserSelectedLocations(prevLocations => {
+        const newLocations = prevLocations.filter((_, i) => i !== index);
+        console.log(`[QuizLocation] Đã xóa vị trí tại index ${index}, còn lại ${newLocations.length} vị trí`);
+        return newLocations;
+      });
+
       setError(null);
-      console.log(`[QuizLocation] Đã xóa vị trí tại index ${index}`);
     },
     [isSubmitted, isQuizEnded]
   );
@@ -570,9 +580,9 @@ export default function QuizLocationViewer({
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(deg2rad(lat1)) *
-        Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // Khoảng cách tính bằng km
   }
@@ -633,10 +643,9 @@ export default function QuizLocationViewer({
                 <motion.div
                   key={`${answeredCount}-${totalParticipants}`}
                   className={`
-                    flex items-center gap-1.5 mr-2 ${
-                      answeredCount >= totalParticipants
-                        ? 'bg-black bg-opacity-30 border-[rgb(198,234,132)]/30 shadow-[rgb(198,234,132)]/10'
-                        : 'bg-black bg-opacity-30 border-[rgb(255,198,121)]/30 shadow-[rgb(255,198,121)]/10'
+                    flex items-center gap-1.5 mr-2 ${answeredCount >= totalParticipants
+                      ? 'bg-black bg-opacity-30 border-[rgb(198,234,132)]/30 shadow-[rgb(198,234,132)]/10'
+                      : 'bg-black bg-opacity-30 border-[rgb(255,198,121)]/30 shadow-[rgb(255,198,121)]/10'
                     } border border-white/10 px-2 py-1 rounded-full text-xs font-medium`}
                   animate={{
                     scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
@@ -892,8 +901,8 @@ export default function QuizLocationViewer({
           {/* Results */}
           <AnimatePresence>
             {(isSubmitted && isQuizEnded) ||
-            activity.hostShowAnswer ||
-            isQuizEnded ? (
+              activity.hostShowAnswer ||
+              isQuizEnded ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
@@ -971,14 +980,12 @@ export default function QuizLocationViewer({
                             {calculateScore() === 0
                               ? 'Chưa có vị trí nào đúng.'
                               : calculateScore() < 50
-                              ? `Bạn đã đúng ${getCorrectAnswersCount()}/${
-                                  correctAnswers.length
+                                ? `Bạn đã đúng ${getCorrectAnswersCount()}/${correctAnswers.length
                                 } vị trí. Cần cải thiện thêm!`
-                              : calculateScore() < 100
-                              ? `Khá tốt! Bạn đã đúng ${getCorrectAnswersCount()}/${
-                                  correctAnswers.length
-                                } vị trí.`
-                              : `Xuất sắc! Bạn đã đúng tất cả ${correctAnswers.length} vị trí!`}
+                                : calculateScore() < 100
+                                  ? `Khá tốt! Bạn đã đúng ${getCorrectAnswersCount()}/${correctAnswers.length
+                                  } vị trí.`
+                                  : `Xuất sắc! Bạn đã đúng tất cả ${correctAnswers.length} vị trí!`}
                           </p>
                           <div className='flex items-center justify-between'>
                             <p className='font-medium text-white/90'>
