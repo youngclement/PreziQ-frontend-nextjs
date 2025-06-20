@@ -23,6 +23,8 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { collectionsApi } from '@/api-client';
 import { Loader2 } from 'lucide-react';
+import { useLanguage } from '@/contexts/language-context';
+import { MusicSelector } from './music-selector';
 
 interface FormFieldsProps {
   control: Control<CollectionFormValues>;
@@ -33,6 +35,7 @@ interface FormFieldsProps {
 export function FormFields({ control, form, collectionId }: FormFieldsProps) {
   const [isUpdatingPublishStatus, setIsUpdatingPublishStatus] = useState(false);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const topics: TopicType[] = [
     'ART',
@@ -71,7 +74,9 @@ export function FormFields({ control, form, collectionId }: FormFieldsProps) {
       form.setValue('isPublished', checked);
 
       toast({
-        title: checked ? 'Đã xuất bản bộ sưu tập' : 'Đã hủy xuất bản bộ sưu tập',
+        title: checked
+          ? 'Đã xuất bản bộ sưu tập'
+          : 'Đã hủy xuất bản bộ sưu tập',
         description: checked
           ? 'Bộ sưu tập của bạn hiện đang công khai'
           : 'Bộ sưu tập của bạn đang ở chế độ riêng tư',
@@ -85,7 +90,8 @@ export function FormFields({ control, form, collectionId }: FormFieldsProps) {
 
       toast({
         title: 'Cập nhật thất bại',
-        description: 'Không thể cập nhật trạng thái bộ sưu tập. Vui lòng thử lại.',
+        description:
+          'Không thể cập nhật trạng thái bộ sưu tập. Vui lòng thử lại.',
         variant: 'destructive',
       });
     } finally {
@@ -101,17 +107,18 @@ export function FormFields({ control, form, collectionId }: FormFieldsProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-              Tiêu đề <span className='text-red-500'>*</span>
+              {t('collectionForm.titleLabel')}{' '}
+              <span className='text-red-500'>*</span>
             </FormLabel>
             <FormControl>
               <Input
-                placeholder='Nhập tiêu đề bộ sưu tập'
+                placeholder={t('collectionForm.titlePlaceholder')}
                 className='border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 rounded-md'
                 {...field}
               />
             </FormControl>
             <FormDescription className='text-xs text-gray-500 dark:text-gray-400'>
-              Giữ ngắn gọn và dễ nhớ
+              {t('collectionForm.titleDescription')}
             </FormDescription>
             <FormMessage className='text-xs' />
           </FormItem>
@@ -125,12 +132,15 @@ export function FormFields({ control, form, collectionId }: FormFieldsProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                Chủ đề <span className='text-red-500'>*</span>
+                {t('collectionForm.topicLabel')}{' '}
+                <span className='text-red-500'>*</span>
               </FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger className='border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 rounded-md'>
-                    <SelectValue placeholder='Chọn chủ đề' />
+                    <SelectValue
+                      placeholder={t('collectionForm.topicPlaceholder')}
+                    />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -142,7 +152,7 @@ export function FormFields({ control, form, collectionId }: FormFieldsProps) {
                 </SelectContent>
               </Select>
               <FormDescription className='text-xs text-gray-500 dark:text-gray-400'>
-                Chọn chủ đề phù hợp với nội dung
+                {t('collectionForm.topicDescription')}
               </FormDescription>
               <FormMessage className='text-xs' />
             </FormItem>
@@ -155,17 +165,16 @@ export function FormFields({ control, form, collectionId }: FormFieldsProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                Nhạc nền
+                {t('collectionForm.backgroundMusicLabel')}
               </FormLabel>
               <FormControl>
-                <Input
-                  placeholder='Nhập tên file nhạc (ví dụ: technology.mp3)'
-                  className='border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 rounded-md'
-                  {...field}
+                <MusicSelector
+                  value={field.value || ''}
+                  onChange={field.onChange}
                 />
               </FormControl>
               <FormDescription className='text-xs text-gray-500 dark:text-gray-400'>
-                Nhạc nền khi trình chiếu
+                {t('collectionForm.backgroundMusicDescription')}
               </FormDescription>
               <FormMessage className='text-xs' />
             </FormItem>
@@ -179,17 +188,18 @@ export function FormFields({ control, form, collectionId }: FormFieldsProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-              Mô tả <span className='text-red-500'>*</span>
+              {t('collectionForm.descriptionLabel')}{' '}
+              <span className='text-red-500'>*</span>
             </FormLabel>
             <FormControl>
               <Textarea
-                placeholder='Mô tả về bộ sưu tập của bạn'
+                placeholder={t('collectionForm.descriptionPlaceholder')}
                 className='min-h-[150px] border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 rounded-md resize-y'
                 {...field}
               />
             </FormControl>
             <FormDescription className='text-xs text-gray-500 dark:text-gray-400'>
-              Điều gì làm cho bộ sưu tập này đặc biệt?
+              {t('collectionForm.descriptionDescription')}
             </FormDescription>
             <FormMessage className='text-xs' />
           </FormItem>
@@ -203,10 +213,10 @@ export function FormFields({ control, form, collectionId }: FormFieldsProps) {
           <FormItem className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-md border border-gray-200 dark:border-gray-700/50'>
             <div className='space-y-1'>
               <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                Công khai bộ sưu tập
+                {t('collectionForm.publishLabel')}
               </FormLabel>
               <FormDescription className='text-xs text-gray-500 dark:text-gray-400'>
-                Hiển thị với tất cả mọi người
+                {t('collectionForm.publishDescription')}
               </FormDescription>
             </div>
             <FormControl>
@@ -231,18 +241,16 @@ export function FormFields({ control, form, collectionId }: FormFieldsProps) {
         <div className='flex items-center gap-2 mb-2'>
           <Sparkles className='h-4 w-4 text-indigo-600 dark:text-indigo-400' />
           <h3 className='text-sm font-medium text-indigo-700 dark:text-indigo-300'>
-            Mẹo chuyên gia
+            {t('collectionForm.expertTips')}
           </h3>
         </div>
         <ul className='text-xs text-gray-600 dark:text-gray-300 space-y-1 ml-6 list-disc'>
-          <li>Chọn tiêu đề gây ấn tượng</li>
-          <li>Viết mô tả rõ ràng và hấp dẫn</li>
-          <li>Chọn chủ đề phù hợp với nội dung của bạn</li>
-          <li>Sử dụng hình ảnh chất lượng cao, liên quan</li>
-          <li>
-            Khi chỉnh sửa collection, các hoạt động quiz sẽ được giữ nguyên
-          </li>
-          <li>Chỉ công khai khi đã sẵn sàng</li>
+          {/* @ts-ignore */}
+          {(t('collectionForm.tips', { returnObjects: true }) || []).map(
+            (tip: string, index: number) => (
+              <li key={index}>{tip}</li>
+            )
+          )}
         </ul>
       </div>
     </div>
