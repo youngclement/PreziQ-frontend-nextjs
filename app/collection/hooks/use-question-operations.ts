@@ -354,6 +354,16 @@ export function useQuestionOperations(
 
       // Chỉ gọi API update activity type nếu không phải matching pair
       if (value === 'matching_pair') {
+        // 1. Đảm bảo activity trên BE đã là QUIZ_MATCHING_PAIRS
+        await activitiesApi.updateActivity(targetActivity.id, {
+          activityType: 'QUIZ_MATCHING_PAIRS',
+        });
+
+        // 2. Lấy tên cột từ state (nếu có)
+        const leftColumnName = 'Cột trái'; // Replace with actual value from state/props
+        const rightColumnName = 'Cột phải'; // Replace with actual value from state/props
+
+        // 3. Gửi quiz data cho matching pair
         await activitiesApi.updateMatchingPairQuiz(targetActivity.id, {
           type: 'MATCHING_PAIRS',
           questionText:
@@ -361,8 +371,8 @@ export function useQuestionOperations(
             'Default matching pair question',
           timeLimitSeconds: timeLimit,
           pointType: 'STANDARD',
-          leftColumnName: 'Cột trái', // hoặc lấy từ state nếu cho phép user nhập
-          rightColumnName: 'Cột phải', // hoặc lấy từ state nếu cho phép user nhập
+          leftColumnName,
+          rightColumnName,
         });
       } else {
         await activitiesApi.updateActivity(targetActivity.id, {
