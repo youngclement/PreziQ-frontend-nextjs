@@ -29,6 +29,7 @@ import { Label } from '@/components/ui/label';
 import { activitiesApi } from '@/api-client/activities-api';
 import { toast } from '@/hooks/use-toast';
 import type {
+  MatchingPairQuizPayload,
   QuizMatchingPairAnswer,
   QuizMatchingPairItem,
 } from '@/api-client/activities-api';
@@ -65,16 +66,16 @@ function SortableItem({
   isUpdating?: boolean;
   side: 'left' | 'right';
 }) {
-  // ✅ THÊM LOCAL STATE CHO INPUT
-  const [localValue, setLocalValue] = useState(item.content || '');
+  const [inputValue, setInputValue] = useState(item.content || '');
   const updateTimeoutRef = useRef<NodeJS.Timeout>();
+  const isUserTypingRef = useRef(false);
 
-  // ✅ SYNC LOCAL VALUE VỚI ITEM CONTENT KHI ITEM THAY ĐỔI
   useEffect(() => {
-    setLocalValue(item.content || '');
-  }, [item.content]);
+    if (!isUserTypingRef.current && item.content !== inputValue) {
+      setInputValue(item.content || '');
+    }
+  }, [item.content, inputValue]);
 
-  // ✅ DEBOUNCED UPDATE FUNCTION
   const debouncedUpdate = useCallback(
     (value: string) => {
       if (updateTimeoutRef.current) {
@@ -85,26 +86,28 @@ function SortableItem({
         if (item.quizMatchingPairItemId) {
           onOptionChange(item.quizMatchingPairItemId, value);
         }
-      }, 300); // Giảm delay xuống 300ms để responsive hơn
+      }, 300);
     },
     [item.quizMatchingPairItemId, onOptionChange]
   );
 
-  // ✅ HANDLE INPUT CHANGE VỚI LOCAL STATE
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setLocalValue(value); // Cập nhật ngay lập tức
+    isUserTypingRef.current = true;
+    setInputValue(value); // Update local state immediately
     debouncedUpdate(value); // Debounced API call
   };
 
-  // ✅ CLEANUP TIMEOUT
-  useEffect(() => {
-    return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-    };
-  }, []);
+  // ✅ HANDLE INPUT FOCUS/BLUR
+  const handleInputFocus = () => {
+    isUserTypingRef.current = true;
+  };
+
+  const handleInputBlur = () => {
+    setTimeout(() => {
+      isUserTypingRef.current = false;
+    }, 100);
+  };
 
   const {
     attributes,
@@ -121,6 +124,14 @@ function SortableItem({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div
@@ -151,8 +162,10 @@ function SortableItem({
         <Input
           id={`${side}-item-${index}`}
           placeholder={`Enter ${columnName.toLowerCase()}`}
-          value={localValue} // ✅ SỬ DỤNG LOCAL VALUE
-          onChange={handleInputChange} // ✅ SỬ DỤNG LOCAL HANDLER
+          value={inputValue} // ✅ Controlled input với local state
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
           className="w-full"
           disabled={isUpdating}
         />
@@ -196,16 +209,96 @@ export function MatchingPairSettings({
   }, [question.quizMatchingPairAnswer, question.matching_data]);
 
   // State cho column names với local state
-  const [leftColumnTitle, setLeftColumnTitle] = useState('');
-  const [rightColumnTitle, setRightColumnTitle] = useState('');
+  const [leftColumnTitle, setLeftColumnTitle] = useState(
+    matchingData?.leftColumnName || leftColumnName
+  );
+  const [rightColumnTitle, setRightColumnTitle] = useState(
+    matchingData?.rightColumnName || rightColumnName
+  );
 
-  // Cập nhật column titles khi matchingData thay đổi
+  // Cập nhật column titles khi activityId thay đổi (tức là khi chuyển sang câu hỏi khác)
   useEffect(() => {
-    if (matchingData) {
-      setLeftColumnTitle(matchingData.leftColumnName || leftColumnName);
-      setRightColumnTitle(matchingData.rightColumnName || rightColumnName);
+    // Effect này đảm bảo rằng khi người dùng chuyển sang một câu hỏi khác (activityId thay đổi),
+    // các tiêu đề cột sẽ được reset về giá trị của câu hỏi mới.
+    // Nó sẽ không chạy lại khi người dùng đang nhập, do đó không ghi đè dữ liệu.
+    setLeftColumnTitle(matchingData?.leftColumnName || leftColumnName);
+    setRightColumnTitle(matchingData?.rightColumnName || rightColumnName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activityId, matchingData]);
+
+  // Debounced function to call onColumnNamesChange
+  const debouncedUpdateColumnNames = useCallback(
+    (left: string, right: string) => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+      updateTimeoutRef.current = setTimeout(async () => {
+        setIsUpdating(true);
+        try {
+          // Ensure we have the full matching data object to avoid deleting items
+          const fullMatchingData = (matchingData || {
+            items: [],
+            connections: [],
+          }) as QuizMatchingPairAnswer;
+
+          const payload: MatchingPairQuizPayload = {
+            type: 'MATCHING_PAIRS',
+            questionText: question.question_text || '',
+            // Use snake_case properties from the question object
+            timeLimitSeconds: question.time_limit_seconds,
+            pointType: question.pointType as
+              | 'STANDARD'
+              | 'NO_POINTS'
+              | 'DOUBLE_POINTS',
+            // Set top-level properties as they appear in the error message
+            leftColumnName: left,
+            rightColumnName: right,
+            // Also include the full answer object with updated names
+            // to be safe against data loss and ambiguous API contracts
+            quizMatchingPairAnswer: {
+              ...fullMatchingData,
+              leftColumnName: left,
+              rightColumnName: right,
+            },
+          };
+
+          await activitiesApi.updateMatchingPairQuiz(activityId, payload);
+          toast({
+            title: 'Success',
+            description: 'Column names updated successfully.',
+          });
+
+          if (onColumnNamesChange) {
+            onColumnNamesChange(left, right);
+          }
+          if (onRefreshActivity) {
+            await onRefreshActivity();
+          }
+        } catch (error) {
+          console.error('Failed to update column names', error);
+          toast({
+            title: 'Error',
+            description: 'Could not update column names.',
+            variant: 'destructive',
+          });
+        } finally {
+          setIsUpdating(false);
+        }
+      }, 500); // 500ms debounce
+    },
+    [activityId, onColumnNamesChange, onRefreshActivity, question, matchingData]
+  );
+
+  // Handle changes to column name inputs
+  const handleColumnNameChange = (side: 'left' | 'right', value: string) => {
+    if (side === 'left') {
+      setLeftColumnTitle(value);
+      debouncedUpdateColumnNames(value, rightColumnTitle);
+    } else {
+      setRightColumnTitle(value);
+      debouncedUpdateColumnNames(leftColumnTitle, value);
     }
-  }, [matchingData, leftColumnName, rightColumnName]);
+  };
 
   // Get left and right items từ matchingData
   const leftItems = useMemo(() => {
@@ -319,12 +412,10 @@ export function MatchingPairSettings({
     }
   };
 
-  // ✅ SIMPLIFIED INPUT CHANGE HANDLER
   const handleInputChange = useCallback(
     async (itemId: string, value: string) => {
       if (!matchingData?.items) return;
 
-      // Tìm item để lấy thông tin
       const item = matchingData.items.find(
         (item) => item.quizMatchingPairItemId === itemId
       );
@@ -342,104 +433,18 @@ export function MatchingPairSettings({
             }
           );
 
-          // ✅ CHỈ REFRESH KHI CẦN THIẾT (không phải mỗi lần gõ)
-          // Có thể bỏ dòng này để tránh refresh liên tục
-          // if (onRefreshActivity) {
-          //   await onRefreshActivity()
-          // }
+          console.log('✅ Item updated successfully:', itemId, value);
         } catch (error) {
-          console.error('Error updating item:', error);
+          console.error('❌ Error updating item:', error);
           toast({
             title: 'Error',
             description: 'Failed to update item',
             variant: 'destructive',
           });
-
-          // Chỉ refresh khi có lỗi để revert
-          if (onRefreshActivity) {
-            await onRefreshActivity();
-          }
         }
       }
     },
-    [matchingData, activityId, onRefreshActivity]
-  );
-
-  // ✅ DEBOUNCED COLUMN NAME UPDATE
-  const debouncedColumnUpdate = useCallback(
-    (side: 'left' | 'right', value: string) => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-
-      updateTimeoutRef.current = setTimeout(async () => {
-        if (!matchingData) return;
-
-        const newLeftName = side === 'left' ? value : leftColumnTitle;
-        const newRightName = side === 'right' ? value : rightColumnTitle;
-
-        if (onColumnNamesChange) {
-          onColumnNamesChange(newLeftName, newRightName);
-        }
-
-        try {
-          await activitiesApi.updateMatchingPairQuiz(activityId, {
-            type: 'MATCHING_PAIRS',
-            questionText: question.question_text,
-            timeLimitSeconds: question.time_limit_seconds,
-            pointType: question.pointType || 'STANDARD',
-            leftColumnName: newLeftName,
-            rightColumnName: newRightName,
-          });
-
-          // Refresh data từ server
-          if (onRefreshActivity) {
-            await onRefreshActivity();
-          }
-        } catch (error) {
-          console.error('Error updating column names:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to update column names',
-            variant: 'destructive',
-          });
-
-          // Revert local state
-          if (matchingData) {
-            setLeftColumnTitle(matchingData.leftColumnName || leftColumnName);
-            setRightColumnTitle(
-              matchingData.rightColumnName || rightColumnName
-            );
-          }
-        }
-      }, 500);
-    },
-    [
-      matchingData,
-      leftColumnTitle,
-      rightColumnTitle,
-      activityId,
-      question,
-      onColumnNamesChange,
-      onRefreshActivity,
-      leftColumnName,
-      rightColumnName,
-    ]
-  );
-
-  const handleColumnNameChange = useCallback(
-    (side: 'left' | 'right', value: string) => {
-      // Update local state immediately
-      if (side === 'left') {
-        setLeftColumnTitle(value);
-      } else {
-        setRightColumnTitle(value);
-      }
-
-      // Debounced API update
-      debouncedColumnUpdate(side, value);
-    },
-    [debouncedColumnUpdate]
+    [matchingData, activityId] // Loại bỏ onRefreshActivity khỏi dependencies
   );
 
   const handleAddPair = useCallback(async () => {

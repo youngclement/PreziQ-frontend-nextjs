@@ -359,21 +359,56 @@ export function useQuestionOperations(
           activityType: 'QUIZ_MATCHING_PAIRS',
         });
 
-        // 2. Lấy tên cột từ state (nếu có)
-        const leftColumnName = 'Cột trái'; // Replace with actual value from state/props
-        const rightColumnName = 'Cột phải'; // Replace with actual value from state/props
+        // 2. Lấy tên cột từ state (nếu có) hoặc dùng default
+        const existingMatchingData =
+          questions[activeQuestionIndex].matching_data ||
+          questions[activeQuestionIndex].quizMatchingPairAnswer;
+
+        const leftColumnName =
+          existingMatchingData?.leftColumnName || 'Left Column';
+        const rightColumnName =
+          existingMatchingData?.rightColumnName || 'Right Column';
 
         // 3. Gửi quiz data cho matching pair
-        await activitiesApi.updateMatchingPairQuiz(targetActivity.id, {
-          type: 'MATCHING_PAIRS',
-          questionText:
-            questions[activeQuestionIndex].question_text ||
-            'Default matching pair question',
-          timeLimitSeconds: timeLimit,
-          pointType: 'STANDARD',
-          leftColumnName,
-          rightColumnName,
-        });
+        const response = await activitiesApi.updateMatchingPairQuiz(
+          targetActivity.id,
+          {
+            type: 'MATCHING_PAIRS',
+            questionText:
+              questions[activeQuestionIndex].question_text ||
+              'Default matching pair question',
+            timeLimitSeconds: timeLimit,
+            pointType: 'STANDARD',
+            leftColumnName,
+            rightColumnName,
+          }
+        );
+
+        // Determine new matching data from API response or create a fallback
+        let newMatchingData;
+        if (response?.data?.quizMatchingPairAnswer) {
+          newMatchingData = response.data.quizMatchingPairAnswer;
+        } else {
+          // Fallback: build the object if API does not return it
+          newMatchingData = {
+            ...existingMatchingData,
+            quizMatchingPairAnswerId:
+              existingMatchingData?.quizMatchingPairAnswerId || '',
+            leftColumnName,
+            rightColumnName,
+            items: existingMatchingData?.items || [],
+            connections: existingMatchingData?.connections || [],
+          };
+        }
+
+        // Update the question state once
+        const updatedQuestions = [...questions];
+        updatedQuestions[activeQuestionIndex] = {
+          ...updatedQuestions[activeQuestionIndex],
+          matching_data: newMatchingData,
+          options: [], // Matching pairs don't use standard options
+        };
+        setQuestions(updatedQuestions);
       } else {
         await activitiesApi.updateActivity(targetActivity.id, {
           activityType: activityType as any,
@@ -391,6 +426,7 @@ export function useQuestionOperations(
       const currentQuestion = updatedQuestions[activeQuestionIndex];
       let options = [...currentQuestion.options];
       const currentType = currentQuestion.question_type;
+      let newMatchingData = currentQuestion.matching_data; // Giữ lại dữ liệu cũ
 
       if (value === 'true_false') {
         options = [
@@ -579,6 +615,7 @@ export function useQuestionOperations(
           | 'reorder'
           | 'matching_pair',
         options,
+        matching_data: newMatchingData, // Cập nhật matching_data
       };
 
       setQuestions(updatedQuestions);
