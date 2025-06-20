@@ -131,7 +131,7 @@ export default function HostActivities({
       activityType === 'QUIZ_TYPE_ANSWER' ||
       activityType === 'QUIZ_TRUE_OR_FALSE' ||
       activityType === 'QUIZ_LOCATION' ||
-      activityType === 'QUIZ_MATCHING_PAIR'
+      activityType === 'QUIZ_MATCHING_PAIRS'
     );
   };
 

@@ -47,9 +47,7 @@ import {
   EyeOff,
   Palette,
   Check,
-
   Link,
-
   Trash,
   Trash2,
   Loader2,
@@ -59,7 +57,9 @@ import {
   ChevronsUpDown,
   Plus,
   X,
+
   Layers
+
 
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -211,9 +211,13 @@ interface QuestionSettingsProps {
     activityId: string,
     elements: SlideElementPayload[]
   ) => void;
+
+  onSettingsUpdate?: () => void;
+
   correctAnswerText: string;
   onCorrectAnswerTextChange: (value: string) => void;
   onCorrectAnswerTextBlur: (value: string) => void;
+
 }
 const TextAnswerForm = ({
   activeQuestion,
@@ -320,9 +324,13 @@ export function QuestionSettings({
   onMatchingPairColumnNamesChange,
   slideElements,
   onSlideElementsUpdate,
+
+  onSettingsUpdate,
+
   correctAnswerText,
   onCorrectAnswerTextChange,
   onCorrectAnswerTextBlur,
+
 }: QuestionSettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeType, setActiveType] = useState(
@@ -359,6 +367,17 @@ export function QuestionSettings({
   const locationDataRef = useRef<any[]>([]);
   const previousAnswersRef = useRef<any[]>([]);
   const [locationData, setLocationData] = useState<any[]>([]);
+
+  // Thêm state để theo dõi thay đổi từ settings
+  const [settingsUpdateTrigger, setSettingsUpdateTrigger] = useState(0);
+
+  // Thêm function để trigger cập nhật preview
+  const triggerPreviewUpdate = useCallback(() => {
+    setSettingsUpdateTrigger((prev) => prev + 1);
+    if (onSettingsUpdate) {
+      onSettingsUpdate();
+    }
+  }, [onSettingsUpdate]);
 
   useEffect(() => {
     if (activity) {
@@ -775,7 +794,7 @@ export function QuestionSettings({
                 correctAnswer:
                   activeQuestion.options
                     ?.find((o) => o.is_correct)
-                    ?.option_text.toLowerCase() === 'true',
+                    ?.option_text?.toLowerCase() === 'true',
               });
               break;
             case 'text_answer':
@@ -798,7 +817,9 @@ export function QuestionSettings({
                   activity.quiz?.questionText || activeQuestion.question_text,
                 pointType: activity.quiz?.pointType || (pointType as any),
                 correctOrder:
-                  activeQuestion.options?.map((o) => o.option_text) || [],
+                  activeQuestion.options
+                    ?.map((o) => o.option_text || '')
+                    .filter(Boolean) || [],
               });
               break;
             case 'location':
@@ -876,6 +897,27 @@ export function QuestionSettings({
                       error
                     );
                   });
+              }
+              break;
+            case 'matching_pair':
+              // Get the current matching pair data
+              const matchingData =
+                activeQuestion.quizMatchingPairAnswer ||
+                activeQuestion.matching_data;
+
+              if (matchingData) {
+                activitiesApi.updateMatchingPairQuiz(activity.id, {
+                  type: 'MATCHING_PAIRS',
+                  questionText:
+                    activity.quiz?.questionText || activeQuestion.question_text,
+                  timeLimitSeconds: value,
+                  pointType: activity.quiz?.pointType || (pointType as any),
+                  quizMatchingPairAnswer: {
+                    ...matchingData,
+                    leftColumnName: leftColumnName || 'Left Item',
+                    rightColumnName: rightColumnName || 'Right Item',
+                  },
+                });
               }
               break;
             default:
@@ -1406,7 +1448,7 @@ export function QuestionSettings({
               correctAnswer:
                 activeQuestion.options
                   ?.find((o) => o.is_correct)
-                  ?.option_text.toLowerCase() === 'true',
+                  ?.option_text?.toLowerCase() === 'true',
             });
             break;
           case 'text_answer':
@@ -1427,7 +1469,9 @@ export function QuestionSettings({
               timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
               pointType: typedPointType,
               correctOrder:
-                activeQuestion.options?.map((o) => o.option_text) || [],
+                activeQuestion.options
+                  ?.map((o) => o.option_text || '')
+                  .filter(Boolean) || [],
             });
             break;
           case 'location':
@@ -1496,6 +1540,27 @@ export function QuestionSettings({
                     error
                   );
                 });
+            }
+            break;
+          case 'matching_pair':
+            // Get the current matching pair data
+            const matchingData =
+              activeQuestion.quizMatchingPairAnswer ||
+              activeQuestion.matching_data;
+
+            if (matchingData) {
+              activitiesApi.updateMatchingPairQuiz(activity.id, {
+                type: 'MATCHING_PAIRS',
+                questionText:
+                  activity.quiz?.questionText || activeQuestion.question_text,
+                timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+                pointType: typedPointType,
+                quizMatchingPairAnswer: {
+                  ...matchingData,
+                  leftColumnName: leftColumnName || 'Left Item',
+                  rightColumnName: rightColumnName || 'Right Item',
+                },
+              });
             }
             break;
           default:
@@ -2179,9 +2244,11 @@ export function QuestionSettings({
           ) : activeQuestion.question_type === 'reorder' ? (
             <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
               <ReorderOptions
+
                 options={activeQuestion.options}
                 onOptionChange={(index, field, value, isTyping = false) =>
                   onOptionChange(activeQuestionIndex, index, field, value, isTyping)
+
                 }
                 onDeleteOption={onDeleteOption}
                 onAddOption={onAddOption}
@@ -2193,7 +2260,8 @@ export function QuestionSettings({
           ) : activeQuestion.question_type === 'matching_pair' ? (
             <div className="p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-md border border-indigo-100 dark:border-indigo-800">
               <MatchingPairSettings
-                options={activeQuestion.options || []}
+                question={activeQuestion}
+                activityId={activity?.activity_id || ''}
                 onOptionsChange={(newOptions) => {
                   if (onMatchingPairOptionsChange) {
                     onMatchingPairOptionsChange(
@@ -2201,74 +2269,65 @@ export function QuestionSettings({
                       newOptions
                     );
                   }
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
                 onAddPair={() => {
-                  if (!onMatchingPairOptionsChange) return;
-                  const pairId = `pair-${Date.now()}`;
-                  const currentOptions = activeQuestion.options || [];
-                  const newPair: QuizOption[] = [
-                    {
-                      id: `left-${pairId}`,
-                      option_text: 'Left item',
-                      type: 'left',
-                      pair_id: pairId,
-                      is_correct: true,
-                      display_order: currentOptions.length,
-                      quiz_question_id: activeQuestion.id,
-                    },
-                    {
-                      id: `right-${pairId}`,
-                      option_text: 'Right item',
-                      type: 'right',
-                      pair_id: pairId,
-                      is_correct: true,
-                      display_order: currentOptions.length + 1,
-                      quiz_question_id: activeQuestion.id,
-                    },
-                  ];
-                  onMatchingPairOptionsChange(activeQuestionIndex, [
-                    ...currentOptions,
-                    ...newPair,
-                  ]);
+                  // This will be handled by the MatchingPairSettings component via API
+                  console.log('Add pair triggered');
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
                 onDeletePair={(pairId) => {
-                  if (!onMatchingPairOptionsChange) return;
-                  const currentOptions = activeQuestion.options || [];
-                  const newOptions = currentOptions.filter(
-                    (opt) => opt.pair_id !== pairId
-                  );
-                  onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
+                  // This will be handled by the MatchingPairSettings component via API
+                  console.log('Delete pair triggered:', pairId);
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
                 onReorderPairs={(startIndex, endIndex) => {
-                  if (!onMatchingPairOptionsChange) return;
-
-                  const currentOptions = [...(activeQuestion.options || [])];
-
-                  const pairs = currentOptions
-                    .filter((o) => o.type === 'left')
-                    .map((left) => {
-                      const right = currentOptions.find(
-                        (r) => r.type === 'right' && r.pair_id === left.pair_id
-                      );
-                      return { id: left.pair_id, left, right };
-                    })
-                    .filter((p) => p.right);
-
-                  const [reorderedPair] = pairs.splice(startIndex, 1);
-                  pairs.splice(endIndex, 0, reorderedPair);
-
-                  const newOptions = pairs
-                    .flatMap((p) => [p.left, p.right])
-                    .map((opt, index) => ({
-                      ...opt,
-                      display_order: index,
-                    })) as QuizOption[];
-
-                  onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
+                  // This will be handled by the MatchingPairSettings component via API
+                  console.log('Reorder pairs triggered:', startIndex, endIndex);
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
-                leftColumnName={leftColumnName}
-                rightColumnName={rightColumnName}
-                onColumnNamesChange={onMatchingPairColumnNamesChange}
+                leftColumnName={leftColumnName || 'Left Item'}
+                rightColumnName={rightColumnName || 'Right Item'}
+                onColumnNamesChange={(left, right) => {
+                  if (onMatchingPairColumnNamesChange) {
+                    onMatchingPairColumnNamesChange(left, right);
+                  }
+                  // Trigger preview update
+                  triggerPreviewUpdate();
+                }}
+                onMatchingDataUpdate={(matchingData) => {
+                  // Update the question with new matching data
+                  if (onMatchingPairOptionsChange) {
+                    // Convert matching data back to options format for compatibility
+                    const options: QuizOption[] = [];
+
+                    if (matchingData.items) {
+                      matchingData.items.forEach((item: any) => {
+                        options.push({
+                          id: item.quizMatchingPairItemId,
+                          quizMatchingPairItemId: item.quizMatchingPairItemId,
+                          content: item.content,
+                          option_text: item.content,
+                          isLeftColumn: item.isLeftColumn,
+                          display_order: item.displayOrder,
+                          quiz_question_id: activeQuestion.id,
+                        });
+                      });
+                    }
+
+                    onMatchingPairOptionsChange(activeQuestionIndex, options);
+                  }
+                  // Trigger preview update
+                  triggerPreviewUpdate();
+                }}
+                onRefreshActivity={async () => {
+                  // Trigger preview update after refresh
+                  triggerPreviewUpdate();
+                }}
               />
             </div>
           ) : null}
@@ -2453,6 +2512,7 @@ export function QuestionSettings({
                 ) : activeQuestion.question_type === 'reorder' ? (
                   <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
                     <ReorderOptions
+
                       options={activeQuestion.options}
                       onOptionChange={(index, field, value, isTyping = false) =>
                         onOptionChange(
@@ -2462,6 +2522,7 @@ export function QuestionSettings({
                           value,
                           isTyping
                         )
+
                       }
                       onDeleteOption={onDeleteOption}
                       onAddOption={onAddOption}
@@ -2473,7 +2534,8 @@ export function QuestionSettings({
                 ) : activeQuestion.question_type === 'matching_pair' ? (
                   <div className="p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-md border border-indigo-100 dark:border-indigo-800">
                     <MatchingPairSettings
-                      options={activeQuestion.options || []}
+                      question={activeQuestion}
+                      activityId={activity?.id || ''}
                       onOptionsChange={(newOptions) => {
                         if (onMatchingPairOptionsChange) {
                           onMatchingPairOptionsChange(
@@ -2481,83 +2543,73 @@ export function QuestionSettings({
                             newOptions
                           );
                         }
+                        // Trigger preview update
+                        triggerPreviewUpdate();
                       }}
                       onAddPair={() => {
-                        if (!onMatchingPairOptionsChange) return;
-                        const pairId = `pair-${Date.now()}`;
-                        const currentOptions = activeQuestion.options || [];
-                        const newPair: QuizOption[] = [
-                          {
-                            id: `left-${pairId}`,
-                            option_text: 'Left item',
-                            type: 'left',
-                            pair_id: pairId,
-                            is_correct: true,
-                            display_order: currentOptions.length,
-                            quiz_question_id: activeQuestion.id,
-                          },
-                          {
-                            id: `right-${pairId}`,
-                            option_text: 'Right item',
-                            type: 'right',
-                            pair_id: pairId,
-                            is_correct: true,
-                            display_order: currentOptions.length + 1,
-                            quiz_question_id: activeQuestion.id,
-                          },
-                        ];
-                        onMatchingPairOptionsChange(activeQuestionIndex, [
-                          ...currentOptions,
-                          ...newPair,
-                        ]);
+                        // This will be handled by the MatchingPairSettings component via API
+                        console.log('Add pair triggered');
+                        // Trigger preview update
+                        triggerPreviewUpdate();
                       }}
                       onDeletePair={(pairId) => {
-                        if (!onMatchingPairOptionsChange) return;
-                        const currentOptions = activeQuestion.options || [];
-                        const newOptions = currentOptions.filter(
-                          (opt) => opt.pair_id !== pairId
-                        );
-                        onMatchingPairOptionsChange(
-                          activeQuestionIndex,
-                          newOptions
-                        );
+                        // This will be handled by the MatchingPairSettings component via API
+                        console.log('Delete pair triggered:', pairId);
+                        // Trigger preview update
+                        triggerPreviewUpdate();
                       }}
                       onReorderPairs={(startIndex, endIndex) => {
-                        if (!onMatchingPairOptionsChange) return;
-
-                        const currentOptions = [
-                          ...(activeQuestion.options || []),
-                        ];
-
-                        const pairs = currentOptions
-                          .filter((o) => o.type === 'left')
-                          .map((left) => {
-                            const right = currentOptions.find(
-                              (r) =>
-                                r.type === 'right' && r.pair_id === left.pair_id
-                            );
-                            return { id: left.pair_id, left, right };
-                          })
-                          .filter((p) => p.right);
-
-                        const [reorderedPair] = pairs.splice(startIndex, 1);
-                        pairs.splice(endIndex, 0, reorderedPair);
-
-                        const newOptions = pairs
-                          .flatMap((p) => [p.left, p.right])
-                          .map((opt, index) => ({
-                            ...opt,
-                            display_order: index,
-                          })) as QuizOption[];
-
-                        onMatchingPairOptionsChange(
-                          activeQuestionIndex,
-                          newOptions
+                        // This will be handled by the MatchingPairSettings component via API
+                        console.log(
+                          'Reorder pairs triggered:',
+                          startIndex,
+                          endIndex
                         );
+                        // Trigger preview update
+                        triggerPreviewUpdate();
                       }}
-                      leftColumnName={leftColumnName}
-                      rightColumnName={rightColumnName}
-                      onColumnNamesChange={onMatchingPairColumnNamesChange}
+                      leftColumnName={leftColumnName || 'Left Item'}
+                      rightColumnName={rightColumnName || 'Right Item'}
+                      onColumnNamesChange={(left, right) => {
+                        if (onMatchingPairColumnNamesChange) {
+                          onMatchingPairColumnNamesChange(left, right);
+                        }
+                        // Trigger preview update
+                        triggerPreviewUpdate();
+                      }}
+                      onMatchingDataUpdate={(matchingData) => {
+                        // Update the question with new matching data
+                        if (onMatchingPairOptionsChange) {
+                          // Convert matching data back to options format for compatibility
+                          const options: QuizOption[] = [];
+
+                          if (matchingData.items) {
+                            matchingData.items.forEach((item: any) => {
+                              options.push({
+                                id: item.quizMatchingPairItemId,
+                                quizMatchingPairItemId:
+                                  item.quizMatchingPairItemId,
+                                content: item.content,
+                                option_text: item.content,
+                                isLeftColumn: item.isLeftColumn,
+                                display_order: item.displayOrder,
+                                quiz_question_id: activeQuestion.id,
+                              });
+                            });
+                          }
+
+                          onMatchingPairOptionsChange(
+                            activeQuestionIndex,
+                            options
+                          );
+                        }
+                        // Trigger preview update
+                        triggerPreviewUpdate();
+                      }}
+                      onRefreshActivity={async () => {
+                        // Trigger preview update after refresh
+                        triggerPreviewUpdate();
+                      }}
                     />
                   </div>
                 ) : null}

@@ -149,9 +149,14 @@ interface QuestionPreviewProps {
     activityId: string,
     elements: SlideElementPayload[]
   ) => void;
+
+  // Thêm prop để theo dõi thay đổi từ settings
+  settingsUpdateTrigger?: number;
+
   correctAnswerText: string;
   onCorrectAnswerTextChange: (value: string) => void;
   onCorrectAnswerTextBlur: (value: string) => void;
+
 }
 
 interface SlideData {
@@ -211,9 +216,13 @@ export function QuestionPreview({
   onSlideElementsUpdate,
   slidesData,
   slidesBackgrounds,
+
+  settingsUpdateTrigger = 0,
+
   correctAnswerText,
   onCorrectAnswerTextChange,
   onCorrectAnswerTextBlur,
+
 }: QuestionPreviewProps) {
   const [viewMode, setViewMode] = React.useState('desktop');
   const [showScrollTop, setShowScrollTop] = React.useState(false);
@@ -266,6 +275,14 @@ export function QuestionPreview({
 
   const activeQuestion = questions[activeQuestionIndex];
   const [currentQuestion, setCurrentQuestion] = useState(activeQuestion);
+
+  // Thêm state để theo dõi thay đổi từ settings
+  const [settingsUpdateCount, setSettingsUpdateCount] = useState(0);
+
+  // Thêm useEffect để cập nhật khi có thay đổi từ settings
+  useEffect(() => {
+    setSettingsUpdateCount((prev) => prev + 1);
+  }, [settingsUpdateTrigger]);
 
   // Handler functions
   const handleCorrectAnswerChange = (value: string) => {
@@ -1071,6 +1088,7 @@ export function QuestionPreview({
               )}
             </div>
 
+
           ) : (
             <div className='text-center p-8 bg-gray-50 rounded-lg'>
               <p className='text-muted-foreground'>
@@ -1079,6 +1097,7 @@ export function QuestionPreview({
             </div>
           )}
         </div>
+
 
       );
     }
@@ -1098,7 +1117,7 @@ export function QuestionPreview({
             viewMode === 'tablet' && 'max-w-2xl',
             viewMode === 'mobile' && 'max-w-sm'
           )}
-          key={`question-card-matching-${questionIndex}-${renderKey}`}
+          key={`question-card-matching-${questionIndex}-${renderKey}-${settingsUpdateCount}`}
         >
           <motion.div
             className={cn(
@@ -1202,7 +1221,10 @@ export function QuestionPreview({
 
           {/* Matching Pair Content */}
           <CardContent className="p-0 bg-white dark:bg-gray-800">
-            <div className="w-full" key={question.id}>
+            <div
+              className="w-full"
+              key={`${question.id}-${settingsUpdateCount}`}
+            >
               <MatchingPairPreview
                 question={question}
                 questionIndex={questionIndex}
@@ -1221,6 +1243,7 @@ export function QuestionPreview({
                 leftColumnName={leftColumnName}
                 rightColumnName={rightColumnName}
                 previewMode={previewMode}
+                settingsUpdateTrigger={settingsUpdateCount}
               />
             </div>
           </CardContent>
@@ -1361,7 +1384,8 @@ export function QuestionPreview({
               <div className="p-4 grid grid-cols-2 gap-4 bg-white dark:bg-gray-800">
                 {/* Direct rendering of true/false options */}
                 {question.options.map((option, optionIndex) => {
-                  const isTrue = option.option_text.toLowerCase() === 'true';
+                  const isTrue =
+                    (option.option_text || '').toLowerCase() === 'true';
                   return (
                     <div
                       key={optionIndex}
@@ -2110,7 +2134,7 @@ export function QuestionPreview({
       case 'info_slide':
         return 'INFO_SLIDE';
       case 'matching_pair':
-        return 'QUIZ_MATCHING_PAIR';
+        return 'QUIZ_MATCHING_PAIRS';
       default:
         return 'INFO_SLIDE';
     }
@@ -2497,6 +2521,13 @@ export function QuestionPreview({
           }
 
           // Show success toast
+
+          toast({
+            title: 'Location saved',
+            description: 'The location has been updated successfully.',
+            duration: 2000,
+          });
+
         } catch (error) {
           console.error('Error updating location quiz:', error);
 
@@ -2510,6 +2541,15 @@ export function QuestionPreview({
             });
             window.dispatchEvent(revertEvent);
           }
+
+          // Show error toast
+          toast({
+            title: 'Error saving location',
+            description: 'Failed to save the location. Position reverted.',
+            variant: 'destructive',
+            duration: 3000,
+          });
+
         } finally {
           setIsSaving(false);
         }
@@ -2587,8 +2627,10 @@ export function QuestionPreview({
       };
 
       debouncedUpdateLocationQuiz(question.activity_id, locationPayload);
+
     } catch (error) {
       console.error('Error preparing location update:', error);
+
     } finally {
       setIsSaving(false);
     }
@@ -2789,14 +2831,14 @@ interface OptionItemProps {
   option: QuizOption;
   index: number;
   questionType:
-  | 'multiple_choice'
-  | 'multiple_response'
-  | 'true_false'
-  | 'text_answer'
-  | 'slide'
-  | 'info_slide'
-  | 'reorder'
-  | 'location';
+    | 'multiple_choice'
+    | 'multiple_response'
+    | 'true_false'
+    | 'text_answer'
+    | 'slide'
+    | 'info_slide'
+    | 'reorder'
+    | 'location';
   questionIndex: number;
   onOptionEdit?: (
     questionIndex: number,
@@ -3034,12 +3076,10 @@ function getLocationAnswers(question: any, activity: any) {
         radius: locationData.radius || 10,
       },
     ];
-
   }
 
   // For even older format with location_data
   if (question.location_data) {
-
     return [
       {
         longitude: question.location_data.lng || 0,
@@ -3047,16 +3087,17 @@ function getLocationAnswers(question: any, activity: any) {
         radius: question.location_data.radius || 10,
       },
     ];
-
   }
 
   // Default single location if nothing is found
-  return [{
-    quizLocationAnswerId: "",
-    longitude: 105.804817,
-    latitude: 21.028511,
-    radius: 10
-  }];
+  return [
+    {
+      quizLocationAnswerId: '',
+      longitude: 105.804817,
+      latitude: 21.028511,
+      radius: 10,
+    },
+  ];
 }
 
 // Helper function to get location data for the map component
@@ -3069,7 +3110,7 @@ function getLocationData(question: any, activity: any) {
     lat: answer.latitude,
     lng: answer.longitude,
     radius: answer.radius,
-    id: answer.quizLocationAnswerId
+    id: answer.quizLocationAnswerId,
   }));
 }
 

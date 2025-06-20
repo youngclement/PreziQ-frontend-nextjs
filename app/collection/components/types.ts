@@ -1,3 +1,5 @@
+import { QuizMatchingPairAnswer } from '@/api-client/activities-api';
+
 export interface SlideItem {
   id: string;
   title: string;
@@ -5,6 +7,7 @@ export interface SlideItem {
   background?: string;
   backgroundImage?: string;
 }
+
 export interface ContentItem {
   id: string;
   type: 'quiz' | 'slide';
@@ -12,18 +15,17 @@ export interface ContentItem {
   order: number; // for explicit ordering
 }
 
+// Updated QuizOption to handle both traditional quiz options and matching pair items
 export interface QuizOption {
   id?: string;
   quiz_question_id?: string;
-  option_text: string;
-  is_correct: boolean;
+  option_text?: string; // For traditional quiz options
+  content?: string; // For matching pair items
+  is_correct?: boolean; // For traditional quiz options
   display_order: number;
   explanation?: string;
-  left_text?: string;
-  right_text?: string;
-  pair_id?: string;
-  matched_with?: string;
-  type?: string;
+  isLeftColumn?: boolean; // For matching pair items
+  quizMatchingPairItemId?: string; // For matching pair items
 }
 
 export interface QuizQuestion {
@@ -60,6 +62,13 @@ export interface QuizQuestion {
       radius: number;
     }>;
   };
+  matching_data?: QuizMatchingPairAnswer;
+  // Add new fields to match the API response
+  quizId?: string;
+  pointType?: 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS';
+  quizAnswers?: any[];
+  quizLocationAnswers?: any[];
+  quizMatchingPairAnswer?: QuizMatchingPairAnswer;
 }
 
 // Define API responses
@@ -79,6 +88,10 @@ export interface Activity {
   createdBy: string;
   quiz?: any;
   slide?: any; // The original quiz data from the API
+  // Add new fields to match the API response
+  activityId?: string;
+  activityType?: string;
+  isPublished?: boolean;
 }
 
 export interface Collection {
@@ -87,4 +100,54 @@ export interface Collection {
   description: string;
   is_public: boolean;
   activities: Activity[];
+}
+
+// Add new interfaces to match the API response structure
+export interface QuizMatchingPairItemResponse {
+  quizMatchingPairItemId: string;
+  content: string;
+  isLeftColumn: boolean;
+  displayOrder: number;
+}
+
+export interface QuizMatchingPairConnectionResponse {
+  quizMatchingPairConnectionId: string;
+  leftItem: QuizMatchingPairItemResponse;
+  rightItem: QuizMatchingPairItemResponse;
+}
+
+export interface QuizMatchingPairAnswerResponse {
+  quizMatchingPairAnswerId: string;
+  leftColumnName: string;
+  rightColumnName: string;
+  items: QuizMatchingPairItemResponse[];
+  connections: QuizMatchingPairConnectionResponse[];
+}
+
+export interface QuizResponse {
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  quizId: string;
+  questionText: string;
+  timeLimitSeconds: number;
+  pointType: 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS';
+  quizAnswers: any[];
+  quizLocationAnswers: any[];
+  quizMatchingPairAnswer?: QuizMatchingPairAnswerResponse;
+}
+
+export interface ActivityDetailResponse {
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  activityId: string;
+  activityType: string;
+  title: string;
+  description: string;
+  isPublished: boolean;
+  orderIndex: number;
+  backgroundColor?: string;
+  backgroundImage?: string;
+  quiz?: QuizResponse;
 }
