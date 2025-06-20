@@ -203,9 +203,10 @@ export function ReorderOptions({
 
                         <Input
                           value={option.option_text}
-                          onChange={(e) => onOptionChange(index, 'option_text', e.target.value)}
+                          onChange={(e) => onOptionChange(index, 'option_text', e.target.value, true)}
                           className="flex-1 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent p-0 text-sm"
                           placeholder={`Step ${index + 1}`}
+                          onBlur={(e) => onOptionChange(index, 'option_text', e.target.value, false)}
                         />
                         <div className="flex items-center gap-1">
                           <Button
