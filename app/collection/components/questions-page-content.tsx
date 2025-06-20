@@ -683,10 +683,10 @@ export default function QuestionsPageContent() {
         prevQuestions.map((question) =>
           question.activity_id === activityId
             ? {
-                ...question,
-                backgroundColor: properties.backgroundColor,
-                backgroundImage: properties.backgroundImage,
-              }
+              ...question,
+              backgroundColor: properties.backgroundColor,
+              backgroundImage: properties.backgroundImage,
+            }
             : question
         )
       );
@@ -704,10 +704,10 @@ export default function QuestionsPageContent() {
         prevActivities.map((activity) =>
           activity.id === activityId
             ? {
-                ...activity,
-                backgroundColor: properties.backgroundColor || '',
-                backgroundImage: properties.backgroundImage || '',
-              }
+              ...activity,
+              backgroundColor: properties.backgroundColor || '',
+              backgroundImage: properties.backgroundImage || '',
+            }
             : activity
         )
       );
