@@ -353,7 +353,18 @@ export function useQuestionOperations(
       );
 
       // Chỉ gọi API update activity type nếu không phải matching pair
-      if (value !== 'matching_pair') {
+      if (value === 'matching_pair') {
+        await activitiesApi.updateMatchingPairQuiz(targetActivity.id, {
+          type: 'MATCHING_PAIRS',
+          questionText:
+            questions[activeQuestionIndex].question_text ||
+            'Default matching pair question',
+          timeLimitSeconds: timeLimit,
+          pointType: 'STANDARD',
+          leftColumnName: 'Cột trái', // hoặc lấy từ state nếu cho phép user nhập
+          rightColumnName: 'Cột phải', // hoặc lấy từ state nếu cho phép user nhập
+        });
+      } else {
         await activitiesApi.updateActivity(targetActivity.id, {
           activityType: activityType as any,
         });
@@ -371,10 +382,7 @@ export function useQuestionOperations(
       let options = [...currentQuestion.options];
       const currentType = currentQuestion.question_type;
 
-      // Handle option structure based on the new question type
-      if (value === 'matching_pair') {
-        updatedQuestions[questionIndex].options = [];
-      } else if (value === 'true_false') {
+      if (value === 'true_false') {
         options = [
           { option_text: 'True', is_correct: true, display_order: 0 },
           { option_text: 'False', is_correct: false, display_order: 1 },
