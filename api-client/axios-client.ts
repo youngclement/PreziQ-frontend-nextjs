@@ -153,10 +153,7 @@ axiosClient.interceptors.response.use(
       }
     }
     if (error.response?.status !== 410 && errorMessage !== 'Token is missing') {
-      toast({
-        title: errorMessage,
-        variant: 'destructive',
-      });
+
     }
 
 

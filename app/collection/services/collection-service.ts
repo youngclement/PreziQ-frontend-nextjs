@@ -63,9 +63,6 @@ export const CollectionService = {
       return await response.json();
     } catch (error) {
       console.error("Error reordering activities:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to reorder activities"
-      );
       throw error;
     }
   },

@@ -353,7 +353,6 @@ const SlideShow: React.FC<SlideShowProps> = ({ activities, editMode = false }) =
                         slideElementId, // Lưu ID của element
                         sourceUrl, // Lưu URL nguồn
                     });
-                    console.log('Thêm ảnh vào canvas:', { left, top, scaleX, scaleY });
                     canvas.add(img);
                 } else if (slideElementType === 'TEXT' && content) {
                     try {

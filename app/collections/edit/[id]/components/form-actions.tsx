@@ -1,6 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Eye, Save } from 'lucide-react';
+import { useLanguage } from '@/contexts/language-context';
 
 interface FormActionsProps {
   isSubmitting: boolean;
@@ -9,6 +10,7 @@ interface FormActionsProps {
 
 export function FormActions({ isSubmitting, collectionId }: FormActionsProps) {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const handleView = () => {
     router.push(`/collection?collectionId=${collectionId}`);
@@ -24,7 +26,7 @@ export function FormActions({ isSubmitting, collectionId }: FormActionsProps) {
           onClick={() => router.push('/collections')}
           disabled={isSubmitting}
         >
-          Hủy
+          {t('collectionForm.cancel')}
         </Button>
         <Button
           type='button'
@@ -34,7 +36,7 @@ export function FormActions({ isSubmitting, collectionId }: FormActionsProps) {
           disabled={isSubmitting}
         >
           <Eye className='mr-2 h-4 w-4' />
-          Xem
+          {t('view')}
         </Button>
       </div>
 
@@ -44,7 +46,9 @@ export function FormActions({ isSubmitting, collectionId }: FormActionsProps) {
         disabled={isSubmitting}
       >
         <Save className='mr-2 h-4 w-4' />
-        {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật'}
+        {isSubmitting
+          ? t('collectionForm.updating')
+          : t('collectionForm.update')}
       </Button>
     </div>
   );

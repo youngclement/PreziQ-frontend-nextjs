@@ -53,7 +53,7 @@ export interface QuizQuestion {
     lat: number;
     lng: number;
     radius: number;
-    hint?: string;
+ 
     pointType?: string;
     quizLocationAnswers?: Array<{
       quizLocationAnswerId?: string;
