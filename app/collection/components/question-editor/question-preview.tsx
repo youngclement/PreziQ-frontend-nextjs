@@ -90,6 +90,8 @@ import {
 } from '@/components/ui/dialog';
 
 // First, let's import the needed drag and drop components from react-beautiful-dnd
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+
 import { slideBackgroundManager } from '@/utils/slideBackgroundManager';
 
 // Import the useToast hook at the top of the file
@@ -1423,26 +1425,86 @@ export function QuestionPreview({
                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 flex items-center">
                   <MoveVertical className="h-3.5 w-3.5 mr-1.5" />
                   <span>
-                    Drag items to reorder them
+                    {editMode !== null ? 'Drag items to reorder them (drag & drop enabled in edit mode)' : 'Drag items to reorder them'}
                   </span>
                 </div>
 
                 {/* Pastel colors for steps */}
-                <div className="p-4 space-y-2">
-                  {[...question.options]
-                    .sort((a, b) => a.display_order - b.display_order)
-                    .map((option, index) => (
-                      <div
-                        key={option.id || `option-${index}`}
-                        className="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
-                      >
-                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
-                          {index + 1}
+                {editMode !== null ? (
+                  <DragDropContext
+                    onDragEnd={(result: DropResult) => {
+                      if (!result.destination || result.destination.index === result.source.index) {
+                        return;
+                      }
+                      if (onReorderOptions) {
+                        onReorderOptions(result.source.index, result.destination.index);
+                      }
+                    }}
+                  >
+                    <Droppable droppableId="reorder-preview-droppable">
+                      {(provided) => (
+                        <div
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          className="p-4 space-y-2"
+                        >
+                          {[...question.options]
+                            .sort((a, b) => a.display_order - b.display_order)
+                            .map((option, index) => (
+                              <Draggable
+                                key={option.id || `option-${option.display_order}`}
+                                draggableId={option.id || `option-${option.display_order}`}
+                                index={index}
+                              >
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className={cn(
+                                      "flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-md border transition-all",
+                                      snapshot.isDragging
+                                        ? "border-primary ring-1 ring-primary/30 bg-primary/5 shadow-xl scale-105"
+                                        : "border-gray-200 dark:border-gray-700"
+                                    )}
+                                    style={{
+                                      ...provided.draggableProps.style,
+                                      marginBottom: '8px'
+                                    }}
+                                  >
+                                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
+                                      {index + 1}
+                                    </div>
+                                    <span className="text-sm">{option.option_text}</span>
+                                    <div className="ml-auto flex-shrink-0">
+                                      <GripVertical className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                          {provided.placeholder}
                         </div>
-                        <span className="text-sm">{option.option_text}</span>
-                      </div>
-                    ))}
-                </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                ) : (
+                  <div className="p-4 space-y-2">
+                    {[...question.options]
+                      .sort((a, b) => a.display_order - b.display_order)
+                      .map((option, index) => (
+                        <div
+                          key={option.id || `option-${index}`}
+                          className="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
+                            {index + 1}
+                          </div>
+                          <span className="text-sm">{option.option_text}</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
 
                 <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300">
                   <div className="flex items-start gap-2">
@@ -2116,7 +2178,6 @@ export function QuestionPreview({
       setIsSaving(false);
       // Close the dialog after completion
       setIsDeleteDialogOpen(false);
-      setActivityToDelete(null);
     }
   };
 
