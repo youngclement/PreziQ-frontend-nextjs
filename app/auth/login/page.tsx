@@ -182,7 +182,7 @@ export default function LoginPage() {
                   type='email'
                   id='email'
                   {...register('email', { required: t('login.emailRequired') })}
-                  className='mt-1 w-full rounded-md shadow-sm'
+                  className='mt-1 w-full rounded-md shadow-sm border-neutral-950'
                 />
                 {errors.email && (
                   <p className='text-red-500 text-sm mt-2'>
@@ -199,7 +199,7 @@ export default function LoginPage() {
                   {...register('phoneNumber', {
                     required: t('login.phoneRequired'),
                   })}
-                  className='mt-1 w-full rounded-md shadow-sm'
+                  className='mt-1 w-full rounded-md shadow-sm border-neutral-950'
                   placeholder={t('login.phoneNumberPlaceholder')}
                   required
                 />
@@ -219,7 +219,7 @@ export default function LoginPage() {
                 {...register('password', {
                   required: t('login.passwordRequired'),
                 })}
-                className='mt-1 w-full rounded-md shadow-sm'
+                className='mt-1 w-full rounded-md shadow-sm border-neutral-950'
               />
               {errors.password && (
                 <p className='text-red-500 text-sm mt-2'>
