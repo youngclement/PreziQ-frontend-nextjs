@@ -492,7 +492,7 @@ export default function ParticipantActivities({
                   sessionWebSocket={sessionWs}
                 />
               );
-            case 'QUIZ_MATCHING_PAIRS':
+            case 'QUIZ_MATCHING_PAIR':
               return (
                 <QuizMatchingPairViewer
                   key={currentActivity.activityId}

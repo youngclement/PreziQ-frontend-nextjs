@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Info } from 'lucide-react';
@@ -15,13 +15,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useTranslation } from 'react-i18next';
-import type {
-  QuizMatchingPairAnswer,
-  QuizMatchingPairItem,
-  QuizMatchingPairConnection,
-} from '@/api-client/activities-api';
 
-// Shuffle function for randomizing items in preview mode
+// Add this shuffle function
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
@@ -40,6 +35,11 @@ const PAIR_COLORS = [
   '#ec4899', // pink
   '#6366f1', // indigo
 ];
+
+interface Connection {
+  columnA: string;
+  columnB: string;
+}
 
 interface MatchingPairPreviewProps {
   question: QuizQuestion;
@@ -65,7 +65,6 @@ interface MatchingPairPreviewProps {
   leftColumnName?: string;
   rightColumnName?: string;
   previewMode?: boolean;
-  settingsUpdateTrigger?: number;
 }
 
 export function MatchingPairPreview({
@@ -87,67 +86,51 @@ export function MatchingPairPreview({
   leftColumnName = 'Column A',
   rightColumnName = 'Column B',
   previewMode = true,
-  settingsUpdateTrigger = 0,
 }: MatchingPairPreviewProps) {
   const { t } = useTranslation();
-  const [connections, setConnections] = useState<QuizMatchingPairConnection[]>(
-    []
-  );
+  const [connections, setConnections] = useState<Connection[]>([]);
   const [selectedItem, setSelectedItem] = useState<{
     id: string;
     type: 'left' | 'right';
   } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const [dataVersion, setDataVersion] = useState(0);
 
-  // Get matching data from the question with fallback
-  const matchingData = useMemo(() => {
-    return question.quizMatchingPairAnswer || question.matching_data;
-  }, [question.quizMatchingPairAnswer, question.matching_data]);
-
-  // Create color map for pairs based on connection IDs
+  // Create a color map for pairs
   const pairColorMap = useMemo(() => {
     const map = new Map<string, string>();
-    if (matchingData?.connections) {
-      matchingData.connections.forEach((connection, index) => {
-        if (connection.quizMatchingPairConnectionId) {
-          map.set(
-            connection.quizMatchingPairConnectionId,
-            PAIR_COLORS[index % PAIR_COLORS.length]
-          );
-        }
-      });
-    }
-    return map;
-  }, [matchingData?.connections]);
+    const pairIds = new Set<string>();
+    question.options.forEach((opt) => {
+      if (opt.pair_id) {
+        pairIds.add(opt.pair_id);
+      }
+    });
 
-  // State for shuffled columns - only shuffle once per data update
+    Array.from(pairIds).forEach((pairId, index) => {
+      map.set(pairId, PAIR_COLORS[index % PAIR_COLORS.length]);
+    });
+    return map;
+  }, [question.options]);
+
+  // Add new state for shuffled columns - only shuffle once
   const [shuffledColumnA, setShuffledColumnA] = useState<
-    QuizMatchingPairItem[]
+    typeof question.options
   >([]);
   const [shuffledColumnB, setShuffledColumnB] = useState<
-    QuizMatchingPairItem[]
+    typeof question.options
   >([]);
 
-  // Update columns when matching data changes
+  // Add useEffect to handle initial shuffle only once
   useEffect(() => {
-    if (!matchingData?.items) {
-      setShuffledColumnA([]);
-      setShuffledColumnB([]);
-      return;
-    }
 
-    const columnA = matchingData.items
-      .filter((item) => item.isLeftColumn)
-      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    const columnA = question.options.filter((item) => item.type === 'left' && item.id);
+    const columnB = question.options.filter((item) => item.type === 'right' && item.id);
 
-    const columnB = matchingData.items
-      .filter((item) => !item.isLeftColumn)
-      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
 
-    // Only shuffle if in preview mode
+    // Sort both columns by display_order to maintain the correct order
+    columnA.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    columnB.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+    // Only shuffle if in player mode
     if (previewMode) {
       setShuffledColumnA(shuffleArray(columnA));
       setShuffledColumnB(shuffleArray(columnB));
@@ -155,126 +138,214 @@ export function MatchingPairPreview({
       setShuffledColumnA(columnA);
       setShuffledColumnB(columnB);
     }
+  }, [question.options, previewMode]); // Re-evaluate when options or previewMode change
 
-    // Update data version to trigger re-render
-    setDataVersion((prev) => prev + 1);
-  }, [matchingData?.items, previewMode, settingsUpdateTrigger]);
+  // Replace the direct column assignments with state values
+  const columnA = shuffledColumnA;
+  const columnB = shuffledColumnB;
 
-  // Update connections when matching data changes
+  // Auto-connect matching pairs based on pair_id
   useEffect(() => {
-    if (matchingData?.connections) {
-      setConnections(matchingData.connections);
-    }
-  }, [matchingData?.connections, settingsUpdateTrigger]);
+    const newConnections: Connection[] = [];
+    if (columnA.length > 0 && columnB.length > 0) {
+      const rightOptionsWithPairId = columnB.filter((item) => item.pair_id);
 
-  // Update container size and handle resize
+      columnA.forEach((leftItem) => {
+        if (leftItem.pair_id) {
+          const matchingRightItem = rightOptionsWithPairId.find(
+            (rightItem) => rightItem.pair_id === leftItem.pair_id
+          );
+          if (matchingRightItem && leftItem.id && matchingRightItem.id) {
+            newConnections.push({
+              columnA: leftItem.id,
+              columnB: matchingRightItem.id,
+            });
+          }
+        }
+      });
+    }
+    setConnections(newConnections);
+  }, [question.options, columnA, columnB]);
+
+  // Thêm state để theo dõi kích thước container
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Thêm state để theo dõi thay đổi của preview
+  const [previewUpdate, setPreviewUpdate] = useState(0);
+
+  // Cập nhật useEffect để theo dõi kích thước và cập nhật preview
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
         setContainerSize({ width, height });
+        // Kích hoạt cập nhật preview
+        setPreviewUpdate((prev) => prev + 1);
       }
     };
 
+    // Cập nhật kích thước ban đầu
     updateSize();
+
+    // Thêm event listener cho resize
     window.addEventListener('resize', updateSize);
 
-    const resizeObserver = new ResizeObserver(updateSize);
+    // Thêm ResizeObserver để theo dõi thay đổi kích thước của container
+    const resizeObserver = new ResizeObserver(() => {
+      updateSize();
+    });
+
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
 
+    // Cleanup
     return () => {
       window.removeEventListener('resize', updateSize);
       resizeObserver.disconnect();
     };
   }, []);
 
-  // Handle item click for edit mode
-  const handleItemClick = useCallback(
-    (type: 'left' | 'right', itemId: string) => {
-      // Only allow connections in edit mode, not in player/preview mode
-      if (previewMode || !editMode) {
-        return;
-      }
+  const handleItemClick = (type: 'left' | 'right', itemId: string) => {
+    // Only allow connections in edit mode, not in player/preview mode
+    if (previewMode || !editMode) {
+      return;
+    }
 
-      if (selectedItem) {
-        if (selectedItem.type !== type) {
-          // A different column item was clicked, form a pair
-          // This would need to be implemented based on your API structure
+    // Editor logic
+    const clickedOption = question.options.find((opt) => opt.id === itemId);
+    if (!clickedOption) return;
+
+    if (selectedItem) {
+      // An item is already selected
+      if (selectedItem.type !== type) {
+        // A different column item was clicked, form a pair
+        const leftOption =
+          type === 'right'
+            ? question.options.find((o) => o.id === selectedItem.id)
+            : clickedOption;
+        const rightOption =
+          type === 'left'
+            ? question.options.find((o) => o.id === selectedItem.id)
+            : clickedOption;
+
+        if (!leftOption || !rightOption) {
           setSelectedItem(null);
-        } else {
-          // Same column item was clicked, change selection
-          setSelectedItem({ id: itemId, type });
+          return;
         }
+
+        const leftOptionIndex = question.options.findIndex(
+          (o) => o.id === leftOption.id
+        );
+        const rightOptionIndex = question.options.findIndex(
+          (o) => o.id === rightOption.id
+        );
+
+        // If they are already connected, disconnect them
+        if (
+          leftOption.pair_id &&
+          rightOption.pair_id &&
+          leftOption.pair_id === rightOption.pair_id
+        ) {
+          onOptionChange(questionIndex, leftOptionIndex, 'pair_id', null);
+          onOptionChange(questionIndex, rightOptionIndex, 'pair_id', null);
+        } else {
+          // Check if right option is already paired, if so, break that pair
+          if (rightOption.pair_id) {
+            const previouslyPairedLeftOption = question.options.find(
+              (o) => o.pair_id === rightOption.pair_id && o.type === 'left'
+            );
+            if (previouslyPairedLeftOption) {
+              const prevIndex = question.options.findIndex(
+                (o) => o.id === previouslyPairedLeftOption.id
+              );
+              onOptionChange(questionIndex, prevIndex, 'pair_id', null);
+            }
+          }
+          // Check if left option is already paired, if so, break that pair
+          if (leftOption.pair_id) {
+            const previouslyPairedRightOption = question.options.find(
+              (o) => o.pair_id === leftOption.pair_id && o.type === 'right'
+            );
+            if (previouslyPairedRightOption) {
+              const prevIndex = question.options.findIndex(
+                (o) => o.id === previouslyPairedRightOption.id
+              );
+              onOptionChange(questionIndex, prevIndex, 'pair_id', null);
+            }
+          }
+
+          // Create new connection
+          const newPairId = crypto.randomUUID();
+          onOptionChange(questionIndex, leftOptionIndex, 'pair_id', newPairId);
+          onOptionChange(questionIndex, rightOptionIndex, 'pair_id', newPairId);
+        }
+
+        setSelectedItem(null);
       } else {
-        // No item selected, select this one
+        // Same column item was clicked, change selection
         setSelectedItem({ id: itemId, type });
       }
-    },
-    [previewMode, editMode, selectedItem]
-  );
+    } else {
+      // No item selected, select this one
+      setSelectedItem({ id: itemId, type });
+    }
+  };
 
-  // Calculate connection path for SVG
-  const getConnectionPath = useCallback(
-    (leftItemId: string, rightItemId: string) => {
-      const leftElement = document.getElementById(`item-${leftItemId}`);
-      const rightElement = document.getElementById(`item-${rightItemId}`);
-      const svgElement = svgRef.current;
+  // Cập nhật hàm getConnectionPath để tạo đường nối đẹp hơn
+  const getConnectionPath = (aId: string, bId: string) => {
+    const aElement = document.getElementById(`item-${aId}`);
+    const bElement = document.getElementById(`item-${bId}`);
+    const svgElement = svgRef.current;
 
-      if (!leftElement || !rightElement || !svgElement) return '';
+    if (!aElement || !bElement || !svgElement) return '';
 
-      const svgRect = svgElement.getBoundingClientRect();
-      const leftRect = leftElement.getBoundingClientRect();
-      const rightRect = rightElement.getBoundingClientRect();
+    const svgRect = svgElement.getBoundingClientRect();
+    const aRect = aElement.getBoundingClientRect();
+    const bRect = bElement.getBoundingClientRect();
 
-      const startX = leftRect.right - svgRect.left;
-      const startY = leftRect.top + leftRect.height / 2 - svgRect.top;
-      const endX = rightRect.left - svgRect.left;
-      const endY = rightRect.top + rightRect.height / 2 - svgRect.top;
+    const startX = aRect.right - svgRect.left;
+    const startY = aRect.top + aRect.height / 2 - svgRect.top;
+    const endX = bRect.left - svgRect.left;
+    const endY = bRect.top + bRect.height / 2 - svgRect.top;
 
-      // Calculate control points for smooth curve
-      const controlY = startY + (endY - startY) / 2;
-      const controlX1 = startX + (endX - startX) * 0.25;
-      const controlX2 = startX + (endX - startX) * 0.75;
+    // Tính toán control points cho đường cong mượt mà hơn
+    const controlY = startY + (endY - startY) / 2;
+    const controlX1 = startX + (endX - startX) * 0.25;
+    const controlX2 = startX + (endX - startX) * 0.75;
 
-      return `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
-    },
-    []
-  );
+    return `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
+  };
 
-  // Get connections for a specific item
-  const getItemConnections = useCallback(
-    (itemId: string): QuizMatchingPairConnection[] => {
-      return connections.filter(
-        (c) =>
-          c.leftItem.quizMatchingPairItemId === itemId ||
-          c.rightItem.quizMatchingPairItemId === itemId
-      );
-    },
-    [connections]
-  );
+  const isConnectionCorrect = (
+    columnAId: string,
+    columnBId: string
+  ): boolean => {
+    const itemA = question.options.find((item) => item.id === columnAId);
+    const itemB = question.options.find((item) => item.id === columnBId);
 
-  // Count connections for a specific item
-  const connectionCount = useCallback(
-    (itemId: string): number => {
-      return connections.filter(
-        (c) =>
-          c.leftItem.quizMatchingPairItemId === itemId ||
-          c.rightItem.quizMatchingPairItemId === itemId
-      ).length;
-    },
-    [connections]
-  );
+    if (!itemA || !itemB) return false;
 
-  // If no matching data, show empty state
-  if (!matchingData) {
-    return (
-      <div className="flex items-center justify-center h-32 text-gray-500">
-        No matching pair data available
-      </div>
+    // A connection is correct if their pair_ids match and are not null/empty
+    return !!(
+      itemA.pair_id &&
+      itemB.pair_id &&
+      itemA.pair_id === itemB.pair_id
     );
-  }
+  };
+
+  const getItemConnections = (itemId: string): Connection[] => {
+    return connections.filter(
+      (c) => c.columnA === itemId || c.columnB === itemId
+    );
+  };
+
+  const connectionCount = (itemId: string): number => {
+    return connections.filter(
+      (c) => c.columnA === itemId || c.columnB === itemId
+    ).length;
+  };
 
   return (
     <div
@@ -285,61 +356,40 @@ export function MatchingPairPreview({
         viewMode === 'tablet' && 'p-6',
         viewMode === 'mobile' && 'p-4'
       )}
-      key={`preview-${dataVersion}-${settingsUpdateTrigger}`}
     >
       <div className="flex justify-between items-start gap-4 md:gap-8">
         {/* Column A */}
         <div className="w-1/2 flex flex-col items-center gap-2 md:gap-3">
           <h3 className="font-bold text-lg text-center text-gray-700 dark:text-gray-300">
-            {matchingData.leftColumnName || leftColumnName}
+            {leftColumnName}
           </h3>
           <div className="w-full space-y-2">
-            {shuffledColumnA.map((item, index) => {
-              // Find the connection for this item
-              const connection = connections.find(
-                (c) =>
-                  c.leftItem.quizMatchingPairItemId ===
-                  item.quizMatchingPairItemId
-              );
-              const connectionColor = connection?.quizMatchingPairConnectionId
-                ? pairColorMap.get(connection.quizMatchingPairConnectionId)
+            {columnA.map((item, index) => {
+              const pairId = item.pair_id;
+              const connectionColor = pairId
+                ? pairColorMap.get(pairId)
                 : undefined;
 
               return (
                 <motion.div
-                  key={`${
-                    item.quizMatchingPairItemId || `a-${index}`
-                  }-${dataVersion}`}
-                  id={`item-${item.quizMatchingPairItemId}`}
+                  key={item.id || `a-${index}`}
+                  id={`item-${item.id}`}
                   className={cn(
                     'p-2 md:p-3 rounded-lg text-center transition-all duration-200 w-full border-2',
                     !previewMode && editMode && 'cursor-pointer',
-                    selectedItem?.id === item.quizMatchingPairItemId
-                      ? 'ring-2 ring-blue-500'
-                      : '',
+                    selectedItem?.id === item.id ? 'ring-2 ring-blue-500' : '',
                     connectionColor
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                   )}
-                  style={
-                    connectionColor
-                      ? {
-                          backgroundColor: connectionColor,
-                          borderColor: connectionColor,
-                        }
-                      : {}
-                  }
-                  onClick={() =>
-                    item.quizMatchingPairItemId &&
-                    handleItemClick('left', item.quizMatchingPairItemId)
-                  }
+
+                  style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
+
+                  onClick={() => item.id && handleItemClick('left', item.id)}
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
-                  <p className="text-sm md:text-base">{item.content}</p>
+                  <p className="text-sm md:text-base">{item.option_text}</p>
                 </motion.div>
               );
             })}
@@ -349,55 +399,37 @@ export function MatchingPairPreview({
         {/* Column B */}
         <div className="w-1/2 flex flex-col items-center gap-2 md:gap-3">
           <h3 className="font-bold text-lg text-center text-gray-700 dark:text-gray-300">
-            {matchingData.rightColumnName || rightColumnName}
+            {rightColumnName}
           </h3>
           <div className="w-full space-y-2">
-            {shuffledColumnB.map((item, index) => {
-              // Find the connection for this item
-              const connection = connections.find(
-                (c) =>
-                  c.rightItem.quizMatchingPairItemId ===
-                  item.quizMatchingPairItemId
-              );
-              const connectionColor = connection?.quizMatchingPairConnectionId
-                ? pairColorMap.get(connection.quizMatchingPairConnectionId)
+            {columnB.map((item, index) => {
+              const pairId = item.pair_id;
+              const connectionColor = pairId
+                ? pairColorMap.get(pairId)
                 : undefined;
 
               return (
                 <motion.div
-                  key={`${
-                    item.quizMatchingPairItemId || `b-${index}`
-                  }-${dataVersion}`}
-                  id={`item-${item.quizMatchingPairItemId}`}
+                  key={item.id || `b-${index}`}
+                  id={`item-${item.id}`}
                   className={cn(
                     'p-2 md:p-3 rounded-lg text-center transition-all duration-200 w-full border-2',
                     !previewMode && editMode && 'cursor-pointer',
-                    selectedItem?.id === item.quizMatchingPairItemId
+                    selectedItem?.id === item.id
                       ? 'ring-2 ring-purple-500'
                       : '',
                     connectionColor
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                   )}
-                  style={
-                    connectionColor
-                      ? {
-                          backgroundColor: connectionColor,
-                          borderColor: connectionColor,
-                        }
-                      : {}
-                  }
-                  onClick={() =>
-                    item.quizMatchingPairItemId &&
-                    handleItemClick('right', item.quizMatchingPairItemId)
-                  }
+
+                  style={connectionColor ? { backgroundColor: connectionColor, borderColor: connectionColor } : {}}
+
+                  onClick={() => item.id && handleItemClick('right', item.id)}
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
-                  <p className="text-sm md:text-base">{item.content}</p>
+                  <p className="text-sm md:text-base">{item.option_text}</p>
                 </motion.div>
               );
             })}
@@ -405,12 +437,12 @@ export function MatchingPairPreview({
         </div>
       </div>
 
-      {/* SVG for drawing connection lines */}
+      {/* SVG for drawing lines */}
       <svg
         ref={svgRef}
         className="absolute top-0 left-0 w-full h-full pointer-events-none"
         style={{ zIndex: 1 }}
-        key={`svg-${dataVersion}-${settingsUpdateTrigger}`}
+        key={previewUpdate}
       >
         <defs>
           {PAIR_COLORS.map((color) => (
@@ -435,17 +467,16 @@ export function MatchingPairPreview({
         </defs>
         <g>
           {connections.map((conn, index) => {
-            const pathColor = conn.quizMatchingPairConnectionId
-              ? pairColorMap.get(conn.quizMatchingPairConnectionId)
-              : '#3b82f6';
+            const leftItem = question.options.find(
+              (o) => o.id === conn.columnA
+            );
+            const pairId = leftItem?.pair_id;
+            const pathColor = pairId ? pairColorMap.get(pairId) : '#3b82f6';
 
             return (
               <motion.path
-                key={`${conn.leftItem.quizMatchingPairItemId}-${conn.rightItem.quizMatchingPairItemId}-${index}-${dataVersion}`}
-                d={getConnectionPath(
-                  conn.leftItem.quizMatchingPairItemId!,
-                  conn.rightItem.quizMatchingPairItemId!
-                )}
+                key={`${conn.columnA}-${conn.columnB}-${index}`}
+                d={getConnectionPath(conn.columnA, conn.columnB)}
                 className="stroke-2 transition-all duration-300"
                 stroke={pathColor}
                 strokeWidth="2.5"
@@ -473,6 +504,15 @@ export function MatchingPairPreview({
         <div className="absolute top-2 right-2">
           <TooltipProvider>
             <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-1.5 py-1 px-2.5 bg-background/80 backdrop-blur-sm"
+                >
+                  <Info className="h-3.5 w-3.5" />
+                  <span>Edit Mode</span>
+                </Badge>
+              </TooltipTrigger>
               <TooltipContent>
                 <div className="text-left">
                   <p className="font-bold">{t('matchingPair.title')}</p>

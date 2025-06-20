@@ -1,4 +1,3 @@
-'use client';
 /**
  * Extending Window interface to include our custom properties
  */
@@ -17,6 +16,8 @@ declare global {
     savedBackgroundColors?: Record<string, string>;
   }
 }
+
+'use client'
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -112,7 +113,6 @@ export default function QuestionsPageContent() {
     handleQuestionTextChange,
     handleTimeLimitChange,
     handleAddLocationQuestion: handleAddLocationQuestionFromHook,
-    handleMatchingPairChange,
   } = useQuestionOperations(
     collectionId,
     activities,
@@ -611,13 +611,8 @@ export default function QuestionsPageContent() {
 
   const handleMatchingPairColumnNamesChange = (left: string, right: string) => {
     setMatchingPairColumnNames({ left, right });
-    // Gọi API cập nhật matching pair column names
-    if (questions[activeQuestionIndex]?.question_type === 'matching_pair') {
-      handleMatchingPairChange(activeQuestionIndex, {
-        leftColumnName: left,
-        rightColumnName: right,
-      });
-    }
+    // Here you might want to debounce an API call to save these names
+    // For now, it just updates the local state
   };
 
   // Function to handle changes in matching pair options
@@ -630,12 +625,9 @@ export default function QuestionsPageContent() {
       updatedQuestions[questionIndex].options = newOptions;
       setQuestions(updatedQuestions);
 
-      // Gọi API cập nhật matching pair items (bao gồm cả khi sửa nội dung item)
-      if (updatedQuestions[questionIndex].question_type === 'matching_pair') {
-        handleMatchingPairChange(questionIndex, {
-          items: newOptions,
-        });
-      }
+      // TODO: Add API call to persist changes for matching pair options
+      // This would typically involve calling a function from useQuestionOperations
+      // that is designed to update the entire options array for a question.
     }
   };
 

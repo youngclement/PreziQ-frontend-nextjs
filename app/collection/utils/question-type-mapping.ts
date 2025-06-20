@@ -24,7 +24,7 @@ export const mapQuestionTypeToActivityType = (questionType: string): string => {
     case 'info_slide':
       return 'INFO_SLIDE_INTERACTIVE';
     case 'matching_pair':
-      return 'QUIZ_MATCHING_PAIRS';
+      return 'QUIZ_MATCHING_PAIR';
     default:
       return 'QUIZ_BUTTONS';
   }
@@ -51,7 +51,7 @@ export const mapActivityTypeToQuestionType = (activityType: string): string => {
       return 'slide';
     case 'INFO_SLIDE_INTERACTIVE':
       return 'info_slide';
-    case 'QUIZ_MATCHING_PAIRS':
+    case 'QUIZ_MATCHING_PAIR':
       return 'matching_pair';
     default:
       return 'multiple_choice';
