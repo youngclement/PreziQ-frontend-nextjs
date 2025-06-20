@@ -108,6 +108,10 @@ export interface QuizMatchingPairItem {
   displayOrder: number;
 }
 
+export interface ConnectionItemPayload {
+  leftItemId: string;
+  rightItemId: string;
+}
 export interface QuizMatchingPairConnection {
   quizMatchingPairConnectionId?: string;
   leftItem: QuizMatchingPairItem;
@@ -335,7 +339,7 @@ export const activitiesApi = {
   },
   addMatchingPairConnection(
     activityId: string,
-    payload: QuizMatchingPairConnection
+    payload: ConnectionItemPayload
   ) {
     return axiosClient.post(
       `/quizzes/${activityId}/matching-pairs/connections`,

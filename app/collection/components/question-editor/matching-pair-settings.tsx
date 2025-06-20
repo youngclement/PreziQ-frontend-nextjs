@@ -57,6 +57,10 @@ function SortableItem({
   columnName,
   isUpdating = false,
   side,
+  isSelected = false,
+  onSelect,
+  isConnected = false,
+  connectionColor = '',
 }: {
   item: QuizMatchingPairItem;
   index: number;
@@ -65,6 +69,10 @@ function SortableItem({
   columnName: string;
   isUpdating?: boolean;
   side: 'left' | 'right';
+  isSelected?: boolean;
+  onSelect: () => void;
+  isConnected?: boolean;
+  connectionColor?: string;
 }) {
   const [inputValue, setInputValue] = useState(item.content || '');
   const updateTimeoutRef = useRef<NodeJS.Timeout>();
@@ -142,8 +150,11 @@ function SortableItem({
         isDragging
           ? 'bg-white dark:bg-gray-800 shadow-lg border-primary z-50'
           : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600',
-        isUpdating && 'opacity-50 pointer-events-none'
+        isUpdating && 'opacity-50 pointer-events-none',
+        isSelected && 'ring-2 ring-primary',
+        connectionColor
       )}
+      onClick={onSelect}
     >
       {/* Drag Handle */}
       <div
@@ -176,11 +187,18 @@ function SortableItem({
         variant="ghost"
         size="icon"
         className="flex-shrink-0 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/20"
-        onClick={onDelete}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
         disabled={isUpdating}
       >
         <Trash2 className="h-4 w-4 text-red-500" />
       </Button>
+
+      {connectionColor && (
+        <span className="absolute top-1 right-1 text-xs font-bold">✓</span>
+      )}
     </div>
   );
 }
@@ -202,6 +220,8 @@ export function MatchingPairSettings({
   const isDraggingRef = useRef(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const updateTimeoutRef = useRef<NodeJS.Timeout>();
+  const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
+  const [selectedRight, setSelectedRight] = useState<string | null>(null);
 
   // Đơn giản hóa: chỉ sử dụng một nguồn dữ liệu duy nhất
   const matchingData = useMemo(() => {
@@ -315,6 +335,50 @@ export function MatchingPairSettings({
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
   }, [matchingData?.items]);
 
+  // Tạo Set chứa các itemId đã kết nối
+  const connectedLeftIds = useMemo(
+    () =>
+      new Set(
+        matchingData?.connections?.map(
+          (conn) => conn.leftItem.quizMatchingPairItemId
+        )
+      ),
+    [matchingData?.connections]
+  );
+
+  const connectedRightIds = useMemo(
+    () =>
+      new Set(
+        matchingData?.connections?.map(
+          (conn) => conn.rightItem.quizMatchingPairItemId
+        )
+      ),
+    [matchingData?.connections]
+  );
+
+  // 1. Tạo bảng màu
+  const connectionColors = [
+    'bg-red-100 border-red-400 text-red-700',
+    'bg-blue-100 border-blue-400 text-blue-700',
+    'bg-yellow-100 border-yellow-400 text-yellow-700',
+    'bg-green-100 border-green-400 text-green-700',
+    'bg-purple-100 border-purple-400 text-purple-700',
+    'bg-pink-100 border-pink-400 text-pink-700',
+  ];
+
+  // 2. Tạo map: itemId -> colorClass
+  const itemIdToColor = useMemo(() => {
+    const map: Record<string, string> = {};
+    matchingData?.connections?.forEach((conn, idx) => {
+      const color = connectionColors[idx % connectionColors.length];
+      if (conn.leftItem?.quizMatchingPairItemId)
+        map[conn.leftItem.quizMatchingPairItemId] = color;
+      if (conn.rightItem?.quizMatchingPairItemId)
+        map[conn.rightItem.quizMatchingPairItemId] = color;
+    });
+    return map;
+  }, [matchingData?.connections]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -333,30 +397,81 @@ export function MatchingPairSettings({
   const handleDragEnd = async (event: DragEndEvent) => {
     isDraggingRef.current = false;
     const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-    if (over && active.id !== over.id) {
-      // Handle drag for left items
-      if (active.id.toString().startsWith('left-')) {
-        const oldIndex = leftItems.findIndex(
-          (item) => `left-${item.quizMatchingPairItemId}` === active.id
+    const activeIsLeft = active.id.toString().startsWith('left-');
+    const overIsLeft = over.id.toString().startsWith('left-');
+
+    // Nếu kéo trong cùng một cột, chỉ reorder
+    if (activeIsLeft === overIsLeft) {
+      const items = activeIsLeft ? leftItems : rightItems;
+      const oldIndex = items.findIndex(
+        (item) =>
+          `${activeIsLeft ? 'left' : 'right'}-${
+            item.quizMatchingPairItemId
+          }` === active.id
+      );
+      const newIndex = items.findIndex(
+        (item) =>
+          `${activeIsLeft ? 'left' : 'right'}-${
+            item.quizMatchingPairItemId
+          }` === over.id
+      );
+      if (oldIndex !== -1 && newIndex !== -1) {
+        await handleReorderItems(
+          activeIsLeft ? 'left' : 'right',
+          oldIndex,
+          newIndex
         );
-        const newIndex = leftItems.findIndex(
-          (item) => `left-${item.quizMatchingPairItemId}` === over.id
-        );
-        if (oldIndex !== -1 && newIndex !== -1) {
-          await handleReorderItems('left', oldIndex, newIndex);
-        }
       }
-      // Handle drag for right items
-      else if (active.id.toString().startsWith('right-')) {
-        const oldIndex = rightItems.findIndex(
-          (item) => `right-${item.quizMatchingPairItemId}` === active.id
-        );
-        const newIndex = rightItems.findIndex(
-          (item) => `right-${item.quizMatchingPairItemId}` === over.id
-        );
-        if (oldIndex !== -1 && newIndex !== -1) {
-          await handleReorderItems('right', oldIndex, newIndex);
+    } else {
+      // Kéo sang cột khác
+      const fromItems = activeIsLeft ? leftItems : rightItems;
+      const toItems = activeIsLeft ? rightItems : leftItems;
+      const fromIndex = fromItems.findIndex(
+        (item) =>
+          `${activeIsLeft ? 'left' : 'right'}-${
+            item.quizMatchingPairItemId
+          }` === active.id
+      );
+      const toIndex = toItems.findIndex(
+        (item) =>
+          `${!activeIsLeft ? 'left' : 'right'}-${
+            item.quizMatchingPairItemId
+          }` === over.id
+      );
+
+      if (fromIndex !== -1) {
+        setIsUpdating(true);
+        try {
+          const item = fromItems[fromIndex];
+          // Cập nhật sang cột mới và vị trí mới
+          if (!item.quizMatchingPairItemId) return;
+          await activitiesApi.updateReorderQuizItem(
+            activityId,
+            item.quizMatchingPairItemId,
+            {
+              quizMatchingPairItemId: item.quizMatchingPairItemId,
+              content: item.content || '',
+              isLeftColumn: !activeIsLeft, // chuyển cột
+              displayOrder: (toIndex !== -1 ? toIndex : toItems.length) + 1,
+            }
+          );
+          // Sau đó cập nhật lại displayOrder cho các item còn lại của cả hai cột
+          // (Có thể gọi lại onRefreshActivity để reload từ server)
+          if (onRefreshActivity) await onRefreshActivity();
+          toast({
+            title: 'Success',
+            description: 'Item moved to other column successfully',
+          });
+        } catch (error) {
+          toast({
+            title: 'Error',
+            description: 'Failed to move item to other column',
+            variant: 'destructive',
+          });
+        } finally {
+          setIsUpdating(false);
         }
       }
     }
@@ -378,6 +493,7 @@ export function MatchingPairSettings({
       for (let i = 0; i < reorderedItems.length; i++) {
         const item = reorderedItems[i];
         if (item.quizMatchingPairItemId) {
+          if (!item.quizMatchingPairItemId) return;
           await activitiesApi.updateReorderQuizItem(
             activityId,
             item.quizMatchingPairItemId,
@@ -504,6 +620,57 @@ export function MatchingPairSettings({
     [activityId, onRefreshActivity]
   );
 
+  const handleSelectItem = (side: 'left' | 'right', itemId: string) => {
+    if (side === 'left') {
+      setSelectedLeft(itemId === selectedLeft ? null : itemId);
+    } else {
+      setSelectedRight(itemId === selectedRight ? null : itemId);
+    }
+  };
+
+  useEffect(() => {
+    const createConnection = async () => {
+      if (selectedLeft && selectedRight) {
+        setIsUpdating(true);
+        try {
+          const leftItemObj = matchingData?.items?.find(
+            (item) => item.quizMatchingPairItemId === selectedLeft
+          );
+          const rightItemObj = matchingData?.items?.find(
+            (item) => item.quizMatchingPairItemId === selectedRight
+          );
+
+          if (
+            leftItemObj?.quizMatchingPairItemId &&
+            rightItemObj?.quizMatchingPairItemId
+          ) {
+            await activitiesApi.addMatchingPairConnection(activityId, {
+              leftItemId: leftItemObj.quizMatchingPairItemId,
+              rightItemId: rightItemObj.quizMatchingPairItemId,
+            });
+          }
+          toast({
+            title: 'Success',
+            description: 'Connection created successfully',
+          });
+          setSelectedLeft(null);
+          setSelectedRight(null);
+          if (onRefreshActivity) await onRefreshActivity();
+        } catch (error) {
+          toast({
+            title: 'Error',
+            description: 'Failed to create connection',
+            variant: 'destructive',
+          });
+        } finally {
+          setIsUpdating(false);
+        }
+      }
+    };
+    createConnection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLeft, selectedRight]);
+
   // Force refresh when settings update trigger changes
   useEffect(() => {
     if (onRefreshActivity) {
@@ -544,89 +711,105 @@ export function MatchingPairSettings({
       </div>
 
       {/* Display all items in a grid layout */}
-      <div className="space-y-4">
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
         <div className="grid grid-cols-2 gap-6">
-          {/* Left Column Items */}
-          <div className="space-y-3">
-            <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
-              {leftColumnTitle} Items
-            </h3>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={leftItems.map(
-                  (item) => `left-${item.quizMatchingPairItemId}`
-                )}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-2">
-                  {leftItems.map((item, index) => (
-                    <SortableItem
-                      key={`left-${item.quizMatchingPairItemId}`}
-                      item={item}
-                      index={index}
-                      onOptionChange={handleInputChange}
-                      onDelete={() =>
-                        handleDeleteItem(
-                          item.quizMatchingPairItemId || '',
-                          'left'
-                        )
-                      }
-                      columnName={leftColumnTitle}
-                      isUpdating={isUpdating}
-                      side="left"
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          </div>
-
-          {/* Right Column Items */}
-          <div className="space-y-3">
-            <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
-              {rightColumnTitle} Items
-            </h3>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={rightItems.map(
-                  (item) => `right-${item.quizMatchingPairItemId}`
-                )}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-2">
-                  {rightItems.map((item, index) => (
-                    <SortableItem
-                      key={`right-${item.quizMatchingPairItemId}`}
-                      item={item}
-                      index={index}
-                      onOptionChange={handleInputChange}
-                      onDelete={() =>
-                        handleDeleteItem(
-                          item.quizMatchingPairItemId || '',
-                          'right'
-                        )
-                      }
-                      columnName={rightColumnTitle}
-                      isUpdating={isUpdating}
-                      side="right"
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          </div>
+          <SortableContext
+            items={leftItems.map(
+              (item) => `left-${item.quizMatchingPairItemId}`
+            )}
+            strategy={verticalListSortingStrategy}
+          >
+            {/* Left Column Items */}
+            <div className="space-y-3">
+              <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
+                {leftColumnTitle} Items
+              </h3>
+              <div className="space-y-2">
+                {leftItems.map((item, index) => (
+                  <SortableItem
+                    key={`left-${item.quizMatchingPairItemId}`}
+                    item={item}
+                    index={index}
+                    onOptionChange={handleInputChange}
+                    onDelete={() =>
+                      handleDeleteItem(
+                        item.quizMatchingPairItemId || '',
+                        'left'
+                      )
+                    }
+                    columnName={leftColumnTitle}
+                    isUpdating={isUpdating}
+                    side="left"
+                    isSelected={selectedLeft === item.quizMatchingPairItemId}
+                    onSelect={() =>
+                      handleSelectItem(
+                        'left',
+                        item.quizMatchingPairItemId || ''
+                      )
+                    }
+                    isConnected={connectedLeftIds.has(
+                      item.quizMatchingPairItemId
+                    )}
+                    connectionColor={
+                      itemIdToColor[item.quizMatchingPairItemId || '']
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          </SortableContext>
+          <SortableContext
+            items={rightItems.map(
+              (item) => `right-${item.quizMatchingPairItemId}`
+            )}
+            strategy={verticalListSortingStrategy}
+          >
+            {/* Right Column Items */}
+            <div className="space-y-3">
+              <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
+                {rightColumnTitle} Items
+              </h3>
+              <div className="space-y-2">
+                {rightItems.map((item, index) => (
+                  <SortableItem
+                    key={`right-${item.quizMatchingPairItemId}`}
+                    item={item}
+                    index={index}
+                    onOptionChange={handleInputChange}
+                    onDelete={() =>
+                      handleDeleteItem(
+                        item.quizMatchingPairItemId || '',
+                        'right'
+                      )
+                    }
+                    columnName={rightColumnTitle}
+                    isUpdating={isUpdating}
+                    side="right"
+                    isSelected={selectedRight === item.quizMatchingPairItemId}
+                    onSelect={() =>
+                      handleSelectItem(
+                        'right',
+                        item.quizMatchingPairItemId || ''
+                      )
+                    }
+                    isConnected={connectedRightIds.has(
+                      item.quizMatchingPairItemId
+                    )}
+                    connectionColor={
+                      itemIdToColor[item.quizMatchingPairItemId || '']
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          </SortableContext>
         </div>
-      </div>
+      </DndContext>
 
       <div className="mt-4">
         <Button
