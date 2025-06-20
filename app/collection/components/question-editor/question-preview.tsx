@@ -90,7 +90,6 @@ import {
 } from '@/components/ui/dialog';
 
 // First, let's import the needed drag and drop components from react-beautiful-dnd
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { slideBackgroundManager } from '@/utils/slideBackgroundManager';
 
 // Import the useToast hook at the top of the file
@@ -1424,279 +1423,26 @@ export function QuestionPreview({
                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 flex items-center">
                   <MoveVertical className="h-3.5 w-3.5 mr-1.5" />
                   <span>
-                    {editMode !== null
-                      ? 'Drag items to reorder them'
-                      : 'These items need to be arranged in the correct order'}
+                    Drag items to reorder them
                   </span>
                 </div>
 
                 {/* Pastel colors for steps */}
-                {editMode !== null ? (
-                  <DragDropContext
-                    onDragEnd={(result) => {
-                      // Skip if not dropped in a droppable or dropped in same position
-                      if (
-                        !result.destination ||
-                        result.destination.index === result.source.index
-                      ) {
-                        return;
-                      }
-
-                      // Call the parent's reorderOptions function if available
-                      if (onReorderOptions) {
-                        onReorderOptions(
-                          result.source.index,
-                          result.destination.index
-                        );
-                      }
-                    }}
-                  >
-                    <Droppable droppableId={`reorder-${questionIndex}`}>
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className="mt-2 relative flex flex-col gap-2"
-                        >
-                          {/* Visual timeline line */}
-                          <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-black/20 dark:bg-white/10 z-0"></div>
-
-                          {question.options
-                            .sort((a, b) => a.display_order - b.display_order)
-                            .map((option, idx) => {
-                              // Define a set of cute pastel colors
-                              const pastelColors = [
-                                {
-                                  bg: 'bg-pink-100',
-                                  border: 'border-pink-200',
-                                  text: 'text-pink-800',
-                                  icon: 'text-pink-600',
-                                },
-                                {
-                                  bg: 'bg-blue-100',
-                                  border: 'border-blue-200',
-                                  text: 'text-blue-800',
-                                  icon: 'text-blue-600',
-                                },
-                                {
-                                  bg: 'bg-purple-100',
-                                  border: 'border-purple-200',
-                                  text: 'text-purple-800',
-                                  icon: 'text-purple-600',
-                                },
-                                {
-                                  bg: 'bg-green-100',
-                                  border: 'border-green-200',
-                                  text: 'text-green-800',
-                                  icon: 'text-green-600',
-                                },
-                                {
-                                  bg: 'bg-yellow-100',
-                                  border: 'border-yellow-200',
-                                  text: 'text-yellow-800',
-                                  icon: 'text-yellow-600',
-                                },
-                                {
-                                  bg: 'bg-orange-100',
-                                  border: 'border-orange-200',
-                                  text: 'text-orange-800',
-                                  icon: 'text-orange-600',
-                                },
-                                {
-                                  bg: 'bg-indigo-100',
-                                  border: 'border-indigo-200',
-                                  text: 'text-indigo-800',
-                                  icon: 'text-indigo-600',
-                                },
-                                {
-                                  bg: 'bg-red-100',
-                                  border: 'border-red-200',
-                                  text: 'text-red-800',
-                                  icon: 'text-red-600',
-                                },
-                              ];
-
-                              // Get color based on index
-                              const color =
-                                pastelColors[idx % pastelColors.length];
-
-                              return (
-                                <Draggable
-                                  key={option.id || idx}
-                                  draggableId={option.id || `option-${idx}`}
-                                  index={idx}
-                                >
-                                  {(provided, snapshot) => (
-                                    <div
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      {...provided.dragHandleProps}
-                                      className={cn(
-                                        'flex items-center gap-2 relative z-10 group transition-all',
-                                        snapshot.isDragging
-                                          ? 'opacity-80 scale-105'
-                                          : ''
-                                      )}
-                                      style={provided.draggableProps.style}
-                                    >
-                                      <div
-                                        className={cn(
-                                          'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border text-sm font-semibold shadow-sm',
-                                          color.bg,
-                                          color.border,
-                                          color.text
-                                        )}
-                                      >
-                                        {idx + 1}
-                                      </div>
-
-                                      <div
-                                        className={cn(
-                                          'flex-1 rounded-lg p-2.5 shadow-sm border flex items-center gap-2 relative transition-all',
-                                          color.bg,
-                                          color.border
-                                        )}
-                                      >
-                                        <Input
-                                          value={
-                                            option.option_text ||
-                                            `Step ${idx + 1}`
-                                          }
-                                          onChange={(e) =>
-                                            onOptionChange(
-                                              questionIndex,
-                                              idx,
-                                              'option_text',
-                                              e.target.value
-                                            )
-                                          }
-                                          className={cn(
-                                            'flex-1 border-0 bg-white/50 focus:ring-1',
-                                            color.text
-                                          )}
-                                        />
-
-                                        <div
-                                          className={cn(
-                                            'w-6 h-6 flex-shrink-0 rounded-md flex items-center justify-center cursor-grab text-gray-700 dark:text-gray-300 bg-white/50',
-                                            color.icon
-                                          )}
-                                        >
-                                          <GripVertical className="h-3.5 w-3.5" />
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </Draggable>
-                              );
-                            })}
-                          {provided.placeholder}
+                <div className="p-4 space-y-2">
+                  {[...question.options]
+                    .sort((a, b) => a.display_order - b.display_order)
+                    .map((option, index) => (
+                      <div
+                        key={option.id || `option-${index}`}
+                        className="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
+                      >
+                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
+                          {index + 1}
                         </div>
-                      )}
-                    </Droppable>
-                  </DragDropContext>
-                ) : (
-                  <div className="mt-2 relative flex flex-col gap-2">
-                    {/* Visual timeline line */}
-                    <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-black/20 dark:bg-white/10 z-0"></div>
-
-                    {question.options
-                      .sort((a, b) => a.display_order - b.display_order)
-                      .map((option, idx) => {
-                        // Define a set of cute pastel colors
-                        const pastelColors = [
-                          {
-                            bg: 'bg-pink-100',
-                            border: 'border-pink-200',
-                            text: 'text-pink-800',
-                            icon: 'text-pink-600',
-                          },
-                          {
-                            bg: 'bg-blue-100',
-                            border: 'border-blue-200',
-                            text: 'text-blue-800',
-                            icon: 'text-blue-600',
-                          },
-                          {
-                            bg: 'bg-purple-100',
-                            border: 'border-purple-200',
-                            text: 'text-purple-800',
-                            icon: 'text-purple-600',
-                          },
-                          {
-                            bg: 'bg-green-100',
-                            border: 'border-green-200',
-                            text: 'text-green-800',
-                            icon: 'text-green-600',
-                          },
-                          {
-                            bg: 'bg-yellow-100',
-                            border: 'border-yellow-200',
-                            text: 'text-yellow-800',
-                            icon: 'text-yellow-600',
-                          },
-                          {
-                            bg: 'bg-orange-100',
-                            border: 'border-orange-200',
-                            text: 'text-orange-800',
-                            icon: 'text-orange-600',
-                          },
-                          {
-                            bg: 'bg-indigo-100',
-                            border: 'border-indigo-200',
-                            text: 'text-indigo-800',
-                            icon: 'text-indigo-600',
-                          },
-                          {
-                            bg: 'bg-red-100',
-                            border: 'border-red-200',
-                            text: 'text-red-800',
-                            icon: 'text-red-600',
-                          },
-                        ];
-
-                        // Get color based on index
-                        const color = pastelColors[idx % pastelColors.length];
-
-                        return (
-                          <div
-                            key={option.id || idx}
-                            className="flex items-center gap-2 relative z-10 group"
-                          >
-                            <div
-                              className={cn(
-                                'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border text-sm font-semibold shadow-sm',
-                                color.bg,
-                                color.border,
-                                color.text
-                              )}
-                            >
-                              {idx + 1}
-                            </div>
-
-                            <div
-                              className={cn(
-                                'flex-1 rounded-lg p-2.5 shadow-sm border flex items-center gap-2 relative transition-all',
-                                color.bg,
-                                color.border
-                              )}
-                            >
-                              <div className="flex-1">
-                                <p
-                                  className={cn(
-                                    'font-medium text-sm',
-                                    color.text
-                                  )}
-                                >
-                                  {option.option_text || `Step ${idx + 1}`}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
+                        <span className="text-sm">{option.option_text}</span>
+                      </div>
+                    ))}
+                </div>
 
                 <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300">
                   <div className="flex items-start gap-2">
