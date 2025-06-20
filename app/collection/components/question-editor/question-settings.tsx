@@ -58,7 +58,8 @@ import {
   PaintBucket,
   ChevronsUpDown,
   Plus,
-  X
+  X,
+  Layers
 
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -145,7 +146,8 @@ const AnswerTextEditor = ({
     questionIndex: number,
     optionIndex: number,
     field: string,
-    value: any
+    value: any,
+    isTyping?: boolean
   ) => void;
 }) => {
   return (
@@ -186,7 +188,8 @@ interface QuestionSettingsProps {
     questionIndex: number,
     optionIndex: number,
     field: string,
-    value: any
+    value: any,
+    isTyping?: boolean
   ) => void;
   onDeleteOption: (index: number) => void;
   onCorrectAnswerChange?: (value: string) => void;
@@ -208,16 +211,47 @@ interface QuestionSettingsProps {
     activityId: string,
     elements: SlideElementPayload[]
   ) => void;
+  correctAnswerText: string;
+  onCorrectAnswerTextChange: (value: string) => void;
+  onCorrectAnswerTextBlur: (value: string) => void;
 }
 const TextAnswerForm = ({
-  correctAnswerText,
-  onTextAnswerChange,
-  onTextAnswerBlur,
+  activeQuestion,
+  onOptionChange,
+  questionIndex,
 }: {
-  correctAnswerText: string;
-  onTextAnswerChange: (value: string) => void;
-  onTextAnswerBlur: () => void;
+  activeQuestion: QuizQuestion;
+  onOptionChange: (
+    questionIndex: number,
+    optionIndex: number,
+    field: string,
+    value: any,
+    isTyping?: boolean
+  ) => void;
+  questionIndex: number;
 }) => {
+
+  const getCorrectAnswerValue = () => {
+    // Ưu tiên lấy từ correct_answer_text
+    if (activeQuestion.correct_answer_text) {
+      return activeQuestion.correct_answer_text;
+    }
+
+    // Nếu không có, lấy từ option đầu tiên (như API response của bạn)
+    if (activeQuestion.options && activeQuestion.options.length > 0) {
+      const correctOption = activeQuestion.options.find(
+        (opt) => opt.is_correct
+      );
+      if (correctOption) {
+        return correctOption.option_text;
+      }
+      // Fallback to first option
+      return activeQuestion.options[0].option_text || '';
+    }
+
+    return '';
+  };
+
   return (
     <div className="space-y-2 mt-4 p-4 bg-pink-50 dark:bg-pink-900/10 rounded-md border border-pink-100 dark:border-pink-800">
       <Label
@@ -228,9 +262,26 @@ const TextAnswerForm = ({
       </Label>
       <Input
         id="correct-answer"
-        value={correctAnswerText}
-        onChange={(e) => onTextAnswerChange(e.target.value)}
-        onBlur={onTextAnswerBlur}
+        value={getCorrectAnswerValue()}
+        onChange={(e) => {
+          // Cập nhật với isTyping = true
+          onOptionChange(
+            questionIndex,
+            0,
+            'correct_answer_text',
+            e.target.value,
+            true
+          );
+        }}
+        onBlur={(e) => {
+          onOptionChange(
+            questionIndex,
+            0,
+            'correct_answer_text',
+            e.target.value,
+            false
+          );
+        }}
         placeholder="Enter the correct answer"
         className="w-full bg-white dark:bg-black border-pink-200 dark:border-pink-700 focus-visible:ring-pink-300"
       />
@@ -269,14 +320,17 @@ export function QuestionSettings({
   onMatchingPairColumnNamesChange,
   slideElements,
   onSlideElementsUpdate,
+  correctAnswerText,
+  onCorrectAnswerTextChange,
+  onCorrectAnswerTextBlur,
 }: QuestionSettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeType, setActiveType] = useState(
     activeQuestion?.question_type || 'multiple_choice'
   );
-  const [correctAnswerText, setCorrectAnswerText] = useState(
-    activeQuestion?.correct_answer_text || ''
-  );
+  // const [correctAnswerText, setCorrectAnswerText] = useState(
+  //   activeQuestion?.correct_answer_text || ''
+  // );
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -362,7 +416,7 @@ export function QuestionSettings({
   // Update state when activeQuestion changes
   React.useEffect(() => {
     if (activeQuestion) {
-      setCorrectAnswerText(activeQuestion.correct_answer_text || '');
+      //setCorrectAnswerText(activeQuestion.correct_answer_text || '');
       setActiveType(activeQuestion.question_type || 'multiple_choice');
     }
   }, [
@@ -371,52 +425,31 @@ export function QuestionSettings({
     activeQuestion.correct_answer_text,
   ]);
 
-  // Update text answer when changing
-  const handleTextAnswerChange = (value: string) => {
-    setCorrectAnswerText(value);
-    // Immediately call the change handler to update parent state
-    if (onCorrectAnswerChange) {
-      onCorrectAnswerChange(value);
-    }
-  };
+  // // Update text answer when changing
+  // const handleTextAnswerChange = (value: string) => {
+  //   onCorrectAnswerTextChange(value);
+  // };
 
-  // Send to API when input loses focus
-  const handleTextAnswerBlur = () => {
-    if (
-      activity &&
-      activity.id &&
-      activeQuestion.question_type === 'text_answer'
-    ) {
-      // Update the quiz in the backend
-      try {
-        activitiesApi.updateTypeAnswerQuiz(activity.id, {
-          type: 'TYPE_ANSWER',
-          questionText: activeQuestion.question_text,
-          pointType: 'STANDARD',
-          timeLimitSeconds: timeLimit,
-          correctAnswer: correctAnswerText,
-        });
-      } catch (error) {
-        console.error('Error updating text answer quiz:', error);
-      }
-    }
-  };
+  // // Send to API when input loses focus
+  // const handleTextAnswerBlur = () => {
+  //   onCorrectAnswerTextBlur(correctAnswerText);
+  // };
 
-  // Handler for slide content changes
-  const handleSlideContentChange = (value: string) => {
-    if (onSlideContentChange) {
-      onSlideContentChange(value);
+  // // Handler for slide content changes
+  // const handleSlideContentChange = (value: string) => {
+  //   if (onSlideContentChange) {
+  //     onSlideContentChange(value);
 
-      // If this is a slide activity, also update the activity description
-      if (
-        activity &&
-        (activeQuestion.question_type === 'slide' ||
-          activeQuestion.question_type === 'info_slide')
-      ) {
-        debouncedUpdateActivity({ description: value });
-      }
-    }
-  };
+  //     // If this is a slide activity, also update the activity description
+  //     if (
+  //       activity &&
+  //       (activeQuestion.question_type === 'slide' ||
+  //         activeQuestion.question_type === 'info_slide')
+  //     ) {
+  //       debouncedUpdateActivity({ description: value });
+  //     }
+  //   }
+  // };
 
   // Handler for slide image changes
   const handleSlideImageChange = (value: string, index: number) => {
@@ -980,9 +1013,6 @@ export function QuestionSettings({
     if (!activity?.id) return;
 
     if (activity.activity_type_id === 'INFO_SLIDE') {
-      console.log(
-        'Bỏ qua gọi API cho INFO_SLIDE, sẽ được xử lý bởi SlideSettings'
-      );
       return;
     }
 
@@ -1126,10 +1156,6 @@ export function QuestionSettings({
           }
 
           // Show success notification
-          toast({
-            title: 'Location updated',
-            description: 'Location answers have been saved successfully',
-          });
 
           // Dispatch event to update all components
 
@@ -1147,20 +1173,10 @@ export function QuestionSettings({
           }
         }
 
-        toast({
-          title: 'Saved successfully',
-          description: 'Your changes have been saved.',
-        });
-
         // For all other updates, use the regular updateActivity endpoint
         return await activitiesApi.updateActivity(activity.id, data);
       } catch (error) {
         console.error('Error in API call:', error);
-        toast({
-          title: 'API Error',
-          description: 'Could not update activity',
-          variant: 'destructive',
-        });
       }
     } catch (error) {
       console.error('Error updating activity:', error);
@@ -1914,13 +1930,25 @@ export function QuestionSettings({
         hint: '',
       };
       const updatedLocations = [...currentLocations, newLocation];
+
+
+   
       onQuestionLocationChange?.(activeQuestionIndex, updatedLocations);
+
     };
 
     // Handle deleting a location point
     const handleDeleteLocation = (indexToDelete: number) => {
+
+      if (currentLocations.length <= 1) {
+
+        return;
+      }
+
+
       const currentLocations =
         activeQuestion.location_data?.quizLocationAnswers || [];
+
       const updatedLocations = currentLocations.filter(
         (_, index) => index !== indexToDelete,
       );
@@ -2125,8 +2153,8 @@ export function QuestionSettings({
                 activeQuestionIndex={activeQuestionIndex}
                 questionType={activeQuestion.question_type}
                 onAddOption={onAddOption}
-                onOptionChange={(questionIndex, optionIndex, field, value) =>
-                  onOptionChange(questionIndex, optionIndex, field, value)
+                onOptionChange={(questionIndex, optionIndex, field, value, isTyping = false) =>
+                  onOptionChange(questionIndex, optionIndex, field, value, isTyping)
                 }
                 onDeleteOption={onDeleteOption}
               />
@@ -2141,9 +2169,9 @@ export function QuestionSettings({
             </div>
           ) : activeQuestion.question_type === 'text_answer' ? (
             <TextAnswerForm
-              correctAnswerText={correctAnswerText}
-              onTextAnswerChange={handleTextAnswerChange}
-              onTextAnswerBlur={handleTextAnswerBlur}
+              activeQuestion={activeQuestion}
+              onOptionChange={onOptionChange}
+              questionIndex={activeQuestionIndex}
             />
           ) : activeQuestion.question_type === 'slide' ||
             activeQuestion.question_type === 'info_slide' ? (
@@ -2160,8 +2188,8 @@ export function QuestionSettings({
             <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
               <ReorderOptions
                 options={activeQuestion.options}
-                onOptionChange={(index, field, value) =>
-                  onOptionChange(activeQuestionIndex, index, field, value)
+                onOptionChange={(index, field, value, isTyping = false) =>
+                  onOptionChange(activeQuestionIndex, index, field, value, isTyping)
                 }
                 onDeleteOption={onDeleteOption}
                 onAddOption={onAddOption}
@@ -2328,7 +2356,12 @@ export function QuestionSettings({
               Design
             </TabsTrigger>
             <TabsTrigger value="meta" className="text-xs">
-              <Info className="h-3.5 w-3.5 mr-1.5" />
+              {activeQuestion.question_type === 'slide' ||
+              activeQuestion.question_type === 'info_slide' ? (
+                <Layers className="h-3.5 w-3.5 mr-1.5" /> 
+              ) : (
+                <Info className="h-3.5 w-3.5 mr-1.5" />
+              )}
               {activeQuestion.question_type === 'slide' ||
                 activeQuestion.question_type === 'info_slide'
                 ? 'Animation'
@@ -2378,9 +2411,16 @@ export function QuestionSettings({
                         questionIndex,
                         optionIndex,
                         field,
-                        value
+                        value,
+                        isTyping = false
                       ) =>
-                        onOptionChange(questionIndex, optionIndex, field, value)
+                        onOptionChange(
+                          questionIndex,
+                          optionIndex,
+                          field,
+                          value,
+                          isTyping
+                        )
                       }
                       onDeleteOption={onDeleteOption}
                     />
@@ -2395,9 +2435,9 @@ export function QuestionSettings({
                   </div>
                 ) : activeQuestion.question_type === 'text_answer' ? (
                   <TextAnswerForm
-                    correctAnswerText={correctAnswerText}
-                    onTextAnswerChange={handleTextAnswerChange}
-                    onTextAnswerBlur={handleTextAnswerBlur}
+                    activeQuestion={activeQuestion}
+                    onOptionChange={onOptionChange}
+                    questionIndex={activeQuestionIndex}
                   />
                 ) : activeQuestion.question_type === 'slide' ||
                   activeQuestion.question_type === 'info_slide' ? (
@@ -2422,8 +2462,14 @@ export function QuestionSettings({
                   <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
                     <ReorderOptions
                       options={activeQuestion.options}
-                      onOptionChange={(index, field, value) =>
-                        onOptionChange(activeQuestionIndex, index, field, value)
+                      onOptionChange={(index, field, value, isTyping = false) =>
+                        onOptionChange(
+                          activeQuestionIndex,
+                          index,
+                          field,
+                          value,
+                          isTyping
+                        )
                       }
                       onDeleteOption={onDeleteOption}
                       onAddOption={onAddOption}
@@ -2607,3 +2653,4 @@ export function QuestionSettings({
     </Card>
   );
 }
+

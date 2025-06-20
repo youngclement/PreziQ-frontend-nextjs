@@ -1259,11 +1259,7 @@ export function LocationQuestionEditor({
           onLocationChange(questionIndex, updatedLocations);
 
           // Show toast notification
-          toast({
-            title: 'Point moved',
-            description: `Point ${index + 1} moved to new position`,
-            duration: 2000,
-          });
+
         }
 
         // Clean up drag state with delay to ensure API call completes
@@ -1338,11 +1334,7 @@ export function LocationQuestionEditor({
     });
 
     // Show a brief toast message
-    toast({
-      title: 'Map view adjusted',
-      description: `Showing all ${validLocations.length} location points`,
-      duration: 2000,
-    });
+
   };
 
   // Refresh all markers on the map using specified data
@@ -1597,20 +1589,9 @@ export function LocationQuestionEditor({
       } else {
         setSearchResults([]);
         setShowSearchResults(false);
-        toast({
-          title: 'No results found',
-          description: 'Try a different search term or location',
-          duration: 3000,
-        });
       }
     } catch (error) {
       console.error('Error searching places:', error);
-      toast({
-        title: 'Search error',
-        description: 'Unable to search for locations. Please try again.',
-        variant: 'destructive',
-        duration: 3000,
-      });
       setSearchResults([]);
       setShowSearchResults(false);
     } finally {
@@ -1651,11 +1632,6 @@ export function LocationQuestionEditor({
     setShowSearchResults(false);
     setSearchQuery(place.place_name);
 
-    toast({
-      title: 'Location found',
-      description: `Moved map to ${place.text}`,
-      duration: 2000,
-    });
   };
 
   // Modify the handleAddLocationAtPlace function to properly initialize the new point
@@ -1725,11 +1701,6 @@ export function LocationQuestionEditor({
     setShowSearchResults(false);
     setSearchQuery('');
 
-    toast({
-      title: 'Location added',
-      description: `Added point at ${place.text}`,
-      duration: 2000,
-    });
   };
 
   // Add this helper function to the component

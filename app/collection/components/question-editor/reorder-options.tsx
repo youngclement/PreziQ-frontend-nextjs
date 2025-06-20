@@ -17,11 +17,93 @@ interface Option {
 
 interface ReorderOptionsProps {
   options: Option[];
-  onOptionChange: (index: number, field: string, value: any) => void;
+  onOptionChange: (index: number, field: string, value: any, isTyping?: boolean) => void;
   onDeleteOption: (index: number) => void;
   onAddOption: () => void;
   onReorder?: (sourceIndex: number, destinationIndex: number) => void;
 }
+
+
+interface SortableItemProps {
+  id: string;
+  option: Option;
+  index: number;
+  onOptionChange: (index: number, field: string, value: any, isTyping?: boolean) => void;
+  onDeleteOption: (index: number) => void;
+}
+
+function SortableItem({ id, option, index, onOptionChange, onDeleteOption }: SortableItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'flex items-center gap-2 p-1.5 relative mb-2 transition-all',
+        isDragging ? 'z-50' : ''
+      )}
+    >
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-black dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-800 text-base font-semibold text-white shadow-sm relative z-10">
+        {index + 1}
+      </div>
+
+      <div
+        className={cn(
+          'flex-1 bg-white dark:bg-black rounded-lg p-2 shadow-sm border flex items-center gap-2 transition-all',
+          isDragging
+            ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
+            : 'border-gray-300 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-700'
+        )}
+      >
+        <Input
+          value={option.option_text}
+          onChange={(e) => {
+            onOptionChange(index, 'option_text', e.target.value, true);
+          }}
+          className="flex-1 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent p-0 text-sm"
+          placeholder={`Step ${index + 1}`}
+          onBlur={(e) => {
+            onOptionChange(index, 'option_text', e.target.value, false);
+          }}
+        />
+
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => onDeleteOption(index)}
+            className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md h-6 w-6"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+
+          <div
+            className="w-6 h-6 flex-shrink-0 rounded-md bg-gray-100 dark:bg-gray-900 flex items-center justify-center cursor-grab text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-3 w-3" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export function ReorderOptions({
   options,
@@ -35,8 +117,10 @@ export function ReorderOptions({
       return;
     }
 
+
     if (onReorder) {
       onReorder(result.source.index, result.destination.index);
+
     }
   };
 

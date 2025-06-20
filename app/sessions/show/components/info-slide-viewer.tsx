@@ -295,8 +295,14 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
           scaleY: textboxJson.scaleY || 1,
           selectable: false,
         });
-
         textbox.set('slideElementId', element.slideElementId);
+        textbox.set('entryAnimation', element.entryAnimation);
+        textbox.set(
+          'entryAnimationDuration',
+          element.entryAnimationDuration || 1
+        );
+        textbox.set('entryAnimationDelay', element.entryAnimationDelay || 0);
+
         return textbox;
       } catch (err) {
         console.error('Lỗi khi parse content của TEXT element:', err);
@@ -320,7 +326,6 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
 
       const scaleX = img.width > 0 ? width / img.width : 1;
       const scaleY = img.height > 0 ? height / img.height : 1;
-
       img.set({
         left,
         top,
@@ -331,6 +336,9 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
         originY: 'top',
         selectable: false,
         slideElementId: element.slideElementId,
+        entryAnimation: element.entryAnimation,
+        entryAnimationDuration: element.entryAnimationDuration || 1,
+        entryAnimationDelay: element.entryAnimationDelay || 0,
       });
 
       return img;
@@ -342,7 +350,6 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     );
     return null;
   };
-
   const applyEntryAnimation = (
     obj: fabric.Object,
     element: SlideElement,
@@ -354,22 +361,20 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     }
 
     const animation = animationMap[element.entryAnimation];
-    const duration = (element.entryAnimationDuration || 1000) / 1000; // Chuyển ms thành giây
-    const delay = (element.entryAnimationDelay || 0) / 1000; // Chuyển ms thành giây
+    const duration =
+      element.entryAnimationDuration || obj.get('entryAnimationDuration') || 1;
+    const delay =
+      element.entryAnimationDelay || obj.get('entryAnimationDelay') || 0;
 
-    // Điều chỉnh GSAP animation để tôn trọng duration và delay
-    setTimeout(() => {
-      animation(obj, fabricCanvas.current!, () => {
-        // Callback để đảm bảo trạng thái cuối cùng
-        fabricCanvas.current?.renderAll();
-      });
-      // Ghi đè duration và delay
-      if (element.entryAnimation) {
-        if (!['Typewriter', 'FadeInChar'].includes(element.entryAnimation)) {
-          gsap.to(obj, { duration, delay });
-        }
-      }
-    }, delay * 1000);
+    // Set properties on fabric object for animation functions to use
+    obj.set('entryAnimationDuration', duration);
+    obj.set('entryAnimationDelay', delay);
+
+    // Apply animation with delay (delay is in seconds for GSAP)
+    animation(obj, fabricCanvas.current!, () => {
+      // Callback để đảm bảo trạng thái cuối cùng
+      fabricCanvas.current?.renderAll();
+    });
   };
 
   // Group elements by displayOrder
@@ -464,14 +469,20 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
 
     try {
       const loadedImages = await Promise.all(imagePromises);
-      
+
       canvas.remove(...canvas.getObjects());
 
       // Render all elements from displayOrder 0 up to currentOrder
       for (let order = 0; order <= currentOrder; order++) {
         if (groups[order]) {
           groups[order].forEach((element) => {
-            const fabricObject = slideElementToFabric(element, canvas, loadedImages, scaleX, scaleY);
+            const fabricObject = slideElementToFabric(
+              element,
+              canvas,
+              loadedImages,
+              scaleX,
+              scaleY
+            );
             if (fabricObject) {
               canvas.add(fabricObject);
               // Chỉ áp dụng animation cho elements của currentOrder hiện tại

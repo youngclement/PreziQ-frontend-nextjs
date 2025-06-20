@@ -22,11 +22,13 @@ export const ToolbarHandlers = (
     content?: string;
     slideElements: SlideElementPayload[];
   }) => void,
-  slideElementsRef: React.MutableRefObject<SlideElementPayload[]> = { current: [] },
+  slideElementsRef: React.MutableRefObject<SlideElementPayload[]> = {
+    current: [],
+  },
   currentTitle: string = '', // Pass current title
   currentContent: string = '' // Pass current content
 ) => {
-  console.log('slideId', slideElementsRef.current);
+
   const updateTextboxElement = debounce((textbox: fabric.Textbox) => {
     const slideElementId = textbox.get('slideElementId');
     if (!slideElementId) return;
@@ -65,6 +67,25 @@ export const ToolbarHandlers = (
         }
       }
     }
+    const currentAnimation = textbox.get('entryAnimation');
+    // Lấy duration từ fabric object trước, nếu không có thì lấy từ slideElementsRef
+    let currentAnimationDuration = textbox.get('entryAnimationDuration');
+    if (
+      currentAnimationDuration === undefined ||
+      currentAnimationDuration === null
+    ) {
+      currentAnimationDuration = currentElement?.entryAnimationDuration || 1;
+      // Set lại vào fabric object để đồng bộ
+      textbox.set('entryAnimationDuration', currentAnimationDuration);
+    }
+
+    // Lấy delay từ fabric object trước, nếu không có thì lấy từ slideElementsRef
+    let currentAnimationDelay = textbox.get('entryAnimationDelay');
+    if (currentAnimationDelay === undefined || currentAnimationDelay === null) {
+      currentAnimationDelay = currentElement?.entryAnimationDelay || 0;
+      // Set lại vào fabric object để đồng bộ
+      textbox.set('entryAnimationDelay', currentAnimationDelay);
+    }
 
     const payload: SlideElementPayload = {
       positionX: (rawLeft / cw) * 100,
@@ -76,6 +97,9 @@ export const ToolbarHandlers = (
       slideElementType: 'TEXT',
       displayOrder: displayOrder,
       content: JSON.stringify(textboxJson),
+      entryAnimation: currentAnimation || null,
+      entryAnimationDuration: currentAnimationDuration,
+      entryAnimationDelay: currentAnimationDelay,
     };
     // console.log("Payload sent to API:", JSON.parse(payload.content));
     slidesApi
@@ -103,7 +127,6 @@ export const ToolbarHandlers = (
     const canvas = image.canvas;
     if (!canvas) return;
 
-
     const zoom = canvas.getZoom();
     const cw = canvas.getWidth()! / zoom;
     const ch = canvas.getHeight()! / zoom;
@@ -112,11 +135,29 @@ export const ToolbarHandlers = (
     const rawTop = image.top! / zoom;
     const w = image.getScaledWidth() / zoom;
     const h = image.getScaledHeight() / zoom;
-
     const currentElement = slideElementsRef.current.find(
       (el) => el.slideElementId === slideElementId
     );
     const displayOrder = currentElement?.displayOrder || 0;
+
+    // Lấy duration từ fabric object trước, nếu không có thì lấy từ slideElementsRef
+    let currentAnimationDuration = image.get('entryAnimationDuration');
+    if (
+      currentAnimationDuration === undefined ||
+      currentAnimationDuration === null
+    ) {
+      currentAnimationDuration = currentElement?.entryAnimationDuration || 1;
+      // Set lại vào fabric object để đồng bộ
+      image.set('entryAnimationDuration', currentAnimationDuration);
+    }
+
+    // Lấy delay từ fabric object trước, nếu không có thì lấy từ slideElementsRef
+    let currentAnimationDelay = image.get('entryAnimationDelay');
+    if (currentAnimationDelay === undefined || currentAnimationDelay === null) {
+      currentAnimationDelay = currentElement?.entryAnimationDelay || 0;
+      // Set lại vào fabric object để đồng bộ
+      image.set('entryAnimationDelay', currentAnimationDelay);
+    }
 
     const payload: SlideElementPayload = {
       positionX: (rawLeft / cw) * 100,
@@ -128,6 +169,8 @@ export const ToolbarHandlers = (
       slideElementType: 'IMAGE',
       sourceUrl: image.get('sourceUrl') || image.getSrc(),
       displayOrder: displayOrder,
+      entryAnimationDuration: currentAnimationDuration,
+      entryAnimationDelay: currentAnimationDelay,
     };
 
     slidesApi
@@ -137,7 +180,7 @@ export const ToolbarHandlers = (
   }, 500);
 
   const addTextbox = async () => {
-    let textbox: fabric.Textbox | null = null; 
+    let textbox: fabric.Textbox | null = null;
 
     try {
       canvas.set('isCreating', true);
@@ -190,7 +233,6 @@ export const ToolbarHandlers = (
 
       // Gọi API để thêm element
       const response = await slidesApi.addSlidesElement(slideId, payload);
-      console.log('API addSlidesElement thành công:', response.data);
 
       // Update textbox với ID từ server
       textbox.set('isNew', false);
@@ -245,17 +287,12 @@ export const ToolbarHandlers = (
 
   function onAddImage(e: Event) {
     const ev = e as CustomEvent<{ url: string; slideId?: string }>;
-    console.log('ev', ev.detail);
     if (ev.detail.slideId && ev.detail.slideId !== slideId) {
-      console.log(
-        `Bỏ qua fabric:add-image vì slideId không khớp: ${ev.detail.slideId} !== ${slideId}`
-      );
       return;
     }
     const { url } = ev.detail;
 
     if (canvas.get('isCreating')) {
-      console.log('Bỏ qua addImage vì đang tạo');
       return;
     }
     canvas.set('isCreating', true);
@@ -287,7 +324,6 @@ export const ToolbarHandlers = (
         slidesApi
           .addSlidesElement(slideId, payload)
           .then((res) => {
-            console.log('Tạo image element thành công:', res.data);
             img.set('slideElementId', res.data.data.slideElementId);
             img.set('isNew', false);
 
@@ -317,9 +353,6 @@ export const ToolbarHandlers = (
               });
             }
 
-            console.log('Data đã gửi:', {
-              slideElements: updatedSlideElements,
-            });
           })
           .catch((err) => {
             console.error('Lỗi khi tạo image element:', err);
@@ -407,7 +440,7 @@ export const ToolbarHandlers = (
 
     textbox.dirty = true;
     canvas.requestRenderAll();
-    updateTextboxElement(textbox);
+    //updateTextboxElement(textbox);
   }
 
   function removeStyleProperty(
@@ -442,7 +475,6 @@ export const ToolbarHandlers = (
   const changeColor = (e: CustomEvent<{ color?: string; gradient?: any }>) => {
     const active = canvas.getActiveObject();
     if (!active || active.type !== 'textbox') {
-      console.log('No active textbox, skipping color change');
       return;
     }
 
@@ -532,7 +564,6 @@ export const ToolbarHandlers = (
         startIdx < endIdx
       ) {
         const selectedText = tb.text!.slice(startIdx, endIdx);
-        console.log('Selected text:', selectedText);
 
         if (
           selectedText === selectedText.toUpperCase() &&
@@ -561,8 +592,6 @@ export const ToolbarHandlers = (
           fontSize?: number;
           fill?: string;
         }>;
-
-        console.log('Selection styles:', selStyles);
 
         boldActive = selStyles.every((s) => s.fontWeight === 'bold');
         italicActive = selStyles.every((s) => s.fontStyle === 'italic');
@@ -632,7 +661,6 @@ export const ToolbarHandlers = (
         })
       );
     } else {
-      console.log('No active textbox, emitting default state');
       window.dispatchEvent(
         new CustomEvent('toolbar:format-change', {
           detail: {
@@ -722,10 +750,8 @@ export const ToolbarHandlers = (
   };
 
   const handleFontSizeChange = (e: CustomEvent<{ size: number }>) => {
-    console.log('handleFontSizeChange triggered:', e.detail);
     const obj = canvas.getActiveObject();
     if (!obj || obj.type !== 'textbox') {
-      console.log('No active textbox, skipping font size change');
       return;
     }
 
@@ -1113,11 +1139,7 @@ export const ToolbarHandlers = (
 
   const debouncedAddTextbox = (e: CustomEvent<{ slideId?: string }>) => {
     const eventSlideId = e.detail.slideId;
-    console.log('eventSlideId: ', eventSlideId);
     if (eventSlideId && eventSlideId !== slideId) {
-      console.log(
-        `Bỏ qua fabric:add-textbox vì slideId không khớp: ${e.detail.slideId} !== ${slideId}`
-      );
       return;
     }
     isAddingTextbox = true;
@@ -1125,14 +1147,49 @@ export const ToolbarHandlers = (
     if (textboxAddTimeout) {
       clearTimeout(textboxAddTimeout);
     }
-
-    console.log('Sự kiện fabric:add-textbox được kích hoạt');
     addTextbox();
 
     textboxAddTimeout = setTimeout(() => {
       isAddingTextbox = false;
       textboxAddTimeout = null;
     }, 500);
+  };
+  // Thêm handler để cập nhật fabric object khi duration thay đổi từ animation toolbar
+  const handleFabricDurationUpdate = (
+    e: CustomEvent<{ slideId: string; objectId: string; duration: number }>
+  ) => {
+    if (e.detail.slideId !== slideId) return;
+
+    const { objectId, duration } = e.detail;
+
+    // Tìm fabric object và cập nhật duration
+    const objects = canvas.getObjects();
+    const targetObject = objects.find(
+      (obj) => obj.get('slideElementId') === objectId
+    );
+
+    if (targetObject) {
+      targetObject.set('entryAnimationDuration', duration);   
+    }
+  };
+
+  // Thêm handler để cập nhật fabric object khi delay thay đổi từ animation toolbar
+  const handleFabricDelayUpdate = (
+    e: CustomEvent<{ slideId: string; objectId: string; delay: number }>
+  ) => {
+    if (e.detail.slideId !== slideId) return;
+
+    const { objectId, delay } = e.detail;
+
+    // Tìm fabric object và cập nhật delay
+    const objects = canvas.getObjects();
+    const targetObject = objects.find(
+      (obj) => obj.get('slideElementId') === objectId
+    );
+
+    if (targetObject) {
+      targetObject.set('entryAnimationDelay', delay);
+    }
   };
 
   window.addEventListener(
@@ -1173,6 +1230,15 @@ export const ToolbarHandlers = (
   window.addEventListener(
     'fabric:text-transform',
     handleTextTransform as EventListener
+  ); // Thêm event listener cho duration update
+  window.addEventListener(
+    'fabric:update-duration',
+    handleFabricDurationUpdate as EventListener
+  );
+  // Thêm event listener cho delay update
+  window.addEventListener(
+    'fabric:update-delay',
+    handleFabricDelayUpdate as EventListener
   );
 
   return () => {
@@ -1222,6 +1288,14 @@ export const ToolbarHandlers = (
     window.removeEventListener(
       'fabric:text-transform',
       handleTextTransform as EventListener
+    );
+    window.removeEventListener(
+      'fabric:update-duration',
+      handleFabricDurationUpdate as EventListener
+    );
+    window.removeEventListener(
+      'fabric:update-delay',
+      handleFabricDelayUpdate as EventListener
     );
   };
 };

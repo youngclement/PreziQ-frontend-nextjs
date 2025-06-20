@@ -107,7 +107,7 @@ const TextEditorToolbar = React.memo(({ slideId }: { slideId: string }) => {
 
   useEffect(() => {
     const handler = (e: CustomEvent<any>) => {
-      // console.log('got format:', e.detail);
+
       setFormatting((prev) => ({
         ...prev,
         ...e.detail,
@@ -173,7 +173,7 @@ const TextEditorToolbar = React.memo(({ slideId }: { slideId: string }) => {
 
   const handleFontSizeChange = (value: string) => {
     const size = parseInt(value);
-    console.log('handleFontSizeChange called:', { value, size });
+
     if (!isNaN(size) && size >= 8 && size <= 72) {
       setSelectedSize(value);
       window.dispatchEvent(

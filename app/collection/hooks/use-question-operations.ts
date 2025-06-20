@@ -46,10 +46,6 @@ export function useQuestionOperations(
         return Math.max(max, orderIndex);
       }, -1);
 
-      console.log(
-        "Adding new activity with orderIndex:",
-        highestOrderIndex + 1
-      );
       // Create a new activity in the collection with next orderIndex
       const payload = {
         collectionId: collectionId,
@@ -63,7 +59,6 @@ export function useQuestionOperations(
       const response = await activitiesApi.createActivity(payload);
 
       if (response && response.data && response.data.data) {
-        console.log("Created activity:", response.data);
 
         // Get the new activity data
         const newActivityData = response.data.data;
@@ -125,8 +120,6 @@ export function useQuestionOperations(
           ],
         });
 
-        console.log("New question added successfully");
-
         // Remove the call to refreshCollectionData to prevent page reload
         // This is not needed since we've already updated our local state
       }
@@ -140,9 +133,6 @@ export function useQuestionOperations(
    */
   const handleDeleteQuestion = async (index: number) => {
     if (!activity || questions.length <= 1) {
-      console.log(
-        "Cannot delete question: Activities must have at least one question"
-      );
       return;
     }
 
@@ -170,8 +160,6 @@ export function useQuestionOperations(
         setActiveQuestionIndex(index - 1);
       }
 
-      console.log("Question deleted successfully");
-
       // Use immediate async function to ensure state updates before refresh
       (async () => {
         // Wait a short moment for state updates to propagate
@@ -193,6 +181,31 @@ export function useQuestionOperations(
 
     const existingQuestion = questions[questionIndex];
 
+
+    // Skip update if it's the same data (prevents updates when just scrolling)
+    const isSameData =
+      JSON.stringify(existingLocationData) === JSON.stringify(locationData);
+    if (isSameData) {
+      return;
+    }
+
+    // Prepare API payload format for location answers
+    const locationAnswers = Array.isArray(locationData)
+      ? locationData.map((location) => ({
+          longitude: location.longitude,
+          latitude: location.latitude,
+          radius: location.radius || 10,
+        }))
+      : [
+          {
+            longitude: locationData.lng || locationData.longitude || 0,
+            latitude: locationData.lat || locationData.latitude || 0,
+            radius: locationData.radius || 10,
+          },
+        ];
+
+    // Update the UI immediately with the new location data
+
     const updatedQuestions = [...questions];
     updatedQuestions[questionIndex] = {
       ...updatedQuestions[questionIndex],
@@ -212,6 +225,7 @@ export function useQuestionOperations(
     const questionActivityId = existingQuestion.activity_id || activity?.id;
 
     if (questionActivityId) {
+
       if (typeof window !== "undefined") {
         if (window.updateQuestionTimer) {
           clearTimeout(window.updateQuestionTimer);
@@ -263,8 +277,6 @@ export function useQuestionOperations(
       // Update local state
       setActivities(activities.filter((a) => a.id !== activityId));
 
-      console.log("Activity deleted successfully");
-
       // Refresh collection data
       refreshCollectionData();
     } catch (error) {
@@ -305,9 +317,6 @@ export function useQuestionOperations(
 
     try {
       // Update the activity type in the API
-      console.log(
-        `Updating activity type for ${targetActivity.id} to ${activityType}`
-      );
 
       // Chỉ gọi API update activity type nếu không phải matching pair
       if (value !== "matching_pair") {
@@ -520,7 +529,6 @@ export function useQuestionOperations(
 
       setQuestions(updatedQuestions);
 
-      console.log("Question type updated successfully");
     } catch (error) {
       console.error("Error updating question type:", error);
     }
@@ -531,7 +539,8 @@ export function useQuestionOperations(
    */
   const handleQuestionTextChange = async (
     value: string,
-    questionIndex: number
+    questionIndex: number,
+    isTyping: boolean = false
   ) => {
     if (!activity) return;
 
@@ -540,7 +549,6 @@ export function useQuestionOperations(
 
     // Make sure we're updating the right activity
     if (targetActivityId !== activity.id) {
-      console.log("Warning: Activity ID mismatch detected - fixing reference");
       // Find the correct activity from the activities array
       const correctActivity = activities.find((a) => a.id === targetActivityId);
       if (!correctActivity) {
@@ -562,68 +570,70 @@ export function useQuestionOperations(
     // If not the active index, don't update API
     if (questionIndex !== activeQuestionIndex) return;
 
+    if (isTyping) return;
+
     try {
       const activityType = activity.activity_type_id;
       const activeQuestion = updatedQuestions[activeQuestionIndex];
 
       switch (activityType) {
-        case "QUIZ_BUTTONS":
+        case 'QUIZ_BUTTONS':
           await activitiesApi.updateButtonsQuiz(activity.id, {
-            type: "CHOICE",
+            type: 'CHOICE',
             questionText: value,
             timeLimitSeconds: timeLimit,
-            pointType: "STANDARD",
+            pointType: 'STANDARD',
             answers: activeQuestion.options.map((opt) => ({
               answerText: opt.option_text,
               isCorrect: opt.is_correct,
-              explanation: opt.explanation || "",
+              explanation: opt.explanation || '',
             })),
           });
           break;
 
-        case "QUIZ_CHECKBOXES":
+        case 'QUIZ_CHECKBOXES':
           await activitiesApi.updateCheckboxesQuiz(activity.id, {
-            type: "CHOICE",
+            type: 'CHOICE',
             questionText: value,
             timeLimitSeconds: timeLimit,
-            pointType: "STANDARD",
+            pointType: 'STANDARD',
             answers: activeQuestion.options.map((opt) => ({
               answerText: opt.option_text,
               isCorrect: opt.is_correct,
-              explanation: opt.explanation || "",
+              explanation: opt.explanation || '',
             })),
           });
           break;
 
-        case "QUIZ_TRUE_OR_FALSE":
+        case 'QUIZ_TRUE_OR_FALSE':
           const correctOption = activeQuestion.options.find(
             (opt) => opt.is_correct
           );
           await activitiesApi.updateTrueFalseQuiz(activity.id, {
-            type: "TRUE_FALSE",
+            type: 'TRUE_FALSE',
             questionText: value,
             timeLimitSeconds: timeLimit,
-            pointType: "STANDARD",
-            correctAnswer: correctOption?.option_text.toLowerCase() === "true",
+            pointType: 'STANDARD',
+            correctAnswer: correctOption?.option_text.toLowerCase() === 'true',
           });
           break;
 
-        case "QUIZ_TYPE_ANSWER":
+        case 'QUIZ_TYPE_ANSWER':
           await activitiesApi.updateTypeAnswerQuiz(activity.id, {
-            type: "TYPE_ANSWER",
+            type: 'TYPE_ANSWER',
             questionText: value,
             timeLimitSeconds: timeLimit,
-            pointType: "STANDARD",
-            correctAnswer: activeQuestion.correct_answer_text || "Answer",
+            pointType: 'STANDARD',
+            correctAnswer: activeQuestion.correct_answer_text || 'Answer',
           });
           break;
 
-        case "QUIZ_REORDER":
+        case 'QUIZ_REORDER':
           await activitiesApi.updateReorderQuiz(activity.id, {
-            type: "REORDER",
+            type: 'REORDER',
             questionText: value,
             timeLimitSeconds: timeLimit,
-            pointType: "STANDARD",
+            pointType: 'STANDARD',
             correctOrder: activeQuestion.options.map((opt) => opt.option_text),
           });
           break;
@@ -724,9 +734,6 @@ export function useQuestionOperations(
             default:
               // For other activity types like slides, we can't set time directly in the API
               // So just update the local state and log a message
-              console.log(
-                `Time limit set to ${value}s for activity type ${activityType}, but API doesn't support direct time updates`
-              );
               break;
           }
         } catch (error) {
@@ -748,11 +755,6 @@ export function useQuestionOperations(
         return Math.max(max, orderIndex);
       }, -1);
 
-      console.log(
-        "Adding new location activity with orderIndex:",
-        highestOrderIndex + 1
-      );
-
       // Create a new location activity in the collection
       const payload = {
         collectionId: collectionId,
@@ -770,7 +772,6 @@ export function useQuestionOperations(
       );
 
       if (response && response.data && response.data.data) {
-        console.log("Created location activity:", response.data);
 
         // Get the new activity data
         const newActivityData = response.data.data;
@@ -839,10 +840,6 @@ export function useQuestionOperations(
           ],
         });
 
-        console.log(
-          "New location question added successfully with pointType:",
-          pointType
-        );
       }
     } catch (error) {
       console.error("Error adding location question:", error);
