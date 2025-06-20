@@ -955,6 +955,56 @@ export function useQuestionOperations(
     }
   };
 
+  const handleMatchingPairChange = async (
+    questionIndex: number,
+    newMatchingData: {
+      leftColumnName?: string;
+      rightColumnName?: string;
+      items?: any[];
+      connections?: any[];
+    }
+  ) => {
+    const question = questions[questionIndex];
+    const activityId = question.activity_id;
+    if (!activityId) return;
+
+    // Gọi API để cập nhật matching pair
+    try {
+      const response = await activitiesApi.updateMatchingPairQuiz(activityId, {
+        type: 'MATCHING_PAIRS',
+        questionText: question.question_text || 'Matching pair question',
+        timeLimitSeconds: question.time_limit_seconds || 30,
+        pointType: 'STANDARD',
+        leftColumnName:
+          newMatchingData.leftColumnName ||
+          question.matching_data?.leftColumnName ||
+          'Left Column',
+        rightColumnName:
+          newMatchingData.rightColumnName ||
+          question.matching_data?.rightColumnName ||
+          'Right Column',
+      });
+
+      // Lấy dữ liệu mới từ API (nếu có)
+      const updatedMatchingData = response?.data?.quizMatchingPairAnswer
+        ? response.data.quizMatchingPairAnswer
+        : {
+            ...question.matching_data,
+            ...newMatchingData,
+          };
+
+      // Cập nhật lại state
+      const updatedQuestions = [...questions];
+      updatedQuestions[questionIndex] = {
+        ...updatedQuestions[questionIndex],
+        matching_data: updatedMatchingData,
+      };
+      setQuestions(updatedQuestions);
+    } catch (error) {
+      console.error('Error updating matching pair:', error);
+    }
+  };
+
   return {
     timeLimit,
     setTimeLimit,
@@ -966,5 +1016,6 @@ export function useQuestionOperations(
     handleQuestionTextChange,
     handleTimeLimitChange,
     handleAddLocationQuestion,
+    handleMatchingPairChange,
   };
 }
