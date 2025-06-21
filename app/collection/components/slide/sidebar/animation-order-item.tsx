@@ -96,7 +96,8 @@ export const AnimationOrderItem = ({
         title={`Animation: ${item.entryAnimation || 'None'}`}
       >
         <div className="font-medium">
-          {item.entryAnimation || 'No Animation'}
+          {item.entryAnimation != 'none' && item.entryAnimation
+            ? item?.entryAnimation :'No Animation'}
         </div>
         {item.entryAnimation && item.entryAnimation !== 'none' && (
           <div className="flex gap-1.5">

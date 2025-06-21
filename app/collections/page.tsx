@@ -506,13 +506,13 @@ export default function PublishedCollectionsPage() {
                           onView={() =>
                             handleViewActivities(collection.collectionId)
                           }
-                          onEdit={() =>
-                            handleEditCollection(collection.collectionId)
-                          }
+                          // onEdit={() =>
+                          //   handleEditCollection(collection.collectionId)
+                          // }
                           onViewCollection={() =>
                             handleViewCollection(collection.collectionId)
                           }
-                          onDelete={handleDeleteCollection}
+                          // onDelete={handleDeleteCollection}
                         />
                       ))}
                     </div>
@@ -528,13 +528,13 @@ export default function PublishedCollectionsPage() {
                           onView={() =>
                             handleViewActivities(collection.collectionId)
                           }
-                          onEdit={() =>
-                            handleEditCollection(collection.collectionId)
-                          }
+                          // onEdit={() =>
+                          //   handleEditCollection(collection.collectionId)
+                          // }
                           onViewCollection={() =>
                             handleViewCollection(collection.collectionId)
                           }
-                          onDelete={handleDeleteCollection}
+                          // onDelete={handleDeleteCollection}
                         />
                       ))}
                     </div>

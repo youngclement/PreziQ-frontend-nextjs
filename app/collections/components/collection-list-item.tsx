@@ -99,7 +99,6 @@ export function CollectionListItem({
     }
   };
 
-  console.log('activities: ', collection);
 
   return (
     <div
@@ -110,9 +109,10 @@ export function CollectionListItem({
         <div
           className="sm:w-64 h-40 sm:h-auto bg-cover bg-center relative"
           style={{
-            backgroundImage: `url(${collection.coverImage ||
+            backgroundImage: `url(${
+              collection.coverImage ||
               'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=400&h=250&auto=format&fit=crop'
-              })`,
+            })`,
           }}
         >
           {/* Topic Badge */}
@@ -142,10 +142,7 @@ export function CollectionListItem({
               <div className="flex items-center gap-1">
                 <BookOpen className="h-3.5 w-3.5" />
                 <span>
-                  {collection._activityCount !== undefined
-                    ? collection._activityCount
-                    : activities?.length || 0}{' '}
-                  activities
+                  {collection?.activities?.length || activities?.length || 0} activities
                 </span>
               </div>
               <div className="flex items-center">
@@ -167,15 +164,6 @@ export function CollectionListItem({
               HOST
             </PlayButton>
 
-            {onViewCollection && (
-              <ViewButton
-                onClick={handleViewCollection}
-                className="flex-1 min-w-0 sm:flex-none sm:w-auto px-3 max-w-[calc(50%-0.25rem)] sm:max-w-none"
-              >
-                VIEW
-              </ViewButton>
-            )}
-
             {onEdit && (
               <EditButton
                 onClick={handleEdit}
@@ -190,15 +178,27 @@ export function CollectionListItem({
                 onClick={handleDelete}
                 className="flex-1 min-w-0 sm:flex-none sm:w-auto px-3 max-w-[calc(50%-0.25rem)] sm:max-w-none"
               >
-                XOÁ
+                DELETE
               </DeleteButton>
+            )}
+
+            {onViewCollection && (
+              <ViewButton
+                onClick={handleViewCollection}
+                className="flex-1 min-w-0 sm:flex-none sm:w-auto px-3 max-w-[calc(50%-0.25rem)] sm:max-w-none"
+              >
+                VIEW
+              </ViewButton>
             )}
           </div>
 
           {/* Publish toggle */}
           {showPublishToggle && onTogglePublish && (
-            <div className='flex items-center gap-2 mt-2' onClick={(e) => e.stopPropagation()}>
-              <span className='text-sm text-gray-600 dark:text-gray-400'>
+            <div
+              className="flex items-center gap-2 mt-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="text-sm text-gray-600 dark:text-gray-400">
                 {collection.isPublished ? 'Đã xuất bản' : 'Chưa xuất bản'}
               </span>
               <Switch
