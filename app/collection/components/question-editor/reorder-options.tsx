@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, GripVertical, Trash2, MoveVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSortable } from '@dnd-kit/sortable';
 
 interface Option {
   id?: string;
