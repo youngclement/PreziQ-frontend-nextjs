@@ -220,7 +220,7 @@ export function QuizMatchingPairViewer({
       <div className='absolute inset-0 bg-gradient-to-br from-blue-50/90 via-white/95 to-purple-50/90 dark:from-gray-900/95 dark:via-gray-800/95 dark:to-gray-900/95'></div>
 
       {/* Header with title */}
-      <div className='relative z-10 p-4 md:p-6'>
+      {/* <div className='relative z-10 p-4 md:p-6'>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -235,7 +235,7 @@ export function QuizMatchingPairViewer({
             </p>
           )}
         </motion.div>
-      </div>
+      </div> */}
 
       <div className='flex-grow p-4 md:p-6 flex items-center justify-center relative z-10'>
         <div
