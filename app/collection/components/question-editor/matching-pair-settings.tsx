@@ -168,7 +168,7 @@ function SortableItem({
       {/* Item Input */}
       <div className="flex-1 space-y-1">
         <Label className="text-xs text-gray-500 dark:text-gray-400">
-          {columnName} {index + 1}
+          {columnName}
         </Label>
         <Input
           id={`${side}-item-${index}`}
@@ -574,25 +574,19 @@ export function MatchingPairSettings({
   );
 
   const handleAddPair = useCallback(async () => {
-    if (!activityId) {
-      toast({
-        title: 'Error',
-        description: 'Activity ID is missing. Please save the question first.',
-        variant: 'destructive',
-      });
-      return;
-    }
     setIsUpdating(true);
     try {
-      await activitiesApi.addMatchingPair(activityId);
-
-      // Refresh data từ server
-      if (onRefreshActivity) {
-        await onRefreshActivity();
+      const response = await activitiesApi.addMatchingPair(activityId);
+      // Nếu API trả về matchingData mới, cập nhật luôn vào local state
+      if (response?.data?.quizMatchingPairAnswer) {
+        if (onMatchingDataUpdate) {
+          onMatchingDataUpdate(response.data.quizMatchingPairAnswer);
+        }
       } else {
-        onAddPair();
+        // Nếu không, có thể tự thêm cặp rỗng vào local state (optimistic)
+        // hoặc gọi lại onRefreshActivity như fallback
+        if (onRefreshActivity) await onRefreshActivity();
       }
-
       toast({
         title: 'Success',
         description: 'New pair added successfully',
@@ -607,7 +601,7 @@ export function MatchingPairSettings({
     } finally {
       setIsUpdating(false);
     }
-  }, [activityId, onRefreshActivity, onAddPair]);
+  }, [activityId, onMatchingDataUpdate, onRefreshActivity]);
 
   const handleDeleteItem = useCallback(
     async (itemId: string, side: 'left' | 'right') => {
@@ -729,105 +723,111 @@ export function MatchingPairSettings({
       </div>
 
       {/* Display all items in a grid layout */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="grid grid-cols-2 gap-6">
-          <SortableContext
-            items={leftItems.map(
-              (item) => `left-${item.quizMatchingPairItemId}`
-            )}
-            strategy={verticalListSortingStrategy}
-          >
-            {/* Left Column Items */}
-            <div className="space-y-3">
-              <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
-                {leftColumnTitle} Items
-              </h3>
-              <div className="space-y-2">
-                {leftItems.map((item, index) => (
-                  <SortableItem
-                    key={`left-${item.quizMatchingPairItemId}`}
-                    item={item}
-                    index={index}
-                    onOptionChange={handleInputChange}
-                    onDelete={() =>
-                      handleDeleteItem(
-                        item.quizMatchingPairItemId || '',
-                        'left'
-                      )
-                    }
-                    columnName={leftColumnTitle}
-                    isUpdating={isUpdating}
-                    side="left"
-                    isSelected={selectedLeft === item.quizMatchingPairItemId}
-                    onSelect={() =>
-                      handleSelectItem(
-                        'left',
-                        item.quizMatchingPairItemId || ''
-                      )
-                    }
-                    isConnected={connectedLeftIds.has(
-                      item.quizMatchingPairItemId
-                    )}
-                    connectionColor={
-                      itemIdToColor[item.quizMatchingPairItemId || '']
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-          </SortableContext>
-          <SortableContext
-            items={rightItems.map(
-              (item) => `right-${item.quizMatchingPairItemId}`
-            )}
-            strategy={verticalListSortingStrategy}
-          >
-            {/* Right Column Items */}
-            <div className="space-y-3">
-              <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
-                {rightColumnTitle} Items
-              </h3>
-              <div className="space-y-2">
-                {rightItems.map((item, index) => (
-                  <SortableItem
-                    key={`right-${item.quizMatchingPairItemId}`}
-                    item={item}
-                    index={index}
-                    onOptionChange={handleInputChange}
-                    onDelete={() =>
-                      handleDeleteItem(
-                        item.quizMatchingPairItemId || '',
-                        'right'
-                      )
-                    }
-                    columnName={rightColumnTitle}
-                    isUpdating={isUpdating}
-                    side="right"
-                    isSelected={selectedRight === item.quizMatchingPairItemId}
-                    onSelect={() =>
-                      handleSelectItem(
-                        'right',
-                        item.quizMatchingPairItemId || ''
-                      )
-                    }
-                    isConnected={connectedRightIds.has(
-                      item.quizMatchingPairItemId
-                    )}
-                    connectionColor={
-                      itemIdToColor[item.quizMatchingPairItemId || '']
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-          </SortableContext>
+      {isUpdating ? (
+        <div className="flex justify-center items-center py-8">
+          <span>Loading...</span>
         </div>
-      </DndContext>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="grid grid-cols-2 gap-6">
+            <SortableContext
+              items={leftItems.map(
+                (item) => `left-${item.quizMatchingPairItemId}`
+              )}
+              strategy={verticalListSortingStrategy}
+            >
+              {/* Left Column Items */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
+                  {leftColumnTitle}
+                </h3>
+                <div className="space-y-2">
+                  {leftItems.map((item, index) => (
+                    <SortableItem
+                      key={`left-${item.quizMatchingPairItemId}`}
+                      item={item}
+                      index={index}
+                      onOptionChange={handleInputChange}
+                      onDelete={() =>
+                        handleDeleteItem(
+                          item.quizMatchingPairItemId || '',
+                          'left'
+                        )
+                      }
+                      columnName={leftColumnTitle}
+                      isUpdating={isUpdating}
+                      side="left"
+                      isSelected={selectedLeft === item.quizMatchingPairItemId}
+                      onSelect={() =>
+                        handleSelectItem(
+                          'left',
+                          item.quizMatchingPairItemId || ''
+                        )
+                      }
+                      isConnected={connectedLeftIds.has(
+                        item.quizMatchingPairItemId
+                      )}
+                      connectionColor={
+                        itemIdToColor[item.quizMatchingPairItemId || '']
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            </SortableContext>
+            <SortableContext
+              items={rightItems.map(
+                (item) => `right-${item.quizMatchingPairItemId}`
+              )}
+              strategy={verticalListSortingStrategy}
+            >
+              {/* Right Column Items */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
+                  {rightColumnTitle}
+                </h3>
+                <div className="space-y-2">
+                  {rightItems.map((item, index) => (
+                    <SortableItem
+                      key={`right-${item.quizMatchingPairItemId}`}
+                      item={item}
+                      index={index}
+                      onOptionChange={handleInputChange}
+                      onDelete={() =>
+                        handleDeleteItem(
+                          item.quizMatchingPairItemId || '',
+                          'right'
+                        )
+                      }
+                      columnName={rightColumnTitle}
+                      isUpdating={isUpdating}
+                      side="right"
+                      isSelected={selectedRight === item.quizMatchingPairItemId}
+                      onSelect={() =>
+                        handleSelectItem(
+                          'right',
+                          item.quizMatchingPairItemId || ''
+                        )
+                      }
+                      isConnected={connectedRightIds.has(
+                        item.quizMatchingPairItemId
+                      )}
+                      connectionColor={
+                        itemIdToColor[item.quizMatchingPairItemId || '']
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            </SortableContext>
+          </div>
+        </DndContext>
+      )}
 
       <div className="mt-4">
         <Button
