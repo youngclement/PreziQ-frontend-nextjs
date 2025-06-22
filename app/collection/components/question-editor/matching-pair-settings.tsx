@@ -173,12 +173,13 @@ function SortableItem({
         <Input
           id={`${side}-item-${index}`}
           placeholder={`Enter ${columnName.toLowerCase()}`}
-          value={inputValue} // ✅ Controlled input với local state
+          value={inputValue}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           className="w-full"
           disabled={isUpdating}
+          onClick={(e) => e.stopPropagation()}
         />
       </div>
 
@@ -223,10 +224,23 @@ export function MatchingPairSettings({
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
   const [selectedRight, setSelectedRight] = useState<string | null>(null);
 
-  // Đơn giản hóa: chỉ sử dụng một nguồn dữ liệu duy nhất
-  const matchingData = useMemo(() => {
-    return question.quizMatchingPairAnswer || question.matching_data;
-  }, [question.quizMatchingPairAnswer, question.matching_data]);
+  // 1. Sử dụng state local cho matchingData
+  const [matchingData, setMatchingData] =
+    useState<QuizMatchingPairAnswer | null>(
+      question.quizMatchingPairAnswer || question.matching_data || null
+    );
+
+  // Khi activityId hoặc settingsUpdateTrigger thay đổi, sync lại từ props
+  useEffect(() => {
+    setMatchingData(
+      question.quizMatchingPairAnswer || question.matching_data || null
+    );
+  }, [
+    question.quizMatchingPairAnswer,
+    question.matching_data,
+    activityId,
+    settingsUpdateTrigger,
+  ]);
 
   // State cho column names với local state
   const [leftColumnTitle, setLeftColumnTitle] = useState(
@@ -459,9 +473,9 @@ export function MatchingPairSettings({
           if (!item.quizMatchingPairItemId) return;
           await activitiesApi.updateReorderQuizItem(
             activityId,
-            item.quizMatchingPairItemId,
+            item.quizMatchingPairItemId!,
             {
-              quizMatchingPairItemId: item.quizMatchingPairItemId,
+              quizMatchingPairItemId: item.quizMatchingPairItemId!,
               content: item.content || '',
               isLeftColumn: !activeIsLeft, // chuyển cột
               displayOrder: (toIndex !== -1 ? toIndex : toItems.length) + 1,
@@ -493,49 +507,40 @@ export function MatchingPairSettings({
     endIndex: number
   ) => {
     if (!matchingData?.items) return;
+    const items =
+      side === 'left'
+        ? matchingData.items.filter((item) => item.isLeftColumn)
+        : matchingData.items.filter((item) => !item.isLeftColumn);
+    const reorderedItems = arrayMove(items, startIndex, endIndex);
 
-    setIsUpdating(true);
-    try {
-      const items = side === 'left' ? leftItems : rightItems;
-      const reorderedItems = arrayMove(items, startIndex, endIndex);
-
-      // Update API for each item in the reordered column
-      for (let i = 0; i < reorderedItems.length; i++) {
-        const item = reorderedItems[i];
-        if (item.quizMatchingPairItemId) {
-          if (!item.quizMatchingPairItemId) return;
-          await activitiesApi.updateReorderQuizItem(
-            activityId,
-            item.quizMatchingPairItemId,
-            {
-              quizMatchingPairItemId: item.quizMatchingPairItemId,
-              content: item.content || '',
-              isLeftColumn: item.isLeftColumn,
-              displayOrder: i + 1,
-            }
-          );
+    for (let i = 0; i < reorderedItems.length; i++) {
+      const item = reorderedItems[i];
+      await activitiesApi.updateReorderQuizItem(
+        activityId,
+        item.quizMatchingPairItemId!,
+        {
+          quizMatchingPairItemId: item.quizMatchingPairItemId!,
+          content: item.content || '',
+          isLeftColumn: item.isLeftColumn,
+          displayOrder: i + 1,
         }
-      }
-
-      // Refresh data từ server
-      if (onRefreshActivity) {
-        await onRefreshActivity();
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Items reordered successfully',
-      });
-    } catch (error) {
-      console.error('Error reordering items:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to reorder items',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUpdating(false);
+      );
     }
+    // Cập nhật local state
+    setMatchingData((prev) => {
+      if (!prev) return prev;
+      const newItems = prev.items.map((item) => {
+        const idx = reorderedItems.findIndex(
+          (i) => i.quizMatchingPairItemId === item.quizMatchingPairItemId
+        );
+        if (idx !== -1) {
+          return { ...item, displayOrder: idx + 1 };
+        }
+        return item;
+      });
+      // Giữ nguyên connections!
+      return { ...prev, items: newItems, connections: prev.connections };
+    });
   };
 
   const handleInputChange = useCallback(
@@ -550,9 +555,9 @@ export function MatchingPairSettings({
         try {
           await activitiesApi.updateReorderQuizItem(
             activityId,
-            item.quizMatchingPairItemId,
+            item.quizMatchingPairItemId!,
             {
-              quizMatchingPairItemId: item.quizMatchingPairItemId,
+              quizMatchingPairItemId: item.quizMatchingPairItemId!,
               content: value,
               isLeftColumn: item.isLeftColumn,
               displayOrder: item.displayOrder || 0,
@@ -574,62 +579,58 @@ export function MatchingPairSettings({
   );
 
   const handleAddPair = useCallback(async () => {
-    setIsUpdating(true);
     try {
       const response = await activitiesApi.addMatchingPair(activityId);
-      // Nếu API trả về matchingData mới, cập nhật luôn vào local state
       if (response?.data?.quizMatchingPairAnswer) {
+        setMatchingData(response.data.quizMatchingPairAnswer);
         if (onMatchingDataUpdate) {
           onMatchingDataUpdate(response.data.quizMatchingPairAnswer);
         }
-      } else {
-        // Nếu không, có thể tự thêm cặp rỗng vào local state (optimistic)
-        // hoặc gọi lại onRefreshActivity như fallback
-        if (onRefreshActivity) await onRefreshActivity();
       }
       toast({
         title: 'Success',
         description: 'New pair added successfully',
       });
     } catch (error) {
-      console.error('Error adding pair:', error);
       toast({
         title: 'Error',
         description: 'Failed to add new pair',
         variant: 'destructive',
       });
-    } finally {
-      setIsUpdating(false);
     }
-  }, [activityId, onMatchingDataUpdate, onRefreshActivity]);
+  }, [activityId, onMatchingDataUpdate]);
 
   const handleDeleteItem = useCallback(
     async (itemId: string, side: 'left' | 'right') => {
-      setIsUpdating(true);
       try {
         await activitiesApi.deleteMatchingPairItem(activityId, itemId);
-
-        // Refresh data từ server
-        if (onRefreshActivity) {
-          await onRefreshActivity();
-        }
-
+        setMatchingData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            items: prev.items.filter(
+              (item) => item.quizMatchingPairItemId !== itemId
+            ),
+            connections: (prev?.connections ?? []).filter(
+              (conn) =>
+                conn.leftItem.quizMatchingPairItemId !== itemId &&
+                conn.rightItem.quizMatchingPairItemId !== itemId
+            ),
+          };
+        });
         toast({
           title: 'Success',
           description: 'Item deleted successfully',
         });
       } catch (error) {
-        console.error('Error deleting item:', error);
         toast({
           title: 'Error',
           description: 'Failed to delete item',
           variant: 'destructive',
         });
-      } finally {
-        setIsUpdating(false);
       }
     },
-    [activityId, onRefreshActivity]
+    [activityId]
   );
 
   const handleSelectItem = (side: 'left' | 'right', itemId: string) => {
@@ -637,6 +638,43 @@ export function MatchingPairSettings({
       setSelectedLeft(itemId === selectedLeft ? null : itemId);
     } else {
       setSelectedRight(itemId === selectedRight ? null : itemId);
+    }
+  };
+
+  const handleConnect = async (leftId: string, rightId: string) => {
+    try {
+      const response = await activitiesApi.addMatchingPairConnection(
+        activityId,
+        {
+          leftItemId: leftId,
+          rightItemId: rightId,
+        }
+      );
+      // Nếu API trả về connection mới:
+      const newConnection = response?.data?.connection;
+      setMatchingData((prev) => ({
+        ...prev!,
+        connections: [...(prev?.connections ?? []), newConnection],
+      }));
+    } catch (error) {
+      // handle error
+    }
+  };
+
+  const handleDisconnect = async (connectionId: string) => {
+    try {
+      await activitiesApi.deleteMatchingPairConnection(
+        activityId,
+        connectionId
+      );
+      setMatchingData((prev) => ({
+        ...prev!,
+        connections: (prev?.connections ?? []).filter(
+          (conn) => conn.quizMatchingPairConnectionId !== connectionId
+        ),
+      }));
+    } catch (error) {
+      // handle error
     }
   };
 
@@ -666,23 +704,40 @@ export function MatchingPairSettings({
                 activityId,
                 existingConnection.quizMatchingPairConnectionId
               );
+              // Cập nhật local state ngay lập tức
+              setMatchingData((prev) => ({
+                ...prev!,
+                connections: (prev?.connections ?? []).filter(
+                  (conn) =>
+                    conn.quizMatchingPairConnectionId !==
+                    existingConnection.quizMatchingPairConnectionId
+                ),
+              }));
               toast({
                 title: 'Success',
                 description: 'Connection removed successfully',
               });
             }
-            setSelectedLeft(null);
-            setSelectedRight(null);
-            if (onRefreshActivity) await onRefreshActivity();
           } else if (
             leftItemObj?.quizMatchingPairItemId &&
             rightItemObj?.quizMatchingPairItemId
           ) {
             // Nếu chưa có connection, tạo mới
-            await activitiesApi.addMatchingPairConnection(activityId, {
-              leftItemId: leftItemObj.quizMatchingPairItemId,
-              rightItemId: rightItemObj.quizMatchingPairItemId,
-            });
+            const response = await activitiesApi.addMatchingPairConnection(
+              activityId,
+              {
+                leftItemId: leftItemObj.quizMatchingPairItemId,
+                rightItemId: rightItemObj.quizMatchingPairItemId,
+              }
+            );
+            // Lấy connection mới từ response (giả sử response.data.connection)
+            const newConnection = response?.data?.connection;
+            if (newConnection) {
+              setMatchingData((prev) => ({
+                ...prev!,
+                connections: [...(prev?.connections ?? []), newConnection],
+              }));
+            }
             toast({
               title: 'Success',
               description: 'Connection created successfully',
@@ -690,7 +745,6 @@ export function MatchingPairSettings({
           }
           setSelectedLeft(null);
           setSelectedRight(null);
-          if (onRefreshActivity) await onRefreshActivity();
         } catch (error) {
           toast({
             title: 'Error',
@@ -858,14 +912,9 @@ export function MatchingPairSettings({
       )}
 
       <div className="mt-4">
-        <Button
-          onClick={handleAddPair}
-          variant="outline"
-          className="w-full"
-          disabled={isUpdating}
-        >
+        <Button onClick={handleAddPair} variant="outline" className="w-full">
           <Plus className="h-4 w-4 mr-2" />
-          {isUpdating ? 'Adding...' : 'Add Pair'}
+          Add Pair
         </Button>
       </div>
     </div>

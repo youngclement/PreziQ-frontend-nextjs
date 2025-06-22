@@ -19,7 +19,9 @@ import type {
   QuizMatchingPairAnswer,
   QuizMatchingPairItem,
   QuizMatchingPairConnection,
+  ConnectionItemPayload,
 } from '@/api-client/activities-api';
+import { activitiesApi } from '@/api-client';
 
 // Shuffle function for randomizing items in preview mode
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -43,6 +45,7 @@ const PAIR_COLORS = [
 
 interface MatchingPairPreviewProps {
   question: QuizQuestion;
+  activityId: string;
   questionIndex: number;
   isActive: boolean;
   viewMode: 'desktop' | 'tablet' | 'mobile';
@@ -66,10 +69,12 @@ interface MatchingPairPreviewProps {
   rightColumnName?: string;
   previewMode?: boolean;
   settingsUpdateTrigger?: number;
+  onDeleteConnection?: (payload: ConnectionItemPayload) => void;
 }
 
 export function MatchingPairPreview({
   question,
+  activityId,
   questionIndex = 0,
   isActive = true,
   viewMode = 'desktop',
@@ -88,6 +93,7 @@ export function MatchingPairPreview({
   rightColumnName = 'Column B',
   previewMode = true,
   settingsUpdateTrigger = 0,
+  onDeleteConnection,
 }: MatchingPairPreviewProps) {
   const { t } = useTranslation();
   const [connections, setConnections] = useState<QuizMatchingPairConnection[]>(
@@ -101,6 +107,15 @@ export function MatchingPairPreview({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [dataVersion, setDataVersion] = useState(0);
+  const [dragState, setDragState] = useState<{
+    isDragging: boolean;
+    startItem: { id: string; type: 'left' | 'right' } | null;
+    currentMousePos: { x: number; y: number } | null;
+  }>({
+    isDragging: false,
+    startItem: null,
+    currentMousePos: null,
+  });
 
   // Get matching data from the question with fallback
   const matchingData = useMemo(() => {
@@ -192,27 +207,75 @@ export function MatchingPairPreview({
 
   // Handle item click for edit mode
   const handleItemClick = useCallback(
-    (type: 'left' | 'right', itemId: string) => {
-      // Only allow connections in edit mode, not in player/preview mode
-      if (previewMode || !editMode) {
-        return;
-      }
+    async (type: 'left' | 'right', itemId: string) => {
+      if (previewMode || !editMode) return;
 
       if (selectedItem) {
-        if (selectedItem.type !== type) {
-          // A different column item was clicked, form a pair
-          // This would need to be implemented based on your API structure
+        if (selectedItem.type !== type && selectedItem.id !== itemId) {
+          // Different column item clicked - create connection
+          const leftItemId = type === 'left' ? itemId : selectedItem.id;
+          const rightItemId = type === 'right' ? itemId : selectedItem.id;
+
+          // Check if connection already exists
+          const existingConnection = connections.find(
+            (c) =>
+              c.leftItem.quizMatchingPairItemId === leftItemId &&
+              c.rightItem.quizMatchingPairItemId === rightItemId
+          );
+
+          if (!existingConnection && question.activity_id) {
+            try {
+              // Call API to create connection
+              const payload: ConnectionItemPayload = {
+                leftItemId,
+                rightItemId,
+              };
+
+              await activitiesApi.addMatchingPairConnection(
+                question.activity_id,
+                payload
+              );
+
+              // Refresh data from server
+              const response = await activitiesApi.getActivityById(
+                question.activity_id
+              );
+              const updatedConnections =
+                response.data.data.quiz.quizMatchingPairAnswer?.connections ??
+                [];
+
+              setConnections(updatedConnections);
+
+              // Update parent component
+              onOptionChange(
+                questionIndex,
+                -1,
+                'update_connections',
+                updatedConnections
+              );
+            } catch (error) {
+              console.error('Failed to create connection:', error);
+            }
+          }
           setSelectedItem(null);
         } else {
-          // Same column item was clicked, change selection
+          // Same column or same item - change selection
           setSelectedItem({ id: itemId, type });
         }
       } else {
-        // No item selected, select this one
+        // No item selected - select this one
         setSelectedItem({ id: itemId, type });
       }
     },
-    [previewMode, editMode, selectedItem]
+    [
+      previewMode,
+      editMode,
+      selectedItem,
+      connections,
+      question.activity_id,
+      questionIndex,
+      onOptionChange,
+    ]
   );
 
   // Calculate connection path for SVG
@@ -267,6 +330,169 @@ export function MatchingPairPreview({
     [connections]
   );
 
+  const handleConnectionClick = useCallback(
+    async (conn: QuizMatchingPairConnection) => {
+      console.log('Clicked connection:', conn);
+      const connectionId = conn.quizMatchingPairConnectionId;
+      // const activityId = question.activity_id;
+      console.log(activityId);
+
+      if (connectionId && activityId) {
+        try {
+          // Call API to delete connection
+          await activitiesApi.deleteMatchingPairConnection(
+            activityId,
+            connectionId
+          );
+
+          // Update local state immediately
+          setConnections((prev) =>
+            prev.filter((c) => c.quizMatchingPairConnectionId !== connectionId)
+          );
+
+          // Call the callback to update parent component
+          if (onDeleteConnection) {
+            const payload: ConnectionItemPayload = {
+              leftItemId: conn.leftItem.quizMatchingPairItemId!,
+              rightItemId: conn.rightItem.quizMatchingPairItemId!,
+            };
+            onDeleteConnection(payload);
+          }
+        } catch (error) {
+          console.error('Failed to delete connection:', error);
+        }
+      }
+    },
+    [previewMode, editMode, question.activity_id, onDeleteConnection]
+  );
+
+  const handleMouseDown = useCallback(
+    (type: 'left' | 'right', itemId: string, event: React.MouseEvent) => {
+      if (previewMode || !editMode) return;
+
+      event.preventDefault();
+      setDragState({
+        isDragging: true,
+        startItem: { id: itemId, type },
+        currentMousePos: { x: event.clientX, y: event.clientY },
+      });
+    },
+    [previewMode, editMode]
+  );
+
+  const handleMouseMove = useCallback(
+    (event: MouseEvent) => {
+      if (dragState.isDragging && dragState.startItem) {
+        setDragState((prev) => ({
+          ...prev,
+          currentMousePos: { x: event.clientX, y: event.clientY },
+        }));
+      }
+    },
+    [dragState.isDragging, dragState.startItem]
+  );
+
+  const handleMouseUp = useCallback(
+    async (type: 'left' | 'right', itemId: string) => {
+      if (
+        !dragState.isDragging ||
+        !dragState.startItem ||
+        previewMode ||
+        !editMode
+      ) {
+        setDragState({
+          isDragging: false,
+          startItem: null,
+          currentMousePos: null,
+        });
+        return;
+      }
+
+      // Only create connection if dragging between different columns
+      if (dragState.startItem.type !== type) {
+        const leftItemId =
+          dragState.startItem.type === 'left' ? dragState.startItem.id : itemId;
+        const rightItemId =
+          dragState.startItem.type === 'right'
+            ? dragState.startItem.id
+            : itemId;
+
+        // Check if connection already exists
+        const existingConnection = connections.find(
+          (c) =>
+            c.leftItem.quizMatchingPairItemId === leftItemId &&
+            c.rightItem.quizMatchingPairItemId === rightItemId
+        );
+
+        if (!existingConnection && question.activity_id) {
+          try {
+            const payload: ConnectionItemPayload = { leftItemId, rightItemId };
+            await activitiesApi.addMatchingPairConnection(
+              question.activity_id,
+              payload
+            );
+
+            // Refresh data
+            const response = await activitiesApi.getActivityById(
+              question.activity_id
+            );
+            const updatedConnections =
+              response.data.data.quiz.quizMatchingPairAnswer?.connections ?? [];
+
+            setConnections(updatedConnections);
+            onOptionChange(
+              questionIndex,
+              -1,
+              'update_connections',
+              updatedConnections
+            );
+          } catch (error) {
+            console.error('Failed to create connection:', error);
+          }
+        }
+      }
+
+      setDragState({
+        isDragging: false,
+        startItem: null,
+        currentMousePos: null,
+      });
+    },
+    [
+      dragState,
+      previewMode,
+      editMode,
+      connections,
+      question.activity_id,
+      questionIndex,
+      onOptionChange,
+    ]
+  );
+
+  useEffect(() => {
+    if (dragState.isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', () => {
+        setDragState({
+          isDragging: false,
+          startItem: null,
+          currentMousePos: null,
+        });
+      });
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', () => {
+          setDragState({
+            isDragging: false,
+            startItem: null,
+            currentMousePos: null,
+          });
+        });
+      };
+    }
+  }, [dragState.isDragging, handleMouseMove]);
+
   // If no matching data, show empty state
   if (!matchingData) {
     return (
@@ -317,6 +543,9 @@ export function MatchingPairPreview({
                     selectedItem?.id === item.quizMatchingPairItemId
                       ? 'ring-2 ring-blue-500'
                       : '',
+                    dragState.startItem?.id === item.quizMatchingPairItemId
+                      ? 'ring-2 ring-green-500'
+                      : '',
                     connectionColor
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
@@ -332,6 +561,14 @@ export function MatchingPairPreview({
                   onClick={() =>
                     item.quizMatchingPairItemId &&
                     handleItemClick('left', item.quizMatchingPairItemId)
+                  }
+                  onMouseDown={(e) =>
+                    item.quizMatchingPairItemId &&
+                    handleMouseDown('left', item.quizMatchingPairItemId, e)
+                  }
+                  onMouseUp={() =>
+                    item.quizMatchingPairItemId &&
+                    handleMouseUp('left', item.quizMatchingPairItemId)
                   }
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout
@@ -375,6 +612,9 @@ export function MatchingPairPreview({
                     selectedItem?.id === item.quizMatchingPairItemId
                       ? 'ring-2 ring-purple-500'
                       : '',
+                    dragState.startItem?.id === item.quizMatchingPairItemId
+                      ? 'ring-2 ring-green-500'
+                      : '',
                     connectionColor
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
@@ -390,6 +630,14 @@ export function MatchingPairPreview({
                   onClick={() =>
                     item.quizMatchingPairItemId &&
                     handleItemClick('right', item.quizMatchingPairItemId)
+                  }
+                  onMouseDown={(e) =>
+                    item.quizMatchingPairItemId &&
+                    handleMouseDown('right', item.quizMatchingPairItemId, e)
+                  }
+                  onMouseUp={() =>
+                    item.quizMatchingPairItemId &&
+                    handleMouseUp('right', item.quizMatchingPairItemId)
                   }
                   whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
                   layout
@@ -408,8 +656,8 @@ export function MatchingPairPreview({
       {/* SVG for drawing connection lines */}
       <svg
         ref={svgRef}
-        className="absolute top-0 left-0 w-full h-full pointer-events-none"
-        style={{ zIndex: 1 }}
+        className="absolute top-0 left-0 w-full h-full"
+        style={{ zIndex: 20 }}
         key={`svg-${dataVersion}-${settingsUpdateTrigger}`}
       >
         <defs>
@@ -440,33 +688,73 @@ export function MatchingPairPreview({
               : '#3b82f6';
 
             return (
-              <motion.path
+              <g
                 key={`${conn.leftItem.quizMatchingPairItemId}-${conn.rightItem.quizMatchingPairItemId}-${index}-${dataVersion}`}
-                d={getConnectionPath(
-                  conn.leftItem.quizMatchingPairItemId!,
-                  conn.rightItem.quizMatchingPairItemId!
-                )}
-                className="stroke-2 transition-all duration-300"
-                stroke={pathColor}
-                strokeWidth="2.5"
-                fill="none"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                markerStart={
-                  pathColor
-                    ? `url(#marker-${pathColor.replace('#', '')})`
-                    : undefined
-                }
-                markerEnd={
-                  pathColor
-                    ? `url(#marker-${pathColor.replace('#', '')})`
-                    : undefined
-                }
-              />
+              >
+                {/* Path phụ để bắt sự kiện click, stroke trong suốt, strokeWidth lớn */}
+                <path
+                  d={getConnectionPath(
+                    conn.leftItem.quizMatchingPairItemId!,
+                    conn.rightItem.quizMatchingPairItemId!
+                  )}
+                  stroke="transparent"
+                  strokeWidth="16"
+                  fill="none"
+                  style={{
+                    cursor: !previewMode && editMode ? 'pointer' : 'default',
+                    pointerEvents: !previewMode && editMode ? 'stroke' : 'none',
+                  }}
+                  onClick={() => {
+                    if (!previewMode && editMode) handleConnectionClick(conn);
+                  }}
+                />
+                {/* Path chính để hiển thị */}
+                <motion.path
+                  d={getConnectionPath(
+                    conn.leftItem.quizMatchingPairItemId!,
+                    conn.rightItem.quizMatchingPairItemId!
+                  )}
+                  className="stroke-2 transition-all duration-300"
+                  stroke={pathColor}
+                  strokeWidth="2.5"
+                  fill="none"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  markerStart={
+                    pathColor
+                      ? `url(#marker-${pathColor.replace('#', '')})`
+                      : undefined
+                  }
+                  markerEnd={
+                    pathColor
+                      ? `url(#marker-${pathColor.replace('#', '')})`
+                      : undefined
+                  }
+                  style={{
+                    cursor: !previewMode && editMode ? 'pointer' : 'default',
+                    pointerEvents: !previewMode && editMode ? 'stroke' : 'none',
+                  }}
+                />
+              </g>
             );
           })}
         </g>
+        {/* Drag preview line */}
+        {dragState.isDragging &&
+          dragState.startItem &&
+          dragState.currentMousePos && (
+            <line
+              x1={dragState.startItem.type === 'left' ? '25%' : '75%'}
+              y1="50%"
+              x2={dragState.currentMousePos.x}
+              y2={dragState.currentMousePos.y}
+              stroke="#10b981"
+              strokeWidth="2"
+              strokeDasharray="5,5"
+              opacity="0.7"
+            />
+          )}
       </svg>
 
       {!previewMode && (
