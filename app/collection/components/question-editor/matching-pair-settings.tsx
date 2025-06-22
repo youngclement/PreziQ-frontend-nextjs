@@ -641,7 +641,7 @@ export function MatchingPairSettings({
   };
 
   useEffect(() => {
-    const createConnection = async () => {
+    const handleConnection = async () => {
       if (selectedLeft && selectedRight) {
         setIsUpdating(true);
         try {
@@ -652,34 +652,58 @@ export function MatchingPairSettings({
             (item) => item.quizMatchingPairItemId === selectedRight
           );
 
-          if (
+          // Kiểm tra đã có connection chưa
+          const existingConnection = matchingData?.connections?.find(
+            (conn) =>
+              conn.leftItem.quizMatchingPairItemId === selectedLeft &&
+              conn.rightItem.quizMatchingPairItemId === selectedRight
+          );
+
+          if (existingConnection) {
+            // Nếu đã có connection, gọi API xóa connection
+            if (existingConnection.quizMatchingPairConnectionId) {
+              await activitiesApi.deleteMatchingPairConnection(
+                activityId,
+                existingConnection.quizMatchingPairConnectionId
+              );
+              toast({
+                title: 'Success',
+                description: 'Connection removed successfully',
+              });
+            }
+            setSelectedLeft(null);
+            setSelectedRight(null);
+            if (onRefreshActivity) await onRefreshActivity();
+          } else if (
             leftItemObj?.quizMatchingPairItemId &&
             rightItemObj?.quizMatchingPairItemId
           ) {
+            // Nếu chưa có connection, tạo mới
             await activitiesApi.addMatchingPairConnection(activityId, {
               leftItemId: leftItemObj.quizMatchingPairItemId,
               rightItemId: rightItemObj.quizMatchingPairItemId,
             });
+            toast({
+              title: 'Success',
+              description: 'Connection created successfully',
+            });
           }
-          toast({
-            title: 'Success',
-            description: 'Connection created successfully',
-          });
           setSelectedLeft(null);
           setSelectedRight(null);
           if (onRefreshActivity) await onRefreshActivity();
         } catch (error) {
           toast({
             title: 'Error',
-            description: 'Failed to create connection',
+            description: 'Failed to update connection',
             variant: 'destructive',
           });
+          console.log(error);
         } finally {
           setIsUpdating(false);
         }
       }
     };
-    createConnection();
+    handleConnection();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLeft, selectedRight]);
 
@@ -741,12 +765,16 @@ export function MatchingPairSettings({
               )}
               strategy={verticalListSortingStrategy}
             >
-              {/* Left Column Items */}
-              <div className="space-y-3">
+              <div className="space-y-3 min-h-[40px]">
                 <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
                   {leftColumnTitle}
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-2 min-h-[40px] flex flex-col">
+                  {leftItems.length === 0 && (
+                    <div className="text-gray-400 text-center py-2 border border-dashed rounded">
+                      Kéo item vào đây
+                    </div>
+                  )}
                   {leftItems.map((item, index) => (
                     <SortableItem
                       key={`left-${item.quizMatchingPairItemId}`}
