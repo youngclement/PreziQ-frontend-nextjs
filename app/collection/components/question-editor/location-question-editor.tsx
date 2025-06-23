@@ -37,7 +37,6 @@ interface LocationAnswer {
   longitude: number;
   latitude: number;
   radius: number;
-  hint?: string;
 }
 
 interface LocationQuestionEditorProps {
@@ -100,6 +99,15 @@ export function LocationQuestionEditor({
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Context menu states
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    lng: number;
+    lat: number;
+    visible: boolean;
+  } | null>(null);
 
   // Track previous answers to compare for selective updates
   useEffect(() => {
@@ -171,7 +179,7 @@ export function LocationQuestionEditor({
 
             return (
               current.quizLocationAnswerId ===
-                incomingLocation.quizLocationAnswerId &&
+              incomingLocation.quizLocationAnswerId &&
               current.radius !== incomingLocation.radius &&
               currentDataStr !== '[]'
             );
@@ -381,6 +389,38 @@ export function LocationQuestionEditor({
       refreshMapMarkers();
     });
 
+    // Add context menu event handler
+    map.on('contextmenu', (e) => {
+      console.log('🖱️ Right click detected on map');
+
+      if (readonly) {
+        console.log('❌ Context menu disabled - readonly mode');
+        return;
+      }
+
+      e.preventDefault();
+
+      const { lng, lat } = e.lngLat;
+      const { x, y } = e.point;
+
+      console.log('📍 Context menu position:', { x, y, lng, lat });
+
+      setContextMenu({
+        x,
+        y,
+        lng,
+        lat,
+        visible: true
+      });
+
+      console.log('✅ Context menu should be visible now');
+    });
+
+    // Hide context menu on regular click
+    map.on('click', () => {
+      setContextMenu(null);
+    });
+
     return () => {
       // Clean up
       markersRef.current.forEach((marker) => marker.remove());
@@ -488,8 +528,7 @@ export function LocationQuestionEditor({
               Math.abs(latestPosition.lat - incomingAnswers[i].latitude);
             if (positionDiff > 0.000001) {
               console.log(
-                `⚠️ Position conflict detected for marker ${
-                  i + 1
+                `⚠️ Position conflict detected for marker ${i + 1
                 } - keeping drag position`
               );
               hasConflicts = true;
@@ -1148,9 +1187,8 @@ export function LocationQuestionEditor({
     // Add marker numbering for multiple points
     if (currentLocationAnswersRef.current.length > 1) {
       el.style.backgroundColor = getMarkerColor(index);
-      el.innerHTML = `<span style="color: white; font-size: 12px; font-weight: bold;">${
-        index + 1
-      }</span>`;
+      el.innerHTML = `<span style="color: white; font-size: 12px; font-weight: bold;">${index + 1
+        }</span>`;
       el.style.display = 'flex';
       el.style.alignItems = 'center';
       el.style.justifyContent = 'center';
@@ -1262,11 +1300,7 @@ export function LocationQuestionEditor({
           onLocationChange(questionIndex, updatedLocations);
 
           // Show toast notification
-          toast({
-            title: 'Point moved',
-            description: `Point ${index + 1} moved to new position`,
-            duration: 2000,
-          });
+
         }
 
         // Clean up drag state with delay to ensure API call completes
@@ -1341,11 +1375,7 @@ export function LocationQuestionEditor({
     });
 
     // Show a brief toast message
-    toast({
-      title: 'Map view adjusted',
-      description: `Showing all ${validLocations.length} location points`,
-      duration: 2000,
-    });
+
   };
 
   // Refresh all markers on the map using specified data
@@ -1398,8 +1428,7 @@ export function LocationQuestionEditor({
 
         if (positionDiff > 0.000001) {
           console.log(
-            `🎯 Using latest drag position for marker ${
-              index + 1
+            `🎯 Using latest drag position for marker ${index + 1
             }: ${latestPosition.lng.toFixed(6)}, ${latestPosition.lat.toFixed(
               6
             )}`
@@ -1525,7 +1554,7 @@ export function LocationQuestionEditor({
         if (
           lastUpdate &&
           JSON.stringify(lastUpdate.locationData) ===
-            JSON.stringify(newLocationData)
+          JSON.stringify(newLocationData)
         ) {
           console.log('[DEBUG] Skipping API call - no data change');
           return;
@@ -1575,6 +1604,29 @@ export function LocationQuestionEditor({
     };
   }, [showSearchResults]);
 
+  // Handle click outside to close context menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Close context menu when clicking outside, but not if clicking on the menu itself
+      if (contextMenu?.visible) {
+        const target = event.target as Element;
+        const contextMenuElement = target.closest('.context-menu');
+
+        if (!contextMenuElement) {
+          setContextMenu(null);
+        }
+      }
+    };
+
+    if (contextMenu?.visible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [contextMenu]);
+
   // Search functionality using Mapbox Geocoding API
   const searchPlaces = async (query: string) => {
     if (!query.trim() || query.length < 3) {
@@ -1589,8 +1641,7 @@ export function LocationQuestionEditor({
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
           query
-        )}.json?access_token=${
-          mapboxgl.accessToken
+        )}.json?access_token=${mapboxgl.accessToken
         }&types=place,locality,neighborhood,address,poi&limit=5&country=vn`
       );
 
@@ -1602,20 +1653,9 @@ export function LocationQuestionEditor({
       } else {
         setSearchResults([]);
         setShowSearchResults(false);
-        toast({
-          title: 'No results found',
-          description: 'Try a different search term or location',
-          duration: 3000,
-        });
       }
     } catch (error) {
       console.error('Error searching places:', error);
-      toast({
-        title: 'Search error',
-        description: 'Unable to search for locations. Please try again.',
-        variant: 'destructive',
-        duration: 3000,
-      });
       setSearchResults([]);
       setShowSearchResults(false);
     } finally {
@@ -1656,11 +1696,6 @@ export function LocationQuestionEditor({
     setShowSearchResults(false);
     setSearchQuery(place.place_name);
 
-    toast({
-      title: 'Location found',
-      description: `Moved map to ${place.text}`,
-      duration: 2000,
-    });
   };
 
   // Modify the handleAddLocationAtPlace function to properly initialize the new point
@@ -1730,10 +1765,85 @@ export function LocationQuestionEditor({
     setShowSearchResults(false);
     setSearchQuery('');
 
+  };
+
+  // Handle creating a new location point from context menu
+  const handleCreatePointAtPosition = (lng: number, lat: number) => {
+    console.log('🎯 Creating point at position:', lng, lat);
+
+    if (readonly) {
+      console.log('❌ Cannot create point - readonly mode');
+      return;
+    }
+
+    // Create new location
+    const newLocation: LocationAnswer = {
+      longitude: lng,
+      latitude: lat,
+      radius: 10,
+    };
+
+    console.log('📍 New location object:', newLocation);
+
+    // Add to current locations
+    const updatedLocations = [
+      ...currentLocationAnswersRef.current,
+      newLocation,
+    ];
+
+    console.log('📋 Updated locations array:', updatedLocations);
+
+    // Calculate the new index for this location
+    const newPointIndex = updatedLocations.length - 1;
+
+    // Update refs and state
+    currentLocationAnswersRef.current = updatedLocations;
+    setLocationData(updatedLocations);
+
+    // Add this new point to latestMarkerPositionsRef so it's tracked for drag operations
+    latestMarkerPositionsRef.current.set(newPointIndex, {
+      lng: lng,
+      lat: lat,
+    });
+
+    // Update global state to prevent conflicts
+    if (typeof window !== 'undefined') {
+      window.lastLocationUpdate = {
+        timestamp: Date.now(),
+        activityId: questionIndex.toString(),
+        locationData: updatedLocations,
+        source: 'location-editor-context-menu',
+      };
+    }
+
+    // Call parent handler to update the API immediately
+    onLocationChange(questionIndex, updatedLocations);
+
+    // Refresh map markers to include the new point with proper event handlers
+    setTimeout(() => {
+      refreshMapMarkersWithData(updatedLocations);
+
+      // Set as selected
+      setSelectedLocationIndex(newPointIndex);
+
+      // Optionally fly to the new location
+      if (mapRef.current) {
+        mapRef.current.flyTo({
+          center: [lng, lat],
+          zoom: 15,
+          duration: 1000,
+          essential: true,
+        });
+      }
+    }, 100);
+
+    // Hide context menu
+    setContextMenu(null);
+
+    // Show success toast
     toast({
-      title: 'Location added',
-      description: `Added point at ${place.text}`,
-      duration: 2000,
+      description: `Đã thêm điểm mới tại vị trí (${lat.toFixed(6)}, ${lng.toFixed(6)})`,
+      duration: 3000,
     });
   };
 
@@ -1766,6 +1876,24 @@ export function LocationQuestionEditor({
       }
     }
   };
+
+  useEffect(() => {
+    if (
+      !isDragging &&
+      locationAnswers &&
+      locationAnswers.length !== currentLocationAnswersRef.current.length
+    ) {
+      console.log(
+        'Location answers changed, forcing map refresh:',
+        locationAnswers
+      );
+      setLocationData(locationAnswers);
+      currentLocationAnswersRef.current = [...locationAnswers];
+      if (mapLoaded && mapRef.current) {
+        refreshMapMarkersWithData(locationAnswers);
+      }
+    }
+  }, [locationAnswers, isDragging, mapLoaded]);
 
   return (
     <div className="w-full relative">
@@ -1864,6 +1992,32 @@ export function LocationQuestionEditor({
           <Maximize className="mr-2 h-4 w-4" />
           Show All Locations
         </Button>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu?.visible && (
+        <div
+          className="context-menu fixed bg-white border border-gray-200 rounded-md shadow-lg z-[9999] py-1 min-w-[200px]"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+            onClick={(e) => {
+              console.log('🔘 Context menu button clicked');
+              e.stopPropagation();
+              e.preventDefault();
+              handleCreatePointAtPosition(contextMenu.lng, contextMenu.lat);
+            }}
+          >
+            <Plus className="h-4 w-4 text-red-500" />
+            Tạo điểm tại vị trí này
+          </button>
+        </div>
       )}
     </div>
   );

@@ -47,9 +47,7 @@ import {
   EyeOff,
   Palette,
   Check,
-
   Link,
-
   Trash,
   Trash2,
   Loader2,
@@ -58,8 +56,8 @@ import {
   PaintBucket,
   ChevronsUpDown,
   Plus,
-  X
-
+  X,
+  Layers,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -73,7 +71,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { QuizOption, QuizQuestion } from '../types';
+import type { QuizOption, QuizQuestion, MatchingPairOption } from '../types';
 import { OptionList } from './option-list';
 import { AdvancedSettings } from './advanced-settings';
 import { Textarea } from '@/components/ui/textarea';
@@ -145,7 +143,8 @@ const AnswerTextEditor = ({
     questionIndex: number,
     optionIndex: number,
     field: string,
-    value: any
+    value: any,
+    isTyping?: boolean
   ) => void;
 }) => {
   return (
@@ -186,7 +185,8 @@ interface QuestionSettingsProps {
     questionIndex: number,
     optionIndex: number,
     field: string,
-    value: any
+    value: any,
+    isTyping?: boolean
   ) => void;
   onDeleteOption: (index: number) => void;
   onCorrectAnswerChange?: (value: string) => void;
@@ -196,7 +196,7 @@ interface QuestionSettingsProps {
   onQuestionLocationChange?: (questionIndex: number, locationData: any) => void;
   onMatchingPairOptionsChange?: (
     questionIndex: number,
-    newOptions: QuizOption[]
+    newOptions: MatchingPairOption[]
   ) => void;
   onMatchingPairConnectionsChange?: (questionIndex: number) => void;
   onMatchingPairColumnNamesChange?: (left: string, right: string) => void;
@@ -208,16 +208,47 @@ interface QuestionSettingsProps {
     activityId: string,
     elements: SlideElementPayload[]
   ) => void;
+  onSettingsUpdate?: () => void;
+  correctAnswerText: string;
+  onCorrectAnswerTextChange: (value: string) => void;
+  onCorrectAnswerTextBlur: (value: string) => void;
 }
 const TextAnswerForm = ({
-  correctAnswerText,
-  onTextAnswerChange,
-  onTextAnswerBlur,
+  activeQuestion,
+  onOptionChange,
+  questionIndex,
 }: {
-  correctAnswerText: string;
-  onTextAnswerChange: (value: string) => void;
-  onTextAnswerBlur: () => void;
+  activeQuestion: QuizQuestion;
+  onOptionChange: (
+    questionIndex: number,
+    optionIndex: number,
+    field: string,
+    value: any,
+    isTyping?: boolean
+  ) => void;
+  questionIndex: number;
 }) => {
+  const getCorrectAnswerValue = () => {
+    // Ưu tiên lấy từ correct_answer_text
+    if (activeQuestion.correct_answer_text) {
+      return activeQuestion.correct_answer_text;
+    }
+
+    // Nếu không có, lấy từ option đầu tiên (như API response của bạn)
+    if (activeQuestion.options && activeQuestion.options.length > 0) {
+      const correctOption = activeQuestion.options.find(
+        (opt) => opt.is_correct
+      );
+      if (correctOption) {
+        return correctOption.option_text;
+      }
+      // Fallback to first option
+      return activeQuestion.options[0].option_text || '';
+    }
+
+    return '';
+  };
+
   return (
     <div className="space-y-2 mt-4 p-4 bg-pink-50 dark:bg-pink-900/10 rounded-md border border-pink-100 dark:border-pink-800">
       <Label
@@ -228,9 +259,26 @@ const TextAnswerForm = ({
       </Label>
       <Input
         id="correct-answer"
-        value={correctAnswerText}
-        onChange={(e) => onTextAnswerChange(e.target.value)}
-        onBlur={onTextAnswerBlur}
+        value={getCorrectAnswerValue()}
+        onChange={(e) => {
+          // Cập nhật với isTyping = true
+          onOptionChange(
+            questionIndex,
+            0,
+            'correct_answer_text',
+            e.target.value,
+            true
+          );
+        }}
+        onBlur={(e) => {
+          onOptionChange(
+            questionIndex,
+            0,
+            'correct_answer_text',
+            e.target.value,
+            false
+          );
+        }}
         placeholder="Enter the correct answer"
         className="w-full bg-white dark:bg-black border-pink-200 dark:border-pink-700 focus-visible:ring-pink-300"
       />
@@ -269,14 +317,18 @@ export function QuestionSettings({
   onMatchingPairColumnNamesChange,
   slideElements,
   onSlideElementsUpdate,
+  onSettingsUpdate,
+  correctAnswerText,
+  onCorrectAnswerTextChange,
+  onCorrectAnswerTextBlur,
 }: QuestionSettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeType, setActiveType] = useState(
     activeQuestion?.question_type || 'multiple_choice'
   );
-  const [correctAnswerText, setCorrectAnswerText] = useState(
-    activeQuestion?.correct_answer_text || ''
-  );
+  // const [correctAnswerText, setCorrectAnswerText] = useState(
+  //   activeQuestion?.correct_answer_text || ''
+  // );
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -305,6 +357,16 @@ export function QuestionSettings({
   const locationDataRef = useRef<any[]>([]);
   const previousAnswersRef = useRef<any[]>([]);
   const [locationData, setLocationData] = useState<any[]>([]);
+  // Thêm state để theo dõi thay đổi từ settings
+  const [settingsUpdateTrigger, setSettingsUpdateTrigger] = useState(0);
+
+  // Thêm function để trigger cập nhật preview
+  const triggerPreviewUpdate = useCallback(() => {
+    setSettingsUpdateTrigger((prev) => prev + 1);
+    if (onSettingsUpdate) {
+      onSettingsUpdate();
+    }
+  }, [onSettingsUpdate]);
 
   useEffect(() => {
     if (activity) {
@@ -362,7 +424,7 @@ export function QuestionSettings({
   // Update state when activeQuestion changes
   React.useEffect(() => {
     if (activeQuestion) {
-      setCorrectAnswerText(activeQuestion.correct_answer_text || '');
+      //setCorrectAnswerText(activeQuestion.correct_answer_text || '');
       setActiveType(activeQuestion.question_type || 'multiple_choice');
     }
   }, [
@@ -371,52 +433,31 @@ export function QuestionSettings({
     activeQuestion.correct_answer_text,
   ]);
 
-  // Update text answer when changing
-  const handleTextAnswerChange = (value: string) => {
-    setCorrectAnswerText(value);
-    // Immediately call the change handler to update parent state
-    if (onCorrectAnswerChange) {
-      onCorrectAnswerChange(value);
-    }
-  };
+  // // Update text answer when changing
+  // const handleTextAnswerChange = (value: string) => {
+  //   onCorrectAnswerTextChange(value);
+  // };
 
-  // Send to API when input loses focus
-  const handleTextAnswerBlur = () => {
-    if (
-      activity &&
-      activity.id &&
-      activeQuestion.question_type === 'text_answer'
-    ) {
-      // Update the quiz in the backend
-      try {
-        activitiesApi.updateTypeAnswerQuiz(activity.id, {
-          type: 'TYPE_ANSWER',
-          questionText: activeQuestion.question_text,
-          pointType: 'STANDARD',
-          timeLimitSeconds: timeLimit,
-          correctAnswer: correctAnswerText,
-        });
-      } catch (error) {
-        console.error('Error updating text answer quiz:', error);
-      }
-    }
-  };
+  // // Send to API when input loses focus
+  // const handleTextAnswerBlur = () => {
+  //   onCorrectAnswerTextBlur(correctAnswerText);
+  // };
 
-  // Handler for slide content changes
-  const handleSlideContentChange = (value: string) => {
-    if (onSlideContentChange) {
-      onSlideContentChange(value);
+  // // Handler for slide content changes
+  // const handleSlideContentChange = (value: string) => {
+  //   if (onSlideContentChange) {
+  //     onSlideContentChange(value);
 
-      // If this is a slide activity, also update the activity description
-      if (
-        activity &&
-        (activeQuestion.question_type === 'slide' ||
-          activeQuestion.question_type === 'info_slide')
-      ) {
-        debouncedUpdateActivity({ description: value });
-      }
-    }
-  };
+  //     // If this is a slide activity, also update the activity description
+  //     if (
+  //       activity &&
+  //       (activeQuestion.question_type === 'slide' ||
+  //         activeQuestion.question_type === 'info_slide')
+  //     ) {
+  //       debouncedUpdateActivity({ description: value });
+  //     }
+  //   }
+  // };
 
   // Handler for slide image changes
   const handleSlideImageChange = (value: string, index: number) => {
@@ -845,6 +886,28 @@ export function QuestionSettings({
                   });
               }
               break;
+
+            case 'matching_pair':
+              // Get the current matching pair data
+              const matchingData =
+                activeQuestion.quizMatchingPairAnswer ||
+                activeQuestion.matching_data;
+
+              if (matchingData) {
+                activitiesApi.updateMatchingPairQuiz(activity.id, {
+                  type: 'MATCHING_PAIRS',
+                  questionText:
+                    activity.quiz?.questionText || activeQuestion.question_text,
+                  timeLimitSeconds: value,
+                  pointType: activity.quiz?.pointType || (pointType as any),
+                  quizMatchingPairAnswer: {
+                    ...matchingData,
+                    leftColumnName: leftColumnName || 'Left Item',
+                    rightColumnName: rightColumnName || 'Right Item',
+                  },
+                });
+              }
+              break;
             default:
               // For slide types or any other type, just update the activity directly
               debouncedUpdateActivity({ timeLimitSeconds: value });
@@ -980,9 +1043,6 @@ export function QuestionSettings({
     if (!activity?.id) return;
 
     if (activity.activity_type_id === 'INFO_SLIDE') {
-      console.log(
-        'Bỏ qua gọi API cho INFO_SLIDE, sẽ được xử lý bởi SlideSettings'
-      );
       return;
     }
 
@@ -1126,10 +1186,6 @@ export function QuestionSettings({
           }
 
           // Show success notification
-          toast({
-            title: 'Location updated',
-            description: 'Location answers have been saved successfully',
-          });
 
           // Dispatch event to update all components
 
@@ -1147,20 +1203,10 @@ export function QuestionSettings({
           }
         }
 
-        toast({
-          title: 'Saved successfully',
-          description: 'Your changes have been saved.',
-        });
-
         // For all other updates, use the regular updateActivity endpoint
         return await activitiesApi.updateActivity(activity.id, data);
       } catch (error) {
         console.error('Error in API call:', error);
-        toast({
-          title: 'API Error',
-          description: 'Could not update activity',
-          variant: 'destructive',
-        });
       }
     } catch (error) {
       console.error('Error updating activity:', error);
@@ -1480,6 +1526,27 @@ export function QuestionSettings({
                     error
                   );
                 });
+            }
+            break;
+          case 'matching_pair':
+            // Get the current matching pair data
+            const matchingData =
+              activeQuestion.quizMatchingPairAnswer ||
+              activeQuestion.matching_data;
+
+            if (matchingData) {
+              activitiesApi.updateMatchingPairQuiz(activity.id, {
+                type: 'MATCHING_PAIRS',
+                questionText:
+                  activity.quiz?.questionText || activeQuestion.question_text,
+                timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+                pointType: typedPointType,
+                quizMatchingPairAnswer: {
+                  ...matchingData,
+                  leftColumnName: leftColumnName || 'Left Item',
+                  rightColumnName: rightColumnName || 'Right Item',
+                },
+              });
             }
             break;
           default:
@@ -1903,366 +1970,194 @@ export function QuestionSettings({
 
   // Location settings component
   const LocationSettings = () => {
-    // Get the current location data from activity or activeQuestion
-    const locationData =
-      activity?.quiz?.quizLocationAnswers ||
-      activeQuestion?.location_data?.quizLocationAnswers ||
-      [];
-
-    const [currentLocations, setCurrentLocations] =
-      useState<any[]>(locationData);
-
-    // Update local state when activity changes
-    useEffect(() => {
-      const newLocationData =
-        activity?.quiz?.quizLocationAnswers ||
-        activeQuestion?.location_data?.quizLocationAnswers ||
-        [];
-      setCurrentLocations(
-        newLocationData.map((loc: any) => ({
-          ...loc,
-          longitude: String(loc.longitude || 0),
-          latitude: String(loc.latitude || 0),
-        }))
-      );
-    }, [
-      activity?.quiz?.quizLocationAnswers,
-      activeQuestion?.location_data?.quizLocationAnswers,
-    ]);
-
+    // Handle adding a new location point
     const handleAddLocation = () => {
-      // Default location for new points
+      const currentLocations =
+        activeQuestion.location_data?.quizLocationAnswers || [];
       const newLocation = {
-        longitude: '105.804817',
-        latitude: '21.028511',
-        radius: 10.0,
-        // Note: No quizLocationAnswerId - this will be generated by the API
+        latitude: currentLocations[0]?.latitude || 21.028511,
+        longitude: currentLocations[0]?.longitude || 105.804817,
+        radius: 10,
+        hint: '',
       };
-
       const updatedLocations = [...currentLocations, newLocation];
 
-      // **IMMEDIATELY call API with all points (old + new)**
-      if (activity?.id) {
-        const locationPayload = {
-          type: 'LOCATION' as const,
-          questionText:
-            activity.quiz?.questionText || activeQuestion.question_text,
-          timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
-          pointType: (activity.quiz?.pointType || 'STANDARD') as
-            | 'STANDARD'
-            | 'NO_POINTS'
-            | 'DOUBLE_POINTS',
-          locationAnswers: updatedLocations.map((loc) => ({
-            longitude: parseFloat(loc.longitude),
-            latitude: parseFloat(loc.latitude),
-            radius: loc.radius,
-          })),
-        };
-
-        console.log('🚀 Adding new point - API payload:', locationPayload);
-
-        activitiesApi
-          .updateLocationQuiz(activity.id, locationPayload)
-          .then((response) => {
-            console.log('✅ Location added successfully:', response);
-
-            // Update parent state with response data which includes IDs
-            if (response.data?.quiz?.quizLocationAnswers) {
-              if (onQuestionLocationChange) {
-                onQuestionLocationChange(activeQuestionIndex, {
-                  ...activeQuestion.location_data,
-                  quizLocationAnswers: response.data.quiz.quizLocationAnswers,
-                });
-              }
-            }
-
-            toast({
-              title: 'Point added successfully',
-              description: `Added new location point. Total: ${response.data.quiz.quizLocationAnswers.length} points`,
-            });
-          })
-          .catch((error) => {
-            console.error('❌ Error adding location:', error);
-            toast({
-              title: 'Error adding point',
-              description:
-                'Failed to add the new location point. Please try again.',
-              variant: 'destructive',
-            });
-          });
-      }
+      onQuestionLocationChange?.(activeQuestionIndex, updatedLocations);
     };
 
+    // Handle deleting a location point
     const handleDeleteLocation = (indexToDelete: number) => {
-      if (currentLocations.length <= 1) {
-        toast({
-          title: 'Cannot delete',
-          description: 'At least one location point is required.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
+      const currentLocations =
+        activeQuestion.location_data?.quizLocationAnswers || [];
       const updatedLocations = currentLocations.filter(
         (_, index) => index !== indexToDelete
       );
-
-      // Update via API afterwards
-      if (activity?.id) {
-        const locationPayload = {
-          type: 'LOCATION' as const,
-          questionText:
-            activity.quiz?.questionText || activeQuestion.question_text,
-          timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
-          pointType: (activity.quiz?.pointType || 'STANDARD') as
-            | 'STANDARD'
-            | 'NO_POINTS'
-            | 'DOUBLE_POINTS',
-          locationAnswers: updatedLocations.map((loc) => ({
-            longitude: parseFloat(loc.longitude),
-            latitude: parseFloat(loc.latitude),
-            radius: loc.radius,
-          })),
-        };
-
-        activitiesApi
-          .updateLocationQuiz(activity.id, locationPayload)
-          .then((response) => {
-            console.log('Location deleted successfully:', response);
-
-            // Update parent state with response data
-            if (response.data?.quiz?.quizLocationAnswers) {
-              if (onQuestionLocationChange) {
-                onQuestionLocationChange(activeQuestionIndex, {
-                  ...activeQuestion.location_data,
-                  quizLocationAnswers: response.data.quiz.quizLocationAnswers,
-                });
-              }
-            }
-          })
-          .catch((error) => {
-            console.error('Error deleting location:', error);
-          });
-      }
+      onQuestionLocationChange?.(activeQuestionIndex, updatedLocations);
     };
 
+    // Handle updating a specific field of a location
     const handleUpdateLocation = (
       indexToUpdate: number,
-      property: 'longitude' | 'latitude' | 'radius',
+      property: 'longitude' | 'latitude' | 'radius' | 'hint',
       value: string | number
     ) => {
-      const updatedLocations = [...currentLocations];
-      const locationToUpdate = { ...updatedLocations[indexToUpdate] };
-
-      if (
-        (property === 'longitude' || property === 'latitude') &&
-        typeof value === 'string'
-      ) {
-        if (value !== '' && value !== '-' && !/^-?\d*\.?\d*$/.test(value)) {
-          return;
+      const currentLocations =
+        activeQuestion.location_data?.quizLocationAnswers || [];
+      const updatedLocations = currentLocations.map((loc, index) => {
+        if (index === indexToUpdate) {
+          const numericValue =
+            property === 'hint' ? value : parseFloat(value as string);
+          return { ...loc, [property]: numericValue };
         }
-      }
-
-      locationToUpdate[property] = value;
-      updatedLocations[indexToUpdate] = locationToUpdate;
-      setCurrentLocations(updatedLocations);
-
-      // Debounce API calls for coordinate/radius updates
-      if (typeof window !== 'undefined') {
-        if (window.locationUpdateTimer) {
-          clearTimeout(window.locationUpdateTimer);
-        }
-
-        window.locationUpdateTimer = setTimeout(() => {
-          if (activity?.id) {
-            const locationPayload = {
-              type: 'LOCATION' as const,
-              questionText:
-                activity.quiz?.questionText || activeQuestion.question_text,
-              timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
-              pointType: (activity.quiz?.pointType || 'STANDARD') as
-                | 'STANDARD'
-                | 'NO_POINTS'
-                | 'DOUBLE_POINTS',
-              locationAnswers: updatedLocations.map((loc: any) => ({
-                longitude: parseFloat(loc.longitude),
-                latitude: parseFloat(loc.latitude),
-                radius: loc.radius,
-              })),
-            };
-
-            activitiesApi
-              .updateLocationQuiz(activity.id, locationPayload)
-              .then((response) => {
-                console.log('Location updated successfully:', response);
-
-                // Update local state with response data
-                if (response.data?.quiz?.quizLocationAnswers) {
-                  setCurrentLocations(response.data.quiz.quizLocationAnswers);
-                }
-
-                // Notify location editor
-                if (typeof window !== 'undefined') {
-                  const updateEvent = new CustomEvent(
-                    'location:answers:updated',
-                    {
-                      detail: {
-                        activityId: activity.id,
-                        locationAnswers:
-                          response.data?.quiz?.quizLocationAnswers ||
-                          updatedLocations,
-                        timestamp: Date.now(),
-                        source: 'settings',
-                      },
-                    }
-                  );
-                  window.dispatchEvent(updateEvent);
-
-                  // **NEW**: Dispatch success event for location editor
-                  const successEvent = new CustomEvent('location:api:success', {
-                    detail: {
-                      source: 'location-quiz-api-success-updateProperties',
-                      response: response,
-                      timestamp: Date.now(),
-                    },
-                  });
-                  window.dispatchEvent(successEvent);
-                }
-              })
-              .catch((error) => {
-                console.error('Error updating location:', error);
-              });
-          }
-        }, 500); // 500ms debounce
-      }
-
-      // Update parent component
-      if (onQuestionLocationChange) {
-        onQuestionLocationChange(activeQuestionIndex, {
-          ...activeQuestion.location_data,
-          quizLocationAnswers: updatedLocations,
-        });
-      }
+        return loc;
+      });
+      onQuestionLocationChange?.(activeQuestionIndex, updatedLocations);
     };
 
+    if (!activeQuestion) return null;
+
+    const locationAnswers =
+      activeQuestion.location_data?.quizLocationAnswers || [];
+
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label className="text-base font-medium">Location Points</Label>
-          <Button
-            onClick={handleAddLocation}
-            size="sm"
-            variant="outline"
-            className="h-8"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Point
-          </Button>
-        </div>
-
-        <div className="space-y-3">
-          {currentLocations.map((location, index) => (
-            <Card key={index} className="p-3">
-              <div className="flex items-center justify-between mb-3">
-                <Label className="text-sm font-medium">Point {index + 1}</Label>
-                {currentLocations.length > 1 && (
-                  <Button
-                    onClick={() => handleDeleteLocation(index)}
-                    size="sm"
-                    variant="destructive"
-                    className="h-6 w-6 p-0"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label
-                    htmlFor={`longitude-${index}`}
-                    className="text-xs text-gray-600"
-                  >
-                    Longitude
-                  </Label>
-                  <Input
-                    id={`longitude-${index}`}
-                    type="number"
-                    step="0.000001"
-                    value={location.longitude}
-                    onChange={(e) =>
-                      handleUpdateLocation(index, 'longitude', e.target.value)
-                    }
-                    className="h-8 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <Label
-                    htmlFor={`latitude-${index}`}
-                    className="text-xs text-gray-600"
-                  >
-                    Latitude
-                  </Label>
-                  <Input
-                    id={`latitude-${index}`}
-                    type="number"
-                    step="0.000001"
-                    value={location.latitude}
-                    onChange={(e) =>
-                      handleUpdateLocation(index, 'latitude', e.target.value)
-                    }
-                    className="h-8 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-3">
-                <Label
-                  htmlFor={`radius-${index}`}
-                  className="text-xs text-gray-600"
-                >
-                  Radius (km)
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Slider
-                    value={[location.radius || 10]}
-                    onValueChange={(value) =>
-                      handleUpdateLocation(index, 'radius', value[0])
-                    }
-                    min={1}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-sm font-mono w-10 text-right">
-                    {location.radius || 10}km
-                  </span>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-
-        {currentLocations.length === 0 && (
-          <div className="text-center py-6 text-gray-500">
-            <p className="text-sm">No location points set</p>
+      <Card className="border-t-2 border-t-yellow-400 p-0">
+        <CardHeader className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <h3 className="text-sm font-medium">Location Points</h3>
+              <Badge className="bg-yellow-400 text-white">
+                {locationAnswers.length}
+              </Badge>
+            </div>
             <Button
               onClick={handleAddLocation}
               size="sm"
               variant="outline"
-              className="mt-2"
+              className="h-8"
             >
-              Add First Point
+              <Plus className="h-4 w-4 mr-1" />
+              Add Point
             </Button>
           </div>
-        )}
-      </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {locationAnswers.map((location, index) => (
+              <Card key={index} className="p-3">
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-sm font-medium">
+                    Point {index + 1}
+                  </Label>
+                  {locationAnswers.length > 1 && (
+                    <Button
+                      onClick={() => handleDeleteLocation(index)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                  <div>
+                    <Label
+                      htmlFor={`lat-${index}`}
+                      className="text-xs text-gray-600"
+                    >
+                      Latitude
+                    </Label>
+                    <Input
+                      id={`lat-${index}`}
+                      type="number"
+                      value={location.latitude}
+                      onChange={(e) =>
+                        handleUpdateLocation(index, 'latitude', e.target.value)
+                      }
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor={`lng-${index}`}
+                      className="text-xs text-gray-600"
+                    >
+                      Longitude
+                    </Label>
+                    <Input
+                      id={`lng-${index}`}
+                      type="number"
+                      value={location.longitude}
+                      onChange={(e) =>
+                        handleUpdateLocation(index, 'longitude', e.target.value)
+                      }
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <Label
+                    htmlFor={`radius-${index}`}
+                    className="text-xs text-gray-600"
+                  >
+                    Radius (km)
+                  </Label>
+                  <Input
+                    id={`radius-${index}`}
+                    type="number"
+                    value={location.radius}
+                    onChange={(e) =>
+                      handleUpdateLocation(index, 'radius', e.target.value)
+                    }
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="mt-3">
+                  <Label
+                    htmlFor={`hint-${index}`}
+                    className="text-xs text-gray-600"
+                  >
+                    Hint
+                  </Label>
+                  <Input
+                    id={`hint-${index}`}
+                    value={(location as any).hint || ''}
+                    onChange={(e) =>
+                      handleUpdateLocation(index, 'hint', e.target.value)
+                    }
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {locationAnswers.length === 0 && (
+            <div className="text-center py-6 text-gray-500">
+              <p className="text-sm">No location points set</p>
+            </div>
+          )}
+
+          <Button
+            onClick={handleAddLocation}
+            className="w-full mt-4"
+            variant="outline"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Point
+          </Button>
+        </CardContent>
+      </Card>
     );
   };
 
   // Content tab for question settings
   const ContentTab = () => {
+    if (!activeQuestion) {
+      return null;
+    }
+
     return (
       <div className="space-y-6">
         {/* Section 1: Question Type */}
@@ -2300,8 +2195,20 @@ export function QuestionSettings({
                 activeQuestionIndex={activeQuestionIndex}
                 questionType={activeQuestion.question_type}
                 onAddOption={onAddOption}
-                onOptionChange={(questionIndex, optionIndex, field, value) =>
-                  onOptionChange(questionIndex, optionIndex, field, value)
+                onOptionChange={(
+                  questionIndex,
+                  optionIndex,
+                  field,
+                  value,
+                  isTyping = false
+                ) =>
+                  onOptionChange(
+                    questionIndex,
+                    optionIndex,
+                    field,
+                    value,
+                    isTyping
+                  )
                 }
                 onDeleteOption={onDeleteOption}
               />
@@ -2316,9 +2223,9 @@ export function QuestionSettings({
             </div>
           ) : activeQuestion.question_type === 'text_answer' ? (
             <TextAnswerForm
-              correctAnswerText={correctAnswerText}
-              onTextAnswerChange={handleTextAnswerChange}
-              onTextAnswerBlur={handleTextAnswerBlur}
+              activeQuestion={activeQuestion}
+              onOptionChange={onOptionChange}
+              questionIndex={activeQuestionIndex}
             />
           ) : activeQuestion.question_type === 'slide' ||
             activeQuestion.question_type === 'info_slide' ? (
@@ -2335,8 +2242,14 @@ export function QuestionSettings({
             <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
               <ReorderOptions
                 options={activeQuestion.options}
-                onOptionChange={(index, field, value) =>
-                  onOptionChange(activeQuestionIndex, index, field, value)
+                onOptionChange={(index, field, value, isTyping = false) =>
+                  onOptionChange(
+                    activeQuestionIndex,
+                    index,
+                    field,
+                    value,
+                    isTyping
+                  )
                 }
                 onDeleteOption={onDeleteOption}
                 onAddOption={onAddOption}
@@ -2348,7 +2261,8 @@ export function QuestionSettings({
           ) : activeQuestion.question_type === 'matching_pair' ? (
             <div className="p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-md border border-indigo-100 dark:border-indigo-800">
               <MatchingPairSettings
-                options={activeQuestion.options || []}
+                question={activeQuestion}
+                activityId={activity?.id || ''}
                 onOptionsChange={(newOptions) => {
                   if (onMatchingPairOptionsChange) {
                     onMatchingPairOptionsChange(
@@ -2356,74 +2270,65 @@ export function QuestionSettings({
                       newOptions
                     );
                   }
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
                 onAddPair={() => {
-                  if (!onMatchingPairOptionsChange) return;
-                  const pairId = `pair-${Date.now()}`;
-                  const currentOptions = activeQuestion.options || [];
-                  const newPair: QuizOption[] = [
-                    {
-                      id: `left-${pairId}`,
-                      option_text: 'Left item',
-                      type: 'left',
-                      pair_id: pairId,
-                      is_correct: true,
-                      display_order: currentOptions.length,
-                      quiz_question_id: activeQuestion.id,
-                    },
-                    {
-                      id: `right-${pairId}`,
-                      option_text: 'Right item',
-                      type: 'right',
-                      pair_id: pairId,
-                      is_correct: true,
-                      display_order: currentOptions.length + 1,
-                      quiz_question_id: activeQuestion.id,
-                    },
-                  ];
-                  onMatchingPairOptionsChange(activeQuestionIndex, [
-                    ...currentOptions,
-                    ...newPair,
-                  ]);
+                  // This will be handled by the MatchingPairSettings component via API
+                  console.log('Add pair triggered');
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
                 onDeletePair={(pairId) => {
-                  if (!onMatchingPairOptionsChange) return;
-                  const currentOptions = activeQuestion.options || [];
-                  const newOptions = currentOptions.filter(
-                    (opt) => opt.pair_id !== pairId
-                  );
-                  onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
+                  // This will be handled by the MatchingPairSettings component via API
+                  console.log('Delete pair triggered:', pairId);
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
                 onReorderPairs={(startIndex, endIndex) => {
-                  if (!onMatchingPairOptionsChange) return;
-
-                  const currentOptions = [...(activeQuestion.options || [])];
-
-                  const pairs = currentOptions
-                    .filter((o) => o.type === 'left')
-                    .map((left) => {
-                      const right = currentOptions.find(
-                        (r) => r.type === 'right' && r.pair_id === left.pair_id
-                      );
-                      return { id: left.pair_id, left, right };
-                    })
-                    .filter((p) => p.right);
-
-                  const [reorderedPair] = pairs.splice(startIndex, 1);
-                  pairs.splice(endIndex, 0, reorderedPair);
-
-                  const newOptions = pairs
-                    .flatMap((p) => [p.left, p.right])
-                    .map((opt, index) => ({
-                      ...opt,
-                      display_order: index,
-                    })) as QuizOption[];
-
-                  onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
+                  // This will be handled by the MatchingPairSettings component via API
+                  console.log('Reorder pairs triggered:', startIndex, endIndex);
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
-                leftColumnName={leftColumnName}
-                rightColumnName={rightColumnName}
-                onColumnNamesChange={onMatchingPairColumnNamesChange}
+                leftColumnName={leftColumnName || 'Left Item'}
+                rightColumnName={rightColumnName || 'Right Item'}
+                onColumnNamesChange={(left, right) => {
+                  if (onMatchingPairColumnNamesChange) {
+                    onMatchingPairColumnNamesChange(left, right);
+                  }
+                  // Trigger preview update
+                  triggerPreviewUpdate();
+                }}
+                onMatchingDataUpdate={(matchingData) => {
+                  // Update the question with new matching data
+                  if (onMatchingPairOptionsChange) {
+                    // Convert matching data back to options format for compatibility
+                    const options: MatchingPairOption[] = [];
+
+                    if (matchingData.items) {
+                      matchingData.items.forEach((item: any) => {
+                        options.push({
+                          id: item.quizMatchingPairItemId,
+                          quizMatchingPairItemId: item.quizMatchingPairItemId,
+                          content: item.content,
+                          option_text: item.content,
+                          isLeftColumn: item.isLeftColumn,
+                          display_order: item.displayOrder,
+                          quiz_question_id: activeQuestion.id,
+                        });
+                      });
+                    }
+
+                    onMatchingPairOptionsChange(activeQuestionIndex, options);
+                  }
+                  // Trigger preview update
+                  triggerPreviewUpdate();
+                }}
+                onRefreshActivity={async () => {
+                  // Trigger preview update after refresh
+                  triggerPreviewUpdate();
+                }}
               />
             </div>
           ) : null}
@@ -2503,7 +2408,12 @@ export function QuestionSettings({
               Design
             </TabsTrigger>
             <TabsTrigger value="meta" className="text-xs">
-              <Info className="h-3.5 w-3.5 mr-1.5" />
+              {activeQuestion.question_type === 'slide' ||
+              activeQuestion.question_type === 'info_slide' ? (
+                <Layers className="h-3.5 w-3.5 mr-1.5" />
+              ) : (
+                <Info className="h-3.5 w-3.5 mr-1.5" />
+              )}
               {activeQuestion.question_type === 'slide' ||
               activeQuestion.question_type === 'info_slide'
                 ? 'Animation'
@@ -2553,9 +2463,16 @@ export function QuestionSettings({
                         questionIndex,
                         optionIndex,
                         field,
-                        value
+                        value,
+                        isTyping = false
                       ) =>
-                        onOptionChange(questionIndex, optionIndex, field, value)
+                        onOptionChange(
+                          questionIndex,
+                          optionIndex,
+                          field,
+                          value,
+                          isTyping
+                        )
                       }
                       onDeleteOption={onDeleteOption}
                     />
@@ -2570,9 +2487,9 @@ export function QuestionSettings({
                   </div>
                 ) : activeQuestion.question_type === 'text_answer' ? (
                   <TextAnswerForm
-                    correctAnswerText={correctAnswerText}
-                    onTextAnswerChange={handleTextAnswerChange}
-                    onTextAnswerBlur={handleTextAnswerBlur}
+                    activeQuestion={activeQuestion}
+                    onOptionChange={onOptionChange}
+                    questionIndex={activeQuestionIndex}
                   />
                 ) : activeQuestion.question_type === 'slide' ||
                   activeQuestion.question_type === 'info_slide' ? (
@@ -2597,8 +2514,14 @@ export function QuestionSettings({
                   <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
                     <ReorderOptions
                       options={activeQuestion.options}
-                      onOptionChange={(index, field, value) =>
-                        onOptionChange(activeQuestionIndex, index, field, value)
+                      onOptionChange={(index, field, value, isTyping = false) =>
+                        onOptionChange(
+                          activeQuestionIndex,
+                          index,
+                          field,
+                          value,
+                          isTyping
+                        )
                       }
                       onDeleteOption={onDeleteOption}
                       onAddOption={onAddOption}
@@ -2610,7 +2533,8 @@ export function QuestionSettings({
                 ) : activeQuestion.question_type === 'matching_pair' ? (
                   <div className="p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-md border border-indigo-100 dark:border-indigo-800">
                     <MatchingPairSettings
-                      options={activeQuestion.options || []}
+                      question={activeQuestion}
+                      activityId={activity?.id || ''}
                       onOptionsChange={(newOptions) => {
                         if (onMatchingPairOptionsChange) {
                           onMatchingPairOptionsChange(

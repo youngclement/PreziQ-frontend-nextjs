@@ -122,10 +122,10 @@ const SortableActivityItem = ({
   const associatedQuestion = questions.find(
     (q) => q.activity_id === activity.id
   );
+
   const displayTitle =
     associatedQuestion?.question_text ||
-    activity.title ||
-    `Activity ${index + 1}`;
+    ``;
 
   const getBackgroundStyle = () => {
     const style: React.CSSProperties = {};
@@ -185,7 +185,7 @@ const SortableActivityItem = ({
         <h3 className="text-[9px] font-medium line-clamp-2 text-white drop-shadow-sm">
           {activity.activity_type_id === 'INFO_SLIDE'
             ? 'Slide ' + (index + 1)
-            : activity.title || `Activity ${index + 1}`}
+            : displayTitle}
         </h3>
       </div>
     </div>
@@ -652,7 +652,7 @@ export function QuestionList({
       if (
         event.detail &&
         event.detail.activityId &&
-        event.detail.title &&
+        event.detail.title || event.detail.questionText &&
         event.detail.sender !== 'questionList'
       ) {
         // Force re-render when question text changes
@@ -668,6 +668,23 @@ export function QuestionList({
       if (typeof window !== 'undefined') {
         window.removeEventListener('activity:title:updated', handleTitleUpdate);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleWheelEvent = (e: WheelEvent) => {
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
+    };
+
+    // Thêm event listener với passive: false
+    container.addEventListener('wheel', handleWheelEvent, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheelEvent);
     };
   }, []);
 
@@ -766,16 +783,44 @@ export function QuestionList({
               >
                 <div
                   ref={scrollContainerRef}
-                  className="flex overflow-x-auto overflow-y-hidden gap-2 py-1 flex-nowrap cursor-grab"
-                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  className="custom-scrollbar flex overflow-x-auto overflow-y-hidden gap-2 py-1 flex-nowrap cursor-grab"
+                  // style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
                 >
                   <style jsx global>{`
-                    div::-webkit-scrollbar {
+                    /* Tùy chỉnh scrollbar cho Webkit (Chrome, Safari, Edge mới) */
+                    .custom-scrollbar::-webkit-scrollbar {
+                      height: 6px; /* Giảm chiều cao để trông thanh mảnh hơn */
+                    }
+
+                    .custom-scrollbar::-webkit-scrollbar-track {
+                      background: transparent;
+                    }
+
+                    .custom-scrollbar::-webkit-scrollbar-thumb {
+                      background: rgba(100, 100, 100, 0.4);
+                      border-radius: 10px; /* Tăng bo góc để trông mềm mại hơn */
+                    }
+
+                    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                      background: rgba(100, 100, 100, 0.7);
+                    }
+
+                    .custom-scrollbar::-webkit-scrollbar-button {
                       display: none;
+                    }
+
+                    .custom-scrollbar {
+                      scrollbar-width: thin; /* 'thin', 'auto', hoặc 'none' */
+                      scrollbar-color: rgba(100, 100, 100, 0.4) transparent;
+                    }
+
+                    .custom-scrollbar {
+                      padding-bottom: 4px;
+                      margin-bottom: 4px;
                     }
                   `}</style>
                   {activities.map((activity, index) => (

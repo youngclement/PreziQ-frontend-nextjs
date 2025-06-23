@@ -29,7 +29,7 @@ import {
   CheckCircle,
   X,
 } from 'lucide-react';
-import { LocationQuestionPlayer } from '@/app/collection/components/question-player/location-question-player';
+import { LocationQuestionPlayer } from './QuizLocationMap';
 
 interface LocationAnswer {
   longitude: number;
@@ -465,53 +465,75 @@ export default function QuizLocationViewer({
     isSubmitted,
   ]);
 
-  // Memoize handleLocationSelect để tránh tạo function mới mỗi lần render
+  // Fix for the handleLocationSelect function
   const handleLocationSelect = useCallback(
     (isCorrect: boolean, distance: number, userLocation?: LocationData) => {
       if (isSubmitted || isQuizEnded) return;
 
       // Lưu vị trí user chọn với validation
       if (userLocation) {
-        // Kiểm tra xem vị trí có trùng lặp không
-        if (isLocationDuplicate(userLocation)) {
-          setError('Vị trí này đã được chọn. Vui lòng chọn vị trí khác.');
-          return;
-        }
+        // Use functional update to get the latest state
+        setUserSelectedLocations((prevLocations) => {
+          // Kiểm tra xem vị trí có trùng lặp không
+          const isDuplicate = prevLocations.some(
+            (existing) =>
+              Math.abs(existing.lat - userLocation.lat) < 0.001 &&
+              Math.abs(existing.lng - userLocation.lng) < 0.001
+          );
 
-        // Kiểm tra số lượng tối đa
-        if (userSelectedLocations.length >= correctAnswers.length) {
-          setError(`Chỉ được chọn tối đa ${correctAnswers.length} vị trí.`);
-          return;
-        }
+          if (isDuplicate) {
+            // Set error outside the functional update
+            setTimeout(
+              () =>
+                setError('Vị trí này đã được chọn. Vui lòng chọn vị trí khác.'),
+              0
+            );
+            return prevLocations; // Return unchanged
+          }
 
-        // Thêm vị trí mới vào danh sách
-        setUserSelectedLocations((prev) => [...prev, userLocation]);
-        setError(null); // Xóa lỗi nếu thêm thành công
-        console.log(
-          `[QuizLocation] Đã thêm vị trí ${userSelectedLocations.length + 1}/${
-            correctAnswers.length
-          }:`,
-          userLocation
-        );
+          // Kiểm tra số lượng tối đa
+          if (prevLocations.length >= correctAnswers.length) {
+            setTimeout(
+              () =>
+                setError(
+                  `Chỉ được chọn tối đa ${correctAnswers.length} vị trí.`
+                ),
+              0
+            );
+            return prevLocations; // Return unchanged
+          }
+
+          // Thêm vị trí mới vào danh sách
+          const newLocations = [...prevLocations, userLocation];
+
+          // Log after confirming we're going to add
+          console.log(
+            `[QuizLocation] Đã thêm vị trí ${newLocations.length}/${correctAnswers.length}:`,
+            userLocation
+          );
+
+          setError(null); // Clear errors
+          return newLocations;
+        });
       }
     },
-    [
-      isSubmitted,
-      isQuizEnded,
-      isLocationDuplicate,
-      userSelectedLocations.length,
-      correctAnswers.length,
-    ]
+    [isSubmitted, isQuizEnded, correctAnswers.length]
   );
 
-  // Hàm để xóa một vị trí đã chọn
+  // Fix for the removeSelectedLocation function
   const removeSelectedLocation = useCallback(
     (index: number) => {
       if (isSubmitted || isQuizEnded) return;
 
-      setUserSelectedLocations((prev) => prev.filter((_, i) => i !== index));
+      setUserSelectedLocations((prevLocations) => {
+        const newLocations = prevLocations.filter((_, i) => i !== index);
+        console.log(
+          `[QuizLocation] Đã xóa vị trí tại index ${index}, còn lại ${newLocations.length} vị trí`
+        );
+        return newLocations;
+      });
+
       setError(null);
-      console.log(`[QuizLocation] Đã xóa vị trí tại index ${index}`);
     },
     [isSubmitted, isQuizEnded]
   );
@@ -582,7 +604,10 @@ export default function QuizLocationViewer({
   }
 
   return (
-    <div className='min-h-full bg-transparent'>
+    <div
+      className='min-h-full bg-transparent'
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
       <Card className='bg-black bg-opacity-30 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
         {/* Header với thời gian và tiến trình */}
         <motion.div
@@ -721,7 +746,7 @@ export default function QuizLocationViewer({
         </div>
 
         {/* Map */}
-        <div className='p-6 bg-black bg-opacity-20'>
+        <div className='p-3 sm:p-6 bg-black bg-opacity-20'>
           <AnimatePresence>
             {error && (
               <motion.div

@@ -182,6 +182,9 @@ i18next
           // User Auth
           email: 'Email',
           password: 'Password',
+          firstName: 'First Name',
+          lastName: 'Last Name',
+          phoneNumber: 'Phone Number',
           forgotPassword: 'Forgot Password?',
           dontHaveAccount: "Don't have an account?",
           alreadyHaveAccount: 'Already have an account?',
@@ -330,6 +333,33 @@ i18next
           payment: 'Payment',
           notifications: 'Notifications',
           logout: 'Logout',
+
+          // Forgot Password
+          forgotPasswordTitle: 'Forgot Password',
+          forgotPasswordDescription:
+            'Enter your email to receive a password reset link.',
+          sendResetLink: 'Send Reset Link',
+          sending: 'Sending...',
+          forgotPasswordFailed: 'Forgot Password Failed',
+          forgotPasswordGenericError: 'An error occurred, please try again.',
+          emailPlaceholderForgot: 'name@example.com',
+
+          // Register Page
+          welcome: 'Welcome',
+          joinPreziQ:
+            'Join PreziQ to explore amazing presentations and connect with like-minded creators.',
+          firstNameRequired: 'First name is required',
+          lastNameRequired: 'Last name is required',
+          phoneNumberRequired: 'Phone number is required',
+          passwordRequired: 'Password is required',
+          confirmPasswordRequired: 'Confirm password is required',
+          byCreatingAccount: 'By creating an account, you agree to our',
+          termsAndConditions: 'terms and conditions',
+          privacyPolicy: 'privacy policy',
+          createAnAccount: 'Create an account',
+          logIn: 'Log in',
+          phoneNumberPlaceholder: 'e.g., 0886332809',
+          emailRequired: 'Email is required',
 
           // New achievements translations
           achievementName: 'Achievement Name',
@@ -572,6 +602,11 @@ i18next
             success: 'Success',
             inviteSuccess: 'Invitation sent successfully',
             inviteError: 'Could not send invitation',
+            cropAvatar: 'Crop Avatar',
+            cropAvatarDesc:
+              'Kéo và thả để cắt ảnh đại diện của bạn. Nhấn "Lưu" để áp dụng.',
+            zoom: 'Zoom',
+            cropAndUpload: 'Crop and Upload',
             columns: {
               avatar: 'Avatar',
               email: 'Email',
@@ -634,6 +669,8 @@ i18next
           collectionForm: {
             title: 'Create New Collection',
             subtitle: 'Build an amazing collection for your viewers',
+            editTitle: 'Edit Collection',
+            editSubtitle: 'Update the information for your collection',
             titleLabel: 'Title',
             titlePlaceholder: 'Enter collection title',
             titleDescription: 'Keep it short and memorable',
@@ -661,10 +698,14 @@ i18next
             cancel: 'Cancel',
             save: 'Save',
             creating: 'Creating...',
+            update: 'Update',
+            updating: 'Updating...',
             importantNote: {
               title: 'Important Note',
               content:
                 'When creating a new collection, the system will automatically add a default check activity. You can edit or delete this activity after creating the collection.',
+              editContent:
+                'When editing the collection, existing quiz activities will be preserved. You can manage activities after updating the collection.',
               requiredFields:
                 'Required fields: Title, Description, Cover Image, Topic',
             },
@@ -884,6 +925,166 @@ i18next
             createFirstCollection:
               'Create your first collection to start building interactive learning experiences.',
           },
+
+          // Login Page
+          login: {
+            welcomeBack: 'Welcome Back',
+            signInToContinue:
+              'Sign in to your PreziQ account to continue creating and sharing amazing presentations.',
+            email: 'Email',
+            phoneNumber: 'Phone Number',
+            password: 'Password',
+            signInWithInstead: 'Sign in with another method',
+            phoneNumberPlaceholder: 'e.g., 0886332809',
+            emailRequired: 'Email is required',
+            phoneRequired: 'Phone number is required',
+            passwordRequired: 'Password is required',
+            signingIn: 'Signing in...',
+            signIn: 'Sign In',
+            forgotPassword: 'Forgot password?',
+            dontHaveAccount: "Don't have an account?",
+            signUp: 'Sign up',
+            resendVerification: 'Resend verification email',
+            resendVerificationTitle: 'Confirm resend email',
+            resendVerificationDesc:
+              'Your account is not verified. Do you want to resend verification email to {email}?',
+            cancel: 'Cancel',
+            resend: 'Resend',
+            verificationEmailSent: 'Verification email sent!',
+            resendVerificationError: 'Error sending verification!',
+            pleaseTryAgain: 'Please try again.',
+            youMustEnterEmailOrPhone: 'You must enter email or phone number!',
+          },
+
+          // Profile Page
+          profile: {
+            // Tab Names
+            personalInfo: 'Personal Profile',
+            email: 'Email',
+            password: 'Password',
+
+            // Personal Information Form
+            personalInfoTitle: 'Personal Information',
+            personalInfoDescription:
+              'Manage your personal information and account security easily and safely',
+            personalInfoCard: 'Personal Information',
+            personalInfoCardDesc:
+              'Update your name, birth date and other personal information',
+            emailSettingsCard: 'Email Settings',
+            emailSettingsCardDesc: 'Change email address and verify account',
+            securityCard: 'Security',
+            securityCardDesc: 'Change password and enhance account security',
+            lastName: 'Last Name',
+            firstName: 'First Name',
+            nickname: 'Nickname',
+            birthDate: 'Birth Date',
+            gender: 'Gender',
+            nationality: 'Nationality',
+            avatar: 'Avatar',
+            clickToChange: 'Click to change',
+            memberSince: 'Member since',
+            cropAvatar: 'Crop Avatar',
+            zoom: 'Zoom',
+            cancel: 'Cancel',
+            cropAndUpload: 'Crop and upload',
+            processing: 'Processing...',
+            updateInfo: 'Update info',
+            updating: 'Updating...',
+            lastNamePlaceholder: 'Last Name',
+            firstNamePlaceholder: 'First Name',
+            nicknamePlaceholder: 'Enter nickname (optional)',
+            selectGender: 'Select gender',
+            selectNationality: 'Select nationality',
+            loading: 'Loading...',
+            male: 'Male',
+            female: 'Female',
+            other: 'Other',
+
+            // Email Form
+            updateEmail: 'Update email',
+            updateEmailTitle: 'Update Email',
+            updateEmailDescription:
+              'Change your email address. You will need to confirm the new email.',
+            currentEmail: 'Current email',
+            newEmail: 'New email',
+            newEmailPlaceholder: 'Enter your new email',
+            sendRequest: 'Send request',
+            sending: 'Sending...',
+            checkYourEmail: 'Check your email',
+            emailMustBeDifferent:
+              'New email must be different from current email',
+            cannotUpdateEmail: 'Cannot update email. Please try again later.',
+
+            // Password Form
+            passwordTitle: 'Password',
+            passwordDescription: 'Update your password to protect your account',
+            currentPassword: 'Current password',
+            newPassword: 'New password',
+            confirmNewPassword: 'Confirm new password',
+            currentPasswordPlaceholder: 'Enter current password',
+            newPasswordPlaceholder: 'Enter new password',
+            confirmPasswordPlaceholder: 'Confirm new password',
+            currentPasswordRequired:
+              'Current password must be at least 6 characters',
+            newPasswordRequired: 'New password must be at least 8 characters',
+            passwordComplexity:
+              'Password must contain at least 1 uppercase, 1 lowercase, 1 number and 1 special character',
+            confirmPasswordRequired:
+              'Confirm password must be at least 8 characters',
+            passwordMismatch: 'Confirm password does not match',
+            updatingPassword: 'Updating...',
+            updatePassword: 'Update password',
+            passwordUpdateSuccess:
+              'Password updated successfully. Please login again.',
+            cannotUpdatePassword: 'Cannot update password. Please try again.',
+
+            // Form Validation Messages
+            firstNameRequired: 'First name is required.',
+            firstNameTooLong: 'First name cannot be longer than 50 characters.',
+            lastNameRequired: 'Last name is required.',
+            lastNameTooLong: 'Last name cannot be longer than 50 characters.',
+            nicknameTooLong: 'Nickname cannot be longer than 30 characters.',
+            nationalityTooLong: 'Quốc tịch không được vượt quá 50 ký tự.',
+            fileMinSize: 'File must be larger than 1KB',
+            fileMaxSize: 'File cannot be larger than 5MB',
+            fileType: 'Only JPG, JPEG or PNG files are allowed',
+            emailRequired: 'Please enter email',
+            emailInvalid: 'Email is invalid',
+            currentPasswordMinLength:
+              'Current password must be at least 6 characters',
+            newPasswordMinLength: 'New password must be at least 8 characters',
+            newPasswordPattern:
+              'New password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number and 1 special character',
+            confirmPasswordMinLength:
+              'Confirm password must be at least 8 characters',
+            confirmPasswordMatch: 'Confirm password does not match',
+
+            // Success/Error Messages
+            uploadSuccess: 'Profile image uploaded successfully',
+            cropUploadSuccess: 'Profile image uploaded successfully',
+            updateSuccess: 'Personal information updated successfully',
+            noChanges: 'No changes were made',
+            newEmailMustDifferent:
+              'New email must be different from current email',
+            uploadError: 'Unable to upload profile image. Please try again.',
+            updateError:
+              'Unable to update information. Please try again later.',
+            loadingError: 'Unable to load user information',
+            genericError: 'An error occurred while updating',
+            oldAvatarDeleteWarning:
+              'Successfully updated but unable to delete old avatar.',
+            fileFormatNotSupported: 'File format not supported',
+            fileTooSmall: 'File too small',
+            fileTooLarge: 'File too large',
+            cannotCreateCroppedImage: 'Unable to create cropped image',
+            fileUrlNotFound: 'File URL not found in response',
+            couldNotLoadCountries: 'Unable to load countries',
+
+            // Profile Page
+            profilePageTitle: 'Personal Information',
+            profilePageDescription:
+              'Manage your personal information and account security easily and securely',
+          },
         },
       },
       vi: {
@@ -1031,6 +1232,9 @@ i18next
           // User Auth
           email: 'Email',
           password: 'Mật khẩu',
+          firstName: 'Tên',
+          lastName: 'Họ',
+          phoneNumber: 'Số điện thoại',
           forgotPassword: 'Quên mật khẩu?',
           dontHaveAccount: 'Chưa có tài khoản?',
           alreadyHaveAccount: 'Đã có tài khoản?',
@@ -1181,6 +1385,33 @@ i18next
           notifications: 'Thông báo',
           logout: 'Đăng xuất',
 
+          // Forgot Password
+          forgotPasswordTitle: 'Quên mật khẩu',
+          forgotPasswordDescription:
+            'Nhập email của bạn để nhận liên kết đặt lại mật khẩu.',
+          sendResetLink: 'Gửi liên kết đặt lại',
+          sending: 'Đang gửi...',
+          forgotPasswordFailed: 'Quên mật khẩu thất bại',
+          forgotPasswordGenericError: 'Đã xảy ra lỗi, vui lòng thử lại.',
+          emailPlaceholderForgot: 'ten@example.com',
+
+          // Register Page
+          welcome: 'Chào mừng',
+          joinPreziQ:
+            'Tham gia PreziQ để khám phá những bài thuyết trình tuyệt vời và kết nối với những người sáng tạo cùng chí hướng.',
+          firstNameRequired: 'Tên là bắt buộc',
+          lastNameRequired: 'Họ là bắt buộc',
+          phoneNumberRequired: 'Số điện thoại là bắt buộc',
+          passwordRequired: 'Mật khẩu là bắt buộc',
+          confirmPasswordRequired: 'Xác nhận mật khẩu là bắt buộc',
+          byCreatingAccount: 'Bằng cách tạo tài khoản, bạn đồng ý với',
+          termsAndConditions: 'điều khoản và điều kiện',
+          privacyPolicy: 'chính sách bảo mật',
+          createAnAccount: 'Tạo tài khoản',
+          logIn: 'Đăng nhập',
+          phoneNumberPlaceholder: 'ví dụ: 0886332809',
+          emailRequired: 'Email là bắt buộc',
+
           // New achievements translations
           achievementName: 'Tên thành tựu',
           achievementDescription: 'Mô tả',
@@ -1304,7 +1535,7 @@ i18next
             uploading: 'Đang tải lên...',
             fileInfo: 'Thông tin tệp',
             fileSize: 'KB',
-            formatInfo: 'Định dạng: JPG, JPEG, PNG, SVG (tối đa 5MB)',
+            formatInfo: 'Định dạng: JPG, JPEG, PNG, SVG (max 5MB)',
             dragDrop: 'Kéo và thả biểu tượng vào đây',
             or: 'hoặc',
             browse: 'Duyệt tệp',
@@ -1417,6 +1648,11 @@ i18next
             success: 'Thành công',
             inviteSuccess: 'Đã gửi lời mời thành công',
             inviteError: 'Không thể gửi lời mời',
+            cropAvatar: 'Cắt ảnh đại diện',
+            cropAvatarDesc:
+              'Kéo và thả để cắt ảnh đại diện của bạn. Nhấn "Lưu" để áp dụng.',
+            zoom: 'Phóng to',
+            cropAndUpload: 'Cắt và tải lên',
             columns: {
               avatar: 'Ảnh đại diện',
               email: 'Email',
@@ -1479,6 +1715,8 @@ i18next
           collectionForm: {
             title: 'Tạo bộ sưu tập mới',
             subtitle: 'Xây dựng bộ sưu tập tuyệt vời cho người xem của bạn',
+            editTitle: 'Chỉnh sửa bộ sưu tập',
+            editSubtitle: 'Cập nhật thông tin cho bộ sưu tập của bạn',
             titleLabel: 'Tiêu đề',
             titlePlaceholder: 'Nhập tiêu đề bộ sưu tập',
             titleDescription: 'Giữ ngắn gọn và dễ nhớ',
@@ -1506,10 +1744,14 @@ i18next
             cancel: 'Hủy',
             save: 'Lưu',
             creating: 'Đang tạo...',
+            update: 'Cập nhật',
+            updating: 'Đang cập nhật...',
             importantNote: {
               title: 'Lưu ý quan trọng',
               content:
                 'Khi tạo bộ sưu tập mới, hệ thống sẽ tự động thêm một hoạt động kiểm tra mặc định. Bạn có thể chỉnh sửa hoặc xóa hoạt động này sau khi tạo bộ sưu tập.',
+              editContent:
+                'Khi chỉnh sửa bộ sưu tập, các hoạt động quiz hiện có sẽ được giữ nguyên. Bạn có thể quản lý các hoạt động sau khi cập nhật bộ sưu tập.',
               requiredFields:
                 'Các trường bắt buộc: Tiêu đề, Mô tả, Hình ảnh bìa, Chủ đề',
             },
@@ -1726,6 +1968,126 @@ i18next
               'Thử từ khóa tìm kiếm khác hoặc xóa tìm kiếm để xem tất cả bộ sưu tập.',
             createFirstCollection:
               'Tạo bộ sưu tập đầu tiên của bạn để bắt đầu xây dựng trải nghiệm học tập tương tác.',
+          },
+
+          // Login Page
+          login: {
+            welcomeBack: 'Chào mừng trở lại',
+            signInToContinue:
+              'Đăng nhập vào tài khoản PreziQ của bạn để tiếp tục tạo và chia sẻ những bài thuyết trình tuyệt vời.',
+            email: 'Email',
+            phoneNumber: 'Số điện thoại',
+            password: 'Mật khẩu',
+            signInWithInstead: 'Đăng nhập bằng phương pháp khác',
+            phoneNumberPlaceholder: 'ví dụ: 0886332809',
+            emailRequired: 'Email là bắt buộc',
+            phoneRequired: 'Số điện thoại là bắt buộc',
+            passwordRequired: 'Mật khẩu là bắt buộc',
+            signingIn: 'Đang đăng nhập...',
+            signIn: 'Đăng nhập',
+            forgotPassword: 'Quên mật khẩu?',
+            dontHaveAccount: 'Chưa có tài khoản?',
+            signUp: 'Đăng ký',
+            resendVerification: 'Gửi lại email xác thực',
+            resendVerificationTitle: 'Xác nhận gửi lại email',
+            resendVerificationDesc:
+              'Tài khoản của bạn chưa được xác thực. Bạn có muốn gửi lại email xác thực đến địa chỉ {email} không?',
+            cancel: 'Hủy',
+            resend: 'Gửi lại',
+            verificationEmailSent: 'Email xác thực đã được gửi!',
+            resendVerificationError: 'Lỗi gửi lại xác thực!',
+            pleaseTryAgain: 'Vui lòng thử lại.',
+            youMustEnterEmailOrPhone: 'Bạn phải nhập email hoặc số điện thoại!',
+          },
+
+          // Profile Page
+          profile: {
+            // Tab Names
+            personalInfo: 'Thông tin cá nhân',
+            email: 'Email',
+            password: 'Mật khẩu',
+
+            // Personal Information Form
+            personalInfoTitle: 'Thông tin cá nhân',
+            personalInfoDescription:
+              'Cập nhật và quản lý thông tin cá nhân của bạn',
+            personalInfoCard: 'Thông tin cá nhân',
+            personalInfoCardDesc:
+              'Update your name, birth date and other personal information',
+            emailSettingsCard: 'Email Settings',
+            emailSettingsCardDesc: 'Change email address and verify account',
+            securityCard: 'Security',
+            securityCardDesc: 'Change password and enhance account security',
+            lastName: 'Họ',
+            firstName: 'Tên',
+            nickname: 'Biệt danh',
+            birthDate: 'Ngày sinh',
+            gender: 'Giới tính',
+            nationality: 'Quốc tịch',
+            avatar: 'Ảnh đại diện',
+            clickToChange: 'Nhấn vào ảnh để thay đổi',
+            memberSince: 'Thành viên từ',
+            cropAvatar: 'Cắt ảnh đại diện',
+            zoom: 'Zoom',
+            cancel: 'Hủy',
+            cropAndUpload: 'Cắt và tải lên',
+            processing: 'Đang xử lý...',
+            updateInfo: 'Cập nhật thông tin',
+            updating: 'Đang cập nhật...',
+            lastNamePlaceholder: 'Nguyễn',
+            firstNamePlaceholder: 'Văn A',
+            nicknamePlaceholder: 'Nhập biệt danh (tùy chọn)',
+            selectGender: 'Chọn giới tính',
+            selectNationality: 'Chọn quốc tịch',
+            loading: 'Đang tải...',
+            male: 'Nam',
+            female: 'Nữ',
+            other: 'Khác',
+
+            // Email Form
+            updateEmail: 'Cập nhật email',
+            updateEmailTitle: 'Cập nhật email',
+            updateEmailDescription:
+              'Thay đổi địa chỉ email của bạn. Bạn sẽ cần xác nhận email mới.',
+            currentEmail: 'Email hiện tại',
+            newEmail: 'Email mới',
+            newEmailPlaceholder: 'Nhập email mới của bạn',
+            sendRequest: 'Gửi yêu cầu',
+            sending: 'Đang gửi...',
+            checkYourEmail: 'Kiểm tra email của bạn',
+            emailMustBeDifferent: 'Email mới phải khác với email hiện tại',
+            cannotUpdateEmail:
+              'Không thể cập nhật email. Vui lòng thử lại sau.',
+
+            // Password Form
+            passwordTitle: 'Mật khẩu',
+            passwordDescription:
+              'Cập nhật mật khẩu của bạn để bảo vệ tài khoản',
+            currentPassword: 'Mật khẩu hiện tại',
+            newPassword: 'Mật khẩu mới',
+            confirmNewPassword: 'Xác nhận mật khẩu mới',
+            currentPasswordPlaceholder: 'Nhập mật khẩu hiện tại',
+            newPasswordPlaceholder: 'Nhập mật khẩu mới',
+            confirmPasswordPlaceholder: 'Xác nhận mật khẩu mới',
+            currentPasswordRequired:
+              'Mật khẩu hiện tại phải có ít nhất 6 ký tự',
+            newPasswordRequired: 'Mật khẩu mới phải có ít nhất 8 ký tự',
+            passwordComplexity:
+              'Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt',
+            confirmPasswordRequired:
+              'Xác nhận mật khẩu phải có ít nhất 8 ký tự',
+            passwordMismatch: 'Mật khẩu xác nhận không khớp',
+            updatingPassword: 'Đang cập nhật...',
+            updatePassword: 'Cập nhật mật khẩu',
+            passwordUpdateSuccess:
+              'Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại.',
+            cannotUpdatePassword:
+              'Không thể cập nhật mật khẩu. Vui lòng thử lại.',
+
+            // Profile Page
+            profilePageTitle: 'Hồ sơ cá nhân',
+            profilePageDescription:
+              'Quản lý thông tin cá nhân và bảo mật tài khoản của bạn một cách dễ dàng và an toàn',
           },
         },
       },
