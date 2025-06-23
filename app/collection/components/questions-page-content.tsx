@@ -1,3 +1,4 @@
+'use client';
 /**
  * Extending Window interface to include our custom properties
  */
@@ -16,8 +17,6 @@ declare global {
     savedBackgroundColors?: Record<string, string>;
   }
 }
-
-'use client'
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -113,6 +112,7 @@ export default function QuestionsPageContent() {
     handleQuestionTextChange,
     handleTimeLimitChange,
     handleAddLocationQuestion: handleAddLocationQuestionFromHook,
+    handleMatchingPairChange,
   } = useQuestionOperations(
     collectionId,
     activities,
@@ -266,9 +266,11 @@ export default function QuestionsPageContent() {
     questionIndex: number,
     isTyping: boolean = false
   ) => {
-    if (activity && activity.activity_type_id === 'INFO_SLIDE') {return}
-      // Update question text in local state
-      const updatedQuestions = [...questions];
+    if (activity && activity.activity_type_id === 'INFO_SLIDE') {
+      return;
+    }
+    // Update question text in local state
+    const updatedQuestions = [...questions];
     updatedQuestions[questionIndex].question_text = value;
     setQuestions(updatedQuestions);
 
@@ -611,8 +613,19 @@ export default function QuestionsPageContent() {
 
   const handleMatchingPairColumnNamesChange = (left: string, right: string) => {
     setMatchingPairColumnNames({ left, right });
-    // Here you might want to debounce an API call to save these names
-    // For now, it just updates the local state
+    if (questions[activeQuestionIndex]?.question_type === 'matching_pair') {
+      // Lấy object quizMatchingPairAnswer hiện tại
+      const currentMatchingData =
+        questions[activeQuestionIndex].quizMatchingPairAnswer ||
+        questions[activeQuestionIndex].matching_data;
+
+      // Gọi update với object đầy đủ
+      handleMatchingPairChange(activeQuestionIndex, {
+        ...currentMatchingData,
+        leftColumnName: left,
+        rightColumnName: right,
+      });
+    }
   };
 
   // Function to handle changes in matching pair options
@@ -625,9 +638,12 @@ export default function QuestionsPageContent() {
       updatedQuestions[questionIndex].options = newOptions;
       setQuestions(updatedQuestions);
 
-      // TODO: Add API call to persist changes for matching pair options
-      // This would typically involve calling a function from useQuestionOperations
-      // that is designed to update the entire options array for a question.
+      // Gọi API cập nhật matching pair items (bao gồm cả khi sửa nội dung item)
+      if (updatedQuestions[questionIndex].question_type === 'matching_pair') {
+        handleMatchingPairChange(questionIndex, {
+          items: newOptions,
+        });
+      }
     }
   };
 
@@ -647,7 +663,9 @@ export default function QuestionsPageContent() {
       for (const question of questions) {
         const activityId = question.activity_id;
 
-        const shouldFetchData = ['slide', 'info_slide'].includes(question.question_type);
+        const shouldFetchData = ['slide', 'info_slide'].includes(
+          question.question_type
+        );
 
         if (activityId && !slidesData[activityId] && shouldFetchData) {
           try {
@@ -707,10 +725,10 @@ export default function QuestionsPageContent() {
         prevQuestions.map((question) =>
           question.activity_id === activityId
             ? {
-              ...question,
-              backgroundColor: properties.backgroundColor,
-              backgroundImage: properties.backgroundImage,
-            }
+                ...question,
+                backgroundColor: properties.backgroundColor,
+                backgroundImage: properties.backgroundImage,
+              }
             : question
         )
       );
@@ -728,10 +746,10 @@ export default function QuestionsPageContent() {
         prevActivities.map((activity) =>
           activity.id === activityId
             ? {
-              ...activity,
-              backgroundColor: properties.backgroundColor || '',
-              backgroundImage: properties.backgroundImage || '',
-            }
+                ...activity,
+                backgroundColor: properties.backgroundColor || '',
+                backgroundImage: properties.backgroundImage || '',
+              }
             : activity
         )
       );

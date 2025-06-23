@@ -90,7 +90,12 @@ import {
 } from '@/components/ui/dialog';
 
 // First, let's import the needed drag and drop components from react-beautiful-dnd
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from 'react-beautiful-dnd';
 
 import { slideBackgroundManager } from '@/utils/slideBackgroundManager';
 
@@ -1045,8 +1050,7 @@ export function QuestionPreview({
     if (question.question_type === 'location') {
       const locationAnswers = getLocationAnswers(question, activity);
       return (
-
-        <div className='p-4'>
+        <div className="p-4">
           {locationAnswers && locationAnswers.length > 0 ? (
             <div className="w-full mt-2">
               {!previewMode ? (
@@ -1059,27 +1063,24 @@ export function QuestionPreview({
                   }
                   questionIndex={questionIndex}
                 />
-
               ) : (
                 <DynamicLocationQuestionEditor
                   questionText={question.question_text}
                   locationAnswers={getLocationAnswers(question, activity)}
-                  onLocationChange={() => { }} // Read-only, so no-op
+                  onLocationChange={() => {}} // Read-only, so no-op
                   questionIndex={questionIndex}
                   readonly={true}
                 />
               )}
             </div>
-
           ) : (
-            <div className='text-center p-8 bg-gray-50 rounded-lg'>
-              <p className='text-muted-foreground'>
+            <div className="text-center p-8 bg-gray-50 rounded-lg">
+              <p className="text-muted-foreground">
                 No location data for this question yet.
               </p>
             </div>
           )}
         </div>
-
       );
     }
 
@@ -1180,7 +1181,7 @@ export function QuestionPreview({
                       background: rgba(255, 255, 255, 0.4);
                       border-radius: 8px;
                       border: 4px solid transparent; /* Tạo viền trong suốt */
-                      background-clip: padding-box; 
+                      background-clip: padding-box;
                     }
                     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
                       background: rgba(255, 255, 255, 0.6);
@@ -1300,9 +1301,7 @@ export function QuestionPreview({
               {editMode !== null ? (
                 <div className="w-full max-w-2xl">
                   <Textarea
-                    value={
-                      question.question_text || ''
-                    }
+                    value={question.question_text || ''}
                     onChange={(e) =>
                       onQuestionTextChange(e.target.value, questionIndex, true)
                     }
@@ -1322,7 +1321,7 @@ export function QuestionPreview({
                       background: rgba(255, 255, 255, 0.4);
                       border-radius: 8px;
                       border: 4px solid transparent; /* Tạo viền trong suốt */
-                      background-clip: padding-box; 
+                      background-clip: padding-box;
                     }
                     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
                       background: rgba(255, 255, 255, 0.6);
@@ -1544,7 +1543,9 @@ export function QuestionPreview({
                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 flex items-center">
                   <MoveVertical className="h-3.5 w-3.5 mr-1.5" />
                   <span>
-                    {editMode !== null ? 'Drag items to reorder them (drag & drop enabled in edit mode)' : 'Drag items to reorder them'}
+                    {editMode !== null
+                      ? 'Drag items to reorder them (drag & drop enabled in edit mode)'
+                      : 'Drag items to reorder them'}
                   </span>
                 </div>
 
@@ -1552,11 +1553,17 @@ export function QuestionPreview({
                 {editMode !== null ? (
                   <DragDropContext
                     onDragEnd={(result: DropResult) => {
-                      if (!result.destination || result.destination.index === result.source.index) {
+                      if (
+                        !result.destination ||
+                        result.destination.index === result.source.index
+                      ) {
                         return;
                       }
                       if (onReorderOptions) {
-                        onReorderOptions(result.source.index, result.destination.index);
+                        onReorderOptions(
+                          result.source.index,
+                          result.destination.index
+                        );
                       }
                     }}
                   >
@@ -1572,8 +1579,12 @@ export function QuestionPreview({
 
                             .map((option, index) => (
                               <Draggable
-                                key={option.id || `option-${option.display_order}`}
-                                draggableId={option.id || `option-${option.display_order}`}
+                                key={
+                                  option.id || `option-${option.display_order}`
+                                }
+                                draggableId={
+                                  option.id || `option-${option.display_order}`
+                                }
                                 index={index}
                               >
                                 {(provided, snapshot) => (
@@ -1582,23 +1593,24 @@ export function QuestionPreview({
                                     {...provided.draggableProps}
                                     {...provided.dragHandleProps}
                                     className={cn(
-                                      "flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-md border transition-all",
+                                      'flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-md border transition-all',
                                       snapshot.isDragging
-                                        ? "border-primary ring-1 ring-primary/30 bg-primary/5 shadow-xl scale-105"
-                                        : "border-gray-200 dark:border-gray-700"
+                                        ? 'border-primary ring-1 ring-primary/30 bg-primary/5 shadow-xl scale-105'
+                                        : 'border-gray-200 dark:border-gray-700'
                                     )}
                                     style={{
                                       ...provided.draggableProps.style,
-                                      marginBottom: '8px'
+                                      marginBottom: '8px',
                                     }}
                                   >
                                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
                                       {index + 1}
                                     </div>
-                                    <span className="text-sm">{option.option_text}</span>
+                                    <span className="text-sm">
+                                      {option.option_text}
+                                    </span>
                                     <div className="ml-auto flex-shrink-0">
                                       <GripVertical className="h-4 w-4 text-gray-400" />
-
                                     </div>
                                   </div>
                                 )}
@@ -1621,7 +1633,6 @@ export function QuestionPreview({
                         >
                           <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
                             {index + 1}
-
                           </div>
                           <span className="text-sm">{option.option_text}</span>
                         </div>
@@ -1674,7 +1685,17 @@ export function QuestionPreview({
               >
                 {/* Direct rendering of choice options */}
                 {question.options.map((option, optionIndex) => {
-                  const optionLetter = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'][optionIndex];
+                  const optionLetter = [
+                    'A',
+                    'B',
+                    'C',
+                    'D',
+                    'E',
+                    'F',
+                    'G',
+                    'H',
+                    'I',
+                  ][optionIndex];
                   const optionColors = [
                     'bg-blue-500',
                     'bg-pink-500',
@@ -1682,9 +1703,9 @@ export function QuestionPreview({
                     'bg-orange-500',
                     'bg-purple-500',
                     'bg-cyan-500',
-                    'bg-red-500', 
-                    'bg-yellow-500', 
-                    'bg-teal-500', 
+                    'bg-red-500',
+                    'bg-yellow-500',
+                    'bg-teal-500',
                   ];
 
                   return (
@@ -1842,7 +1863,11 @@ export function QuestionPreview({
     const isMultipleResponse = question.question_type === 'multiple_response';
     const options = [...question.options];
 
-    if (isMultipleResponse || question.question_type === 'multiple_choice' || question.question_type === 'true_false') {
+    if (
+      isMultipleResponse ||
+      question.question_type === 'multiple_choice' ||
+      question.question_type === 'true_false'
+    ) {
       // For multiple response, toggle the current option
       onOptionChange(
         questionIndex,
@@ -2110,7 +2135,7 @@ export function QuestionPreview({
       case 'info_slide':
         return 'INFO_SLIDE';
       case 'matching_pair':
-        return 'QUIZ_MATCHING_PAIR';
+        return 'QUIZ_MATCHING_PAIRS';
       default:
         return 'INFO_SLIDE';
     }
@@ -2789,14 +2814,14 @@ interface OptionItemProps {
   option: QuizOption;
   index: number;
   questionType:
-  | 'multiple_choice'
-  | 'multiple_response'
-  | 'true_false'
-  | 'text_answer'
-  | 'slide'
-  | 'info_slide'
-  | 'reorder'
-  | 'location';
+    | 'multiple_choice'
+    | 'multiple_response'
+    | 'true_false'
+    | 'text_answer'
+    | 'slide'
+    | 'info_slide'
+    | 'reorder'
+    | 'location';
   questionIndex: number;
   onOptionEdit?: (
     questionIndex: number,
@@ -3034,12 +3059,10 @@ function getLocationAnswers(question: any, activity: any) {
         radius: locationData.radius || 10,
       },
     ];
-
   }
 
   // For even older format with location_data
   if (question.location_data) {
-
     return [
       {
         longitude: question.location_data.lng || 0,
@@ -3047,16 +3070,17 @@ function getLocationAnswers(question: any, activity: any) {
         radius: question.location_data.radius || 10,
       },
     ];
-
   }
 
   // Default single location if nothing is found
-  return [{
-    quizLocationAnswerId: "",
-    longitude: 105.804817,
-    latitude: 21.028511,
-    radius: 10
-  }];
+  return [
+    {
+      quizLocationAnswerId: '',
+      longitude: 105.804817,
+      latitude: 21.028511,
+      radius: 10,
+    },
+  ];
 }
 
 // Helper function to get location data for the map component
@@ -3069,7 +3093,7 @@ function getLocationData(question: any, activity: any) {
     lat: answer.latitude,
     lng: answer.longitude,
     radius: answer.radius,
-    id: answer.quizLocationAnswerId
+    id: answer.quizLocationAnswerId,
   }));
 }
 
@@ -3088,4 +3112,4 @@ function getFirstLocationData(question: any, activity: any) {
 
   // Default location
   return { lat: 21.028511, lng: 105.804817, radius: 10 };
-} 
+}

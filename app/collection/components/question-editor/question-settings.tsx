@@ -47,9 +47,7 @@ import {
   EyeOff,
   Palette,
   Check,
-
   Link,
-
   Trash,
   Trash2,
   Loader2,
@@ -59,8 +57,7 @@ import {
   ChevronsUpDown,
   Plus,
   X,
-  Layers
-
+  Layers,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -74,7 +71,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { QuizOption, QuizQuestion } from '../types';
+import type { QuizOption, QuizQuestion, MatchingPairOption } from '../types';
 import { OptionList } from './option-list';
 import { AdvancedSettings } from './advanced-settings';
 import { Textarea } from '@/components/ui/textarea';
@@ -199,7 +196,7 @@ interface QuestionSettingsProps {
   onQuestionLocationChange?: (questionIndex: number, locationData: any) => void;
   onMatchingPairOptionsChange?: (
     questionIndex: number,
-    newOptions: QuizOption[]
+    newOptions: MatchingPairOption[]
   ) => void;
   onMatchingPairConnectionsChange?: (questionIndex: number) => void;
   onMatchingPairColumnNamesChange?: (left: string, right: string) => void;
@@ -211,6 +208,7 @@ interface QuestionSettingsProps {
     activityId: string,
     elements: SlideElementPayload[]
   ) => void;
+  onSettingsUpdate?: () => void;
   correctAnswerText: string;
   onCorrectAnswerTextChange: (value: string) => void;
   onCorrectAnswerTextBlur: (value: string) => void;
@@ -230,7 +228,6 @@ const TextAnswerForm = ({
   ) => void;
   questionIndex: number;
 }) => {
-
   const getCorrectAnswerValue = () => {
     // Ưu tiên lấy từ correct_answer_text
     if (activeQuestion.correct_answer_text) {
@@ -320,6 +317,7 @@ export function QuestionSettings({
   onMatchingPairColumnNamesChange,
   slideElements,
   onSlideElementsUpdate,
+  onSettingsUpdate,
   correctAnswerText,
   onCorrectAnswerTextChange,
   onCorrectAnswerTextBlur,
@@ -359,6 +357,16 @@ export function QuestionSettings({
   const locationDataRef = useRef<any[]>([]);
   const previousAnswersRef = useRef<any[]>([]);
   const [locationData, setLocationData] = useState<any[]>([]);
+  // Thêm state để theo dõi thay đổi từ settings
+  const [settingsUpdateTrigger, setSettingsUpdateTrigger] = useState(0);
+
+  // Thêm function để trigger cập nhật preview
+  const triggerPreviewUpdate = useCallback(() => {
+    setSettingsUpdateTrigger((prev) => prev + 1);
+    if (onSettingsUpdate) {
+      onSettingsUpdate();
+    }
+  }, [onSettingsUpdate]);
 
   useEffect(() => {
     if (activity) {
@@ -555,7 +563,7 @@ export function QuestionSettings({
             className={cn(
               'w-full justify-between px-3 py-5 h-auto border',
               activeQuestion.question_type &&
-              questionTypeColors[activeQuestion.question_type]
+                questionTypeColors[activeQuestion.question_type]
             )}
           >
             <div className="flex items-center gap-2">
@@ -876,6 +884,28 @@ export function QuestionSettings({
                       error
                     );
                   });
+              }
+              break;
+
+            case 'matching_pair':
+              // Get the current matching pair data
+              const matchingData =
+                activeQuestion.quizMatchingPairAnswer ||
+                activeQuestion.matching_data;
+
+              if (matchingData) {
+                activitiesApi.updateMatchingPairQuiz(activity.id, {
+                  type: 'MATCHING_PAIRS',
+                  questionText:
+                    activity.quiz?.questionText || activeQuestion.question_text,
+                  timeLimitSeconds: value,
+                  pointType: activity.quiz?.pointType || (pointType as any),
+                  quizMatchingPairAnswer: {
+                    ...matchingData,
+                    leftColumnName: leftColumnName || 'Left Item',
+                    rightColumnName: rightColumnName || 'Right Item',
+                  },
+                });
               }
               break;
             default:
@@ -1498,6 +1528,27 @@ export function QuestionSettings({
                 });
             }
             break;
+          case 'matching_pair':
+            // Get the current matching pair data
+            const matchingData =
+              activeQuestion.quizMatchingPairAnswer ||
+              activeQuestion.matching_data;
+
+            if (matchingData) {
+              activitiesApi.updateMatchingPairQuiz(activity.id, {
+                type: 'MATCHING_PAIRS',
+                questionText:
+                  activity.quiz?.questionText || activeQuestion.question_text,
+                timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+                pointType: typedPointType,
+                quizMatchingPairAnswer: {
+                  ...matchingData,
+                  leftColumnName: leftColumnName || 'Left Item',
+                  rightColumnName: rightColumnName || 'Right Item',
+                },
+              });
+            }
+            break;
           default:
             // For other types, just update the activity directly
             debouncedUpdateActivity({ pointType: value });
@@ -1674,9 +1725,9 @@ export function QuestionSettings({
     // Ưu tiên global storage trước, sau đó mới tới state local
     const currentBackgroundColor =
       typeof window !== 'undefined' &&
-        window.savedBackgroundColors &&
-        activity?.id &&
-        window.savedBackgroundColors[activity.id]
+      window.savedBackgroundColors &&
+      activity?.id &&
+      window.savedBackgroundColors[activity.id]
         ? window.savedBackgroundColors[activity.id]
         : backgroundColor;
 
@@ -1807,10 +1858,10 @@ export function QuestionSettings({
                   </div>
                   {currentBackgroundColor.toUpperCase() ===
                     pastel.color.toUpperCase() && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
-                      </div>
-                    )}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -1931,10 +1982,7 @@ export function QuestionSettings({
       };
       const updatedLocations = [...currentLocations, newLocation];
 
-
-
       onQuestionLocationChange?.(activeQuestionIndex, updatedLocations);
-
     };
 
     // Handle deleting a location point
@@ -1942,7 +1990,7 @@ export function QuestionSettings({
       const currentLocations =
         activeQuestion.location_data?.quizLocationAnswers || [];
       const updatedLocations = currentLocations.filter(
-        (_, index) => index !== indexToDelete,
+        (_, index) => index !== indexToDelete
       );
       onQuestionLocationChange?.(activeQuestionIndex, updatedLocations);
     };
@@ -1951,7 +1999,7 @@ export function QuestionSettings({
     const handleUpdateLocation = (
       indexToUpdate: number,
       property: 'longitude' | 'latitude' | 'radius' | 'hint',
-      value: string | number,
+      value: string | number
     ) => {
       const currentLocations =
         activeQuestion.location_data?.quizLocationAnswers || [];
@@ -1997,7 +2045,9 @@ export function QuestionSettings({
             {locationAnswers.map((location, index) => (
               <Card key={index} className="p-3">
                 <div className="flex items-center justify-between mb-3">
-                  <Label className="text-sm font-medium">Point {index + 1}</Label>
+                  <Label className="text-sm font-medium">
+                    Point {index + 1}
+                  </Label>
                   {locationAnswers.length > 1 && (
                     <Button
                       onClick={() => handleDeleteLocation(index)}
@@ -2021,7 +2071,7 @@ export function QuestionSettings({
                       id={`lat-${index}`}
                       type="number"
                       value={location.latitude}
-                      onChange={e =>
+                      onChange={(e) =>
                         handleUpdateLocation(index, 'latitude', e.target.value)
                       }
                       className="h-8 text-sm"
@@ -2038,7 +2088,7 @@ export function QuestionSettings({
                       id={`lng-${index}`}
                       type="number"
                       value={location.longitude}
-                      onChange={e =>
+                      onChange={(e) =>
                         handleUpdateLocation(index, 'longitude', e.target.value)
                       }
                       className="h-8 text-sm"
@@ -2057,7 +2107,7 @@ export function QuestionSettings({
                     id={`radius-${index}`}
                     type="number"
                     value={location.radius}
-                    onChange={e =>
+                    onChange={(e) =>
                       handleUpdateLocation(index, 'radius', e.target.value)
                     }
                     className="h-8 text-sm"
@@ -2073,7 +2123,7 @@ export function QuestionSettings({
                   <Input
                     id={`hint-${index}`}
                     value={(location as any).hint || ''}
-                    onChange={e =>
+                    onChange={(e) =>
                       handleUpdateLocation(index, 'hint', e.target.value)
                     }
                     className="h-8 text-sm"
@@ -2124,14 +2174,14 @@ export function QuestionSettings({
           <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
             <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
             {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide'
+            activeQuestion.question_type === 'info_slide'
               ? 'Slide Content'
               : 'Answer Options'}
           </h3>
 
           {/* Display different content based on question type */}
           {activeQuestion.question_type === 'multiple_choice' ||
-            activeQuestion.question_type === 'multiple_response' ? (
+          activeQuestion.question_type === 'multiple_response' ? (
             <div
               className={cn(
                 'p-3 rounded-md border',
@@ -2145,8 +2195,20 @@ export function QuestionSettings({
                 activeQuestionIndex={activeQuestionIndex}
                 questionType={activeQuestion.question_type}
                 onAddOption={onAddOption}
-                onOptionChange={(questionIndex, optionIndex, field, value, isTyping = false) =>
-                  onOptionChange(questionIndex, optionIndex, field, value, isTyping)
+                onOptionChange={(
+                  questionIndex,
+                  optionIndex,
+                  field,
+                  value,
+                  isTyping = false
+                ) =>
+                  onOptionChange(
+                    questionIndex,
+                    optionIndex,
+                    field,
+                    value,
+                    isTyping
+                  )
                 }
                 onDeleteOption={onDeleteOption}
               />
@@ -2181,7 +2243,13 @@ export function QuestionSettings({
               <ReorderOptions
                 options={activeQuestion.options}
                 onOptionChange={(index, field, value, isTyping = false) =>
-                  onOptionChange(activeQuestionIndex, index, field, value, isTyping)
+                  onOptionChange(
+                    activeQuestionIndex,
+                    index,
+                    field,
+                    value,
+                    isTyping
+                  )
                 }
                 onDeleteOption={onDeleteOption}
                 onAddOption={onAddOption}
@@ -2193,7 +2261,8 @@ export function QuestionSettings({
           ) : activeQuestion.question_type === 'matching_pair' ? (
             <div className="p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-md border border-indigo-100 dark:border-indigo-800">
               <MatchingPairSettings
-                options={activeQuestion.options || []}
+                question={activeQuestion}
+                activityId={activity?.id || ''}
                 onOptionsChange={(newOptions) => {
                   if (onMatchingPairOptionsChange) {
                     onMatchingPairOptionsChange(
@@ -2201,74 +2270,65 @@ export function QuestionSettings({
                       newOptions
                     );
                   }
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
                 onAddPair={() => {
-                  if (!onMatchingPairOptionsChange) return;
-                  const pairId = `pair-${Date.now()}`;
-                  const currentOptions = activeQuestion.options || [];
-                  const newPair: QuizOption[] = [
-                    {
-                      id: `left-${pairId}`,
-                      option_text: 'Left item',
-                      type: 'left',
-                      pair_id: pairId,
-                      is_correct: true,
-                      display_order: currentOptions.length,
-                      quiz_question_id: activeQuestion.id,
-                    },
-                    {
-                      id: `right-${pairId}`,
-                      option_text: 'Right item',
-                      type: 'right',
-                      pair_id: pairId,
-                      is_correct: true,
-                      display_order: currentOptions.length + 1,
-                      quiz_question_id: activeQuestion.id,
-                    },
-                  ];
-                  onMatchingPairOptionsChange(activeQuestionIndex, [
-                    ...currentOptions,
-                    ...newPair,
-                  ]);
+                  // This will be handled by the MatchingPairSettings component via API
+                  console.log('Add pair triggered');
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
                 onDeletePair={(pairId) => {
-                  if (!onMatchingPairOptionsChange) return;
-                  const currentOptions = activeQuestion.options || [];
-                  const newOptions = currentOptions.filter(
-                    (opt) => opt.pair_id !== pairId
-                  );
-                  onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
+                  // This will be handled by the MatchingPairSettings component via API
+                  console.log('Delete pair triggered:', pairId);
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
                 onReorderPairs={(startIndex, endIndex) => {
-                  if (!onMatchingPairOptionsChange) return;
-
-                  const currentOptions = [...(activeQuestion.options || [])];
-
-                  const pairs = currentOptions
-                    .filter((o) => o.type === 'left')
-                    .map((left) => {
-                      const right = currentOptions.find(
-                        (r) => r.type === 'right' && r.pair_id === left.pair_id
-                      );
-                      return { id: left.pair_id, left, right };
-                    })
-                    .filter((p) => p.right);
-
-                  const [reorderedPair] = pairs.splice(startIndex, 1);
-                  pairs.splice(endIndex, 0, reorderedPair);
-
-                  const newOptions = pairs
-                    .flatMap((p) => [p.left, p.right])
-                    .map((opt, index) => ({
-                      ...opt,
-                      display_order: index,
-                    })) as QuizOption[];
-
-                  onMatchingPairOptionsChange(activeQuestionIndex, newOptions);
+                  // This will be handled by the MatchingPairSettings component via API
+                  console.log('Reorder pairs triggered:', startIndex, endIndex);
+                  // Trigger preview update
+                  triggerPreviewUpdate();
                 }}
-                leftColumnName={leftColumnName}
-                rightColumnName={rightColumnName}
-                onColumnNamesChange={onMatchingPairColumnNamesChange}
+                leftColumnName={leftColumnName || 'Left Item'}
+                rightColumnName={rightColumnName || 'Right Item'}
+                onColumnNamesChange={(left, right) => {
+                  if (onMatchingPairColumnNamesChange) {
+                    onMatchingPairColumnNamesChange(left, right);
+                  }
+                  // Trigger preview update
+                  triggerPreviewUpdate();
+                }}
+                onMatchingDataUpdate={(matchingData) => {
+                  // Update the question with new matching data
+                  if (onMatchingPairOptionsChange) {
+                    // Convert matching data back to options format for compatibility
+                    const options: MatchingPairOption[] = [];
+
+                    if (matchingData.items) {
+                      matchingData.items.forEach((item: any) => {
+                        options.push({
+                          id: item.quizMatchingPairItemId,
+                          quizMatchingPairItemId: item.quizMatchingPairItemId,
+                          content: item.content,
+                          option_text: item.content,
+                          isLeftColumn: item.isLeftColumn,
+                          display_order: item.displayOrder,
+                          quiz_question_id: activeQuestion.id,
+                        });
+                      });
+                    }
+
+                    onMatchingPairOptionsChange(activeQuestionIndex, options);
+                  }
+                  // Trigger preview update
+                  triggerPreviewUpdate();
+                }}
+                onRefreshActivity={async () => {
+                  // Trigger preview update after refresh
+                  triggerPreviewUpdate();
+                }}
               />
             </div>
           ) : null}
@@ -2349,13 +2409,13 @@ export function QuestionSettings({
             </TabsTrigger>
             <TabsTrigger value="meta" className="text-xs">
               {activeQuestion.question_type === 'slide' ||
-                activeQuestion.question_type === 'info_slide' ? (
+              activeQuestion.question_type === 'info_slide' ? (
                 <Layers className="h-3.5 w-3.5 mr-1.5" />
               ) : (
                 <Info className="h-3.5 w-3.5 mr-1.5" />
               )}
               {activeQuestion.question_type === 'slide' ||
-                activeQuestion.question_type === 'info_slide'
+              activeQuestion.question_type === 'info_slide'
                 ? 'Animation'
                 : 'Metadata'}
             </TabsTrigger>
@@ -2378,14 +2438,14 @@ export function QuestionSettings({
                 <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
                   {activeQuestion.question_type === 'slide' ||
-                    activeQuestion.question_type === 'info_slide'
+                  activeQuestion.question_type === 'info_slide'
                     ? 'Slide Content'
                     : 'Answer Options'}
                 </h3>
 
                 {/* Display different content based on question type */}
                 {activeQuestion.question_type === 'multiple_choice' ||
-                  activeQuestion.question_type === 'multiple_response' ? (
+                activeQuestion.question_type === 'multiple_response' ? (
                   <div
                     className={cn(
                       'p-3 rounded-md border',
@@ -2473,7 +2533,8 @@ export function QuestionSettings({
                 ) : activeQuestion.question_type === 'matching_pair' ? (
                   <div className="p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-md border border-indigo-100 dark:border-indigo-800">
                     <MatchingPairSettings
-                      options={activeQuestion.options || []}
+                      question={activeQuestion}
+                      activityId={activity?.id || ''}
                       onOptionsChange={(newOptions) => {
                         if (onMatchingPairOptionsChange) {
                           onMatchingPairOptionsChange(
@@ -2564,7 +2625,7 @@ export function QuestionSettings({
               </div>
 
               {activeQuestion.question_type === 'slide' ||
-                activeQuestion.question_type === 'info_slide' ? (
+              activeQuestion.question_type === 'info_slide' ? (
                 ''
               ) : (
                 <div>
@@ -2607,7 +2668,7 @@ export function QuestionSettings({
             {/* Design tab: Background, colors, etc */}
 
             {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide' ? (
+            activeQuestion.question_type === 'info_slide' ? (
               <SlideSettings
                 slideId={activity?.id || ''}
                 backgroundColor={backgroundColor}
@@ -2626,7 +2687,7 @@ export function QuestionSettings({
             {/* Metadata tab: title, description, publication status */}
 
             {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide' ? (
+            activeQuestion.question_type === 'info_slide' ? (
               <AnimationToolbar
                 slideId={activity?.id || ''}
                 slideElements={slideElements[activity?.id] || []}
@@ -2645,4 +2706,3 @@ export function QuestionSettings({
     </Card>
   );
 }
-
