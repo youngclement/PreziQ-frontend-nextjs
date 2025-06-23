@@ -13,7 +13,7 @@ import { debounce } from 'lodash';
 import { FabricImage } from 'fabric';
 import { slideElementToFabric } from './slideElementToFabric';
 import { gsap } from 'gsap';
-import { animationMap } from '../utils/animationMap';
+import { animationMap, animationDefaultDurations } from '../utils/animationMap';
 
 const ORIGINAL_CANVAS_WIDTH = 812;
 
@@ -67,9 +67,13 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
   const initialStateRef = useRef(null);
   const elementInitialStates = useRef<Map<string, any>>(new Map());
 
+  // Thêm vào phần đầu của component FabricEditor
+  const isTyping = useRef(false);
+  const textContentRef = useRef('');
+  const debouncedTextUpdateRef = useRef<ReturnType<typeof debounce>>();
+
   useEffect(() => {
     slideElementsRef.current = slideElements;
-    // console.log('đã load: ', slideElements);
   }, [slideElements]);
 
   useEffect(() => {
@@ -193,7 +197,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       if (!slideId) return;
 
       // if (onSavingStateChange) onSavingStateChange(true);
-      console.log('Updating slide element ở đây');
 
       const zoom = canvas.getZoom();
       const cw = canvas.getWidth()! / zoom;
@@ -201,12 +204,18 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
 
       const rawLeft = obj.left! / zoom;
       const rawTop = obj.top! / zoom;
-
       const currentElement = slideElementsRef.current.find(
         (el) => el.slideElementId === slideElementId
       );
       const displayOrder =
-        obj.get('displayOrder') || currentElement?.displayOrder || 0;
+        obj.get('displayOrder') || currentElement?.displayOrder || 0; // Lấy animation duration từ object hoặc currentElement để giữ lại
+      const entryAnimationDuration =
+        obj.get('entryAnimationDuration') ||
+        currentElement?.entryAnimationDuration;
+
+      // Lấy animation delay từ object hoặc currentElement để giữ lại
+      const entryAnimationDelay =
+        obj.get('entryAnimationDelay') || currentElement?.entryAnimationDelay;
 
       let w: number, h: number;
       if (obj.type === 'image') {
@@ -253,6 +262,8 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           slideElementType: 'TEXT',
           content: JSON.stringify(textboxJson),
           entryAnimation: obj.get('entryAnimation') || undefined,
+          entryAnimationDuration: entryAnimationDuration,
+          entryAnimationDelay: entryAnimationDelay,
           ...updates,
         } as SlideElementPayload;
       } else {
@@ -261,18 +272,19 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           slideElementType: 'IMAGE',
           sourceUrl: obj.get('sourceUrl') || (obj as fabric.Image).getSrc(),
           entryAnimation: obj.get('entryAnimation') || undefined,
+          entryAnimationDuration: entryAnimationDuration,
+          entryAnimationDelay: entryAnimationDelay,
           ...updates,
         } as SlideElementPayload;
       }
 
       try {
-        console.log('Sending payload:', payload);
         const res = await slidesApi.updateSlidesElement(
           slideId,
           slideElementId,
           payload
         );
-        //console.log('API response:', JSON.stringify(res.data, null, 2));
+
         const serverData = res.data.data;
         // Merge với mảng hiện tại
         const updatedList = slideElementsRef.current.map((el) =>
@@ -290,12 +302,11 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         console.error('Update failed:', err);
       }
     },
-    500
+    800
   );
 
   const loadSlideElements = async (maxRetries = 5) => {
     if (isLoadingRef.current) {
-      console.log('Already loading elements, skipping...');
       return;
     }
 
@@ -332,9 +343,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       let retries = 0;
 
       while ((!elements || elements.length === 0) && retries < maxRetries) {
-        console.log(
-          `Waiting for slideElements, retry ${retries + 1}/${maxRetries}`
-        );
         await new Promise((resolve) => setTimeout(resolve, 200)); // Chờ 200ms
         elements = slideElementsRef.current;
         retries++;
@@ -373,13 +381,18 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         );
 
       const loadedImages = await Promise.all(imagePromises);
-
       for (const el of sortedElements) {
         const obj = slideElementToFabric(el, canvas, loadedImages);
         if (obj) {
           // Đảm bảo animation được set khi load
           if (el.entryAnimation) {
             obj.set('entryAnimation', el.entryAnimation);
+          }
+          if (el.entryAnimationDuration) {
+            obj.set('entryAnimationDuration', el.entryAnimationDuration);
+          }
+          if (el.entryAnimationDelay) {
+            obj.set('entryAnimationDelay', el.entryAnimationDelay);
           }
           canvas.add(obj);
         }
@@ -435,14 +448,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
 
-        console.log('Initializing canvas with:', {
-          backgroundColor,
-          backgroundImage,
-          width,
-          height,
-          zoom,
-        });
-
         await setCanvasBackground(canvas, backgroundColor, backgroundImage);
         while (
           slideElementsRef.current.length === 0 &&
@@ -469,13 +474,8 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       e: CustomEvent<{ color: string; slideId?: string }>
     ) => {
       if (e.detail.slideId && e.detail.slideId !== slideId) {
-        console.log(
-          `Bỏ qua fabric:set-background-color vì slideId không khớp: ${e.detail.slideId} !== ${slideId}`
-        );
         return;
       }
-
-      console.log('Received fabric:set-background-color:', e.detail.color);
 
       if (fabricCanvas.current) {
         fabricCanvas.current.backgroundImage = undefined;
@@ -493,7 +493,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     const handleSetBackgroundImage = async (
       e: CustomEvent<{ url: string; slideId?: string }>
     ) => {
-      console.log('Received fabric:set-background-image:', e.detail.url);
       if (!e.detail.slideId || e.detail.slideId !== slideId) {
         return;
       }
@@ -517,7 +516,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         }
 
         // loadSlideElements();
-        console.log('Updated canvas backgroundImage:', e.detail.url);
       }
     };
 
@@ -531,8 +529,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
 
       try {
         const currentElements = slideElementsRef.current;
-        console.log('Current elements:', currentElements);
-        console.log('New elements:', e.detail.elements);
 
         // Find elements with changed displayOrder
         const changedElements = e.detail.elements.filter((newElement) => {
@@ -541,8 +537,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           );
           return currentElement?.displayOrder !== newElement.displayOrder;
         });
-
-        console.log('Elements with changed displayOrder:', changedElements);
 
         for (const element of changedElements) {
           const obj = fabricCanvas.current
@@ -627,11 +621,22 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         isPreviewingRef.current = true;
 
         // Chạy animation và reset khi hoàn tất
-        animationMap[animationName](activeObject, fabricCanvas.current, () => {
-          resetElement(activeObject);
-          isPreviewingRef.current = false;
-          setPreviewAnimation(null);
-        });
+        animationMap[animationName](
+          activeObject,
+          fabricCanvas.current,
+          async () => {
+            resetElement(activeObject);
+            isPreviewingRef.current = false;
+            setPreviewAnimation(null);
+
+            await updateSlideElement(activeObject, {
+              entryAnimation: animationName,
+              entryAnimationDuration: activeObject.get(
+                'entryAnimationDuration'
+              ),
+            });
+          }
+        );
 
         setPreviewAnimation(animationName);
       }
@@ -653,15 +658,36 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         resetElement(activeObject);
         isPreviewingRef.current = false;
         setPreviewAnimation(null);
-      }
-
-      // Set animation mới
-      activeObject.set('entryAnimation', e.detail.animationName);
+      } // Set animation mới
+      const animationName = e.detail.animationName;
+      const defaultDuration = animationDefaultDurations[animationName] || 1;
+      const defaultDelay = 0;
+      activeObject.set('entryAnimation', animationName);
+      activeObject.set('entryAnimationDuration', defaultDuration);
+      activeObject.set('entryAnimationDelay', defaultDelay);
 
       const slideElementId = activeObject.get('slideElementId');
+
+      // Dispatch event
+      const event = new CustomEvent('fabric:selection-changed', {
+        detail: {
+          slideId,
+          animationName: e.detail.animationName,
+          objectId: slideElementId,
+          duration: defaultDuration,
+          delay: defaultDelay,
+        },
+      });
+      window.dispatchEvent(event);
+
       const updatedElements = slideElementsRef.current.map((el) =>
         el.slideElementId === slideElementId
-          ? { ...el, entryAnimation: e.detail.animationName }
+          ? {
+              ...el,
+              entryAnimation: animationName,
+              entryAnimationDuration: defaultDuration,
+              entryAnimationDelay: defaultDelay,
+            }
           : el
       );
 
@@ -671,27 +697,25 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         slideElements: updatedElements,
       });
 
-      // Dispatch event
-      const event = new CustomEvent('fabric:selection-changed', {
-        detail: {
-          slideId,
-          animationName: e.detail.animationName,
-          objectId: slideElementId,
-        },
-      });
-      window.dispatchEvent(event);
-
-      // Cập nhật server
-      await updateSlideElement(activeObject, {
-        entryAnimation: e.detail.animationName,
-      });
-
       // Lưu trạng thái canvas
       saveState();
 
       // Preview animation mới
       handlePreviewAnimation(e);
     };
+
+    debouncedTextUpdateRef.current = debounce(() => {
+      if (!isTyping.current) return;
+
+      const activeObject = canvas.getActiveObject();
+      if (activeObject && activeObject.type === 'textbox') {
+        updateSlideElement(activeObject);
+      }
+
+      isTyping.current = false;
+    }, 1500); 
+
+    ///
     window.addEventListener(
       'fabric:reset-animation',
       handleResetAnimation as EventListener
@@ -719,8 +743,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       'fabric:set-animation',
       handleSetAnimation as unknown as EventListener
     );
-
-    console.log('SlieCUUUUU: ', slideElementsRef);
 
     // const { title, content } = initFabricEvents(canvas, onUpdate);
     const cleanupToolbar = slideId
@@ -759,17 +781,12 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           for (const obj of activeObjects) {
             const slideElementId = obj.get('slideElementId');
             if (!slideElementId || !slideId) {
-              console.log(
-                'Bỏ qua xóa object vì thiếu slideElementId hoặc slideId:',
-                { slideElementId, slideId }
-              );
               canvas.remove(obj);
               continue;
             }
 
             try {
               await slidesApi.deleteSlidesElement(slideId, slideElementId);
-              console.log('Xóa element thành công:', slideElementId);
 
               // Xóa element khỏi slide hiện tại
               canvas.remove(obj);
@@ -825,10 +842,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     canvas.on('object:added', (e) => {
       const obj = e.target;
       if (obj) {
-        // console.log(
-        //   'Đối tượng vừa được tạo:',
-        //   JSON.stringify(obj.toJSON(), null, 2)
-        // );
         saveState();
       }
     });
@@ -868,31 +881,33 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       const obj = e.target as fabric.Textbox;
       if (!obj || obj.type !== 'textbox') return;
 
-      //console.log('Text changed:', obj.toJSON());
 
-      const elementId = obj.get('slideElementId');
-      if (elementId) {
-        elementInitialStates.current.set(elementId, {
-          opacity: obj.opacity,
-          left: obj.left,
-          top: obj.top,
-          scaleX: obj.scaleX,
-          scaleY: obj.scaleY,
-          angle: obj.angle,
-          rotation: obj.angle ?? 0,
-        });
-      }
+      // const elementId = obj.get('slideElementId');
+      // if (elementId) {
+      //   elementInitialStates.current.set(elementId, {
+      //     opacity: obj.opacity,
+      //     left: obj.left,
+      //     top: obj.top,
+      //     scaleX: obj.scaleX,
+      //     scaleY: obj.scaleY,
+      //     angle: obj.angle,
+      //     rotation: obj.angle ?? 0,
+      //   });
+      // }
+      isTyping.current = true;
+      textContentRef.current = obj.text || '';
 
-      updateSlideElement(obj);
+      // updateSlideElement(obj);
       saveState();
+
+      debouncedTextUpdateRef.current?.();
     });
 
     canvas.on('text:selection:changed', (e) => {
       const obj = e.target as fabric.Textbox;
       if (!obj || obj.type !== 'textbox') return;
 
-      //console.log('Text selection changed:', obj.toJSON());
-      updateSlideElement(obj);
+      //updateSlideElement(obj);
       saveState();
     });
 
@@ -900,20 +915,23 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       const obj = e.target as fabric.Textbox;
       if (!obj || obj.type !== 'textbox') return;
 
-      //console.log('Text editing exited:', obj.toJSON());
+      // Hủy bỏ debounce đang chờ
+      debouncedTextUpdateRef.current?.cancel();
+
+      // Reset trạng thái gõ
+      isTyping.current = false;
+
       updateSlideElement(obj);
       saveState();
     });
 
     canvas.on('drop', (e) => {
       const target = e.target;
-      // console.log('Đối tượng target: ', target);
       if (target && target instanceof fabric.Textbox) {
         e.e.preventDefault();
         return false;
       }
     });
-
     canvas.on('after:render', () => {
       if (history.length === 0) {
         saveState();
@@ -924,11 +942,15 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       const activeObject = e.selected?.[0];
       if (activeObject) {
         const animationName = activeObject.get('entryAnimation') || 'none';
+        const duration = activeObject.get('entryAnimationDuration');
+        const delay = activeObject.get('entryAnimationDelay');
         const event = new CustomEvent('fabric:selection-changed', {
           detail: {
             slideId,
             animationName,
             objectId: activeObject.get('slideElementId'), // Thêm objectId
+            duration,
+            delay,
           },
         });
         window.dispatchEvent(event);
@@ -941,11 +963,15 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       const activeObject = e.selected?.[0];
       if (activeObject) {
         const animationName = activeObject.get('entryAnimation') || 'none';
+        const duration = activeObject.get('entryAnimationDuration');
+        const delay = activeObject.get('entryAnimationDelay');
         const event = new CustomEvent('fabric:selection-changed', {
           detail: {
             slideId,
             animationName,
             objectId: activeObject.get('slideElementId'),
+            duration,
+            delay,
           },
         });
         window.dispatchEvent(event);
@@ -991,6 +1017,8 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         'fabric:reset-animation',
         handleResetAnimation as EventListener
       );
+
+      debouncedTextUpdateRef.current?.cancel();
 
       cleanupToolbar();
       isLoadingRef.current = false;
@@ -1058,7 +1086,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     }
 
     const target = e.target as HTMLElement;
-    console.log('target: ', target);
     const isInputOrTextarea =
       target.tagName === 'INPUT' ||
       target.tagName === 'TEXTAREA' ||
@@ -1074,7 +1101,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     e.stopPropagation();
 
     const url = e.dataTransfer.getData('image-url');
-    console.log('image-url: ', url);
     if (!url || !fabricCanvas.current) return;
 
     const canvas = fabricCanvas.current;
@@ -1132,7 +1158,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       slidesApi
         .addSlidesElement(slideId, payload)
         .then((res) => {
-          // console.log('Tạo image element thành công:', res.data);
           img.set('slideElementId', res.data.data.slideElementId);
           img.set('isNew', false);
           img.set('displayOrder', maxDisplayOrder + 1);

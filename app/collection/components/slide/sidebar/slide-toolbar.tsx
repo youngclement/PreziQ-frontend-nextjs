@@ -28,7 +28,7 @@ const SlideToolbar = React.memo(
           </Label>
           <PexelsPanel slideId={slideId} />
         </div>
-        <div className="mt-5 pt-4 border-t border-yellow-200 dark:border-yellow-800">
+        {/* <div className="mt-5 pt-4 border-t border-yellow-200 dark:border-yellow-800">
           <div className="mb-4">
             <AnimationToolbar
               slideId={slideId}
@@ -36,7 +36,7 @@ const SlideToolbar = React.memo(
               onSlideElementsUpdate={onSlideElementsUpdate}
             />
           </div>
-        </div>
+        </div> */}
       </div>
     );
   }

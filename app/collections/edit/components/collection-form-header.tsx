@@ -1,6 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/contexts/language-context';
 
 interface CollectionFormHeaderProps {
   title: string;
@@ -12,6 +13,7 @@ export function CollectionFormHeader({
   subtitle,
 }: CollectionFormHeaderProps) {
   const router = useRouter();
+  const { t } = useLanguage();
 
   return (
     <div className='flex items-center gap-4 mb-6'>
@@ -25,9 +27,11 @@ export function CollectionFormHeader({
       </Button>
       <div>
         <h1 className='text-2xl font-semibold text-gray-800 dark:text-gray-100'>
-          {title}
+          {t('collectionForm.title')}
         </h1>
-        <p className='text-gray-600 dark:text-gray-400 mt-1'>{subtitle}</p>
+        <p className='text-gray-600 dark:text-gray-400 mt-1'>
+          {t('collectionForm.subtitle')}
+        </p>
       </div>
     </div>
   );

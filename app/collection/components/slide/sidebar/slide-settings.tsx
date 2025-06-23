@@ -96,7 +96,6 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
     }
   }, [slideId, backgroundColor, backgroundImage]);
 
-  console.log('BACKGROUND IMGGGGGGGGGG', currentBackgroundImage);
 
   const onBackgroundColorChange = async (color: string) => {
     setCustomColor(color);
@@ -135,11 +134,19 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
         backgroundImage: '',
       });
     }
+
+    try {
+      await activitiesApi.updateActivity(slideId, {
+        backgroundColor: color,
+        backgroundImage: '',
+      });
+    } catch (err) {
+      console.error('Error saving background color:', err);
+    }
   };
 
   const onBackgroundImageChange = async (url: string) => {
     setCurrentBackgroundImage(url);
-    console.log('setCurrentBackgroundImage 22222', currentBackgroundImage);
 
     setCustomColor('');
     if (typeof window !== 'undefined' && window.savedBackgroundColors) {
@@ -199,21 +206,11 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
-      toast({
-        title: 'Invalid format',
-        description: 'Please select an image in PNG or JPG format.',
-        variant: 'destructive',
-      });
       return;
     }
 
     // Validate file size (1KB to 5MB)
     if (file.size < 1024 || file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'Invalid file size',
-        description: 'Image must be between 1KB and 5MB.',
-        variant: 'destructive',
-      });
       return;
     }
 
@@ -221,7 +218,6 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
       if (currentBackgroundImage) {
         try {
           await storageApi.deleteSingleFile(currentBackgroundImage);
-          console.log('XOA DUOC O DAY');
         } catch (error) {
           console.error('Error deleting old background image:', error);
         }
@@ -234,18 +230,12 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
       if (!fileUrl) {
         throw new Error('Invalid response: fileUrl not found');
       }
-      console.log('setCurrentBackgroundImage', fileUrl);
       setCurrentBackgroundImage(fileUrl);
 
       // Update canvas and activity
       await onBackgroundImageChange(fileUrl);
     } catch (error) {
       console.error('Error uploading file:', error);
-      toast({
-        title: 'Upload error',
-        description: 'Could not upload the image. Please try again.',
-        variant: 'destructive',
-      });
     }
   };
 

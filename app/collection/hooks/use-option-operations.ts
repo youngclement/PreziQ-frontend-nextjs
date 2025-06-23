@@ -2,12 +2,12 @@
  * Custom hook for managing question options
  */
 
-import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { activitiesApi } from '@/api-client';
-import { Activity, QuizQuestion } from '../components/types';
-import { reorderOptions } from '../utils/question-helpers';
-
+import React, { useState, useCallback } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { activitiesApi } from "@/api-client";
+import { Activity, QuizQuestion } from "../components/types";
+import { reorderOptions } from "../utils/question-helpers";
+import { debounce } from "lodash";
 
 export function useOptionOperations(
   questions: QuizQuestion[],
@@ -16,147 +16,258 @@ export function useOptionOperations(
   activity: Activity | null,
   timeLimit: number
 ) {
+  // Thêm hàm cập nhật API với debounce
+  const debouncedUpdateAPI = useCallback(
+    debounce(
+      async (
+        activityId: string,
+        activityTypeId: string,
+        question: QuizQuestion
+      ) => {
+        try {
+          const options = question.options;
+
+          switch (activityTypeId) {
+            case "QUIZ_BUTTONS":
+              await activitiesApi.updateButtonsQuiz(activityId, {
+                type: "CHOICE",
+                questionText: question.question_text,
+                timeLimitSeconds: timeLimit,
+                pointType: "STANDARD",
+                answers: options.map((opt) => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || "",
+                })),
+              });
+              break;
+
+            case "QUIZ_CHECKBOXES":
+              await activitiesApi.updateCheckboxesQuiz(activityId, {
+                type: "CHOICE",
+                questionText: question.question_text,
+                timeLimitSeconds: timeLimit,
+                pointType: "STANDARD",
+                answers: options.map((opt) => ({
+                  answerText: opt.option_text,
+                  isCorrect: opt.is_correct,
+                  explanation: opt.explanation || "",
+                })),
+              });
+              break;
+
+            // Giữ nguyên các trường hợp khác...
+          }
+        } catch (error) {
+          console.error(
+            "Lỗi trong quá trình cập nhật API với debounce:",
+            error
+          );
+        }
+      },
+      500 // Thời gian debounce 500ms
+    ),
+    [timeLimit]
+  );
+
   /**
-   * Handle option text/value changes
+   * Xử lý thay đổi văn bản/giá trị tùy chọn
    */
   const handleOptionChange = async (
     questionIndex: number,
     optionIndex: number,
     field: string,
-    value: any
+    value: any,
+    isTyping: boolean = false
   ) => {
     if (!activity) return;
 
-    console.log(`Changing option ${optionIndex}, field ${field} to:`, value);
-
-    // Create deep copies to avoid reference issues
+    // Tạo bản sao sâu để tránh vấn đề tham chiếu
     const updatedQuestions = JSON.parse(JSON.stringify(questions));
     const activeQuestion = updatedQuestions[questionIndex];
 
-
-    // Skip updates for INFO_SLIDE type as they don't have options
-    if (activity.activity_type_id === 'INFO_SLIDE') {
-      console.log(
-        `Updating INFO_SLIDE with options:`,
-        activeQuestion.options || []
-      );
+    // Bỏ qua cập nhật cho loại INFO_SLIDE vì chúng không có tùy chọn
+    if (activity.activity_type_id === "INFO_SLIDE") {
       // Still update local state if needed
       setQuestions(updatedQuestions);
       return;
     }
 
-    // Check if options array exists and has the required index
+    if (
+      field === "correct_answer_text" ||
+      (field === "option_text" &&
+        activeQuestion.question_type === "text_answer")
+    ) {
+      // Cập nhật trực tiếp vào question object, không phải options
+      activeQuestion.correct_answer_text = value;
+
+      if (activeQuestion.options && activeQuestion.options.length > 0) {
+        activeQuestion.options[0].option_text = value;
+        activeQuestion.options[0].is_correct = true;
+      }
+
+      setQuestions(updatedQuestions);
+
+      // Nếu đang typing thì không gọi API
+      if (isTyping) {
+        return;
+      }
+
+      // Gọi API cho text_answer question
+      if (activity.activity_type_id === "QUIZ_TYPE_ANSWER") {
+        try {
+          await activitiesApi.updateTypeAnswerQuiz(activity.id, {
+            type: "TYPE_ANSWER",
+            questionText: activeQuestion.question_text,
+            timeLimitSeconds: timeLimit,
+            pointType: "STANDARD",
+            correctAnswer: value,
+          });
+        } catch (error) {
+          console.error(
+            "Error updating TYPE_ANSWER correct_answer_text:",
+            error
+          );
+        }
+      }
+      return;
+    }
+
+    // Kiểm tra xem mảng tùy chọn có tồn tại và có chỉ mục yêu cầu không
     if (
       !activeQuestion.options ||
       !Array.isArray(activeQuestion.options) ||
       activeQuestion.options.length <= optionIndex
     ) {
-      console.error(`Option at index ${optionIndex} does not exist`);
+      console.error(`Tùy chọn tại chỉ mục ${optionIndex} không tồn tại`);
       return;
-
     }
 
-    // Special handling for multiple_choice and true_false questions - only one correct answer allowed
+    // Xử lý đặc biệt cho câu hỏi multiple_choice và true_false
     if (
-      field === 'is_correct' &&
+      field === "is_correct" &&
       value === true &&
-      (activeQuestion.question_type === 'multiple_choice' ||
-        activeQuestion.question_type === 'true_false')
+      (activeQuestion.question_type === "multiple_choice" ||
+        activeQuestion.question_type === "true_false")
     ) {
-      // First set all options to incorrect
+      // Đầu tiên đặt tất cả các tùy chọn là không chính xác
       activeQuestion.options.forEach((opt: any) => {
         opt.is_correct = false;
       });
-      // Then set just the selected one to correct
+      // Sau đó chỉ đặt tùy chọn được chọn là chính xác
       activeQuestion.options[optionIndex][field] = value;
     } else {
-      // For other question types or fields, just update normally
+      // Đối với các loại câu hỏi hoặc trường khác, chỉ cập nhật bình thường
       activeQuestion.options[optionIndex][field] = value;
     }
 
-    // Update local state
+    // Cập nhật trạng thái cục bộ
     setQuestions(updatedQuestions);
 
-    try {
-      const options = activeQuestion.options;
-      console.log(
-        `Updating ${activity.activity_type_id} with options:`,
-        options
-      );
+    if (isTyping && field === "option_text") {
+      return;
+    }
 
-      // Now handle API update based on question type
-      switch (activity.activity_type_id) {
-        case 'QUIZ_BUTTONS':
-        case 'QUIZ_CHECKBOXES':
-          await activitiesApi.updateCheckboxesQuiz(activity.id, {
-            type: 'CHOICE',
-            questionText: activeQuestion.question_text,
-            timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
-            answers: options.map(
-              (opt: {
-                option_text: string;
-                is_correct: boolean;
-                explanation: string;
-              }) => ({
+    // // Sử dụng API call với debounce cho câu hỏi loại CHOICE
+    // if (
+    //   activity.activity_type_id === 'QUIZ_BUTTONS' ||
+    //   activity.activity_type_id === 'QUIZ_CHECKBOXES'
+    // ) {
+    //   debouncedUpdateAPI(
+    //     activity.id,
+    //     activity.activity_type_id,
+    //     activeQuestion
+    //   );
+    //   return;
+    // }
+
+    if (!isTyping) {
+      // Đối với các loại câu hỏi khác, tiếp tục với các API call ngay lập tức
+      try {
+        const options = activeQuestion.options;
+
+        // Xử lý cập nhật API dựa trên loại câu hỏi
+        switch (activity.activity_type_id) {
+          case "QUIZ_BUTTONS":
+            await activitiesApi.updateButtonsQuiz(activity.id, {
+              type: "CHOICE",
+              questionText: activeQuestion.question_text,
+              timeLimitSeconds: timeLimit,
+              pointType: "STANDARD",
+              answers: options.map((opt: any) => ({
                 answerText: opt.option_text,
                 isCorrect: opt.is_correct,
-                explanation: opt.explanation || '',
-              })
-            ),
-          });
-          console.log('API update successful for CHOICE question');
-          break;
+                explanation: opt.explanation || "",
+              })),
+            });
+            break;
 
-        case 'QUIZ_TRUE_OR_FALSE':
-          const correctOption = options.find(
-            (opt: { is_correct: boolean }) => opt.is_correct
-          );
-          await activitiesApi.updateTrueFalseQuiz(activity.id, {
-            type: 'TRUE_FALSE',
-            questionText: activeQuestion.question_text,
-            timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
-            correctAnswer: correctOption?.option_text.toLowerCase() === 'true',
-          });
-          console.log('API update successful for TRUE_FALSE question');
-          break;
+          case "QUIZ_CHECKBOXES":
+            await activitiesApi.updateCheckboxesQuiz(activity.id, {
+              type: "CHOICE",
+              questionText: activeQuestion.question_text,
+              timeLimitSeconds: timeLimit,
+              pointType: "STANDARD",
+              answers: options.map((opt: any) => ({
+                answerText: opt.option_text,
+                isCorrect: opt.is_correct,
+                explanation: opt.explanation || "",
+              })),
+            });
+            break;
 
-        case 'QUIZ_TYPE_ANSWER':
-          // For text answer questions, use option_text as the correctAnswer
-          const answerText = activeQuestion.options[0]?.option_text || 'Answer';
-          await activitiesApi.updateTypeAnswerQuiz(activity.id, {
-            type: 'TYPE_ANSWER',
-            questionText: activeQuestion.question_text,
-            timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
-            correctAnswer: answerText,
-          });
-          console.log('API update successful for TYPE_ANSWER question');
-          break;
+          case "QUIZ_TRUE_OR_FALSE":
+            const correctOption = options.find(
+              (opt: { is_correct: boolean }) => opt.is_correct
+            );
+            await activitiesApi.updateTrueFalseQuiz(activity.id, {
+              type: "TRUE_FALSE",
+              questionText: activeQuestion.question_text,
+              timeLimitSeconds: timeLimit,
+              pointType: "STANDARD",
+              correctAnswer:
+                correctOption?.option_text.toLowerCase() === "true",
+            });
+            break;
 
-        case 'QUIZ_REORDER':
-          // For reorder questions, update with the current order
-          await activitiesApi.updateReorderQuiz(activity.id, {
-            type: 'REORDER',
-            questionText: activeQuestion.question_text,
-            timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
-            correctOrder: options.map(
-              (opt: { option_text: any }) => opt.option_text
-            ),
-          });
-          console.log('API update successful for REORDER question');
-          break;
+          case "QUIZ_TYPE_ANSWER":
+            // For text answer questions, use option_text as the correctAnswer
+            const answerText =
+              activeQuestion.options[0]?.option_text || "Answer";
+            await activitiesApi.updateTypeAnswerQuiz(activity.id, {
+              type: "TYPE_ANSWER",
+              questionText: activeQuestion.question_text,
+              timeLimitSeconds: timeLimit,
+              pointType: "STANDARD",
+              correctAnswer: answerText,
+            });
+            break;
+
+          case "QUIZ_REORDER":
+            // For reorder questions, update with the current order
+            await activitiesApi.updateReorderQuiz(activity.id, {
+              type: "REORDER",
+              questionText: activeQuestion.question_text,
+              timeLimitSeconds: timeLimit,
+              pointType: "STANDARD",
+              correctOrder: options.map(
+                (opt: { option_text: any }) => opt.option_text
+              ),
+            });
+            break;
+        }
+      } catch (error) {
+        console.error("Lỗi khi cập nhật văn bản câu trả lời:", error);
       }
-
-
-      console.log("Answer text updated successfully");
-    } catch (error) {
-      console.error("Error updating answer text:", error);
-
     }
   };
+
+  // Thêm đoạn dọn dẹp cho hàm debounced
+  React.useEffect(() => {
+    return () => {
+      debouncedUpdateAPI.cancel();
+    };
+  }, [debouncedUpdateAPI]);
 
   /**
    * Handle reordering of options (specifically for reorder question type)
@@ -165,7 +276,13 @@ export function useOptionOperations(
     sourceIndex: number,
     destinationIndex: number
   ) => {
-    if (!activity || activity.activity_type_id !== 'QUIZ_REORDER') return;
+    if (!activity || activity.activity_type_id !== "QUIZ_REORDER") return;
+
+    console.log("🔄 REORDER: Starting reorder operation", {
+      sourceIndex,
+      destinationIndex,
+      activityId: activity.id,
+    });
 
     const updatedQuestions = [...questions];
     const activeQuestion = updatedQuestions[activeQuestionIndex];
@@ -177,6 +294,11 @@ export function useOptionOperations(
       destinationIndex
     );
 
+    console.log("🔄 REORDER: Options reordered locally", {
+      originalOrder: activeQuestion.options.map((opt) => opt.option_text),
+      newOrder: reorderedOptions.map((opt) => opt.option_text),
+    });
+
     // Update the question with the new options array
     updatedQuestions[activeQuestionIndex] = {
       ...activeQuestion,
@@ -187,27 +309,21 @@ export function useOptionOperations(
     setQuestions(updatedQuestions);
 
     try {
-      console.log('Updating reorder quiz with data:', {
-        type: 'REORDER',
-        questionText: activeQuestion.question_text,
-        timeLimitSeconds: timeLimit,
-        pointType: 'STANDARD',
-        correctOrder: reorderedOptions.map((opt) => opt.option_text),
-      });
-
       const response = await activitiesApi.updateReorderQuiz(activity.id, {
-        type: 'REORDER',
+        type: "REORDER",
         questionText: activeQuestion.question_text,
         timeLimitSeconds: timeLimit,
-        pointType: 'STANDARD',
+        pointType: "STANDARD",
         correctOrder: reorderedOptions.map((opt) => opt.option_text),
       });
 
-      console.log("Reorder update response:", response);
-      console.log("Reorder steps updated successfully");
+      console.log("🔄 REORDER: API update successful", {
+        activityId: activity.id,
+        newOrder: reorderedOptions.map((opt) => opt.option_text),
+        response: response?.data,
+      });
     } catch (error) {
-      console.error("Error updating reorder steps:", error);
-
+      console.error("🔄 REORDER: Error updating reorder steps:", error);
     }
   };
 
@@ -221,10 +337,7 @@ export function useOptionOperations(
     const activeQuestion = updatedQuestions[activeQuestionIndex];
 
     // Don't allow more than 8 options
-    if (activeQuestion.options.length >= 8) {
-
-      console.log("Maximum options reached: You can't add more than 8 options");
-
+    if (activeQuestion.options.length >= 9) {
       return;
     }
 
@@ -233,7 +346,7 @@ export function useOptionOperations(
       option_text: `Option ${newOptionIndex + 1}`,
       is_correct: false,
       display_order: newOptionIndex,
-      explanation: '',
+      explanation: "",
     };
 
     // Add the new option
@@ -249,50 +362,46 @@ export function useOptionOperations(
     // Update API
     try {
       switch (activity.activity_type_id) {
-        case 'QUIZ_BUTTONS':
+        case "QUIZ_BUTTONS":
           await activitiesApi.updateButtonsQuiz(activity.id, {
-            type: 'CHOICE',
+            type: "CHOICE",
             questionText: activeQuestion.question_text,
             timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
+            pointType: "STANDARD",
             answers: updatedOptions.map((opt) => ({
               answerText: opt.option_text,
               isCorrect: opt.is_correct,
-              explanation: opt.explanation || '',
+              explanation: opt.explanation || "",
             })),
           });
           break;
 
-        case 'QUIZ_CHECKBOXES':
+        case "QUIZ_CHECKBOXES":
           await activitiesApi.updateCheckboxesQuiz(activity.id, {
-            type: 'CHOICE',
+            type: "CHOICE",
             questionText: activeQuestion.question_text,
             timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
+            pointType: "STANDARD",
             answers: updatedOptions.map((opt) => ({
               answerText: opt.option_text,
               isCorrect: opt.is_correct,
-              explanation: opt.explanation || '',
+              explanation: opt.explanation || "",
             })),
           });
           break;
 
-        case 'QUIZ_REORDER':
+        case "QUIZ_REORDER":
           await activitiesApi.updateReorderQuiz(activity.id, {
-            type: 'REORDER',
+            type: "REORDER",
             questionText: activeQuestion.question_text,
             timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
+            pointType: "STANDARD",
             correctOrder: updatedOptions.map((opt) => opt.option_text),
           });
           break;
       }
-
-
-      console.log("New option added successfully");
     } catch (error) {
       console.error("Error adding option:", error);
-
     }
   };
 
@@ -308,14 +417,9 @@ export function useOptionOperations(
     // Don't allow fewer than 2 options for multiple choice questions
     if (
       activeQuestion.options.length <= 2 &&
-      (activeQuestion.question_type === 'multiple_choice' ||
-        activeQuestion.question_type === 'multiple_response')
+      (activeQuestion.question_type === "multiple_choice" ||
+        activeQuestion.question_type === "multiple_response")
     ) {
-
-      console.log(
-        "Minimum options required: You need at least 2 options for this question type"
-      );
-
       return;
     }
 
@@ -326,7 +430,7 @@ export function useOptionOperations(
 
     // Ensure at least one option is marked as correct for multiple choice
     if (
-      activeQuestion.question_type === 'multiple_choice' &&
+      activeQuestion.question_type === "multiple_choice" &&
       !updatedOptions.some((opt) => opt.is_correct)
     ) {
       updatedOptions[0] = { ...updatedOptions[0], is_correct: true };
@@ -348,49 +452,46 @@ export function useOptionOperations(
     // Update API
     try {
       switch (activity.activity_type_id) {
-        case 'QUIZ_BUTTONS':
+        case "QUIZ_BUTTONS":
           await activitiesApi.updateButtonsQuiz(activity.id, {
-            type: 'CHOICE',
+            type: "CHOICE",
             questionText: activeQuestion.question_text,
             timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
+            pointType: "STANDARD",
             answers: updatedOptions.map((opt) => ({
               answerText: opt.option_text,
               isCorrect: opt.is_correct,
-              explanation: opt.explanation || '',
+              explanation: opt.explanation || "",
             })),
           });
           break;
 
-        case 'QUIZ_CHECKBOXES':
+        case "QUIZ_CHECKBOXES":
           await activitiesApi.updateCheckboxesQuiz(activity.id, {
-            type: 'CHOICE',
+            type: "CHOICE",
             questionText: activeQuestion.question_text,
             timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
+            pointType: "STANDARD",
             answers: updatedOptions.map((opt) => ({
               answerText: opt.option_text,
               isCorrect: opt.is_correct,
-              explanation: opt.explanation || '',
+              explanation: opt.explanation || "",
             })),
           });
           break;
 
-        case 'QUIZ_REORDER':
+        case "QUIZ_REORDER":
           await activitiesApi.updateReorderQuiz(activity.id, {
-            type: 'REORDER',
+            type: "REORDER",
             questionText: activeQuestion.question_text,
             timeLimitSeconds: timeLimit,
-            pointType: 'STANDARD',
+            pointType: "STANDARD",
             correctOrder: updatedOptions.map((opt) => opt.option_text),
           });
           break;
       }
-
-      console.log("Option deleted successfully");
     } catch (error) {
       console.error("Error deleting option:", error);
-
     }
   };
 
@@ -399,8 +500,6 @@ export function useOptionOperations(
    */
   const handleCorrectAnswerChange = async (value: string) => {
     if (!activity) return;
-
-    console.log('Updating correct answer text to:', value);
 
     // Create a deep copy of the questions array
     const updatedQuestions = JSON.parse(JSON.stringify(questions));
@@ -413,21 +512,17 @@ export function useOptionOperations(
 
     try {
       // Call API to update the answer
-      if (activity.activity_type_id === 'QUIZ_TYPE_ANSWER') {
+      if (activity.activity_type_id === "QUIZ_TYPE_ANSWER") {
         const response = await activitiesApi.updateTypeAnswerQuiz(activity.id, {
-          type: 'TYPE_ANSWER',
+          type: "TYPE_ANSWER",
           questionText: updatedQuestions[activeQuestionIndex].question_text,
           timeLimitSeconds: timeLimit,
-          pointType: 'STANDARD',
+          pointType: "STANDARD",
           correctAnswer: value,
         });
-
-
-        console.log("Successfully updated text answer question:", response);
       }
     } catch (error) {
       console.error("Error updating correct answer:", error);
-
     }
   };
 
@@ -437,31 +532,30 @@ export function useOptionOperations(
   const updateReorderOptionContent = async (
     questionIndex: number,
     optionIndex: number,
-    value: string
+    value: string,
+    isTyping: boolean = false
   ) => {
-    if (!activity || activity.activity_type_id !== 'QUIZ_REORDER') return;
+    if (!activity || activity.activity_type_id !== "QUIZ_REORDER") return;
 
     // First update local state
     const updatedQuestions = [...questions];
     updatedQuestions[questionIndex].options[optionIndex].option_text = value;
     setQuestions(updatedQuestions);
 
-    try {
-      const activeQuestion = updatedQuestions[questionIndex];
+    if (!isTyping) {
+      try {
+        const activeQuestion = updatedQuestions[questionIndex];
 
-      await activitiesApi.updateReorderQuiz(activity.id, {
-        type: 'REORDER',
-        questionText: activeQuestion.question_text,
-        timeLimitSeconds: timeLimit,
-        pointType: 'STANDARD',
-        correctOrder: activeQuestion.options.map((opt) => opt.option_text),
-      });
-
-
-      console.log("API update successful for REORDER question option");
-    } catch (error) {
-      console.error("Error updating reorder option:", error);
-
+        await activitiesApi.updateReorderQuiz(activity.id, {
+          type: "REORDER",
+          questionText: activeQuestion.question_text,
+          timeLimitSeconds: timeLimit,
+          pointType: "STANDARD",
+          correctOrder: activeQuestion.options.map((opt) => opt.option_text),
+        });
+      } catch (error) {
+        console.error("Error updating reorder option:", error);
+      }
     }
   };
 

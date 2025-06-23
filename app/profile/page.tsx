@@ -6,8 +6,11 @@ import { UserCircle, Settings, Shield, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Metadata } from 'next';
 import Loading from '@/components/common/loading';
+import { useLanguage } from '@/contexts/language-context';
 
 export default function ProfilePage() {
+  const { t } = useLanguage();
+
   return (
     <div className='relative'>
       {/* Decorative elements */}
@@ -26,11 +29,10 @@ export default function ProfilePage() {
             <UserCircle className='h-10 w-10 text-white' />
           </div>
           <h1 className='text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-4'>
-            Hồ sơ cá nhân
+            {t('profile.profilePageTitle')}
           </h1>
           <p className='text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto'>
-            Quản lý thông tin cá nhân và bảo mật tài khoản của bạn một cách dễ
-            dàng và an toàn
+            {t('profile.profilePageDescription')}
           </p>
         </motion.div>
 
@@ -47,11 +49,11 @@ export default function ProfilePage() {
                 <User className='h-5 w-5 text-blue-600 dark:text-blue-400' />
               </div>
               <h3 className='font-semibold text-gray-900 dark:text-white'>
-                Thông tin cá nhân
+                {t('profile.personalInfoCard')}
               </h3>
             </div>
             <p className='text-sm text-gray-600 dark:text-gray-300'>
-              Cập nhật họ tên, ngày sinh và thông tin cá nhân khác
+              {t('profile.personalInfoCardDesc')}
             </p>
           </div>
 
@@ -61,11 +63,11 @@ export default function ProfilePage() {
                 <Settings className='h-5 w-5 text-green-600 dark:text-green-400' />
               </div>
               <h3 className='font-semibold text-gray-900 dark:text-white'>
-                Cài đặt email
+                {t('profile.emailSettingsCard')}
               </h3>
             </div>
             <p className='text-sm text-gray-600 dark:text-gray-300'>
-              Thay đổi địa chỉ email và xác thực tài khoản
+              {t('profile.emailSettingsCardDesc')}
             </p>
           </div>
 
@@ -75,11 +77,11 @@ export default function ProfilePage() {
                 <Shield className='h-5 w-5 text-purple-600 dark:text-purple-400' />
               </div>
               <h3 className='font-semibold text-gray-900 dark:text-white'>
-                Bảo mật
+                {t('profile.securityCard')}
               </h3>
             </div>
             <p className='text-sm text-gray-600 dark:text-gray-300'>
-              Đổi mật khẩu và tăng cường bảo mật tài khoản
+              {t('profile.securityCardDesc')}
             </p>
           </div>
         </motion.div>

@@ -161,8 +161,11 @@ export default function SessionShowPage() {
                     onOptionChange={() => { }}
                     onChangeQuestion={() => { }}
                     onAddQuestion={() => { }}
-                    onUpdateActivityBackground={() => { }}
-                  />
+                    onUpdateActivityBackground={() => { }} correctAnswerText={''} onCorrectAnswerTextChange={function (value: string): void {
+                      throw new Error('Function not implemented.');
+                    }} onCorrectAnswerTextBlur={function (value: string): void {
+                      throw new Error('Function not implemented.');
+                    }} />
                 )}
             </Card>
           )}

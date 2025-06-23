@@ -4,7 +4,12 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { collectionsApi } from '@/api-client';
-import { Activity, QuizQuestion } from '../components/types';
+import {
+  Activity,
+  QuizOption,
+  QuizQuestion,
+  MatchingPairOption,
+} from '../components/types';
 import { createEmptyQuestion } from '../utils/question-helpers';
 import { mapActivityTypeToQuestionType } from '../utils/question-type-mapping';
 
@@ -125,84 +130,113 @@ export function useCollectionData(collectionId: string, activityId?: string) {
 
                 // Handle location questions
                 if (act.activity_type_id === 'QUIZ_LOCATION') {
+                  question.question_text =
+                    act.quiz?.questionText ||
+                    act.title ||
+                    'Where is this location?';
+                  question.question_type = 'location';
+                  question.location_data = {
+                    lat: 21.0285, // Default latitude, can be a center point or first point.
+                    lng: 105.8048, // Default longitude
+                    radius: 10,
+
+                    pointType: act.quiz?.pointType || 'STANDARD',
+                    quizLocationAnswers:
+                      act.quiz?.quizLocationAnswers?.map((loc: any) => ({
+                        quizLocationAnswerId: loc.quizLocationAnswerId,
+                        latitude: loc.latitude,
+                        longitude: loc.longitude,
+                        radius: loc.radius,
+                      })) || [],
+                  };
+
                   if (
-                    act.quiz &&
-                    act.quiz.quizLocationAnswers &&
-                    Array.isArray(act.quiz.quizLocationAnswers) &&
-                    act.quiz.quizLocationAnswers.length > 0
+                    question.location_data.quizLocationAnswers &&
+                    question.location_data.quizLocationAnswers.length > 0
                   ) {
-                    const locationAnswer = act.quiz.quizLocationAnswers[0]; // Use first location point
-                    question.question_text =
-                      act.quiz.questionText ||
-                      act.title ||
-                      'Where is this location?';
-                    question.question_type = 'location';
-                    question.location_data = {
-                      lat: locationAnswer.latitude,
-                      lng: locationAnswer.longitude,
-                      radius: locationAnswer.radius || 10,
-                      hint: act.quiz.hint || '',
-                      pointType: act.quiz.pointType || 'STANDARD',
-                    };
-                    console.log(
-                      'Found location question with data:',
-                      question.location_data
-                    );
-                  } else {
-                    // Create default location data if not present
-                    question.question_text =
-                      act.title || 'Where is this location?';
-                    question.question_type = 'location';
-                    question.location_data = {
-                      lat: 21.0285, // Default to Hanoi
-                      lng: 105.8048,
-                      radius: 10,
-                      hint: '',
-                      pointType: 'STANDARD',
-                    };
-                    console.log('Created default location question data');
+                    question.location_data.lat =
+                      question.location_data.quizLocationAnswers[0].latitude;
+                    question.location_data.lng =
+                      question.location_data.quizLocationAnswers[0].longitude;
                   }
+
+                  console.log(
+                    'Mapped location question with data:',
+                    question.location_data
+                  );
                   return question;
                 }
 
-                // Handle matching pair questions - FOR MOCKING
-                if (act.activity_type_id === 'QUIZ_MATCHING_PAIR') {
+                // Handle matching pair questions - UPDATED TO USE API DATA
+                if (act.activity_type_id === 'QUIZ_MATCHING_PAIRS') {
                   question.question_type = 'matching_pair';
-                  question.question_text = act.title || 'Match the pairs';
-                  question.options = [
-                    {
-                      id: 'left-1',
-                      pair_id: 'pair-1',
-                      type: 'left',
-                      option_text: 'Hanoi',
-                      is_correct: true,
-                      display_order: 0,
-                    },
-                    {
-                      id: 'right-1',
-                      pair_id: 'pair-1',
-                      type: 'right',
-                      option_text: 'Vietnam',
-                      is_correct: true,
-                      display_order: 1,
-                    },
-                    {
-                      id: 'left-2',
-                      pair_id: 'pair-2',
-                      type: 'left',
-                      option_text: 'Tokyo',
-                      is_correct: true,
-                      display_order: 2,
-                    },
-                    {
-                      id: 'right-2',
-                      pair_id: 'pair-2',
-                      type: 'right',
-                      option_text: 'Japan',
-                      is_correct: true,
-                      display_order: 3,
-                    },
-                  ];
+                  question.question_text =
+                    act.quiz?.questionText || act.title || 'Match the pairs';
+                  question.time_limit_seconds = act.quiz?.timeLimitSeconds;
+                  question.pointType = act.quiz?.pointType;
+
+                  // Use the actual matching pair data from API
+                  if (act.quiz?.quizMatchingPairAnswer) {
+                    const matchingData = act.quiz.quizMatchingPairAnswer;
+                    question.matching_data = matchingData;
+
+                    // Convert API structure to the expected options format
+                    const options: MatchingPairOption[] = [];
+
+                    // Process left column items
+                    matchingData.items
+                      .filter((item: MatchingPairOption) => item.isLeftColumn)
+                      .forEach((item: MatchingPairOption) => {
+                        options.push({
+                          id: item.quizMatchingPairItemId,
+                          quizMatchingPairItemId: item.quizMatchingPairItemId,
+                          content: item.content,
+
+                          isLeftColumn: true,
+                          display_order: item.display_order,
+                        });
+                      });
+
+                    // Process right column items
+                    matchingData.items
+                      .filter((item: MatchingPairOption) => !item.isLeftColumn)
+                      .forEach((item: MatchingPairOption) => {
+                        options.push({
+                          id: item.quizMatchingPairItemId,
+                          quizMatchingPairItemId: item.quizMatchingPairItemId,
+                          content: item.content,
+
+                          isLeftColumn: false,
+                          display_order: item.display_order,
+                        });
+                      });
+
+                    // Sort options by display order
+                    options.sort((a, b) => a.display_order - b.display_order);
+
+                    console.log('Processed matching pair data from API:', {
+                      leftColumnName: matchingData.leftColumnName,
+                      rightColumnName: matchingData.rightColumnName,
+                      itemsCount: matchingData.items.length,
+                      connectionsCount: matchingData.connections.length,
+                      optionsCount: options.length,
+                    });
+                  } else {
+                    // Fallback: create empty matching pair structure
+                    question.question_text = act.title || 'Match the pairs';
+                    question.options = [];
+                    question.matching_data = {
+                      quizMatchingPairAnswerId: '',
+                      leftColumnName: 'Left Column',
+                      rightColumnName: 'Right Column',
+                      items: [],
+                      connections: [],
+                    };
+                    console.log(
+                      'No matching pair data found, created empty structure'
+                    );
+                  }
+
                   return question;
                 }
 
@@ -244,90 +278,32 @@ export function useCollectionData(collectionId: string, activityId?: string) {
               }
             );
 
-            // MOCK DATA INJECTION
-            const mockActivity: Activity = {
-              id: 'mock-activity-1',
-              title: 'Mock Matching Pair Question',
-              collection_id: collectionId,
-              description: 'This is a mock question for testing.',
-              is_published: true,
-              activity_type_id: 'QUIZ_MATCHING_PAIR',
-              orderIndex: -1, // To ensure it's at the top
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              createdBy: 'mock-user',
-            };
+            setActivities(mappedActivities);
 
-            const mockQuestion: QuizQuestion = {
-              id: 'mock-activity-1',
-              activity_id: 'mock-activity-1',
-              question_text: 'Match the capitals to their countries',
-              question_type: 'matching_pair',
-              options: [
-                {
-                  id: 'left-1',
-                  pair_id: 'pair-1',
-                  type: 'left',
-                  option_text: 'Hanoi',
-                  is_correct: true,
-                  display_order: 0,
-                },
-                {
-                  id: 'right-1',
-                  pair_id: 'pair-1',
-                  type: 'right',
-                  option_text: 'Vietnam',
-                  is_correct: true,
-                  display_order: 1,
-                },
-                {
-                  id: 'left-2',
-                  pair_id: 'pair-2',
-                  type: 'left',
-                  option_text: 'Tokyo',
-                  is_correct: true,
-                  display_order: 2,
-                },
-                {
-                  id: 'right-2',
-                  pair_id: 'pair-2',
-                  type: 'right',
-                  option_text: 'Japan',
-                  is_correct: true,
-                  display_order: 3,
-                },
-              ],
-            };
-
-            // Prepend mock data
-            const finalActivities = [mockActivity, ...mappedActivities];
-            const finalQuestions = [mockQuestion, ...allQuestions];
-
-            setActivities(finalActivities);
-            setQuestions(finalQuestions);
+            setQuestions(allQuestions);
 
             // Find index of the first question if we have questions
-            if (finalQuestions.length > 0) {
+            if (allQuestions.length > 0) {
               // If we have an activity ID in params, select that activity
               if (activityId) {
-                const targetActivity = finalActivities.find(
+                const targetActivity = mappedActivities.find(
                   (a: { id: string }) => a.id === activityId
                 );
                 if (targetActivity) {
                   setActivity(targetActivity);
-                  const targetIndex = finalQuestions.findIndex(
+                  const targetIndex = allQuestions.findIndex(
                     (q: { activity_id: string }) =>
                       q.activity_id === targetActivity.id
                   );
                   setActiveQuestionIndex(targetIndex >= 0 ? targetIndex : 0);
                 } else {
                   // If no matching activity, select first
-                  setActivity(finalActivities[0]);
+                  setActivity(mappedActivities[0]);
                   setActiveQuestionIndex(0);
                 }
               } else {
                 // No specific activity in URL, use first
-                setActivity(finalActivities[0]);
+                setActivity(mappedActivities[0]);
                 setActiveQuestionIndex(0);
               }
             }
