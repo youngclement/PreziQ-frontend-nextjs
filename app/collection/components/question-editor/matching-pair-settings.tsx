@@ -569,23 +569,12 @@ export function MatchingPairSettings({
       );
 
       const newItems = [...otherSideItems, ...updatedSideItemsWithOrder];
-      const newItemsMap = new Map(
-        newItems.map((i) => [i.quizMatchingPairItemId, i])
-      );
 
-      const newConnections = prev.connections.map((conn) => {
-        const newLeft = newItemsMap.get(conn.leftItem.quizMatchingPairItemId);
-        const newRight = newItemsMap.get(conn.rightItem.quizMatchingPairItemId);
-        if (newLeft && newRight) {
-          return { ...conn, leftItem: newLeft, rightItem: newRight };
-        }
-        return conn;
-      });
-
+      // ✅ Giữ nguyên connections, không map lại
       return {
         ...prev,
         items: newItems,
-        connections: newConnections,
+        // connections: prev.connections,
       };
     });
 
@@ -604,6 +593,12 @@ export function MatchingPairSettings({
         )
       );
       await Promise.all(updatePromises);
+
+      // ✅ Sau khi reorder, luôn đồng bộ lại state từ server
+      if (onRefreshActivity) {
+        await onRefreshActivity();
+      }
+      forceRefresh();
     } catch (error) {
       console.error('Failed to save reordering:', error);
       if (onRefreshActivity) {
