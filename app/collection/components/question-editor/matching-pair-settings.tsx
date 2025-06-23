@@ -1,5 +1,7 @@
 'use client';
 
+import type React from 'react';
+
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,10 +38,10 @@ import type {
 interface MatchingPairSettingsProps {
   question: QuizMatchingPairQuestion;
   activityId: string;
-  onOptionsChange?: (options: any[]) => void;
-  onAddPair?: () => void;
-  onDeletePair?: (pairId: string) => void;
-  onReorderPairs?: (startIndex: number, endIndex: number) => void;
+  onOptionsChange: (options: any[]) => void;
+  onAddPair: () => void;
+  onDeletePair: (pairId: string) => void;
+  onReorderPairs: (startIndex: number, endIndex: number) => void;
   leftColumnName?: string;
   rightColumnName?: string;
   onColumnNamesChange?: (left: string, right: string) => void;
@@ -48,53 +50,52 @@ interface MatchingPairSettingsProps {
   settingsUpdateTrigger?: number;
 }
 
-interface SortableItemProps {
-  item: QuizMatchingPairItem;
-  index: number;
-  onOptionChange: (itemId: string, value: string) => Promise<void>;
-  onDelete: (itemId: string) => Promise<void>;
-  columnName: string;
-  isUpdating: boolean;
-  side: 'left' | 'right';
-  isSelected: boolean;
-  onSelect: (itemId: string) => void;
-  isConnected: boolean;
-  connectionColor?: string;
-}
-
 function SortableItem({
   item,
   index,
   onOptionChange,
   onDelete,
   columnName,
-  isUpdating,
+  isUpdating = false,
   side,
-  isSelected,
+  isSelected = false,
   onSelect,
-  isConnected,
-  connectionColor,
-}: SortableItemProps) {
+  isConnected = false,
+  connectionColor = '',
+}: {
+  item: QuizMatchingPairItem;
+  index: number;
+  onOptionChange: (itemId: string, value: string) => void;
+  onDelete: () => void;
+  columnName: string;
+  isUpdating?: boolean;
+  side: 'left' | 'right';
+  isSelected?: boolean;
+  onSelect: () => void;
+  isConnected?: boolean;
+  connectionColor?: string;
+}) {
   const [inputValue, setInputValue] = useState(item.content || '');
-  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const updateTimeoutRef = useRef<NodeJS.Timeout>();
   const isUserTypingRef = useRef(false);
 
   useEffect(() => {
     if (!isUserTypingRef.current && item.content !== inputValue) {
       setInputValue(item.content || '');
     }
-  }, [item.content]);
+  }, [item.content, inputValue]);
 
   const debouncedUpdate = useCallback(
-    async (value: string) => {
+    (value: string) => {
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
-      updateTimeoutRef.current = setTimeout(async () => {
+
+      updateTimeoutRef.current = setTimeout(() => {
         if (item.quizMatchingPairItemId) {
-          await onOptionChange(item.quizMatchingPairItemId, value);
+          onOptionChange(item.quizMatchingPairItemId, value);
         }
-      }, 500);
+      }, 300);
     },
     [item.quizMatchingPairItemId, onOptionChange]
   );
@@ -104,6 +105,10 @@ function SortableItem({
     isUserTypingRef.current = true;
     setInputValue(value);
     debouncedUpdate(value);
+  };
+
+  const handleInputFocus = () => {
+    isUserTypingRef.current = true;
   };
 
   const handleInputBlur = () => {
@@ -121,7 +126,6 @@ function SortableItem({
     isDragging,
   } = useSortable({
     id: `${side}-${item.quizMatchingPairItemId}`,
-    disabled: isUpdating,
   });
 
   const style = {
@@ -150,8 +154,9 @@ function SortableItem({
         isSelected && 'ring-2 ring-primary bg-primary/5',
         connectionColor && `${connectionColor} border-2`
       )}
-      onClick={() => onSelect(item.quizMatchingPairItemId || '')}
+      onClick={onSelect}
     >
+      {/* Drag Handle */}
       <div
         {...attributes}
         {...listeners}
@@ -160,6 +165,8 @@ function SortableItem({
       >
         <GripVertical className="h-4 w-4" />
       </div>
+
+      {/* Item Input */}
       <div className="flex-1 space-y-1">
         <Label className="text-xs text-gray-500 dark:text-gray-400">
           {columnName}
@@ -169,24 +176,29 @@ function SortableItem({
           placeholder={`Enter ${columnName.toLowerCase()}`}
           value={inputValue}
           onChange={handleInputChange}
+          onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           className="w-full"
           disabled={isUpdating}
           onClick={(e) => e.stopPropagation()}
         />
       </div>
+
+      {/* Delete Button */}
       <Button
         variant="ghost"
         size="icon"
         className="flex-shrink-0 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/20"
         onClick={(e) => {
           e.stopPropagation();
-          onDelete(item.quizMatchingPairItemId || '');
+          onDelete();
         }}
         disabled={isUpdating}
       >
         <Trash2 className="h-4 w-4 text-red-500" />
       </Button>
+
+      {/* Connection Indicator */}
       {isConnected && (
         <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
           <span className="text-white text-xs font-bold">✓</span>
@@ -199,6 +211,10 @@ function SortableItem({
 export function MatchingPairSettings({
   question,
   activityId,
+  onOptionsChange,
+  onAddPair,
+  onDeletePair,
+  onReorderPairs,
   leftColumnName = 'Left Item',
   rightColumnName = 'Right Item',
   onColumnNamesChange,
@@ -206,78 +222,78 @@ export function MatchingPairSettings({
   onRefreshActivity,
   settingsUpdateTrigger = 0,
 }: MatchingPairSettingsProps) {
+  const isDraggingRef = useRef(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const updateTimeoutRef = useRef<NodeJS.Timeout>();
+  const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
+  const [selectedRight, setSelectedRight] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  // ✅ FIX 1: Better state management với force refresh key
+  const [refreshKey, setRefreshKey] = useState(0);
   const [matchingData, setMatchingData] =
     useState<QuizMatchingPairAnswer | null>(
       question.quizMatchingPairAnswer || question.matching_data || null
     );
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
-  const [selectedRight, setSelectedRight] = useState<string | null>(null);
+
+  // ✅ FIX 2: Force refresh function
+  const forceRefresh = useCallback(() => {
+    setRefreshKey((prev) => prev + 1);
+  }, []);
+
+  // ✅ FIX 3: Better sync với props - always update when question changes
+  useEffect(() => {
+    console.log('🔄 Syncing matchingData from props:', {
+      quizMatchingPairAnswer: question.quizMatchingPairAnswer,
+      matching_data: question.matching_data,
+      activityId,
+      settingsUpdateTrigger,
+      refreshKey,
+    });
+
+    const newData =
+      question.quizMatchingPairAnswer || question.matching_data || null;
+    setMatchingData(newData);
+
+    // Clear selections when data changes
+    setSelectedLeft(null);
+    setSelectedRight(null);
+  }, [
+    question.quizMatchingPairAnswer,
+    question.matching_data,
+    activityId,
+    settingsUpdateTrigger,
+    refreshKey,
+  ]);
+
+  // State cho column names
   const [leftColumnTitle, setLeftColumnTitle] = useState(
     matchingData?.leftColumnName || leftColumnName
   );
   const [rightColumnTitle, setRightColumnTitle] = useState(
     matchingData?.rightColumnName || rightColumnName
   );
-  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const refreshKeyRef = useRef(0);
-  const isDraggingRef = useRef(false);
 
-  // Synchronize matchingData with props
+  // Cập nhật column titles khi matchingData thay đổi
   useEffect(() => {
-    const newData =
-      question.quizMatchingPairAnswer || question.matching_data || null;
-    if (newData) {
-      setMatchingData(newData);
-      setLeftColumnTitle(newData.leftColumnName || leftColumnName);
-      setRightColumnTitle(newData.rightColumnName || rightColumnName);
-      setSelectedLeft(null);
-      setSelectedRight(null);
-    }
-  }, [
-    question.quizMatchingPairAnswer,
-    question.matching_data,
-    leftColumnName,
-    rightColumnName,
-  ]);
+    setLeftColumnTitle(matchingData?.leftColumnName || leftColumnName);
+    setRightColumnTitle(matchingData?.rightColumnName || rightColumnName);
+  }, [matchingData, leftColumnName, rightColumnName]);
 
-  // Handle settingsUpdateTrigger
-  useEffect(() => {
-    if (onRefreshActivity && settingsUpdateTrigger > 0) {
-      setIsUpdating(true);
-      onRefreshActivity()
-        .then(() => {
-          refreshKeyRef.current += 1;
-        })
-        .catch((error) => {
-          console.error('Refresh failed:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to refresh activity',
-            variant: 'destructive',
-          });
-        })
-        .finally(() => setIsUpdating(false));
-    }
-  }, [settingsUpdateTrigger, onRefreshActivity]);
-
-  // Debounced column name update
-  const updateColumnNames = useCallback(
-    async (left: string, right: string) => {
-      if (!activityId) {
-        toast({
-          title: 'Error',
-          description: 'Activity ID is missing',
-          variant: 'destructive',
-        });
-        return;
-      }
+  // Debounced function để update column names
+  const debouncedUpdateColumnNames = useCallback(
+    (left: string, right: string) => {
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
       updateTimeoutRef.current = setTimeout(async () => {
         setIsUpdating(true);
         try {
+          const fullMatchingData = (matchingData || {
+            items: [],
+            connections: [],
+          }) as QuizMatchingPairAnswer;
+
           const payload: MatchingPairQuizPayload = {
             type: 'MATCHING_PAIRS',
             questionText: question.question_text || '',
@@ -289,30 +305,42 @@ export function MatchingPairSettings({
             leftColumnName: left,
             rightColumnName: right,
             quizMatchingPairAnswer: {
-              quizMatchingPairAnswerId: '',
-              items: [],
-              connections: [],
-              ...matchingData,
+              ...fullMatchingData,
               leftColumnName: left,
               rightColumnName: right,
             },
           };
+
+          if (!activityId) {
+            toast({
+              title: 'Error',
+              description:
+                'Activity ID is missing. Please save the question first.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
           await activitiesApi.updateMatchingPairQuiz(activityId, payload);
+          toast({
+            title: 'Success',
+            description: 'Column names updated successfully.',
+          });
+
           if (onColumnNamesChange) {
             onColumnNamesChange(left, right);
           }
+
+          // ✅ FIX 4: Always refresh after column name update
           if (onRefreshActivity) {
             await onRefreshActivity();
           }
-          toast({
-            title: 'Success',
-            description: 'Column names updated successfully',
-          });
+          forceRefresh();
         } catch (error) {
-          console.error('Failed to update column names:', error);
+          console.error('Failed to update column names', error);
           toast({
             title: 'Error',
-            description: 'Could not update column names',
+            description: 'Could not update column names.',
             variant: 'destructive',
           });
         } finally {
@@ -320,55 +348,76 @@ export function MatchingPairSettings({
         }
       }, 500);
     },
-    [activityId, question, matchingData, onColumnNamesChange, onRefreshActivity]
+    [
+      activityId,
+      onColumnNamesChange,
+      onRefreshActivity,
+      question,
+      matchingData,
+      forceRefresh,
+    ]
   );
 
-  const handleColumnNameChange = useCallback(
-    (side: 'left' | 'right', value: string) => {
-      if (side === 'left') {
-        setLeftColumnTitle(value);
-        updateColumnNames(value, rightColumnTitle);
-      } else {
-        setRightColumnTitle(value);
-        updateColumnNames(leftColumnTitle, value);
-      }
-    },
-    [leftColumnTitle, rightColumnTitle, updateColumnNames]
-  );
+  // Handle column name changes
+  const handleColumnNameChange = (side: 'left' | 'right', value: string) => {
+    if (side === 'left') {
+      setLeftColumnTitle(value);
+      debouncedUpdateColumnNames(value, rightColumnTitle);
+    } else {
+      setRightColumnTitle(value);
+      debouncedUpdateColumnNames(leftColumnTitle, value);
+    }
+  };
 
-  // Memoized items
-  const leftItems = useMemo(
+  // ✅ FIX 5: Better memoization với debug logging
+  const leftItems = useMemo(() => {
+    if (!matchingData?.items) {
+      console.log('📝 No left items - matchingData.items is empty');
+      return [];
+    }
+    const items = matchingData.items
+      .filter((item) => item.isLeftColumn)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+
+    console.log('📝 Left items:', items.length, items);
+    return items;
+  }, [matchingData?.items]);
+
+  const rightItems = useMemo(() => {
+    if (!matchingData?.items) {
+      console.log('📝 No right items - matchingData.items is empty');
+      return [];
+    }
+    const items = matchingData.items
+      .filter((item) => !item.isLeftColumn)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+
+    console.log('📝 Right items:', items.length, items);
+    return items;
+  }, [matchingData?.items]);
+
+  // Tạo Set chứa các itemId đã kết nối
+  const connectedLeftIds = useMemo(
     () =>
-      (matchingData?.items || [])
-        .filter((item) => item.isLeftColumn)
-        .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)),
-    [matchingData?.items]
-  );
-
-  const rightItems = useMemo(
-    () =>
-      (matchingData?.items || [])
-        .filter((item) => !item.isLeftColumn)
-        .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)),
-    [matchingData?.items]
-  );
-
-  const connectedItemIds = useMemo(
-    () => ({
-      left: new Set(
-        (matchingData?.connections || [])
-          .filter((conn) => conn?.leftItem)
+      new Set(
+        matchingData?.connections
+          ?.filter((conn) => conn && conn.leftItem)
           .map((conn) => conn.leftItem.quizMatchingPairItemId)
       ),
-      right: new Set(
-        (matchingData?.connections || [])
-          .filter((conn) => conn?.rightItem)
-          .map((conn) => conn.rightItem.quizMatchingPairItemId)
-      ),
-    }),
     [matchingData?.connections]
   );
 
+  const connectedRightIds = useMemo(
+    () =>
+      new Set(
+        matchingData?.connections
+          ?.filter((conn) => conn && conn.rightItem)
+          .map((conn) => conn.rightItem.quizMatchingPairItemId)
+      ),
+    [matchingData?.connections]
+  );
+
+  // Bảng màu cho connections
   const connectionColors = [
     'bg-red-100 border-red-400 text-red-700',
     'bg-blue-100 border-blue-400 text-blue-700',
@@ -378,379 +427,33 @@ export function MatchingPairSettings({
     'bg-pink-100 border-pink-400 text-pink-700',
   ];
 
+  // Map itemId -> colorClass
   const itemIdToColor = useMemo(() => {
     const map: Record<string, string> = {};
-    (matchingData?.connections || []).forEach((conn, idx) => {
-      const color = connectionColors[idx % connectionColors.length];
-      if (conn.leftItem?.quizMatchingPairItemId) {
-        map[conn.leftItem.quizMatchingPairItemId] = color;
-      }
-      if (conn.rightItem?.quizMatchingPairItemId) {
-        map[conn.rightItem.quizMatchingPairItemId] = color;
-      }
-    });
+    (matchingData?.connections ?? [])
+      .filter(
+        (conn): conn is QuizMatchingPairConnection =>
+          !!conn && !!conn.leftItem && !!conn.rightItem
+      )
+      .forEach((conn, idx) => {
+        const color = connectionColors[idx % connectionColors.length];
+        if (conn.leftItem?.quizMatchingPairItemId)
+          map[conn.leftItem.quizMatchingPairItemId] = color;
+        if (conn.rightItem?.quizMatchingPairItemId)
+          map[conn.rightItem.quizMatchingPairItemId] = color;
+      });
     return map;
   }, [matchingData?.connections]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const handleOptionChange = useCallback(
-    async (itemId: string, value: string) => {
-      if (!matchingData || isUpdating) return;
-      const originalMatchingData = matchingData;
-
-      setMatchingData((prev) => {
-        if (!prev) return prev;
-
-        const updatedItems = prev.items.map((item) =>
-          item.quizMatchingPairItemId === itemId
-            ? { ...item, content: value }
-            : item
-        );
-
-        // **FIX: Keep connections consistent with updated items**
-        const updatedConnections = prev.connections
-          .map((conn) => {
-            const newLeftItem = updatedItems.find(
-              (i) =>
-                i.quizMatchingPairItemId ===
-                conn.leftItem.quizMatchingPairItemId
-            );
-            const newRightItem = updatedItems.find(
-              (i) =>
-                i.quizMatchingPairItemId ===
-                conn.rightItem.quizMatchingPairItemId
-            );
-            if (newLeftItem && newRightItem) {
-              return {
-                ...conn,
-                leftItem: newLeftItem,
-                rightItem: newRightItem,
-              };
-            }
-            return null;
-          })
-          .filter((c): c is QuizMatchingPairConnection => c !== null);
-
-        return {
-          ...prev,
-          items: updatedItems,
-          connections: updatedConnections,
-        };
-      });
-
-      try {
-        const item = originalMatchingData.items.find(
-          (i) => i.quizMatchingPairItemId === itemId
-        );
-        if (!item) throw new Error('Item not found');
-        await activitiesApi.updateReorderQuizItem(activityId, itemId, {
-          quizMatchingPairItemId: itemId,
-          content: value,
-          isLeftColumn: item.isLeftColumn,
-          displayOrder: item.displayOrder || 0,
-        });
-      } catch (error) {
-        console.error('Failed to update item:', error);
-        setMatchingData(originalMatchingData);
-        toast({
-          title: 'Error',
-          description: 'Failed to update item',
-          variant: 'destructive',
-        });
-      }
-    },
-    [activityId, matchingData, isUpdating]
-  );
-
-  const handleAddPair = useCallback(async () => {
-    if (isUpdating) return;
-    setIsUpdating(true);
-    try {
-      const response = await activitiesApi.addMatchingPair(activityId);
-      if (response?.data?.quizMatchingPairAnswer) {
-        setMatchingData(response.data.quizMatchingPairAnswer);
-        if (onMatchingDataUpdate) {
-          onMatchingDataUpdate(response.data.quizMatchingPairAnswer);
-        }
-      }
-      toast({ title: 'Success', description: 'New pair added successfully' });
-    } catch (error) {
-      console.error('Failed to add pair:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add new pair',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  }, [activityId, onMatchingDataUpdate, isUpdating]);
-
-  const handleDeleteItem = useCallback(
-    async (itemId: string) => {
-      if (isUpdating) return;
-      const originalMatchingData = matchingData;
-
-      setMatchingData((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          items: prev.items.filter(
-            (item) => item.quizMatchingPairItemId !== itemId
-          ),
-          connections: prev.connections.filter(
-            (conn) =>
-              conn.leftItem.quizMatchingPairItemId !== itemId &&
-              conn.rightItem.quizMatchingPairItemId !== itemId
-          ),
-        };
-      });
-      setSelectedLeft((prev) => (prev === itemId ? null : prev));
-      setSelectedRight((prev) => (prev === itemId ? null : prev));
-
-      setIsUpdating(true);
-      try {
-        await activitiesApi.deleteMatchingPairItem(activityId, itemId);
-        toast({ title: 'Success', description: 'Item deleted successfully' });
-      } catch (error) {
-        console.error('Failed to delete item:', error);
-        setMatchingData(originalMatchingData);
-        toast({
-          title: 'Error',
-          description: 'Failed to delete item',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsUpdating(false);
-      }
-    },
-    [activityId, matchingData, isUpdating]
-  );
-
-  const handleConnect = useCallback(
-    async (leftItem: QuizMatchingPairItem, rightItem: QuizMatchingPairItem) => {
-      if (
-        !leftItem.quizMatchingPairItemId ||
-        !rightItem.quizMatchingPairItemId ||
-        isUpdating
-      ) {
-        toast({
-          title: 'Error',
-          description: 'Invalid items selected',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      setIsUpdating(true);
-      const tempId = `temp-${Date.now()}`;
-      const optimisticConnection: QuizMatchingPairConnection = {
-        quizMatchingPairConnectionId: tempId,
-        leftItem,
-        rightItem,
-      };
-
-      setMatchingData((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          connections: [...prev.connections, optimisticConnection],
-        };
-      });
-
-      try {
-        const response = await activitiesApi.addMatchingPairConnection(
-          activityId,
-          {
-            leftItemId: leftItem.quizMatchingPairItemId,
-            rightItemId: rightItem.quizMatchingPairItemId,
-          }
-        );
-        if (response?.data?.quizMatchingPairAnswer) {
-          setMatchingData(response.data.quizMatchingPairAnswer);
-          if (onMatchingDataUpdate) {
-            onMatchingDataUpdate(response.data.quizMatchingPairAnswer);
-          }
-        } else if (response?.data?.connection) {
-          setMatchingData((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              connections: prev.connections.map((c) =>
-                c.quizMatchingPairConnectionId === tempId
-                  ? response.data.connection
-                  : c
-              ),
-            };
-          });
-        }
-        toast({
-          title: 'Success',
-          description: 'Connection created successfully',
-        });
-      } catch (error) {
-        console.error('Failed to create connection:', error);
-        setMatchingData((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            connections: prev.connections.filter(
-              (c) => c.quizMatchingPairConnectionId !== tempId
-            ),
-          };
-        });
-        toast({
-          title: 'Error',
-          description: 'Failed to create connection',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsUpdating(false);
-      }
-    },
-    [activityId, onMatchingDataUpdate, isUpdating]
-  );
-
-  const handleDisconnect = useCallback(
-    async (connection: QuizMatchingPairConnection) => {
-      if (!connection.quizMatchingPairConnectionId || isUpdating) {
-        toast({
-          title: 'Error',
-          description: 'Invalid connection',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      setIsUpdating(true);
-      const originalConnections = matchingData?.connections || [];
-
-      setMatchingData((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          connections: prev.connections.filter(
-            (c) =>
-              c.quizMatchingPairConnectionId !==
-              connection.quizMatchingPairConnectionId
-          ),
-        };
-      });
-
-      try {
-        await activitiesApi.deleteMatchingPairConnection(
-          activityId,
-          connection.quizMatchingPairConnectionId
-        );
-        toast({
-          title: 'Success',
-          description: 'Connection removed successfully',
-        });
-      } catch (error) {
-        console.error('Failed to remove connection:', error);
-        setMatchingData((prev) => {
-          if (!prev) return prev;
-          return { ...prev, connections: originalConnections };
-        });
-        toast({
-          title: 'Error',
-          description: 'Failed to remove connection',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsUpdating(false);
-      }
-    },
-    [activityId, matchingData, isUpdating]
-  );
-
-  const handleSelectItem = useCallback(
-    (side: 'left' | 'right', itemId: string) => {
-      if (isUpdating) return;
-
-      if (side === 'left') {
-        setSelectedLeft((prev) => (prev === itemId ? null : itemId));
-        if (selectedRight && selectedLeft !== itemId) {
-          const leftItem = leftItems.find(
-            (i) => i.quizMatchingPairItemId === itemId
-          );
-          const rightItem = rightItems.find(
-            (i) => i.quizMatchingPairItemId === selectedRight
-          );
-          if (leftItem && rightItem) {
-            const existingConnection = matchingData?.connections.find(
-              (conn) =>
-                conn.leftItem.quizMatchingPairItemId === itemId &&
-                conn.rightItem.quizMatchingPairItemId === selectedRight
-            );
-            if (existingConnection) {
-              handleDisconnect(existingConnection);
-            } else if (
-              !connectedItemIds.left.has(itemId) &&
-              !connectedItemIds.right.has(selectedRight)
-            ) {
-              handleConnect(leftItem, rightItem);
-            } else {
-              toast({
-                title: 'Warning',
-                description: 'One or both items are already connected',
-                variant: 'destructive',
-              });
-            }
-            setSelectedLeft(null);
-            setSelectedRight(null);
-          }
-        }
-      } else {
-        setSelectedRight((prev) => (prev === itemId ? null : itemId));
-        if (selectedLeft && selectedRight !== itemId) {
-          const leftItem = leftItems.find(
-            (i) => i.quizMatchingPairItemId === selectedLeft
-          );
-          const rightItem = rightItems.find(
-            (i) => i.quizMatchingPairItemId === itemId
-          );
-          if (leftItem && rightItem) {
-            const existingConnection = matchingData?.connections.find(
-              (conn) =>
-                conn.leftItem.quizMatchingPairItemId === selectedLeft &&
-                conn.rightItem.quizMatchingPairItemId === itemId
-            );
-            if (existingConnection) {
-              handleDisconnect(existingConnection);
-            } else if (
-              !connectedItemIds.left.has(selectedLeft) &&
-              !connectedItemIds.right.has(itemId)
-            ) {
-              handleConnect(leftItem, rightItem);
-            } else {
-              toast({
-                title: 'Warning',
-                description: 'One or both items are already connected',
-                variant: 'destructive',
-              });
-            }
-            setSelectedLeft(null);
-            setSelectedRight(null);
-          }
-        }
-      }
-    },
-    [
-      isUpdating,
-      selectedLeft,
-      selectedRight,
-      leftItems,
-      rightItems,
-      matchingData,
-      connectedItemIds,
-      handleConnect,
-      handleDisconnect,
-    ]
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   );
 
   const handleDragStart = () => {
@@ -781,34 +484,14 @@ export function MatchingPairSettings({
           }` === over.id
       );
       if (oldIndex !== -1 && newIndex !== -1) {
-        const item = items[oldIndex];
-        setIsUpdating(true);
-        try {
-          await activitiesApi.updateReorderQuizItem(
-            activityId,
-            item.quizMatchingPairItemId!,
-            {
-              ...item,
-              displayOrder: newIndex + 1,
-            }
-          );
-          if (onRefreshActivity) await onRefreshActivity();
-          toast({
-            title: 'Success',
-            description: 'Item reordered successfully',
-          });
-        } catch (error) {
-          toast({
-            title: 'Error',
-            description: 'Failed to reorder item',
-            variant: 'destructive',
-          });
-        } finally {
-          setIsUpdating(false);
-        }
+        await handleReorderItems(
+          activeIsLeft ? 'left' : 'right',
+          oldIndex,
+          newIndex
+        );
       }
     } else {
-      // Move sang cột khác
+      // Kéo sang cột khác
       const fromItems = activeIsLeft ? leftItems : rightItems;
       const toItems = activeIsLeft ? rightItems : leftItems;
       const fromIndex = fromItems.findIndex(
@@ -823,20 +506,30 @@ export function MatchingPairSettings({
             item.quizMatchingPairItemId
           }` === over.id
       );
+
       if (fromIndex !== -1) {
-        const item = fromItems[fromIndex];
         setIsUpdating(true);
         try {
+          const item = fromItems[fromIndex];
+          if (!item.quizMatchingPairItemId) return;
+
           await activitiesApi.updateReorderQuizItem(
             activityId,
             item.quizMatchingPairItemId!,
             {
-              ...item,
+              quizMatchingPairItemId: item.quizMatchingPairItemId!,
+              content: item.content || '',
               isLeftColumn: !activeIsLeft,
               displayOrder: (toIndex !== -1 ? toIndex : toItems.length) + 1,
             }
           );
-          if (onRefreshActivity) await onRefreshActivity();
+
+          // ✅ FIX 6: Always refresh after moving items
+          if (onRefreshActivity) {
+            await onRefreshActivity();
+          }
+          forceRefresh();
+
           toast({
             title: 'Success',
             description: 'Item moved to other column successfully',
@@ -859,51 +552,455 @@ export function MatchingPairSettings({
     startIndex: number,
     endIndex: number
   ) => {
-    if (!matchingData?.items) return;
+    const currentItems = side === 'left' ? leftItems : rightItems;
+    const reorderedItems = arrayMove(currentItems, startIndex, endIndex);
 
-    setIsUpdating(true);
+    // Optimistic UI Update
+    setMatchingData((prev) => {
+      if (!prev) return prev;
+
+      const updatedSideItemsWithOrder = reorderedItems.map((item, index) => ({
+        ...item,
+        displayOrder: index + 1,
+      }));
+
+      const otherSideItems = prev.items.filter(
+        (item) => item.isLeftColumn !== (side === 'left')
+      );
+
+      const newItems = [...otherSideItems, ...updatedSideItemsWithOrder];
+
+      // ✅ Giữ nguyên connections, không map lại
+      return {
+        ...prev,
+        items: newItems,
+        // connections: prev.connections,
+      };
+    });
+
+    // API calls
     try {
-      const items = side === 'left' ? leftItems : rightItems;
-      const reorderedItems = arrayMove(items, startIndex, endIndex);
+      const updatePromises = reorderedItems.map((item, index) =>
+        activitiesApi.updateReorderQuizItem(
+          activityId,
+          item.quizMatchingPairItemId!,
+          {
+            quizMatchingPairItemId: item.quizMatchingPairItemId!,
+            content: item.content || '',
+            isLeftColumn: item.isLeftColumn,
+            displayOrder: index + 1,
+          }
+        )
+      );
+      await Promise.all(updatePromises);
 
-      // Update API for each item in the reordered column
-      for (let i = 0; i < reorderedItems.length; i++) {
-        const item = reorderedItems[i];
-        if (item.quizMatchingPairItemId) {
-          if (!item.quizMatchingPairItemId) return;
+      // ✅ Sau khi reorder, luôn đồng bộ lại state từ server
+      if (onRefreshActivity) {
+        await onRefreshActivity();
+      }
+      forceRefresh();
+    } catch (error) {
+      console.error('Failed to save reordering:', error);
+      if (onRefreshActivity) {
+        await onRefreshActivity();
+      }
+      forceRefresh();
+    }
+  };
+
+  const handleInputChange = useCallback(
+    async (itemId: string, value: string) => {
+      if (!matchingData?.items) return;
+
+      const item = matchingData.items.find(
+        (item) => item.quizMatchingPairItemId === itemId
+      );
+
+      if (item?.quizMatchingPairItemId) {
+        try {
           await activitiesApi.updateReorderQuizItem(
             activityId,
-            item.quizMatchingPairItemId,
+            item.quizMatchingPairItemId!,
             {
-              quizMatchingPairItemId: item.quizMatchingPairItemId,
-              content: item.content || '',
+              quizMatchingPairItemId: item.quizMatchingPairItemId!,
+              content: value,
               isLeftColumn: item.isLeftColumn,
-              displayOrder: i + 1,
+              displayOrder: item.displayOrder || 0,
             }
           );
+        } catch (error) {
+          console.error('❌ Error updating item:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to update item',
+            variant: 'destructive',
+          });
         }
       }
+    },
+    [matchingData, activityId]
+  );
 
-      // Refresh data từ server
+  // ✅ FIX 7: Improved handleAddPair với better error handling
+  const handleAddPair = useCallback(async () => {
+    console.log('🔄 Adding new pair...');
+    setIsUpdating(true);
+    try {
+      const response = await activitiesApi.addMatchingPair(activityId);
+      console.log('✅ Add pair response:', response);
+
+      // ✅ Always refresh from server after adding
       if (onRefreshActivity) {
         await onRefreshActivity();
       }
 
+      // ✅ Update local state if we have response data
+      if (response?.data?.quizMatchingPairAnswer) {
+        setMatchingData(response.data.quizMatchingPairAnswer);
+        if (onMatchingDataUpdate) {
+          onMatchingDataUpdate(response.data.quizMatchingPairAnswer);
+        }
+      }
+
+      // ✅ Force refresh to ensure UI updates
+      forceRefresh();
+
       toast({
         title: 'Success',
-        description: 'Items reordered successfully',
+        description: 'New pair added successfully',
       });
     } catch (error) {
-      console.error('Error reordering items:', error);
+      console.error('❌ Failed to add pair:', error);
       toast({
         title: 'Error',
-        description: 'Failed to reorder items',
+        description: 'Failed to add new pair',
         variant: 'destructive',
       });
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [activityId, onMatchingDataUpdate, onRefreshActivity, forceRefresh]);
+
+  // ✅ FIX 8: Improved handleDeleteItem với better state management
+  const handleDeleteItem = useCallback(
+    async (itemId: string, side: 'left' | 'right') => {
+      console.log('🗑️ Deleting item:', itemId, side);
+      setIsUpdating(true);
+
+      // Store original state for potential rollback
+      const originalMatchingData = matchingData;
+
+      try {
+        // ✅ Optimistic update - remove item immediately from UI
+        setMatchingData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            items: prev.items.filter(
+              (item) => item.quizMatchingPairItemId !== itemId
+            ),
+            connections: (prev?.connections ?? []).filter(
+              (conn) =>
+                conn.leftItem.quizMatchingPairItemId !== itemId &&
+                conn.rightItem.quizMatchingPairItemId !== itemId
+            ),
+          };
+        });
+
+        // ✅ API call
+        await activitiesApi.deleteMatchingPairItem(activityId, itemId);
+
+        // ✅ Always refresh from server after deletion
+        if (onRefreshActivity) {
+          await onRefreshActivity();
+        }
+
+        // ✅ Force refresh to ensure UI updates
+        forceRefresh();
+
+        toast({
+          title: 'Success',
+          description: 'Item deleted successfully',
+        });
+      } catch (error) {
+        console.error('❌ Failed to delete item:', error);
+
+        // ✅ Rollback optimistic update on error
+        setMatchingData(originalMatchingData);
+
+        toast({
+          title: 'Error',
+          description: 'Failed to delete item',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [activityId, onRefreshActivity, forceRefresh]
+  );
+
+  // Handle item selection với validation
+  const handleSelectItem = useCallback(
+    (side: 'left' | 'right', itemId: string) => {
+      if (isConnecting || isUpdating) return;
+
+      if (side === 'left') {
+        setSelectedLeft((prev) => {
+          const newValue = prev === itemId ? null : itemId;
+          if (newValue === null) {
+            setSelectedRight(null);
+          }
+          return newValue;
+        });
+      } else {
+        setSelectedRight((prev) => {
+          const newValue = prev === itemId ? null : itemId;
+          if (newValue === null) {
+            setSelectedLeft(null);
+          }
+          return newValue;
+        });
+      }
+    },
+    [isConnecting, isUpdating]
+  );
+
+  // Connection logic với better error handling
+  const handleConnect = useCallback(
+    async (leftItem: QuizMatchingPairItem, rightItem: QuizMatchingPairItem) => {
+      if (
+        !leftItem.quizMatchingPairItemId ||
+        !rightItem.quizMatchingPairItemId
+      ) {
+        toast({
+          title: 'Error',
+          description: 'Invalid items selected for connection',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setIsConnecting(true);
+      const tempId = `temp-${Date.now()}`;
+      const optimisticConnection: QuizMatchingPairConnection = {
+        quizMatchingPairConnectionId: tempId,
+        leftItem,
+        rightItem,
+      };
+
+      // Optimistic update
+      setMatchingData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          connections: [...prev.connections, optimisticConnection],
+        };
+      });
+
+      try {
+        const response = await activitiesApi.addMatchingPairConnection(
+          activityId,
+          {
+            leftItemId: leftItem.quizMatchingPairItemId!,
+            rightItemId: rightItem.quizMatchingPairItemId!,
+          }
+        );
+
+        // ✅ NEW: Nếu response trả về toàn bộ quizMatchingPairAnswer mới, hãy cập nhật toàn bộ state
+        if (response?.data?.quizMatchingPairAnswer) {
+          setMatchingData(response.data.quizMatchingPairAnswer);
+          if (onMatchingDataUpdate) {
+            onMatchingDataUpdate(response.data.quizMatchingPairAnswer);
+          }
+        } else if (response?.data?.connection) {
+          // Nếu chỉ trả về connection mới, thay thế connection tạm thời
+          setMatchingData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              connections: prev.connections.map((c) =>
+                c.quizMatchingPairConnectionId === tempId
+                  ? response.data.connection
+                  : c
+              ),
+            };
+          });
+        }
+
+        // ✅ Nếu không có quizMatchingPairAnswer, nên gọi refresh lại từ server
+        if (onRefreshActivity) {
+          await onRefreshActivity();
+        }
+        forceRefresh();
+
+        toast({
+          title: 'Success',
+          description: 'Connection created successfully',
+        });
+      } catch (error) {
+        console.error('Failed to create connection', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to create connection',
+          variant: 'destructive',
+        });
+
+        // Revert optimistic update
+        setMatchingData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            connections: prev.connections.filter(
+              (c) => c.quizMatchingPairConnectionId !== tempId
+            ),
+          };
+        });
+      } finally {
+        setIsConnecting(false);
+      }
+    },
+    [activityId, onMatchingDataUpdate, onRefreshActivity, forceRefresh]
+  );
+
+  // Disconnect logic với better error handling
+  const handleDisconnect = useCallback(
+    async (connection: QuizMatchingPairConnection) => {
+      if (!connection.quizMatchingPairConnectionId) {
+        toast({
+          title: 'Error',
+          description: 'Invalid connection to remove',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setIsConnecting(true);
+      const originalConnections = matchingData?.connections || [];
+
+      // Optimistic update
+      setMatchingData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          connections: prev.connections.filter(
+            (c) =>
+              c.quizMatchingPairConnectionId !==
+              connection.quizMatchingPairConnectionId
+          ),
+        };
+      });
+
+      try {
+        await activitiesApi.deleteMatchingPairConnection(
+          activityId,
+          connection.quizMatchingPairConnectionId!
+        );
+
+        toast({
+          title: 'Success',
+          description: 'Connection removed successfully',
+        });
+      } catch (error) {
+        console.error('Failed to remove connection', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to remove connection',
+          variant: 'destructive',
+        });
+
+        // Revert optimistic update
+        setMatchingData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            connections: originalConnections,
+          };
+        });
+      } finally {
+        setIsConnecting(false);
+      }
+    },
+    [activityId, matchingData?.connections]
+  );
+
+  // Connection handling effect với better logic
+  useEffect(() => {
+    const handleConnection = async () => {
+      if (!selectedLeft || !selectedRight || isConnecting) return;
+
+      const leftItem = leftItems.find(
+        (i) => i.quizMatchingPairItemId === selectedLeft
+      );
+      const rightItem = rightItems.find(
+        (i) => i.quizMatchingPairItemId === selectedRight
+      );
+
+      if (!leftItem || !rightItem) {
+        setSelectedLeft(null);
+        setSelectedRight(null);
+        return;
+      }
+
+      // Check if connection already exists
+      const existingConnection = matchingData?.connections?.find(
+        (conn) =>
+          conn.leftItem.quizMatchingPairItemId === selectedLeft &&
+          conn.rightItem.quizMatchingPairItemId === selectedRight
+      );
+
+      // Reset selections immediately for better UX
+      setSelectedLeft(null);
+      setSelectedRight(null);
+
+      if (existingConnection) {
+        await handleDisconnect(existingConnection);
+      } else {
+        // Check if either item is already connected to something else
+        const leftAlreadyConnected = matchingData?.connections?.find(
+          (conn) => conn.leftItem.quizMatchingPairItemId === selectedLeft
+        );
+        const rightAlreadyConnected = matchingData?.connections?.find(
+          (conn) => conn.rightItem.quizMatchingPairItemId === selectedRight
+        );
+
+        if (leftAlreadyConnected || rightAlreadyConnected) {
+          toast({
+            title: 'Warning',
+            description:
+              'One or both items are already connected. Disconnect them first.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        await handleConnect(leftItem, rightItem);
+      }
+    };
+
+    handleConnection();
+  }, [
+    selectedLeft,
+    selectedRight,
+    leftItems,
+    rightItems,
+    matchingData?.connections,
+    isConnecting,
+    handleConnect,
+    handleDisconnect,
+  ]);
+
+  // ✅ FIX 9: Better refresh handling
+  useEffect(() => {
+    if (onRefreshActivity && settingsUpdateTrigger > 0) {
+      console.log('🔄 Settings update trigger changed, refreshing...');
+      onRefreshActivity().then(() => {
+        forceRefresh();
+      });
+    }
+  }, [settingsUpdateTrigger, onRefreshActivity, forceRefresh]);
+
+  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (updateTimeoutRef.current) {
@@ -911,6 +1008,17 @@ export function MatchingPairSettings({
       }
     };
   }, []);
+
+  // ✅ FIX 10: Debug logging để track state changes
+  useEffect(() => {
+    console.log('🔍 MatchingData changed:', {
+      itemsCount: matchingData?.items?.length || 0,
+      connectionsCount: matchingData?.connections?.length || 0,
+      leftItems: leftItems.length,
+      rightItems: rightItems.length,
+      refreshKey,
+    });
+  }, [matchingData, leftItems.length, rightItems.length, refreshKey]);
 
   return (
     <div className="space-y-4">
@@ -935,13 +1043,25 @@ export function MatchingPairSettings({
         </div>
       </div>
 
+      {/* Instructions */}
       <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
         <p className="text-sm text-blue-700 dark:text-blue-300">
-          <strong>Instructions:</strong> Click items to connect/disconnect. Drag
-          to reorder or move between columns.
+          <strong>Instructions:</strong> Click on items from left and right
+          columns to connect them. Click on connected items to disconnect them.
+          Drag items to reorder or move between columns.
         </p>
       </div>
 
+      {/* Debug Info - Remove in production */}
+      <div className="bg-gray-50 dark:bg-gray-900/20 p-2 rounded text-xs">
+        <p>
+          Debug: Items: {matchingData?.items?.length || 0}, Left:{' '}
+          {leftItems.length}, Right: {rightItems.length}, Connections:{' '}
+          {matchingData?.connections?.length || 0}
+        </p>
+      </div>
+
+      {/* Display items in grid layout */}
       {isUpdating ? (
         <div className="flex justify-center items-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -951,6 +1071,7 @@ export function MatchingPairSettings({
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
           <div className="grid grid-cols-2 gap-6">
@@ -960,11 +1081,11 @@ export function MatchingPairSettings({
               )}
               strategy={verticalListSortingStrategy}
             >
-              <div className="space-y-3">
+              <div className="space-y-3 min-h-[40px]">
                 <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
                   {leftColumnTitle}
                 </h3>
-                <div className="space-y-2 min-h-[40px]">
+                <div className="space-y-2 min-h-[40px] flex flex-col">
                   {leftItems.length === 0 && (
                     <div className="text-gray-400 text-center py-4 border border-dashed rounded-lg">
                       No items yet. Add a pair to get started.
@@ -972,18 +1093,28 @@ export function MatchingPairSettings({
                   )}
                   {leftItems.map((item, index) => (
                     <SortableItem
-                      key={`left-${item.quizMatchingPairItemId}-${refreshKeyRef.current}`}
+                      key={`left-${item.quizMatchingPairItemId}-${refreshKey}`}
                       item={item}
                       index={index}
-                      onOptionChange={handleOptionChange}
-                      onDelete={handleDeleteItem}
+                      onOptionChange={handleInputChange}
+                      onDelete={() =>
+                        handleDeleteItem(
+                          item.quizMatchingPairItemId || '',
+                          'left'
+                        )
+                      }
                       columnName={leftColumnTitle}
-                      isUpdating={isUpdating}
+                      isUpdating={isUpdating || isConnecting}
                       side="left"
                       isSelected={selectedLeft === item.quizMatchingPairItemId}
-                      onSelect={(itemId) => handleSelectItem('left', itemId)}
-                      isConnected={connectedItemIds.left.has(
-                        item.quizMatchingPairItemId || ''
+                      onSelect={() =>
+                        handleSelectItem(
+                          'left',
+                          item.quizMatchingPairItemId || ''
+                        )
+                      }
+                      isConnected={connectedLeftIds.has(
+                        item.quizMatchingPairItemId
                       )}
                       connectionColor={
                         itemIdToColor[item.quizMatchingPairItemId || '']
@@ -993,6 +1124,7 @@ export function MatchingPairSettings({
                 </div>
               </div>
             </SortableContext>
+
             <SortableContext
               items={rightItems.map(
                 (item) => `right-${item.quizMatchingPairItemId}`
@@ -1003,7 +1135,7 @@ export function MatchingPairSettings({
                 <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
                   {rightColumnTitle}
                 </h3>
-                <div className="space-y-2 min-h-[40px]">
+                <div className="space-y-2">
                   {rightItems.length === 0 && (
                     <div className="text-gray-400 text-center py-4 border border-dashed rounded-lg">
                       No items yet. Add a pair to get started.
@@ -1011,18 +1143,28 @@ export function MatchingPairSettings({
                   )}
                   {rightItems.map((item, index) => (
                     <SortableItem
-                      key={`right-${item.quizMatchingPairItemId}-${refreshKeyRef.current}`}
+                      key={`right-${item.quizMatchingPairItemId}-${refreshKey}`}
                       item={item}
                       index={index}
-                      onOptionChange={handleOptionChange}
-                      onDelete={handleDeleteItem}
+                      onOptionChange={handleInputChange}
+                      onDelete={() =>
+                        handleDeleteItem(
+                          item.quizMatchingPairItemId || '',
+                          'right'
+                        )
+                      }
                       columnName={rightColumnTitle}
-                      isUpdating={isUpdating}
+                      isUpdating={isUpdating || isConnecting}
                       side="right"
                       isSelected={selectedRight === item.quizMatchingPairItemId}
-                      onSelect={(itemId) => handleSelectItem('right', itemId)}
-                      isConnected={connectedItemIds.right.has(
-                        item.quizMatchingPairItemId || ''
+                      onSelect={() =>
+                        handleSelectItem(
+                          'right',
+                          item.quizMatchingPairItemId || ''
+                        )
+                      }
+                      isConnected={connectedRightIds.has(
+                        item.quizMatchingPairItemId
                       )}
                       connectionColor={
                         itemIdToColor[item.quizMatchingPairItemId || '']
@@ -1041,18 +1183,19 @@ export function MatchingPairSettings({
           onClick={handleAddPair}
           variant="outline"
           className="w-full"
-          disabled={isUpdating}
+          disabled={isUpdating || isConnecting}
         >
           <Plus className="h-4 w-4 mr-2" />
           Add Pair
         </Button>
       </div>
 
+      {/* Connection Status */}
       {(selectedLeft || selectedRight) && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
           <p className="text-sm text-yellow-700 dark:text-yellow-300">
             {selectedLeft && selectedRight
-              ? 'Both items selected. Connecting/disconnecting...'
+              ? 'Both items selected. They will be connected/disconnected.'
               : selectedLeft
               ? 'Left item selected. Select a right item to connect.'
               : 'Right item selected. Select a left item to connect.'}
