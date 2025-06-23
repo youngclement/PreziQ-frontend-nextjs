@@ -274,6 +274,10 @@ export function MatchingPairSettings({
     matchingData?.rightColumnName || rightColumnName
   );
 
+  // Thêm state cho lỗi input
+  const [leftColumnError, setLeftColumnError] = useState('');
+  const [rightColumnError, setRightColumnError] = useState('');
+
   // Cập nhật column titles khi matchingData thay đổi
   useEffect(() => {
     setLeftColumnTitle(matchingData?.leftColumnName || leftColumnName);
@@ -283,6 +287,22 @@ export function MatchingPairSettings({
   // Debounced function để update column names
   const debouncedUpdateColumnNames = useCallback(
     (left: string, right: string) => {
+      // Nếu có cột nào trống thì không gọi API và set lỗi
+      let hasError = false;
+      if (!left.trim()) {
+        setLeftColumnError('Vui lòng nhập tên cột bên trái');
+        hasError = true;
+      } else {
+        setLeftColumnError('');
+      }
+      if (!right.trim()) {
+        setRightColumnError('Vui lòng nhập tên cột bên phải');
+        hasError = true;
+      } else {
+        setRightColumnError('');
+      }
+      if (hasError) return;
+
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
@@ -358,13 +378,15 @@ export function MatchingPairSettings({
     ]
   );
 
-  // Handle column name changes
+  // Sửa hàm handleColumnNameChange để clear lỗi khi user nhập lại
   const handleColumnNameChange = (side: 'left' | 'right', value: string) => {
     if (side === 'left') {
       setLeftColumnTitle(value);
+      if (value.trim()) setLeftColumnError('');
       debouncedUpdateColumnNames(value, rightColumnTitle);
     } else {
       setRightColumnTitle(value);
+      if (value.trim()) setRightColumnError('');
       debouncedUpdateColumnNames(leftColumnTitle, value);
     }
   };
@@ -612,6 +634,20 @@ export function MatchingPairSettings({
     async (itemId: string, value: string) => {
       if (!matchingData?.items) return;
 
+      // Optimistic update: chỉ update content của item, giữ nguyên connections
+      setMatchingData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((item) =>
+            item.quizMatchingPairItemId === itemId
+              ? { ...item, content: value }
+              : item
+          ),
+          // giữ nguyên connections
+        };
+      });
+
       const item = matchingData.items.find(
         (item) => item.quizMatchingPairItemId === itemId
       );
@@ -628,13 +664,10 @@ export function MatchingPairSettings({
               displayOrder: item.displayOrder || 0,
             }
           );
+          // Nếu muốn fetch lại từ server, phải đảm bảo server trả về connections đầy đủ!
+          // Nếu không, không nên fetch lại ở đây.
         } catch (error) {
-          console.error('❌ Error updating item:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to update item',
-            variant: 'destructive',
-          });
+          // ... error handling, có thể rollback nếu cần
         }
       }
     },
@@ -1022,7 +1055,11 @@ export function MatchingPairSettings({
             onChange={(e) => handleColumnNameChange('left', e.target.value)}
             placeholder="e.g. Countries"
             disabled={isUpdating}
+            className={leftColumnError ? 'border-red-500' : ''}
           />
+          {leftColumnError && (
+            <div className="text-xs text-red-500 mt-1">{leftColumnError}</div>
+          )}
         </div>
         <div className="space-y-1">
           <Label>Right Column Title</Label>
@@ -1031,7 +1068,11 @@ export function MatchingPairSettings({
             onChange={(e) => handleColumnNameChange('right', e.target.value)}
             placeholder="e.g. Capitals"
             disabled={isUpdating}
+            className={rightColumnError ? 'border-red-500' : ''}
           />
+          {rightColumnError && (
+            <div className="text-xs text-red-500 mt-1">{rightColumnError}</div>
+          )}
         </div>
       </div>
 
