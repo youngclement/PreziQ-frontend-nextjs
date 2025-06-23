@@ -243,28 +243,13 @@ export function MatchingPairSettings({
 
   // ✅ FIX 3: Better sync với props - always update when question changes
   useEffect(() => {
-    console.log('🔄 Syncing matchingData from props:', {
-      quizMatchingPairAnswer: question.quizMatchingPairAnswer,
-      matching_data: question.matching_data,
-      activityId,
-      settingsUpdateTrigger,
-      refreshKey,
-    });
-
     const newData =
       question.quizMatchingPairAnswer || question.matching_data || null;
-    setMatchingData(newData);
 
-    // Clear selections when data changes
+    setMatchingData(newData || null);
     setSelectedLeft(null);
     setSelectedRight(null);
-  }, [
-    question.quizMatchingPairAnswer,
-    question.matching_data,
-    activityId,
-    settingsUpdateTrigger,
-    refreshKey,
-  ]);
+  }, [activityId, settingsUpdateTrigger]);
 
   // State cho column names
   const [leftColumnTitle, setLeftColumnTitle] = useState(
@@ -693,6 +678,20 @@ export function MatchingPairSettings({
         if (onMatchingDataUpdate) {
           onMatchingDataUpdate(response.data.quizMatchingPairAnswer);
         }
+      } else if (response?.data?.connection) {
+        setMatchingData((prev) => {
+          if (!prev) return prev;
+          const exists = prev.connections.some(
+            (c) =>
+              c.quizMatchingPairConnectionId ===
+              response.data.connection.quizMatchingPairConnectionId
+          );
+          if (exists) return prev;
+          return {
+            ...prev,
+            connections: [...prev.connections, response.data.connection],
+          };
+        });
       }
 
       // ✅ Force refresh to ensure UI updates
@@ -794,93 +793,43 @@ export function MatchingPairSettings({
   // Connection logic với better error handling
   const handleConnect = useCallback(
     async (leftItem: QuizMatchingPairItem, rightItem: QuizMatchingPairItem) => {
-      if (
-        !leftItem.quizMatchingPairItemId ||
-        !rightItem.quizMatchingPairItemId
-      ) {
-        toast({
-          title: 'Error',
-          description: 'Invalid items selected for connection',
-          variant: 'destructive',
-        });
+      if (!leftItem.quizMatchingPairItemId || !rightItem.quizMatchingPairItemId)
         return;
-      }
-
       setIsConnecting(true);
-      const tempId = `temp-${Date.now()}`;
-      const optimisticConnection: QuizMatchingPairConnection = {
-        quizMatchingPairConnectionId: tempId,
-        leftItem,
-        rightItem,
-      };
-
-      // Optimistic update
-      setMatchingData((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          connections: [...prev.connections, optimisticConnection],
-        };
-      });
 
       try {
         const response = await activitiesApi.addMatchingPairConnection(
           activityId,
           {
-            leftItemId: leftItem.quizMatchingPairItemId!,
-            rightItemId: rightItem.quizMatchingPairItemId!,
+            leftItemId: leftItem.quizMatchingPairItemId,
+            rightItemId: rightItem.quizMatchingPairItemId,
           }
         );
 
-        // ✅ NEW: Nếu response trả về toàn bộ quizMatchingPairAnswer mới, hãy cập nhật toàn bộ state
-        if (response?.data?.quizMatchingPairAnswer) {
-          setMatchingData(response.data.quizMatchingPairAnswer);
-          if (onMatchingDataUpdate) {
-            onMatchingDataUpdate(response.data.quizMatchingPairAnswer);
-          }
-        } else if (response?.data?.connection) {
-          // Nếu chỉ trả về connection mới, thay thế connection tạm thời
+        if (response?.data?.connection) {
           setMatchingData((prev) => {
             if (!prev) return prev;
+            const exists = prev.connections.some(
+              (c) =>
+                c.quizMatchingPairConnectionId ===
+                response.data.connection.quizMatchingPairConnectionId
+            );
+            if (exists) return prev;
             return {
               ...prev,
-              connections: prev.connections.map((c) =>
-                c.quizMatchingPairConnectionId === tempId
-                  ? response.data.connection
-                  : c
-              ),
+              connections: [...prev.connections, response.data.connection],
             };
           });
+        } else if (response?.data?.quizMatchingPairAnswer) {
+          setMatchingData(response.data.quizMatchingPairAnswer);
+          onMatchingDataUpdate?.(response.data.quizMatchingPairAnswer);
         }
 
-        // ✅ Nếu không có quizMatchingPairAnswer, nên gọi refresh lại từ server
+        // Thêm dòng này để luôn refresh lại từ server
         if (onRefreshActivity) {
           await onRefreshActivity();
         }
         forceRefresh();
-
-        toast({
-          title: 'Success',
-          description: 'Connection created successfully',
-        });
-      } catch (error) {
-        console.error('Failed to create connection', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to create connection',
-          variant: 'destructive',
-        });
-
-        // Revert optimistic update
-        setMatchingData((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            connections: prev.connections.filter(
-              (c) => c.quizMatchingPairConnectionId !== tempId
-            ),
-          };
-        });
       } finally {
         setIsConnecting(false);
       }
@@ -891,19 +840,10 @@ export function MatchingPairSettings({
   // Disconnect logic với better error handling
   const handleDisconnect = useCallback(
     async (connection: QuizMatchingPairConnection) => {
-      if (!connection.quizMatchingPairConnectionId) {
-        toast({
-          title: 'Error',
-          description: 'Invalid connection to remove',
-          variant: 'destructive',
-        });
-        return;
-      }
-
+      if (!connection.quizMatchingPairConnectionId) return;
       setIsConnecting(true);
-      const originalConnections = matchingData?.connections || [];
 
-      // Optimistic update
+      // Optimistic update: Xóa connection khỏi local state ngay
       setMatchingData((prev) => {
         if (!prev) return prev;
         return {
@@ -919,34 +859,28 @@ export function MatchingPairSettings({
       try {
         await activitiesApi.deleteMatchingPairConnection(
           activityId,
-          connection.quizMatchingPairConnectionId!
+          connection.quizMatchingPairConnectionId
         );
-
-        toast({
-          title: 'Success',
-          description: 'Connection removed successfully',
-        });
+        // Nếu BE trả về answer mới, replace local state nếu muốn
       } catch (error) {
-        console.error('Failed to remove connection', error);
+        // Nếu lỗi, rollback: thêm lại connection vào local state
+        setMatchingData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            connections: [...prev.connections, connection],
+          };
+        });
         toast({
           title: 'Error',
           description: 'Failed to remove connection',
           variant: 'destructive',
         });
-
-        // Revert optimistic update
-        setMatchingData((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            connections: originalConnections,
-          };
-        });
       } finally {
         setIsConnecting(false);
       }
     },
-    [activityId, matchingData?.connections]
+    [activityId]
   );
 
   // Connection handling effect với better logic
