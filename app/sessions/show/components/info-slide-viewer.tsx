@@ -404,13 +404,7 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     const canvas = fabricCanvas.current;
     if (!canvas) return;
 
-    // Xóa nội dung canvas hiện tại
-    canvas.clear();
-    canvas.backgroundImage = undefined;
-    canvas.backgroundColor = backgroundColor || '#fff';
-    canvas.renderAll();
-
-    // Clear canvas only on initial render
+    // Khi currentOrder = 0, khởi tạo lần đầu
     if (currentOrder === 0) {
       canvas.clear();
       canvas.backgroundImage = undefined;
@@ -434,65 +428,49 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       }
     }
 
-    // Tỷ lệ scale giữa canvas thực tế và canvas chuẩn
     const scaleX = canvas.getWidth() / STANDARD_CANVAS_WIDTH;
     const scaleY = canvas.getHeight() / STANDARD_CANVAS_HEIGHT;
 
-    // Sắp xếp elements theo layerOrder
     const sortedElements = [...elements].sort(
       (a, b) => a.layerOrder - b.layerOrder
     );
     const groups = groupElementsByDisplayOrder(sortedElements);
 
-    // Load tất cả ảnh trước
-    const imagePromises = Object.keys(groups)
-      .filter((order) => parseInt(order) <= currentOrder)
-      .flatMap((order) =>
-        groups[parseInt(order)]
-          .filter(
-            (element) =>
-              element.slideElementType === 'IMAGE' && element.sourceUrl
-          )
-          .map(
-            (element) =>
-              new Promise<{
-                element: SlideElement;
-                imgElement: HTMLImageElement;
-              }>((resolve, reject) => {
-                const imgElement = new Image();
-                imgElement.onload = () => resolve({ element, imgElement });
-                imgElement.onerror = (err) => reject(err);
-                imgElement.src = element.sourceUrl!;
-              })
-          )
+    // Chỉ load ảnh cho displayOrder hiện tại
+    const toLoad = groups[currentOrder] || [];
+    const imagePromises = toLoad
+      .filter((el) => el.slideElementType === 'IMAGE' && el.sourceUrl)
+      .map(
+        (el) =>
+          new Promise<{
+            element: SlideElement;
+            imgElement: HTMLImageElement;
+          }>((resolve, reject) => {
+            const imgEl = new Image();
+            imgEl.onload = () => resolve({ element: el, imgElement: imgEl });
+            imgEl.onerror = reject;
+            imgEl.src = el.sourceUrl!;
+          })
       );
 
     try {
       const loadedImages = await Promise.all(imagePromises);
 
-      canvas.remove(...canvas.getObjects());
-
-      // Render all elements from displayOrder 0 up to currentOrder
-      for (let order = 0; order <= currentOrder; order++) {
-        if (groups[order]) {
-          groups[order].forEach((element) => {
-            const fabricObject = slideElementToFabric(
-              element,
-              canvas,
-              loadedImages,
-              scaleX,
-              scaleY
-            );
-            if (fabricObject) {
-              canvas.add(fabricObject);
-              // Chỉ áp dụng animation cho elements của currentOrder hiện tại
-              if (order === currentOrder) {
-                applyEntryAnimation(fabricObject, element, scaleX, scaleY);
-              }
-            }
-          });
+      // Nếu currentOrder > 0, không xóa đối tượng cũ, chỉ thêm mới
+      toLoad.forEach((element) => {
+        const fabricObj = slideElementToFabric(
+          element,
+          canvas,
+          loadedImages,
+          scaleX,
+          scaleY
+        );
+        if (fabricObj) {
+          canvas.add(fabricObj);
+          applyEntryAnimation(fabricObj, element, scaleX, scaleY);
         }
-      }
+      });
+
       canvas.renderAll();
     } catch (err) {
       console.error('Lỗi tải ảnh:', err);
@@ -514,57 +492,59 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     }
     // Stop at maxDisplayOrder + 1 (no further clicks needed)
   };
-  // Khởi tạo canvas và render slide hiện tại
+  // 1) Khi slide thay đổi, reset và init canvas
   useEffect(() => {
     if (
       !canvasRef.current ||
-      !activity ||
       activity.activityType !== 'INFO_SLIDE' ||
       !activity.slide
-    ) {
+    )
       return;
-    }
-
+    // Reset display order về 0
+    setCurrentDisplayOrder(0);
+    // Dispose canvas cũ nếu có
+    fabricCanvas.current?.dispose();
     const canvas = initCanvas(
       canvasRef.current,
       activity.backgroundColor || '#fff',
       activity.backgroundImage
     );
-
-    // Add click event listener
     canvas.on('mouse:down', handleCanvasClick);
-
+    // Vẽ các phần tử đầu tiên (displayOrder = 0) khi slide mới
     renderSlide(
       activity.slide.slideElements,
       getMaxDisplayOrder(activity.slide.slideElements),
-      currentDisplayOrder
+      0
     );
 
-    // Cập nhật lại kích thước canvas khi thay đổi kích thước cửa sổ
+    // Resize handler chỉ thay đổi size
     const handleResize = () => {
       const { canvasWidth, canvasHeight } = getCanvasDimensions();
-      if (canvas) {
-        canvas.setDimensions({ width: canvasWidth, height: canvasHeight });
-        renderSlide(
-          activity.slide.slideElements,
-          getMaxDisplayOrder(activity.slide.slideElements),
-          currentDisplayOrder
-        ); // Render lại slide với kích thước mới
-      }
+      canvas.setDimensions({ width: canvasWidth, height: canvasHeight });
     };
-
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
       canvas.dispose();
     };
-  }, [
-    activity,
-    currentSlideIndex,
-    canvasWidth,
-    canvasHeight,
-    currentDisplayOrder,
-  ]);
+  }, [activity.slide.slideId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+  // 2) Render slide mỗi khi currentDisplayOrder thay đổi
+  useEffect(() => {
+    if (
+      !fabricCanvas.current ||
+      activity.activityType !== 'INFO_SLIDE' ||
+      !activity.slide
+    )
+      return;
+    renderSlide(
+      activity.slide.slideElements,
+      getMaxDisplayOrder(activity.slide.slideElements),
+      currentDisplayOrder
+    );
+  }, [currentDisplayOrder]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   return (
     <div

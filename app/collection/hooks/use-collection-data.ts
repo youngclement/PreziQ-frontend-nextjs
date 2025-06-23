@@ -1,12 +1,17 @@
 /**
  * Custom hook for fetching and managing collection data
  */
-import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { collectionsApi } from "@/api-client";
-import { Activity, QuizQuestion } from "../components/types";
-import { createEmptyQuestion } from "../utils/question-helpers";
-import { mapActivityTypeToQuestionType } from "../utils/question-type-mapping";
+import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { collectionsApi } from '@/api-client';
+import {
+  Activity,
+  QuizOption,
+  QuizQuestion,
+  MatchingPairOption,
+} from '../components/types';
+import { createEmptyQuestion } from '../utils/question-helpers';
+import { mapActivityTypeToQuestionType } from '../utils/question-type-mapping';
 
 export function useCollectionData(collectionId: string, activityId?: string) {
   const { toast } = useToast();
@@ -48,7 +53,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
               backgroundImage: act.backgroundImage,
               customBackgroundMusic: act.customBackgroundMusic,
               orderIndex:
-                typeof act.orderIndex === "number"
+                typeof act.orderIndex === 'number'
                   ? act.orderIndex
                   : Number.MAX_SAFE_INTEGER,
               createdAt: act.createdAt,
@@ -61,7 +66,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
             );
 
           console.log(
-            "Activities after sorting by orderIndex:",
+            'Activities after sorting by orderIndex:',
             mappedActivities.map(
               (a: {
                 title: string;
@@ -103,39 +108,39 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                 const question: QuizQuestion = {
                   id: act.id, // Use activity ID as question ID
                   activity_id: act.id,
-                  question_text: "",
+                  question_text: '',
                   question_type: questionType as any,
-                  correct_answer_text: "",
+                  correct_answer_text: '',
                   options: [],
                 };
 
                 // Handle slides and info slides
-                if (questionType === "slide" || questionType === "info_slide") {
+                if (questionType === 'slide' || questionType === 'info_slide') {
                   // For slide types, use specific slide data or defaults
                   if (act.quiz) {
-                    question.question_text = act.quiz.title || "Slide";
-                    question.slide_content = act.quiz.content || "";
-                    question.slide_image = act.quiz.image || "";
+                    question.question_text = act.quiz.title || 'Slide';
+                    question.slide_content = act.quiz.content || '';
+                    question.slide_image = act.quiz.image || '';
                   } else {
-                    question.question_text = act.title || "Slide";
-                    question.slide_content = "Add content here...";
+                    question.question_text = act.title || 'Slide';
+                    question.slide_content = 'Add content here...';
                   }
                   return question;
                 }
 
                 // Handle location questions
-                if (act.activity_type_id === "QUIZ_LOCATION") {
+                if (act.activity_type_id === 'QUIZ_LOCATION') {
                   question.question_text =
                     act.quiz?.questionText ||
                     act.title ||
-                    "Where is this location?";
-                  question.question_type = "location";
+                    'Where is this location?';
+                  question.question_type = 'location';
                   question.location_data = {
                     lat: 21.0285, // Default latitude, can be a center point or first point.
                     lng: 105.8048, // Default longitude
                     radius: 10,
 
-                    pointType: act.quiz?.pointType || "STANDARD",
+                    pointType: act.quiz?.pointType || 'STANDARD',
                     quizLocationAnswers:
                       act.quiz?.quizLocationAnswers?.map((loc: any) => ({
                         quizLocationAnswerId: loc.quizLocationAnswerId,
@@ -156,50 +161,82 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                   }
 
                   console.log(
-                    "Mapped location question with data:",
+                    'Mapped location question with data:',
                     question.location_data
                   );
                   return question;
                 }
 
-                // Handle matching pair questions - FOR MOCKING
-                if (act.activity_type_id === "QUIZ_MATCHING_PAIR") {
-                  question.question_type = "matching_pair";
-                  question.question_text = act.title || "Match the pairs";
-                  question.options = [
-                    {
-                      id: "left-1",
-                      pair_id: "pair-1",
-                      type: "left",
-                      option_text: "Hanoi",
-                      is_correct: true,
-                      display_order: 0,
-                    },
-                    {
-                      id: "right-1",
-                      pair_id: "pair-1",
-                      type: "right",
-                      option_text: "Vietnam",
-                      is_correct: true,
-                      display_order: 1,
-                    },
-                    {
-                      id: "left-2",
-                      pair_id: "pair-2",
-                      type: "left",
-                      option_text: "Tokyo",
-                      is_correct: true,
-                      display_order: 2,
-                    },
-                    {
-                      id: "right-2",
-                      pair_id: "pair-2",
-                      type: "right",
-                      option_text: "Japan",
-                      is_correct: true,
-                      display_order: 3,
-                    },
-                  ];
+                // Handle matching pair questions - UPDATED TO USE API DATA
+                if (act.activity_type_id === 'QUIZ_MATCHING_PAIRS') {
+                  question.question_type = 'matching_pair';
+                  question.question_text =
+                    act.quiz?.questionText || act.title || 'Match the pairs';
+                  question.time_limit_seconds = act.quiz?.timeLimitSeconds;
+                  question.pointType = act.quiz?.pointType;
+
+                  // Use the actual matching pair data from API
+                  if (act.quiz?.quizMatchingPairAnswer) {
+                    const matchingData = act.quiz.quizMatchingPairAnswer;
+                    question.matching_data = matchingData;
+
+                    // Convert API structure to the expected options format
+                    const options: MatchingPairOption[] = [];
+
+                    // Process left column items
+                    matchingData.items
+                      .filter((item: MatchingPairOption) => item.isLeftColumn)
+                      .forEach((item: MatchingPairOption) => {
+                        options.push({
+                          id: item.quizMatchingPairItemId,
+                          quizMatchingPairItemId: item.quizMatchingPairItemId,
+                          content: item.content,
+
+                          isLeftColumn: true,
+                          display_order: item.display_order,
+                        });
+                      });
+
+                    // Process right column items
+                    matchingData.items
+                      .filter((item: MatchingPairOption) => !item.isLeftColumn)
+                      .forEach((item: MatchingPairOption) => {
+                        options.push({
+                          id: item.quizMatchingPairItemId,
+                          quizMatchingPairItemId: item.quizMatchingPairItemId,
+                          content: item.content,
+
+                          isLeftColumn: false,
+                          display_order: item.display_order,
+                        });
+                      });
+
+                    // Sort options by display order
+                    options.sort((a, b) => a.display_order - b.display_order);
+
+                    console.log('Processed matching pair data from API:', {
+                      leftColumnName: matchingData.leftColumnName,
+                      rightColumnName: matchingData.rightColumnName,
+                      itemsCount: matchingData.items.length,
+                      connectionsCount: matchingData.connections.length,
+                      optionsCount: options.length,
+                    });
+                  } else {
+                    // Fallback: create empty matching pair structure
+                    question.question_text = act.title || 'Match the pairs';
+                    question.options = [];
+                    question.matching_data = {
+                      quizMatchingPairAnswerId: '',
+                      leftColumnName: 'Left Column',
+                      rightColumnName: 'Right Column',
+                      items: [],
+                      connections: [],
+                    };
+                    console.log(
+                      'No matching pair data found, created empty structure'
+                    );
+                  }
+
                   return question;
                 }
 
@@ -207,7 +244,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                 if (act.quiz) {
                   const quizData = act.quiz;
                   question.question_text =
-                    quizData.questionText || "Default question";
+                    quizData.questionText || 'Default question';
 
                   // Map answers based on activity type
                   if (
@@ -219,16 +256,16 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                         option_text: answer.answerText,
                         is_correct: answer.isCorrect,
                         display_order: answer.orderIndex || index,
-                        explanation: answer.explanation || "",
+                        explanation: answer.explanation || '',
                       })
                     );
                   } else if (
-                    act.activity_type_id === "QUIZ_TYPE_ANSWER" &&
+                    act.activity_type_id === 'QUIZ_TYPE_ANSWER' &&
                     quizData.correctAnswer
                   ) {
                     question.correct_answer_text = quizData.correctAnswer;
                     console.log(
-                      "Found text answer question with answer:",
+                      'Found text answer question with answer:',
                       quizData.correctAnswer
                     );
                   }
@@ -240,7 +277,6 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                 }
               }
             );
-
 
             setActivities(mappedActivities);
 
@@ -273,27 +309,27 @@ export function useCollectionData(collectionId: string, activityId?: string) {
             }
           } else {
             toast({
-              title: "Info",
+              title: 'Info',
               description:
-                "No activities found in this collection. Add one to get started.",
+                'No activities found in this collection. Add one to get started.',
             });
           }
         } else {
           // No activities in collection
-          console.log("No activities found in the collection");
+          console.log('No activities found in the collection');
           toast({
-            title: "Info",
+            title: 'Info',
             description:
-              "This collection has no activities yet. Add one to get started.",
+              'This collection has no activities yet. Add one to get started.',
           });
         }
       }
     } catch (error) {
-      console.error("Error fetching collection:", error);
+      console.error('Error fetching collection:', error);
       toast({
-        title: "Error",
-        description: "Failed to load collection data",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load collection data',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -313,7 +349,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
       );
       if (correctActivity) {
         console.log(
-          "Syncing activity state with active question:",
+          'Syncing activity state with active question:',
           correctActivity.id
         );
         setActivity(correctActivity);

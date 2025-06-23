@@ -781,10 +781,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
           for (const obj of activeObjects) {
             const slideElementId = obj.get('slideElementId');
             if (!slideElementId || !slideId) {
-              console.log(
-                'Bỏ qua xóa object vì thiếu slideElementId hoặc slideId:',
-                { slideElementId, slideId }
-              );
               canvas.remove(obj);
               continue;
             }
@@ -846,10 +842,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
     canvas.on('object:added', (e) => {
       const obj = e.target;
       if (obj) {
-        // console.log(
-        //   'Đối tượng vừa được tạo:',
-        //   JSON.stringify(obj.toJSON(), null, 2)
-        // );
         saveState();
       }
     });
@@ -929,14 +921,12 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       // Reset trạng thái gõ
       isTyping.current = false;
 
-      //console.log('Text editing exited:', obj.toJSON());
       updateSlideElement(obj);
       saveState();
     });
 
     canvas.on('drop', (e) => {
       const target = e.target;
-      // console.log('Đối tượng target: ', target);
       if (target && target instanceof fabric.Textbox) {
         e.e.preventDefault();
         return false;
@@ -1168,7 +1158,6 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
       slidesApi
         .addSlidesElement(slideId, payload)
         .then((res) => {
-          // console.log('Tạo image element thành công:', res.data);
           img.set('slideElementId', res.data.data.slideElementId);
           img.set('isNew', false);
           img.set('displayOrder', maxDisplayOrder + 1);

@@ -256,10 +256,10 @@ export default function MyCollectionsPage() {
 
   return (
     <ClientOnly>
-      <div className='container mx-auto px-4 py-8 max-w-7xl'>
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <CollectionHeader
-          title='Bộ sưu tập của tôi'
-          description='Quản lý và chỉnh sửa các bộ sưu tập của bạn'
+          title="Bộ sưu tập của tôi"
+          description="Quản lý và chỉnh sửa các bộ sưu tập của bạn"
           onCreateCollection={handleCreateCollection}
           searchQuery={searchQuery}
           onSearch={setSearchQuery}
@@ -273,55 +273,55 @@ export default function MyCollectionsPage() {
         />
 
         {isLoading ? (
-          <div className='flex justify-center items-center h-64'>
+          <div className="flex justify-center items-center h-64">
             <Loading />
           </div>
         ) : error ? (
-          <div className='text-center py-12'>
-            <div className='bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md'>
-              <h3 className='text-xl font-semibold mb-2'>Đã xảy ra lỗi</h3>
-              <p className='text-zinc-500 dark:text-zinc-400 mb-4'>{error}</p>
+          <div className="text-center py-12">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+              <h3 className="text-xl font-semibold mb-2">Đã xảy ra lỗi</h3>
+              <p className="text-zinc-500 dark:text-zinc-400 mb-4">{error}</p>
               <button
                 onClick={() => fetchMyCollections()}
-                className='relative flex button-group text-sm leading-5 touch-manipulation cursor-pointer font-bold text-black h-10 px-6'
+                className="relative flex button-group text-sm leading-5 touch-manipulation cursor-pointer font-bold text-black h-10 px-6"
                 style={{ borderRadius: 0 }}
               >
                 <div
-                  className='-inset-1 absolute z-0'
+                  className="-inset-1 absolute z-0"
                   style={{ borderRadius: '2.875rem' }}
                 ></div>
                 <div
-                  className='absolute inset-x-0 top-0 bottom-0 transform button-group-active:translate-y-0.5 button-group-active:bottom-0.5 z-1 bg-black'
+                  className="absolute inset-x-0 top-0 bottom-0 transform button-group-active:translate-y-0.5 button-group-active:bottom-0.5 z-1 bg-black"
                   style={{ borderRadius: '3.125rem', padding: '0.25rem' }}
                 >
-                  <div className='relative w-full h-full'>
+                  <div className="relative w-full h-full">
                     <div
-                      className='top-1 absolute inset-x-0 bottom-0 overflow-hidden'
+                      className="top-1 absolute inset-x-0 bottom-0 overflow-hidden"
                       style={{
                         backgroundColor: '#6FEEFF',
                         borderRadius: '2.8125rem',
                       }}
                     >
-                      <div className='bg-opacity-30 absolute inset-0 bg-black'></div>
+                      <div className="bg-opacity-30 absolute inset-0 bg-black"></div>
                     </div>
                     <div
-                      className='bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5'
+                      className="bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5"
                       style={{
                         backgroundColor: '#6FEEFF',
                         borderRadius: '2.8125rem',
                       }}
                     >
-                      <div className='button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0'></div>
+                      <div className="button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0"></div>
                     </div>
                   </div>
                 </div>
                 <div
-                  className='relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 button-group-active:translate-y-0'
+                  className="relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 button-group-active:translate-y-0"
                   style={{ padding: '0.25rem' }}
                 >
-                  <div className='flex flex-col flex-1 items-center'>
-                    <div className='relative'>
-                      <div className='relative flex items-center justify-center'>
+                  <div className="flex flex-col flex-1 items-center">
+                    <div className="relative">
+                      <div className="relative flex items-center justify-center">
                         THỬ LẠI
                       </div>
                     </div>
@@ -338,12 +338,12 @@ export default function MyCollectionsPage() {
                 onCreateCollection={handleCreateCollection}
               />
             ) : (
-              <div className='mt-8'>
+              <div className="mt-8">
                 {viewMode === 'grid' ? (
-                  <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredCollections.map((collection) => (
                       <CollectionGridItem
-                        key={collection.id}
+                        key={collection.collectionId}
                         collection={collection}
                         activities={[]}
                         onEdit={() =>
@@ -359,10 +359,10 @@ export default function MyCollectionsPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className='space-y-4'>
+                  <div className="space-y-4">
                     {filteredCollections.map((collection) => (
                       <CollectionListItem
-                        key={collection.id}
+                        key={collection.collectionId}
                         collection={collection}
                         onEdit={() =>
                           handleEditCollection(collection.collectionId)
@@ -384,8 +384,8 @@ export default function MyCollectionsPage() {
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div className='flex justify-center mt-8'>
-                <div className='flex space-x-4'>
+              <div className="flex justify-center mt-8">
+                <div className="flex space-x-4">
                   <button
                     onClick={() =>
                       fetchMyCollections(
@@ -402,41 +402,41 @@ export default function MyCollectionsPage() {
                     style={{ borderRadius: 0 }}
                   >
                     <div
-                      className='-inset-1 absolute z-0'
+                      className="-inset-1 absolute z-0"
                       style={{ borderRadius: '2.875rem' }}
                     ></div>
                     <div
-                      className='absolute inset-x-0 top-0 bottom-0 transform button-group-active:translate-y-0.5 button-group-active:bottom-0.5 z-1 bg-black'
+                      className="absolute inset-x-0 top-0 bottom-0 transform button-group-active:translate-y-0.5 button-group-active:bottom-0.5 z-1 bg-black"
                       style={{ borderRadius: '3.125rem', padding: '0.25rem' }}
                     >
-                      <div className='relative w-full h-full'>
+                      <div className="relative w-full h-full">
                         <div
-                          className='top-1 absolute inset-x-0 bottom-0 overflow-hidden'
+                          className="top-1 absolute inset-x-0 bottom-0 overflow-hidden"
                           style={{
                             backgroundColor: '#6FEEFF',
                             borderRadius: '2.8125rem',
                           }}
                         >
-                          <div className='bg-opacity-30 absolute inset-0 bg-black'></div>
+                          <div className="bg-opacity-30 absolute inset-0 bg-black"></div>
                         </div>
                         <div
-                          className='bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5'
+                          className="bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5"
                           style={{
                             backgroundColor: '#6FEEFF',
                             borderRadius: '2.8125rem',
                           }}
                         >
-                          <div className='button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0'></div>
+                          <div className="button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0"></div>
                         </div>
                       </div>
                     </div>
                     <div
-                      className='relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 button-group-active:translate-y-0'
+                      className="relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 button-group-active:translate-y-0"
                       style={{ padding: '0.25rem' }}
                     >
-                      <div className='flex flex-col flex-1 items-center'>
-                        <div className='relative'>
-                          <div className='relative flex items-center justify-center'>
+                      <div className="flex flex-col flex-1 items-center">
+                        <div className="relative">
+                          <div className="relative flex items-center justify-center">
                             TRƯỚC
                           </div>
                         </div>
@@ -444,8 +444,8 @@ export default function MyCollectionsPage() {
                     </div>
                   </button>
 
-                  <div className='flex items-center justify-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm'>
-                    <span className='text-sm font-medium'>
+                  <div className="flex items-center justify-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm">
+                    <span className="text-sm font-medium">
                       {pagination.currentPage} / {pagination.totalPages}
                     </span>
                   </div>
@@ -464,41 +464,41 @@ export default function MyCollectionsPage() {
                     style={{ borderRadius: 0 }}
                   >
                     <div
-                      className='-inset-1 absolute z-0'
+                      className="-inset-1 absolute z-0"
                       style={{ borderRadius: '2.875rem' }}
                     ></div>
                     <div
-                      className='absolute inset-x-0 top-0 bottom-0 transform button-group-active:translate-y-0.5 button-group-active:bottom-0.5 z-1 bg-black'
+                      className="absolute inset-x-0 top-0 bottom-0 transform button-group-active:translate-y-0.5 button-group-active:bottom-0.5 z-1 bg-black"
                       style={{ borderRadius: '3.125rem', padding: '0.25rem' }}
                     >
-                      <div className='relative w-full h-full'>
+                      <div className="relative w-full h-full">
                         <div
-                          className='top-1 absolute inset-x-0 bottom-0 overflow-hidden'
+                          className="top-1 absolute inset-x-0 bottom-0 overflow-hidden"
                           style={{
                             backgroundColor: '#00a76d',
                             borderRadius: '2.8125rem',
                           }}
                         >
-                          <div className='bg-opacity-30 absolute inset-0 bg-black'></div>
+                          <div className="bg-opacity-30 absolute inset-0 bg-black"></div>
                         </div>
                         <div
-                          className='bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5'
+                          className="bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5"
                           style={{
                             backgroundColor: '#00a76d',
                             borderRadius: '2.8125rem',
                           }}
                         >
-                          <div className='button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0'></div>
+                          <div className="button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0"></div>
                         </div>
                       </div>
                     </div>
                     <div
-                      className='relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 button-group-active:translate-y-0'
+                      className="relative flex flex-row gap-x-4 items-center justify-center w-full min-h-full pointer-events-none z-2 transform -translate-y-0.5 button-group-active:translate-y-0"
                       style={{ padding: '0.25rem' }}
                     >
-                      <div className='flex flex-col flex-1 items-center'>
-                        <div className='relative'>
-                          <div className='relative flex items-center justify-center'>
+                      <div className="flex flex-col flex-1 items-center">
+                        <div className="relative">
+                          <div className="relative flex items-center justify-center">
                             SAU
                           </div>
                         </div>

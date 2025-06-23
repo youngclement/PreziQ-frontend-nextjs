@@ -33,6 +33,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast as sonnerToast } from 'sonner';
+import { useLanguage } from '@/contexts/language-context';
+
 // Interface cho response từ API
 interface ApiResponse {
   success: boolean;
@@ -47,18 +49,23 @@ interface ApiResponseWrapper {
   data: ApiResponse;
 }
 
-// Schema validation
-const emailFormSchema = z.object({
-  email: z.string().min(1, 'Vui lòng nhập email').email('Email không hợp lệ'),
-});
-
-type EmailFormValues = z.infer<typeof emailFormSchema>;
-
 interface UserEmailFormProps {
   email: string;
 }
 
 export function UserEmailForm({ email }: UserEmailFormProps) {
+  const { t } = useLanguage();
+
+  // Schema validation với đa ngôn ngữ
+  const emailFormSchema = z.object({
+    email: z
+      .string()
+      .min(1, t('profile.emailRequired'))
+      .email(t('profile.emailInvalid')),
+  });
+
+  type EmailFormValues = z.infer<typeof emailFormSchema>;
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -76,7 +83,7 @@ export function UserEmailForm({ email }: UserEmailFormProps) {
 
       // Kiểm tra nếu email mới giống email hiện tại
       if (data.email === email) {
-        sonnerToast.warning('Email mới phải khác với email hiện tại');
+        sonnerToast.warning(t('profile.emailMustBeDifferent'));
         return;
       }
 
@@ -102,7 +109,7 @@ export function UserEmailForm({ email }: UserEmailFormProps) {
       sonnerToast.error(
         error.message ||
           error.errors?.[0]?.message ||
-          'Không thể cập nhật email. Vui lòng thử lại sau.'
+          t('profile.cannotUpdateEmail')
       );
     } finally {
       setIsSubmitting(false);
@@ -114,10 +121,10 @@ export function UserEmailForm({ email }: UserEmailFormProps) {
       <Card className='border-0 shadow-none'>
         <CardHeader className='space-y-1'>
           <CardTitle className='text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'>
-            Cập nhật email
+            {t('profile.updateEmailTitle')}
           </CardTitle>
           <CardDescription className='text-base'>
-            Thay đổi địa chỉ email của bạn. Bạn sẽ cần xác nhận email mới.
+            {t('profile.updateEmailDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -126,7 +133,7 @@ export function UserEmailForm({ email }: UserEmailFormProps) {
               <div className='space-y-4'>
                 <div className='p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg'>
                   <p className='text-sm text-gray-600 dark:text-gray-400'>
-                    Email hiện tại:
+                    {t('profile.currentEmail')}:
                   </p>
                   <p className='text-base font-medium text-gray-900 dark:text-white'>
                     {email}
@@ -139,14 +146,14 @@ export function UserEmailForm({ email }: UserEmailFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                        Email mới
+                        {t('profile.newEmail')}
                       </FormLabel>
                       <FormControl>
                         <Input
                           {...field}
                           type='email'
                           className='transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
-                          placeholder='Nhập email mới của bạn'
+                          placeholder={t('profile.newEmailPlaceholder')}
                         />
                       </FormControl>
                       <FormMessage className='text-xs text-red-500 dark:text-red-400' />
@@ -164,10 +171,10 @@ export function UserEmailForm({ email }: UserEmailFormProps) {
                   {isSubmitting ? (
                     <>
                       <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      Đang gửi...
+                      {t('profile.sending')}
                     </>
                   ) : (
-                    'Gửi yêu cầu'
+                    t('profile.sendRequest')
                   )}
                 </Button>
               </div>
@@ -180,7 +187,7 @@ export function UserEmailForm({ email }: UserEmailFormProps) {
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
             <DialogTitle className='text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'>
-              Kiểm tra email của bạn
+              {t('profile.checkYourEmail')}
             </DialogTitle>
             <DialogDescription className='text-base'>
               {successMessage}

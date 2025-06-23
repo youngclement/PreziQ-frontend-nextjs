@@ -10,6 +10,8 @@ import { User, Mail, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { authApi } from '@/api-client';
 import Loading from '@/components/common/loading';
+import { useLanguage } from '@/contexts/language-context';
+
 interface UserProfile {
   id: string;
   email: string;
@@ -24,6 +26,7 @@ interface UserProfile {
 }
 
 export function UserProfileClient() {
+  const { t } = useLanguage();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,17 +61,17 @@ export function UserProfileClient() {
 
           setUserProfile(userProfileData);
         } else {
-          setError('Không thể tải thông tin người dùng');
+          setError(t('profile.loadingError'));
         }
       } catch (err) {
-        setError('Đã xảy ra lỗi khi tải thông tin người dùng');
+        setError(t('profile.loadingError'));
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserProfile();
-  }, []);
+  }, [t]);
 
   if (loading) {
     return <Loading />;
@@ -107,21 +110,21 @@ export function UserProfileClient() {
               className='flex items-center space-x-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary transition-all duration-200 rounded-lg py-2'
             >
               <User className='h-4 w-4' />
-              <span>Thông tin cá nhân</span>
+              <span>{t('profile.personalInfo')}</span>
             </TabsTrigger>
             <TabsTrigger
               value='email'
               className='flex items-center space-x-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary transition-all duration-200 rounded-lg py-2'
             >
               <Mail className='h-4 w-4' />
-              <span>Email</span>
+              <span>{t('profile.email')}</span>
             </TabsTrigger>
             <TabsTrigger
               value='password'
               className='flex items-center space-x-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary transition-all duration-200 rounded-lg py-2'
             >
               <Lock className='h-4 w-4' />
-              <span>Mật khẩu</span>
+              <span>{t('profile.password')}</span>
             </TabsTrigger>
           </TabsList>
 

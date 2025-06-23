@@ -134,6 +134,15 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
         backgroundImage: '',
       });
     }
+
+    try {
+      await activitiesApi.updateActivity(slideId, {
+        backgroundColor: color,
+        backgroundImage: '',
+      });
+    } catch (err) {
+      console.error('Error saving background color:', err);
+    }
   };
 
   const onBackgroundImageChange = async (url: string) => {

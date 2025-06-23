@@ -529,7 +529,7 @@ export default function ParticipantActivities({
   };
 
   return (
-    <div className='min-h-screen bg-black text-white'>
+    <div className='min-h-[100dvh] bg-black text-white'>
       {/* Hiển thị CountdownOverlay ở mức cao nhất để che phủ toàn màn hình khi KHÔNG ở chế độ toàn màn hình */}
       {showCountdown && !isFullscreenMode && (
         <div className='fixed inset-0 z-[9999]'>
@@ -799,8 +799,12 @@ export default function ParticipantActivities({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
               className={`
-                bg-[#0e1c26]/80 backdrop-blur-md rounded-xl shadow-xl overflow-hidden border border-white/5 mb-6
-                ${isFullscreenMode ? 'h-screen rounded-none border-0 mb-0' : ''}
+                bg-[#0e1c26]/80 backdrop-blur-md rounded-xl shadow-xl overflow-hidden border border-white/5
+                ${
+                  isFullscreenMode
+                    ? 'h-[100dvh] rounded-none border-0 mb-0'
+                    : ''
+                }
               `}
             >
               {!isFullscreenMode && (
@@ -825,7 +829,7 @@ export default function ParticipantActivities({
               <div
                 className={`${
                   isFullscreenMode
-                    ? 'h-screen flex items-center justify-center'
+                    ? 'h-[100dvh] flex items-center justify-center'
                     : 'p-6'
                 }`}
               >
@@ -855,7 +859,7 @@ export default function ParticipantActivities({
           <motion.div
             className={`backdrop-blur-md shadow-xl border-l border-white/10 
               overflow-hidden transition-all duration-300 ease-in-out
-              ${isFullscreenMode ? 'h-screen' : 'h-full'}
+              ${isFullscreenMode ? 'h-[100dvh]' : 'h-full'}
               fixed inset-y-0 right-0 z-50 bg-[#0e1c26]/95 max-w-[90vw]
               md:absolute md:bottom-0 md:top-0 md:z-20 md:max-w-[350px]
             `}

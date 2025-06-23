@@ -12,9 +12,11 @@ import { useRouter } from 'next/navigation';
 import { authApi } from '@/api/index';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/language-context';
 
 export default function RegisterPage() {
   const [isClient, setIsClient] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     setIsClient(true);
@@ -90,121 +92,118 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="flex items-center justify-center px-8 py-8 sm:px-12 lg:col-span-7 lg:px-16 lg:py-12 xl:col-span-6">
-      <div className="max-w-xl lg:max-w-3xl">
-        <Link className="block text-blue-600" href="/">
+    <main className='flex items-center justify-center px-8 py-8 sm:px-12 lg:col-span-7 lg:px-16 lg:py-12 xl:col-span-6'>
+      <div className='max-w-xl lg:max-w-3xl'>
+        <Link className='block text-blue-600' href='/'>
           <Logo />
         </Link>
 
-        <h1 className="mt-6 text-2xl flex items-center gap-4 font-bold sm:text-3xl md:text-4xl">
-          Welcome {isClient && <HeartHandshake className="size-6" />}
+        <h1 className='mt-6 text-2xl flex items-center gap-4 font-bold sm:text-3xl md:text-4xl'>
+          {t('welcome')} {isClient && <HeartHandshake className='size-6' />}
         </h1>
 
-        <p className="mt-4 leading-relaxed">
-          Join PreziQ to explore amazing presentations and connect with
-          like-minded creators.
-        </p>
+        <p className='mt-4 leading-relaxed'>{t('joinPreziQ')}</p>
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="mt-8 grid grid-cols-6 gap-6"
+          className='mt-8 grid grid-cols-6 gap-6'
         >
-          <div className="col-span-6 sm:col-span-3">
-            <Label htmlFor="firstName">First Name</Label>
+          <div className='col-span-6 sm:col-span-3'>
+            <Label htmlFor='firstName'>{t('firstName')}</Label>
             <Input
-              type="text"
-              id="firstName"
+              type='text'
+              id='firstName'
               {...register('firstName', {
-                required: 'First name is required',
+                required: t('firstNameRequired'),
               })}
-              className="mt-1 w-full rounded-md shadow-sm"
+              className='mt-1 w-full rounded-md shadow-sm'
             />
             {errors.firstName && (
-              <p className="text-red-500 text-sm">
+              <p className='text-red-500 text-sm'>
                 {errors.firstName.message as string}
               </p>
             )}
           </div>
 
-          <div className="col-span-6 sm:col-span-3">
-            <Label htmlFor="lastName">Last Name</Label>
+          <div className='col-span-6 sm:col-span-3'>
+            <Label htmlFor='lastName'>{t('lastName')}</Label>
             <Input
-              type="text"
-              id="lastName"
+              type='text'
+              id='lastName'
               {...register('lastName', {
-                required: 'Last name is required',
+                required: t('lastNameRequired'),
               })}
-              className="mt-1 w-full rounded-md shadow-sm"
+              className='mt-1 w-full rounded-md shadow-sm'
             />
             {errors.lastName && (
-              <p className="text-red-500 text-sm">
+              <p className='text-red-500 text-sm'>
                 {errors.lastName.message as string}
               </p>
             )}
           </div>
 
-          <div className="col-span-6 sm:col-span-3">
-            <Label htmlFor="email">Email</Label>
+          <div className='col-span-6 sm:col-span-3'>
+            <Label htmlFor='email'>{t('email')}</Label>
             <Input
-              type="email"
-              id="email"
-              {...register('email', { required: 'Email không được để trống' })}
-              className="mt-1 w-full rounded-md shadow-sm"
+              type='email'
+              id='email'
+              {...register('email', { required: t('emailRequired') })}
+              className='mt-1 w-full rounded-md shadow-sm'
             />
             {errors.email && (
-              <p className="text-red-500 text-sm">
+              <p className='text-red-500 text-sm'>
                 {errors.email.message as string}
               </p>
             )}
           </div>
 
-          <div className="col-span-6 sm:col-span-3">
-            <Label htmlFor="phoneNumber">Phone Number</Label>
+          <div className='col-span-6 sm:col-span-3'>
+            <Label htmlFor='phoneNumber'>{t('phoneNumber')}</Label>
             <Input
-              type="tel"
-              id="phoneNumber"
+              type='tel'
+              id='phoneNumber'
               {...register('phoneNumber', {
-                required: 'Phone number is required',
+                required: t('phoneNumberRequired'),
               })}
-              className="mt-1 w-full rounded-md shadow-sm"
-              placeholder="e.g., 0886332809"
+              className='mt-1 w-full rounded-md shadow-sm'
+              placeholder={t('phoneNumberPlaceholder')}
             />
             {errors.phoneNumber && (
-              <p className="text-red-500 text-sm">
+              <p className='text-red-500 text-sm'>
                 {errors.phoneNumber.message as string}
               </p>
             )}
           </div>
 
-          <div className="col-span-6 sm:col-span-3">
-            <Label htmlFor="password">Password</Label>
+          <div className='col-span-6 sm:col-span-3'>
+            <Label htmlFor='password'>{t('password')}</Label>
             <Input
-              type="password"
-              id="password"
+              type='password'
+              id='password'
               {...register('password', {
-                required: 'Password is required',
+                required: t('passwordRequired'),
               })}
-              className="mt-1 w-full rounded-md shadow-sm"
+              className='mt-1 w-full rounded-md shadow-sm'
             />
             {errors.password && (
-              <p className="text-red-500 text-sm">
+              <p className='text-red-500 text-sm'>
                 {errors.password.message as string}
               </p>
             )}
           </div>
 
-          <div className="col-span-6 sm:col-span-3">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <div className='col-span-6 sm:col-span-3'>
+            <Label htmlFor='confirmPassword'>{t('confirmPassword')}</Label>
             <Input
-              type="password"
-              id="confirmPassword"
+              type='password'
+              id='confirmPassword'
               {...register('confirmPassword', {
-                required: 'Confirm password is required',
+                required: t('confirmPasswordRequired'),
               })}
-              className="mt-1 w-full rounded-md shadow-sm"
+              className='mt-1 w-full rounded-md shadow-sm'
             />
             {errors.confirmPassword && (
-              <p className="text-red-500 text-sm">
+              <p className='text-red-500 text-sm'>
                 {errors.confirmPassword.message as string}
               </p>
             )}
@@ -222,29 +221,29 @@ export default function RegisterPage() {
             </Label>
           </div> */}
 
-          <div className="col-span-6">
-            <p className="text-sm text-gray-500">
-              By creating an account, you agree to our
-              <Link href="/terms" className="underline ml-1">
-                terms and conditions
+          <div className='col-span-6'>
+            <p className='text-sm text-gray-500'>
+              {t('byCreatingAccount')}
+              <Link href='/terms' className='underline ml-1'>
+                {t('termsAndConditions')}
               </Link>{' '}
-              and{' '}
-              <Link href="/privacy" className="underline">
-                privacy policy
+              {t('and')}{' '}
+              <Link href='/privacy' className='underline'>
+                {t('privacyPolicy')}
               </Link>
               .
             </p>
           </div>
 
-          <div className="col-span-6 flex flex-col md:flex-row items-center justify-center md:justify-start sm:gap-4">
-            <Button type="submit" className="px-10">
-              Create an account
+          <div className='col-span-6 flex flex-col md:flex-row items-center justify-center md:justify-start sm:gap-4'>
+            <Button type='submit' className='px-10'>
+              {t('createAnAccount')}
             </Button>
 
-            <p className="mt-4 text-sm text-gray-500 sm:mt-0">
-              Already have an account?{' '}
-              <Link href="/auth/login" className="underline text-primary">
-                Log in
+            <p className='mt-4 text-sm text-gray-500 sm:mt-0'>
+              {t('alreadyHaveAccount')}{' '}
+              <Link href='/auth/login' className='underline text-primary'>
+                {t('logIn')}
               </Link>
             </p>
           </div>
