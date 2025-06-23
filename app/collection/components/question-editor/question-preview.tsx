@@ -1158,6 +1158,7 @@ export function QuestionPreview({
             <div className="w-full" key={question.id}>
               <MatchingPairPreview
                 question={question}
+                activityId={activity?.id || ''}
                 questionIndex={questionIndex}
                 isActive={isActive}
                 viewMode={viewMode as 'desktop' | 'tablet' | 'mobile'}
@@ -1174,6 +1175,58 @@ export function QuestionPreview({
                 leftColumnName={leftColumnName}
                 rightColumnName={rightColumnName}
                 previewMode={previewMode}
+                onDeleteConnection={async (payload) => {
+                  const connection =
+                    question.quizMatchingPairAnswer?.connections?.find(
+                      (c) =>
+                        c.leftItem.quizMatchingPairItemId ===
+                          payload.leftItemId &&
+                        c.rightItem.quizMatchingPairItemId ===
+                          payload.rightItemId
+                    );
+                  // Ưu tiên lấy activityId từ prop activity
+                  const activityId = activity?.id || question.activity_id;
+                  const connectionId = connection?.quizMatchingPairConnectionId;
+
+                  if (connectionId && activityId) {
+                    try {
+                      await activitiesApi.deleteMatchingPairConnection(
+                        connectionId,
+                        activityId
+                      );
+                      toast({
+                        title: 'Success',
+                        description: 'Item deleted successfully',
+                      });
+
+                      // Gọi lại API lấy activity mới nhất
+                      const response = await activitiesApi.getActivityById(
+                        activityId
+                      );
+                      const updatedConnections =
+                        response.data.data.quiz.quizMatchingPairAnswer
+                          ?.connections ?? [];
+
+                      onOptionChange(
+                        questionIndex,
+                        -1,
+                        'update_connections',
+                        updatedConnections
+                      );
+                    } catch (error) {
+                      console.error(
+                        'Failed to delete connection or refresh activity:',
+                        error
+                      );
+                    }
+                  } else {
+                    // Thêm log để debug
+                    console.error('Missing activityId or connectionId', {
+                      activityId,
+                      connectionId,
+                    });
+                  }
+                }}
               />
             </div>
           </CardContent>
