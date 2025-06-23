@@ -100,6 +100,15 @@ export function LocationQuestionEditor({
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Context menu states
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    lng: number;
+    lat: number;
+    visible: boolean;
+  } | null>(null);
+
   // Track previous answers to compare for selective updates
   useEffect(() => {
     // Skip updates if we're dragging or if we explicitly want to skip
@@ -378,6 +387,38 @@ export function LocationQuestionEditor({
 
       // Initialize existing location markers
       refreshMapMarkers();
+    });
+
+    // Add context menu event handler
+    map.on('contextmenu', (e) => {
+      console.log('🖱️ Right click detected on map');
+
+      if (readonly) {
+        console.log('❌ Context menu disabled - readonly mode');
+        return;
+      }
+
+      e.preventDefault();
+
+      const { lng, lat } = e.lngLat;
+      const { x, y } = e.point;
+
+      console.log('📍 Context menu position:', { x, y, lng, lat });
+
+      setContextMenu({
+        x,
+        y,
+        lng,
+        lat,
+        visible: true
+      });
+
+      console.log('✅ Context menu should be visible now');
+    });
+
+    // Hide context menu on regular click
+    map.on('click', () => {
+      setContextMenu(null);
     });
 
     return () => {
@@ -1563,6 +1604,29 @@ export function LocationQuestionEditor({
     };
   }, [showSearchResults]);
 
+  // Handle click outside to close context menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Close context menu when clicking outside, but not if clicking on the menu itself
+      if (contextMenu?.visible) {
+        const target = event.target as Element;
+        const contextMenuElement = target.closest('.context-menu');
+
+        if (!contextMenuElement) {
+          setContextMenu(null);
+        }
+      }
+    };
+
+    if (contextMenu?.visible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [contextMenu]);
+
   // Search functionality using Mapbox Geocoding API
   const searchPlaces = async (query: string) => {
     if (!query.trim() || query.length < 3) {
@@ -1701,6 +1765,86 @@ export function LocationQuestionEditor({
     setShowSearchResults(false);
     setSearchQuery('');
 
+  };
+
+  // Handle creating a new location point from context menu
+  const handleCreatePointAtPosition = (lng: number, lat: number) => {
+    console.log('🎯 Creating point at position:', lng, lat);
+
+    if (readonly) {
+      console.log('❌ Cannot create point - readonly mode');
+      return;
+    }
+
+    // Create new location
+    const newLocation: LocationAnswer = {
+      longitude: lng,
+      latitude: lat,
+      radius: 10,
+    };
+
+    console.log('📍 New location object:', newLocation);
+
+    // Add to current locations
+    const updatedLocations = [
+      ...currentLocationAnswersRef.current,
+      newLocation,
+    ];
+
+    console.log('📋 Updated locations array:', updatedLocations);
+
+    // Calculate the new index for this location
+    const newPointIndex = updatedLocations.length - 1;
+
+    // Update refs and state
+    currentLocationAnswersRef.current = updatedLocations;
+    setLocationData(updatedLocations);
+
+    // Add this new point to latestMarkerPositionsRef so it's tracked for drag operations
+    latestMarkerPositionsRef.current.set(newPointIndex, {
+      lng: lng,
+      lat: lat,
+    });
+
+    // Update global state to prevent conflicts
+    if (typeof window !== 'undefined') {
+      window.lastLocationUpdate = {
+        timestamp: Date.now(),
+        activityId: questionIndex.toString(),
+        locationData: updatedLocations,
+        source: 'location-editor-context-menu',
+      };
+    }
+
+    // Call parent handler to update the API immediately
+    onLocationChange(questionIndex, updatedLocations);
+
+    // Refresh map markers to include the new point with proper event handlers
+    setTimeout(() => {
+      refreshMapMarkersWithData(updatedLocations);
+
+      // Set as selected
+      setSelectedLocationIndex(newPointIndex);
+
+      // Optionally fly to the new location
+      if (mapRef.current) {
+        mapRef.current.flyTo({
+          center: [lng, lat],
+          zoom: 15,
+          duration: 1000,
+          essential: true,
+        });
+      }
+    }, 100);
+
+    // Hide context menu
+    setContextMenu(null);
+
+    // Show success toast
+    toast({
+      description: `Đã thêm điểm mới tại vị trí (${lat.toFixed(6)}, ${lng.toFixed(6)})`,
+      duration: 3000,
+    });
   };
 
   // Add this helper function to the component
@@ -1848,6 +1992,32 @@ export function LocationQuestionEditor({
           <Maximize className="mr-2 h-4 w-4" />
           Show All Locations
         </Button>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu?.visible && (
+        <div
+          className="context-menu fixed bg-white border border-gray-200 rounded-md shadow-lg z-[9999] py-1 min-w-[200px]"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+            onClick={(e) => {
+              console.log('🔘 Context menu button clicked');
+              e.stopPropagation();
+              e.preventDefault();
+              handleCreatePointAtPosition(contextMenu.lng, contextMenu.lat);
+            }}
+          >
+            <Plus className="h-4 w-4 text-red-500" />
+            Tạo điểm tại vị trí này
+          </button>
+        </div>
       )}
     </div>
   );

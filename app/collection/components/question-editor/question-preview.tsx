@@ -194,7 +194,7 @@ export function QuestionPreview({
   timeLimit,
   backgroundImage,
   previewMode = true,
-  onQuestionLocationChange = () => {},
+  onQuestionLocationChange = () => { },
   onQuestionTextChange,
   onOptionChange,
   onChangeQuestion,
@@ -207,8 +207,8 @@ export function QuestionPreview({
   onUpdateActivityBackground,
   onAddQuestion,
   onDeleteActivity,
-  onAddOption = () => {},
-  onDeleteOption = () => {},
+  onAddOption = () => { },
+  onDeleteOption = () => { },
   onReorderOptions,
   leftColumnName,
   rightColumnName,
@@ -268,6 +268,43 @@ export function QuestionPreview({
 
   // Add toast hook
   const { toast } = useToast();
+
+  // Add state for reorder feedback
+  const [isReordering, setIsReordering] = useState(false);
+
+  // Listen for reorder events to show feedback
+  useEffect(() => {
+    const handleReorderSuccess = (event: CustomEvent) => {
+      setIsReordering(false);
+      toast({
+        title: "✅ Sắp xếp thành công",
+        description: "Thứ tự các bước đã được cập nhật.",
+        duration: 2000,
+      });
+    };
+
+    const handleReorderError = (event: CustomEvent) => {
+      setIsReordering(false);
+      toast({
+        title: "❌ Lỗi sắp xếp",
+        description: "Không thể cập nhật thứ tự. Vui lòng thử lại.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('reorder:success', handleReorderSuccess as EventListener);
+      window.addEventListener('reorder:error', handleReorderError as EventListener);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('reorder:success', handleReorderSuccess as EventListener);
+        window.removeEventListener('reorder:error', handleReorderError as EventListener);
+      }
+    };
+  }, [toast]);
 
   const activeQuestion = questions[activeQuestionIndex];
   const [currentQuestion, setCurrentQuestion] = useState(activeQuestion);
@@ -488,8 +525,8 @@ export function QuestionPreview({
       // Luôn ưu tiên sử dụng màu từ global storage trước
       const savedColor =
         typeof window !== 'undefined' &&
-        window.savedBackgroundColors &&
-        activity.id
+          window.savedBackgroundColors &&
+          activity.id
           ? window.savedBackgroundColors[activity.id]
           : null;
 
@@ -1021,13 +1058,13 @@ export function QuestionPreview({
                     ? viewMode === 'mobile'
                       ? 300
                       : viewMode === 'tablet'
-                      ? 650
-                      : 812
+                        ? 650
+                        : 812
                     : viewMode === 'mobile'
-                    ? 300
-                    : viewMode === 'tablet'
-                    ? 650
-                    : 812
+                      ? 300
+                      : viewMode === 'tablet'
+                        ? 650
+                        : 812
                 }
                 height={460}
                 zoom={1}
@@ -1067,7 +1104,7 @@ export function QuestionPreview({
                 <DynamicLocationQuestionEditor
                   questionText={question.question_text}
                   locationAnswers={getLocationAnswers(question, activity)}
-                  onLocationChange={() => {}} // Read-only, so no-op
+                  onLocationChange={() => { }} // Read-only, so no-op
                   questionIndex={questionIndex}
                   readonly={true}
                 />
@@ -1369,8 +1406,8 @@ export function QuestionPreview({
                         option.is_correct
                           ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                           : isTrue
-                          ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                          : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                            ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                            : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
                         // Only show pointer cursor when edit mode is enabled
                         editMode !== null
                           ? 'cursor-pointer hover:shadow-md'
@@ -1540,101 +1577,181 @@ export function QuestionPreview({
               </div>
             ) : question.question_type === 'reorder' ? (
               <div className="py-3 px-4 bg-white dark:bg-black">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 flex items-center">
-                  <MoveVertical className="h-3.5 w-3.5 mr-1.5" />
-                  <span>
-                    {editMode !== null
-                      ? 'Drag items to reorder them (drag & drop enabled in edit mode)'
-                      : 'Drag items to reorder them'}
-                  </span>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 flex items-center justify-between">
+                  <div className="flex items-center">
+                    <MoveVertical className="h-3.5 w-3.5 mr-1.5" />
+                    <span>
+                      {editMode !== null
+                        ? 'Kéo thả để sắp xếp các bước (chế độ chỉnh sửa đã bật)'
+                        : 'Thứ tự các bước - Bật chế độ chỉnh sửa để sắp xếp lại'}
+                    </span>
+                  </div>
+
+                  {editMode !== null && (
+                    <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-xs">Drag handle để di chuyển</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Pastel colors for steps */}
+                {/* Enhanced drag and drop for reorder questions */}
                 {editMode !== null ? (
-                  <DragDropContext
-                    onDragEnd={(result: DropResult) => {
-                      if (
-                        !result.destination ||
-                        result.destination.index === result.source.index
-                      ) {
-                        return;
-                      }
-                      if (onReorderOptions) {
-                        onReorderOptions(
-                          result.source.index,
-                          result.destination.index
-                        );
-                      }
-                    }}
-                  >
-                    <Droppable droppableId="reorder-preview-droppable">
-                      {(provided) => (
-                        <div
-                          {...provided.droppableProps}
-                          ref={provided.innerRef}
-                          className="p-4 space-y-2"
-                        >
-                          {[...question.options]
-                            .sort((a, b) => a.display_order - b.display_order)
-
-                            .map((option, index) => (
-                              <Draggable
-                                key={
-                                  option.id || `option-${option.display_order}`
-                                }
-                                draggableId={
-                                  option.id || `option-${option.display_order}`
-                                }
-                                index={index}
-                              >
-                                {(provided, snapshot) => (
-                                  <div
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    className={cn(
-                                      'flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-md border transition-all',
-                                      snapshot.isDragging
-                                        ? 'border-primary ring-1 ring-primary/30 bg-primary/5 shadow-xl scale-105'
-                                        : 'border-gray-200 dark:border-gray-700'
-                                    )}
-                                    style={{
-                                      ...provided.draggableProps.style,
-                                      marginBottom: '8px',
-                                    }}
-                                  >
-                                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
-                                      {index + 1}
-                                    </div>
-                                    <span className="text-sm">
-                                      {option.option_text}
-                                    </span>
-                                    <div className="ml-auto flex-shrink-0">
-                                      <GripVertical className="h-4 w-4 text-gray-400" />
-                                    </div>
-                                  </div>
-                                )}
-                              </Draggable>
-                            ))}
-                          {provided.placeholder}
+                  <div className="relative">
+                    {isReordering && (
+                      <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+                        <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                          <span className="text-sm font-medium">Đang cập nhật...</span>
                         </div>
-                      )}
-                    </Droppable>
-                  </DragDropContext>
+                      </div>
+                    )}
+
+                    <DragDropContext
+                      onDragStart={() => {
+                        console.log("🎯 REORDER PREVIEW: Drag started");
+                      }}
+                      onDragEnd={(result: DropResult) => {
+                        console.log("🎯 REORDER PREVIEW: Drag operation completed", {
+                          source: result.source,
+                          destination: result.destination,
+                          reason: result.reason,
+                          questionIndex: questionIndex
+                        });
+
+                        if (
+                          !result.destination ||
+                          result.destination.index === result.source.index
+                        ) {
+                          console.log("🎯 REORDER PREVIEW: No reorder needed (same position or no destination)");
+                          return;
+                        }
+
+                        console.log("🎯 REORDER PREVIEW: Calling onReorderOptions", {
+                          sourceIndex: result.source.index,
+                          destinationIndex: result.destination.index,
+                          questionIndex: questionIndex
+                        });
+
+                        // Set loading state
+                        setIsReordering(true);
+
+                        if (onReorderOptions) {
+                          onReorderOptions(
+                            result.source.index,
+                            result.destination.index
+                          );
+                        }
+                      }}
+                    >
+                      <Droppable droppableId={`reorder-preview-droppable-${questionIndex}`}>
+                        {(provided, snapshot) => (
+                          <div
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                            className={cn(
+                              "relative space-y-2",
+                              snapshot.isDraggingOver && "bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-2"
+                            )}
+                          >
+                            {/* Connecting line for visual guidance */}
+                            {question.options.length > 1 && (
+                              <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gradient-to-b from-gray-300 via-gray-400 to-gray-300 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 z-0"></div>
+                            )}
+
+                            {[...question.options]
+                              .sort((a, b) => a.display_order - b.display_order)
+                              .map((option, index) => (
+                                <Draggable
+                                  key={
+                                    option.id || `option-${option.display_order}-${questionIndex}`
+                                  }
+                                  draggableId={
+                                    option.id || `option-${option.display_order}-${questionIndex}`
+                                  }
+                                  index={index}
+                                >
+                                  {(provided, snapshot) => (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      className={cn(
+                                        'flex items-center gap-2 p-1.5 relative mb-2 transition-all duration-300',
+                                        snapshot.isDragging ? 'z-50 scale-105' : 'z-10'
+                                      )}
+                                      style={{
+                                        ...provided.draggableProps.style,
+                                      }}
+                                    >
+                                      {/* Step number */}
+                                      <div className={cn(
+                                        "flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-600 text-sm font-semibold text-white shadow-lg relative z-10 transition-all duration-300",
+                                        snapshot.isDragging && 'scale-110 shadow-xl ring-2 ring-blue-400'
+                                      )}>
+                                        {index + 1}
+                                      </div>
+
+                                      {/* Step content */}
+                                      <div
+                                        className={cn(
+                                          'flex-1 bg-white dark:bg-gray-800 rounded-lg p-3 border flex items-center gap-2 transition-all duration-300',
+                                          snapshot.isDragging
+                                            ? 'border-blue-400 ring-2 ring-blue-400/30 bg-blue-50/50 dark:bg-blue-900/20 shadow-xl scale-[1.02]'
+                                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md'
+                                        )}
+                                      >
+                                        <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">
+                                          {option.option_text}
+                                        </span>
+
+                                        {/* Drag handle */}
+                                        <div
+                                          {...provided.dragHandleProps}
+                                          className={cn(
+                                            "w-6 h-6 flex-shrink-0 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center cursor-grab text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors",
+                                            snapshot.isDragging && "cursor-grabbing bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-400"
+                                          )}
+                                        >
+                                          <GripVertical className="h-3 w-3" />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </Draggable>
+                              ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  </div>
                 ) : (
-                  <div className="p-4 space-y-2">
+                  <div className="space-y-2">
+                    {/* Static view when edit mode is off */}
+                    {question.options.length > 1 && (
+                      <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gray-300 dark:bg-gray-600 z-0"></div>
+                    )}
+
                     {[...question.options]
                       .sort((a, b) => a.display_order - b.display_order)
-
                       .map((option, index) => (
                         <div
                           key={option.id || `option-${index}`}
-                          className="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
+                          className="flex items-center gap-2 p-1.5 relative mb-2"
                         >
-                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
+                          {/* Step number */}
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 dark:from-gray-600 dark:to-gray-800 flex items-center justify-center border border-gray-600 dark:border-gray-500 text-sm font-semibold text-white shadow-sm relative z-10">
                             {index + 1}
                           </div>
-                          <span className="text-sm">{option.option_text}</span>
+
+                          {/* Step content */}
+                          <div className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                              {option.option_text}
+                            </span>
+                          </div>
                         </div>
                       ))}
                   </div>
@@ -1658,9 +1775,14 @@ export function QuestionPreview({
                       <line x1="12" y1="8" x2="12" y2="12"></line>
                       <line x1="12" y1="16" x2="12.01" y2="16"></line>
                     </svg>
-                    <span>
-                      Students must arrange the items in the correct sequence.
-                    </span>
+                    <div>
+                      <div className="font-medium mb-1">Hướng dẫn sử dụng:</div>
+                      <ul className="space-y-1">
+                        <li>• Bật chế độ chỉnh sửa để kéo thả sắp xếp lại</li>
+                        <li>• Giữ vào biểu tượng <GripVertical className="inline h-3 w-3 mx-1" /> để kéo</li>
+                        <li>• Thứ tự sẽ được lưu tự động khi thả</li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1675,12 +1797,12 @@ export function QuestionPreview({
                   question.options.length <= 2
                     ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
                     : question.options.length <= 4
-                    ? 'grid grid-cols-2 gap-3'
-                    : 'grid grid-cols-2 gap-3 md:grid-cols-3',
+                      ? 'grid grid-cols-2 gap-3'
+                      : 'grid grid-cols-2 gap-3 md:grid-cols-3',
                   viewMode === 'mobile' && 'grid-cols-1',
                   viewMode === 'tablet' &&
-                    question.options.length > 4 &&
-                    'grid-cols-2'
+                  question.options.length > 4 &&
+                  'grid-cols-2'
                 )}
               >
                 {/* Direct rendering of choice options */}
@@ -2023,7 +2145,7 @@ export function QuestionPreview({
 
       activitiesApi
         .updateTypeAnswerQuiz(question.activity_id, payload)
-        .then(() => {})
+        .then(() => { })
         .catch((error) => {
           console.error('Error updating correct answer:', error);
         })
@@ -2814,14 +2936,14 @@ interface OptionItemProps {
   option: QuizOption;
   index: number;
   questionType:
-    | 'multiple_choice'
-    | 'multiple_response'
-    | 'true_false'
-    | 'text_answer'
-    | 'slide'
-    | 'info_slide'
-    | 'reorder'
-    | 'location';
+  | 'multiple_choice'
+  | 'multiple_response'
+  | 'true_false'
+  | 'text_answer'
+  | 'slide'
+  | 'info_slide'
+  | 'reorder'
+  | 'location';
   questionIndex: number;
   onOptionEdit?: (
     questionIndex: number,

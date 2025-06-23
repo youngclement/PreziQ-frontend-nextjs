@@ -278,6 +278,12 @@ export function useOptionOperations(
   ) => {
     if (!activity || activity.activity_type_id !== "QUIZ_REORDER") return;
 
+    console.log("🔄 REORDER: Starting reorder operation", {
+      sourceIndex,
+      destinationIndex,
+      activityId: activity.id,
+    });
+
     const updatedQuestions = [...questions];
     const activeQuestion = updatedQuestions[activeQuestionIndex];
 
@@ -287,6 +293,11 @@ export function useOptionOperations(
       sourceIndex,
       destinationIndex
     );
+
+    console.log("🔄 REORDER: Options reordered locally", {
+      originalOrder: activeQuestion.options.map((opt) => opt.option_text),
+      newOrder: reorderedOptions.map((opt) => opt.option_text),
+    });
 
     // Update the question with the new options array
     updatedQuestions[activeQuestionIndex] = {
@@ -305,8 +316,14 @@ export function useOptionOperations(
         pointType: "STANDARD",
         correctOrder: reorderedOptions.map((opt) => opt.option_text),
       });
+
+      console.log("🔄 REORDER: API update successful", {
+        activityId: activity.id,
+        newOrder: reorderedOptions.map((opt) => opt.option_text),
+        response: response?.data,
+      });
     } catch (error) {
-      console.error("Error updating reorder steps:", error);
+      console.error("🔄 REORDER: Error updating reorder steps:", error);
     }
   };
 
