@@ -47,6 +47,7 @@ import { format, parseISO } from 'date-fns';
 import { toast as sonnerToast } from 'sonner';
 import dynamic from 'next/dynamic';
 import { getCroppedImg } from '../../../utils/crop-image';
+import { useLanguage } from '@/contexts/language-context';
 
 // Dùng dynamic import cho Cropper để tránh lỗi SSR
 const Cropper = dynamic(
@@ -103,60 +104,6 @@ interface CropArea {
   height: number;
 }
 
-// Schema validation - thêm avatarFile
-const profileFormSchema = z.object({
-  firstName: z
-    .string()
-    .min(1, {
-      message: 'Tên không được để trống.',
-    })
-    .max(50, {
-      message: 'Tên không được vượt quá 50 ký tự.',
-    }),
-  lastName: z
-    .string()
-    .min(1, {
-      message: 'Họ không được để trống.',
-    })
-    .max(50, {
-      message: 'Họ không được vượt quá 50 ký tự.',
-    }),
-  nickname: z
-    .string()
-    .max(30, {
-      message: 'Biệt danh không được vượt quá 30 ký tự.',
-    })
-    .optional()
-    .or(z.literal('')),
-  birthDate: z.string().optional(),
-  gender: z.string().optional(),
-  nationality: z
-    .string()
-    .max(50, {
-      message: 'Quốc tịch không được vượt quá 50 ký tự.',
-    })
-    .optional(),
-  avatar: z.string().optional(),
-  avatarFile: z
-    .instanceof(File)
-    .optional()
-    .refine(
-      (file) => !file || file.size >= 1024, // 1KB
-      'File phải lớn hơn 1KB'
-    )
-    .refine(
-      (file) => !file || file.size <= 5 * 1024 * 1024, // 5MB
-      'File không được vượt quá 5MB'
-    )
-    .refine(
-      (file) =>
-        !file || ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type),
-      'Chỉ chấp nhận file định dạng JPG, JPEG hoặc PNG'
-    ),
-});
-
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
-
 interface UserProfileFormProps {
   userProfile: UserProfile;
   onProfileUpdated: (profile: UserProfile) => void;
@@ -166,6 +113,62 @@ export function UserProfileForm({
   userProfile,
   onProfileUpdated,
 }: UserProfileFormProps) {
+  const { t } = useLanguage();
+
+  // Schema validation - giữ nguyên logic gốc nhưng dùng text đa ngôn ngữ
+  const profileFormSchema = z.object({
+    firstName: z
+      .string()
+      .min(1, {
+        message: t('profile.firstNameRequired'),
+      })
+      .max(50, {
+        message: t('profile.firstNameTooLong'),
+      }),
+    lastName: z
+      .string()
+      .min(1, {
+        message: t('profile.lastNameRequired'),
+      })
+      .max(50, {
+        message: t('profile.lastNameTooLong'),
+      }),
+    nickname: z
+      .string()
+      .max(30, {
+        message: t('profile.nicknameTooLong'),
+      })
+      .optional()
+      .or(z.literal('')),
+    birthDate: z.string().optional(),
+    gender: z.string().optional(),
+    nationality: z
+      .string()
+      .max(50, {
+        message: t('profile.nationalityTooLong'),
+      })
+      .optional(),
+    avatar: z.string().optional(),
+    avatarFile: z
+      .instanceof(File)
+      .optional()
+      .refine(
+        (file) => !file || file.size >= 1024, // 1KB
+        t('profile.fileMinSize')
+      )
+      .refine(
+        (file) => !file || file.size <= 5 * 1024 * 1024, // 5MB
+        t('profile.fileMaxSize')
+      )
+      .refine(
+        (file) =>
+          !file || ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type),
+        t('profile.fileType')
+      ),
+  });
+
+  type ProfileFormValues = z.infer<typeof profileFormSchema>;
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(
@@ -196,7 +199,7 @@ export function UserProfileForm({
     // sonnerToast.info('Component đã được tải');
   }, []);
 
-  // Fetch countries data
+  // Fetch countries data - khôi phục logic gốc
   useEffect(() => {
     const fetchCountries = async () => {
       setIsLoadingCountries(true);
@@ -224,14 +227,14 @@ export function UserProfileForm({
         setCountries(sortedData);
       } catch (error) {
         console.error('Lỗi khi tải danh sách quốc gia:', error);
-        sonnerToast.error('Không thể tải danh sách quốc gia');
+        sonnerToast.error(t('profile.couldNotLoadCountries'));
       } finally {
         setIsLoadingCountries(false);
       }
     };
 
     fetchCountries();
-  }, []);
+  }, [t]);
 
   // Hàm format ngày từ ISO string sang định dạng yyyy-MM-dd
   const formatDate = (dateString?: string) => {
@@ -259,7 +262,7 @@ export function UserProfileForm({
     },
   });
 
-  // Logic xử lý file change từ users-action-dialog
+  // Logic xử lý file change từ users-action-dialog - giữ nguyên
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -267,8 +270,8 @@ export function UserProfileForm({
     // Check file type
     if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
       toast({
-        title: 'Định dạng không hỗ trợ',
-        description: 'Chỉ chấp nhận file định dạng JPG, JPEG hoặc PNG',
+        title: t('profile.fileFormatNotSupported'),
+        description: t('profile.fileType'),
         variant: 'destructive',
       });
       return;
@@ -277,8 +280,8 @@ export function UserProfileForm({
     // Check file size
     if (file.size < 1024) {
       toast({
-        title: 'File quá nhỏ',
-        description: 'File phải lớn hơn 1KB',
+        title: t('profile.fileTooSmall'),
+        description: t('profile.fileMinSize'),
         variant: 'destructive',
       });
       return;
@@ -286,8 +289,8 @@ export function UserProfileForm({
 
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: 'File quá lớn',
-        description: 'File không được vượt quá 5MB',
+        title: t('profile.fileTooLarge'),
+        description: t('profile.fileMaxSize'),
         variant: 'destructive',
       });
       return;
@@ -317,7 +320,7 @@ export function UserProfileForm({
       );
 
       if (!croppedImageBlob) {
-        throw new Error('Không thể tạo ảnh đã cắt');
+        throw new Error(t('profile.cannotCreateCroppedImage'));
       }
 
       // Tạo file từ blob
@@ -351,31 +354,31 @@ export function UserProfileForm({
 
           // Hiển thị thông báo thành công
           toast({
-            title: 'Thành công',
-            description: 'Đã tải lên ảnh đại diện đã cắt',
+            title: t('profile.uploadSuccess'),
+            description: t('profile.cropUploadSuccess'),
           });
 
           // Đóng cropper
           setShowCropper(false);
         } else {
           toast({
-            title: 'Lỗi',
-            description: 'Không tìm thấy URL file trong phản hồi',
+            title: t('profile.genericError'),
+            description: t('profile.fileUrlNotFound'),
             variant: 'destructive',
           });
         }
       } else {
         toast({
-          title: 'Lỗi',
-          description: 'Không thể tải lên hình ảnh. Vui lòng thử lại.',
+          title: t('profile.genericError'),
+          description: t('profile.uploadError'),
           variant: 'destructive',
         });
       }
     } catch (error) {
       console.error('Error uploading cropped file:', error);
       toast({
-        title: 'Lỗi',
-        description: 'Đã xảy ra lỗi khi tải lên. Vui lòng thử lại.',
+        title: t('profile.genericError'),
+        description: t('profile.uploadError'),
         variant: 'destructive',
       });
     } finally {
@@ -461,7 +464,7 @@ export function UserProfileForm({
       if (Object.keys(changedFields).length === 0) {
         toast({
           title: 'Thông báo',
-          description: 'Không có thông tin nào được thay đổi.',
+          description: t('profile.noChanges'),
         });
         setIsSubmitting(false);
         return;
@@ -490,7 +493,7 @@ export function UserProfileForm({
           // Không throw lỗi vì cập nhật đã thành công, chỉ ghi log
           toast({
             title: 'Cảnh báo',
-            description: 'Cập nhật thành công nhưng không thể xóa avatar cũ.',
+            description: t('profile.oldAvatarDeleteWarning'),
             variant: 'destructive',
           });
         }
@@ -530,13 +533,13 @@ export function UserProfileForm({
 
       toast({
         title: 'Thành công',
-        description: 'Thông tin cá nhân đã được cập nhật',
+        description: t('profile.updateSuccess'),
       });
     } catch (error) {
       console.error('Lỗi khi cập nhật thông tin:', error);
       toast({
         title: 'Lỗi',
-        description: 'Không thể cập nhật thông tin. Vui lòng thử lại sau.',
+        description: t('profile.updateError'),
         variant: 'destructive',
       });
     } finally {
@@ -562,10 +565,10 @@ export function UserProfileForm({
     <Card className='border-0 shadow-none'>
       <CardHeader className='space-y-1'>
         <CardTitle className='text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'>
-          Thông tin cá nhân
+          {t('profile.personalInfoTitle')}
         </CardTitle>
         <CardDescription className='text-base'>
-          Cập nhật và quản lý thông tin cá nhân của bạn
+          {t('profile.personalInfoDescription')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -602,14 +605,14 @@ export function UserProfileForm({
             </div>
             <div className='text-center space-y-2'>
               <p className='text-xs sm:text-sm text-gray-500 dark:text-gray-400'>
-                Nhấn vào ảnh để thay đổi
+                {t('profile.clickToChange')}
               </p>
               <h3 className='text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200'>
                 {userProfile?.email}
               </h3>
               {userProfile?.createdAt && (
                 <p className='text-xs sm:text-sm text-muted-foreground'>
-                  Thành viên từ{' '}
+                  {t('profile.memberSince')}{' '}
                   {new Date(userProfile.createdAt).toLocaleDateString('vi-VN')}
                 </p>
               )}
@@ -618,7 +621,9 @@ export function UserProfileForm({
             {/* Cropper Section */}
             {showCropper && (
               <div className='mt-4 border rounded-md p-4 bg-slate-50 w-full'>
-                <h4 className='text-sm font-medium mb-2'>Cắt ảnh đại diện</h4>
+                <h4 className='text-sm font-medium mb-2'>
+                  {t('profile.cropAvatar')}
+                </h4>
                 <div className='relative h-[300px] w-full mb-4'>
                   {originalImageUrl && (
                     <Cropper
@@ -638,7 +643,7 @@ export function UserProfileForm({
                   )}
                 </div>
                 <div className='flex items-center justify-between mb-4'>
-                  <span className='text-xs'>Zoom:</span>
+                  <span className='text-xs'>{t('profile.zoom')}:</span>
                   <input
                     type='range'
                     value={zoom}
@@ -661,7 +666,7 @@ export function UserProfileForm({
                       setAvatarFile(null);
                     }}
                   >
-                    Hủy
+                    {t('profile.cancel')}
                   </Button>
                   <Button
                     type='button'
@@ -670,7 +675,9 @@ export function UserProfileForm({
                     onClick={uploadCroppedImage}
                     disabled={isUploadingAvatar}
                   >
-                    {isUploadingAvatar ? 'Đang xử lý...' : 'Cắt và tải lên'}
+                    {isUploadingAvatar
+                      ? t('profile.processing')
+                      : t('profile.cropAndUpload')}
                   </Button>
                 </div>
               </div>
@@ -688,11 +695,11 @@ export function UserProfileForm({
                     <FormItem>
                       <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
                         <User className='h-4 w-4' />
-                        Họ
+                        {t('profile.lastName')}
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder='Nguyễn'
+                          placeholder={t('profile.lastNamePlaceholder')}
                           {...field}
                           className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'
                         />
@@ -710,11 +717,11 @@ export function UserProfileForm({
                     <FormItem>
                       <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
                         <User className='h-4 w-4' />
-                        Tên
+                        {t('profile.firstName')}
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder='Văn A'
+                          placeholder={t('profile.firstNamePlaceholder')}
                           {...field}
                           className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'
                         />
@@ -731,11 +738,11 @@ export function UserProfileForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                        Biệt danh
+                        {t('profile.nickname')}
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder='Nhập biệt danh (tùy chọn)'
+                          placeholder={t('profile.nicknamePlaceholder')}
                           {...field}
                           className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'
                         />
@@ -753,7 +760,7 @@ export function UserProfileForm({
                     <FormItem>
                       <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
                         <Calendar className='h-4 w-4' />
-                        Ngày sinh
+                        {t('profile.birthDate')}
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -774,7 +781,7 @@ export function UserProfileForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                        Giới tính
+                        {t('profile.gender')}
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}
@@ -782,13 +789,21 @@ export function UserProfileForm({
                       >
                         <FormControl>
                           <SelectTrigger className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'>
-                            <SelectValue placeholder='Chọn giới tính' />
+                            <SelectValue
+                              placeholder={t('profile.selectGender')}
+                            />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value='Nam'>Nam</SelectItem>
-                          <SelectItem value='Nữ'>Nữ</SelectItem>
-                          <SelectItem value='Khác'>Khác</SelectItem>
+                          <SelectItem value='male'>
+                            {t('profile.male')}
+                          </SelectItem>
+                          <SelectItem value='female'>
+                            {t('profile.female')}
+                          </SelectItem>
+                          <SelectItem value='other'>
+                            {t('profile.other')}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage className='text-xs text-red-500 dark:text-red-400' />
@@ -804,19 +819,20 @@ export function UserProfileForm({
                     <FormItem>
                       <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
                         <Globe className='h-4 w-4' />
-                        Quốc tịch
+                        {t('profile.nationality')}
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
+                        disabled={isLoadingCountries}
                       >
                         <FormControl>
                           <SelectTrigger className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'>
                             <SelectValue
                               placeholder={
                                 isLoadingCountries
-                                  ? 'Đang tải...'
-                                  : 'Chọn quốc tịch'
+                                  ? t('profile.loading')
+                                  : t('profile.selectNationality')
                               }
                             />
                           </SelectTrigger>
@@ -845,10 +861,10 @@ export function UserProfileForm({
                   {isSubmitting || isUploadingAvatar ? (
                     <>
                       <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      Đang cập nhật...
+                      {t('profile.updating')}
                     </>
                   ) : (
-                    'Cập nhật thông tin'
+                    t('profile.updateInfo')
                   )}
                 </Button>
               </div>
