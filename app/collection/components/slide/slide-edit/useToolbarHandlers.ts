@@ -101,7 +101,6 @@ export const ToolbarHandlers = (
       entryAnimationDuration: currentAnimationDuration,
       entryAnimationDelay: currentAnimationDelay,
     };
-    // console.log("Payload sent to API:", JSON.parse(payload.content));
     slidesApi
       .updateSlidesElement(slideId, slideElementId, payload)
       .then((res) => {
@@ -423,12 +422,6 @@ export const ToolbarHandlers = (
     const start = textbox.selectionStart || 0;
     const end = textbox.selectionEnd || 0;
 
-    // console.log('Selected range:', {
-    //   start: textbox.selectionStart,
-    //   end: textbox.selectionEnd,
-    //   text: textbox.text!.slice(textbox.selectionStart!, textbox.selectionEnd!),
-    // });
-
     if (start === end) return;
 
     if (start === 0 && end === textbox.text!.length) {
@@ -488,13 +481,6 @@ export const ToolbarHandlers = (
       ? textbox.selectionEnd || textbox.text!.length
       : textbox.text!.length;
 
-    // console.log('Applying color:', {
-    //   color: e.detail.color,
-    //   isEditing: textbox.isEditing,
-    //   start,
-    //   end,
-    // });
-
     if (textbox.isEditing && start !== end) {
       // Áp dụng màu cho vùng chọn
       applyStyleToSelection(textbox, 'fill', e.detail.color);
@@ -540,12 +526,6 @@ export const ToolbarHandlers = (
   function emitFormatState(startIdx?: number, endIdx?: number) {
     const obj = canvas.getActiveObject();
     let textTransform = 'none';
-
-    // console.log('emitFormatState called', {
-    //   startIdx,
-    //   endIdx,
-    //   isEditing: obj?.type === 'textbox' && (obj as fabric.Textbox).isEditing,
-    // });
 
     if (obj && obj.type === 'textbox') {
       const tb = obj as fabric.Textbox;
@@ -634,17 +614,6 @@ export const ToolbarHandlers = (
             underlineActive && allStyles.every((s) => s.underline === true);
         }
       }
-
-      // console.log('Emitting format state:', {
-      //   bold: boldActive,
-      //   italic: italicActive,
-      //   underline: underlineActive,
-      //   alignment,
-      //   textTransform,
-      //   fontFamily,
-      //   fontSize,
-      //   fill,
-      // });
 
       window.dispatchEvent(
         new CustomEvent('toolbar:format-change', {
