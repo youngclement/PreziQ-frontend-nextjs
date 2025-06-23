@@ -643,7 +643,7 @@ export function QuizMatchingPairViewer({
                       layout
                     >
                       {/* Connection indicator */}
-                      {isConnected && (
+                      {/* {isConnected && (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
@@ -651,7 +651,7 @@ export function QuizMatchingPairViewer({
                         >
                           <Link className='w-3 h-3 text-gray-600' />
                         </motion.div>
-                      )}
+                      )} */}
 
                       {/* Selection indicator */}
                       {isSelected && !showCorrectAnswer && (
@@ -770,7 +770,7 @@ export function QuizMatchingPairViewer({
                       layout
                     >
                       {/* Connection indicator */}
-                      {isConnected && (
+                      {/* {isConnected && (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
@@ -778,7 +778,7 @@ export function QuizMatchingPairViewer({
                         >
                           <Link className='w-3 h-3 text-gray-600' />
                         </motion.div>
-                      )}
+                      )} */}
 
                       {/* Selection indicator */}
                       {isSelected && !showCorrectAnswer && (

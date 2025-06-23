@@ -195,9 +195,11 @@ export function UserProfileForm({
   // Test toast khi component mount
   useEffect(() => {
     console.log('UserProfileForm mounted');
+    console.log('UserProfile from props:', userProfile);
+    console.log('UserProfile birthDate:', userProfile?.birthDate);
     // Test toast để đảm bảo nó hoạt động
     // sonnerToast.info('Component đã được tải');
-  }, []);
+  }, [userProfile]);
 
   // Fetch countries data - khôi phục logic gốc
   useEffect(() => {
@@ -240,13 +242,63 @@ export function UserProfileForm({
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
     try {
-      const date = parseISO(dateString);
-      return format(date, 'yyyy-MM-dd');
+      console.log('Original dateString:', dateString);
+
+      // Xử lý format từ API: "2025-06-11 07:00:00 AM"
+      // Chuyển thành format chuẩn để parse
+      let formattedDateString = dateString;
+
+      // Kiểm tra nếu là format "YYYY-MM-DD HH:mm:ss AM/PM"
+      if (dateString.includes(' AM') || dateString.includes(' PM')) {
+        // Tách lấy phần ngày và chuyển thành ISO format
+        const datePart = dateString.split(' ')[0]; // "2025-06-11"
+        const timePart = dateString.split(' ')[1]; // "07:00:00"
+        const ampm = dateString.split(' ')[2]; // "AM"
+
+        // Chuyển thành format ISO
+        formattedDateString = `${datePart}T${timePart}${
+          ampm === 'AM' ? '+00:00' : '+00:00'
+        }`;
+        console.log('Formatted dateString:', formattedDateString);
+
+        // Hoặc đơn giản hơn, chỉ lấy phần ngày
+        const simpleDate = datePart;
+        console.log('Simple date:', simpleDate);
+        return simpleDate;
+      }
+
+      // Nếu là ISO string thì parse như cũ
+      const date = parseISO(formattedDateString);
+      const result = format(date, 'yyyy-MM-dd');
+      console.log('Parsed result:', result);
+      return result;
     } catch (error) {
       console.error('Lỗi khi format ngày:', error);
+      console.error('Input dateString:', dateString);
+
+      // Fallback: thử extract ngày từ string nếu có pattern YYYY-MM-DD
+      const dateMatch = dateString.match(/(\d{4}-\d{2}-\d{2})/);
+      if (dateMatch) {
+        console.log('Fallback date:', dateMatch[1]);
+        return dateMatch[1];
+      }
+
       return '';
     }
   };
+
+  // Debug useEffect sau khi formatDate đã được định nghĩa
+  useEffect(() => {
+    if (userProfile?.birthDate) {
+      console.log('=== DEBUG BIRTHDATE ===');
+      console.log('Raw birthDate từ API:', userProfile.birthDate);
+      console.log(
+        'Formatted birthDate cho form:',
+        formatDate(userProfile.birthDate)
+      );
+      console.log('========================');
+    }
+  }, [userProfile?.birthDate]);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
