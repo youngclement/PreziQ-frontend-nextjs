@@ -191,41 +191,73 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
       if (isEdit && currentRow?.userId) {
         const changedFields: any = {};
 
-        // Kiểm tra từng trường và chỉ thêm vào changedFields nếu có thay đổi
-        if (values.email !== currentRow.email) {
+        // Helper function để kiểm tra giá trị có rỗng không
+        const isEmpty = (value: any) => {
+          return value === '' || value === null || value === undefined;
+        };
+
+        // Helper function để kiểm tra trường có thay đổi không
+        const hasChanged = (newValue: any, oldValue: any) => {
+          // Nếu cả hai đều rỗng thì không coi là thay đổi
+          if (isEmpty(newValue) && isEmpty(oldValue)) {
+            return false;
+          }
+          return newValue !== oldValue;
+        };
+
+        // Kiểm tra từng trường và chỉ thêm vào changedFields nếu có thay đổi và có giá trị
+        if (hasChanged(values.email, currentRow.email)) {
           changedFields.email = values.email;
         }
+
         if (
-          values.phoneNumber !== currentRow.phoneNumber &&
-          !(
-            (!currentRow.phoneNumber || currentRow.phoneNumber === '') &&
-            values.phoneNumber === ''
-          )
+          hasChanged(values.phoneNumber, currentRow.phoneNumber) &&
+          !isEmpty(values.phoneNumber)
         ) {
           changedFields.phoneNumber = values.phoneNumber;
         }
-        if (values.firstName !== currentRow.firstName) {
+
+        if (hasChanged(values.firstName, currentRow.firstName)) {
           changedFields.firstName = values.firstName;
         }
-        if (values.lastName !== currentRow.lastName) {
+
+        if (hasChanged(values.lastName, currentRow.lastName)) {
           changedFields.lastName = values.lastName;
         }
-        if (values.nickname !== currentRow.nickname) {
+
+        if (
+          hasChanged(values.nickname, currentRow.nickname) &&
+          !isEmpty(values.nickname)
+        ) {
           changedFields.nickname = values.nickname;
         }
-        if (avatarUrl !== currentRow.avatar) {
+
+        if (hasChanged(avatarUrl, currentRow.avatar) && !isEmpty(avatarUrl)) {
           changedFields.avatar = avatarUrl;
         }
-        if (values.birthDate !== currentRow.birthDate) {
+
+        if (
+          hasChanged(values.birthDate, currentRow.birthDate) &&
+          !isEmpty(values.birthDate)
+        ) {
           changedFields.birthDate = values.birthDate;
         }
-        if (values.gender !== currentRow.gender) {
+
+        if (
+          hasChanged(values.gender, currentRow.gender) &&
+          !isEmpty(values.gender)
+        ) {
           changedFields.gender = values.gender;
         }
-        if (values.nationality !== currentRow.nationality) {
+
+        if (
+          hasChanged(values.nationality, currentRow.nationality) &&
+          !isEmpty(values.nationality)
+        ) {
           changedFields.nationality = values.nationality;
         }
-        if (values.isVerified !== currentRow.isVerified) {
+
+        if (hasChanged(values.isVerified, currentRow.isVerified)) {
           changedFields.isVerified = values.isVerified;
         }
 
@@ -245,13 +277,18 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
 
         // So sánh mảng roleIds
         const hasRoleChanged =
-          JSON.stringify(values.roleIds) !== JSON.stringify(currentRoleIds);
-        if (hasRoleChanged) {
+          JSON.stringify(values.roleIds.filter((id) => !isEmpty(id))) !==
+          JSON.stringify(currentRoleIds);
+        if (
+          hasRoleChanged &&
+          values.roleIds.length > 0 &&
+          !isEmpty(values.roleIds[0])
+        ) {
           console.log('roleIds đã thay đổi:', {
             mới: values.roleIds,
             cũ: currentRoleIds,
           });
-          changedFields.roleIds = values.roleIds;
+          changedFields.roleIds = values.roleIds.filter((id) => !isEmpty(id));
         }
 
         // Nếu không có trường nào thay đổi, không gửi request
@@ -264,7 +301,12 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
           return;
         }
 
-        const oldAvatar = currentRow.avatar && currentRow.avatar.trim() !== '' ? currentRow.avatar : null;
+        console.log('Payload sẽ gửi:', changedFields);
+
+        const oldAvatar =
+          currentRow.avatar && currentRow.avatar.trim() !== ''
+            ? currentRow.avatar
+            : null;
 
         await updateUser(currentRow.userId, changedFields);
 
@@ -283,12 +325,46 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
             });
           }
         }
-
       } else {
-        const userData = {
-          ...values,
-        };
-        delete userData.avatarFile; // Vẫn xóa trường avatarFile vì không cần gửi lên server
+        // Tạo mới user - chỉ gửi những trường có giá trị
+        const userData: any = {};
+
+        // Các trường bắt buộc
+        userData.email = values.email;
+        userData.firstName = values.firstName;
+        userData.lastName = values.lastName;
+        userData.isVerified = values.isVerified;
+
+        // Chỉ gửi roleIds nếu có giá trị
+        if (
+          values.roleIds &&
+          values.roleIds.length > 0 &&
+          values.roleIds[0] !== ''
+        ) {
+          userData.roleIds = values.roleIds.filter((id) => id !== '');
+        }
+
+        // Các trường tùy chọn - chỉ gửi nếu có giá trị
+        if (values.phoneNumber && values.phoneNumber.trim() !== '') {
+          userData.phoneNumber = values.phoneNumber;
+        }
+        if (values.nickname && values.nickname.trim() !== '') {
+          userData.nickname = values.nickname;
+        }
+        if (values.avatar && values.avatar.trim() !== '') {
+          userData.avatar = values.avatar;
+        }
+        if (values.birthDate && values.birthDate.trim() !== '') {
+          userData.birthDate = values.birthDate;
+        }
+        if (values.gender && values.gender.trim() !== '') {
+          userData.gender = values.gender;
+        }
+        if (values.nationality && values.nationality.trim() !== '') {
+          userData.nationality = values.nationality;
+        }
+
+        console.log('Payload tạo mới user:', userData);
         await createUser(userData);
       }
       setIsUploading(false);
@@ -306,56 +382,56 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[800px] p-0 gap-0 overflow-hidden border-slate-200 shadow-lg">
+      <DialogContent className='max-w-[800px] p-0 gap-0 overflow-hidden border-slate-200 shadow-lg'>
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="w-full"
+          className='w-full'
         >
-          <DialogHeader className="p-6 pb-2 border-b bg-slate-50">
-            <DialogTitle className="text-xl">
+          <DialogHeader className='p-6 pb-2 border-b bg-slate-50'>
+            <DialogTitle className='text-xl'>
               {isEdit
                 ? t('userManagement.editUser')
                 : t('userManagement.addUser')}
             </DialogTitle>
-            <DialogDescription className="text-slate-500">
+            <DialogDescription className='text-slate-500'>
               {isEdit
                 ? t('userManagement.editUserDesc')
                 : t('userManagement.addUserDesc')}
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="h-[65vh] px-6 py-4">
+          <ScrollArea className='h-[65vh] px-6 py-4'>
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6"
+                className='space-y-6'
               >
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.1 }}
-                  className="bg-white p-5 rounded-md border border-slate-200 shadow-sm"
+                  className='bg-white p-5 rounded-md border border-slate-200 shadow-sm'
                 >
-                  <h3 className="text-md font-medium text-slate-900 mb-4">
+                  <h3 className='text-md font-medium text-slate-900 mb-4'>
                     {t('userManagement.basicInfo')}
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                     <FormField
                       control={form.control}
-                      name="email"
+                      name='email'
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
                             {t('userManagement.columns.email')}
                           </FormLabel>
                           <FormControl>
-                            <div className="relative">
-                              <IconMail className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                            <div className='relative'>
+                              <IconMail className='absolute left-3 top-2.5 h-4 w-4 text-slate-500' />
                               <Input
-                                placeholder="example@email.com"
+                                placeholder='example@email.com'
                                 {...field}
-                                className="bg-slate-50 pl-10"
+                                className='bg-slate-50 pl-10'
                               />
                             </div>
                           </FormControl>
@@ -365,21 +441,21 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     />
                     <FormField
                       control={form.control}
-                      name="phoneNumber"
+                      name='phoneNumber'
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
                             {t('userManagement.phoneNumber')}
                           </FormLabel>
                           <FormControl>
-                            <div className="relative">
-                              <IconPhone className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                            <div className='relative'>
+                              <IconPhone className='absolute left-3 top-2.5 h-4 w-4 text-slate-500' />
                               <Input
                                 placeholder={t(
                                   'userManagement.phoneNumberPlaceholder'
                                 )}
                                 {...field}
-                                className="bg-slate-50 pl-10"
+                                className='bg-slate-50 pl-10'
                               />
                             </div>
                           </FormControl>
@@ -389,21 +465,21 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     />
                     <FormField
                       control={form.control}
-                      name="lastName"
+                      name='lastName'
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
                             {t('userManagement.columns.lastName')}
                           </FormLabel>
                           <FormControl>
-                            <div className="relative">
-                              <IconUser className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                            <div className='relative'>
+                              <IconUser className='absolute left-3 top-2.5 h-4 w-4 text-slate-500' />
                               <Input
                                 placeholder={t(
                                   'userManagement.lastNamePlaceholder'
                                 )}
                                 {...field}
-                                className="bg-slate-50 pl-10"
+                                className='bg-slate-50 pl-10'
                               />
                             </div>
                           </FormControl>
@@ -413,21 +489,21 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     />
                     <FormField
                       control={form.control}
-                      name="firstName"
+                      name='firstName'
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
                             {t('userManagement.columns.firstName')}
                           </FormLabel>
                           <FormControl>
-                            <div className="relative">
-                              <IconUser className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                            <div className='relative'>
+                              <IconUser className='absolute left-3 top-2.5 h-4 w-4 text-slate-500' />
                               <Input
                                 placeholder={t(
                                   'userManagement.firstNamePlaceholder'
                                 )}
                                 {...field}
-                                className="bg-slate-50 pl-10"
+                                className='bg-slate-50 pl-10'
                               />
                             </div>
                           </FormControl>
@@ -442,15 +518,15 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.2 }}
-                  className="bg-white p-5 rounded-md border border-slate-200 shadow-sm"
+                  className='bg-white p-5 rounded-md border border-slate-200 shadow-sm'
                 >
-                  <h3 className="text-md font-medium text-slate-900 mb-4">
+                  <h3 className='text-md font-medium text-slate-900 mb-4'>
                     {t('userManagement.additionalInfo')}
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                     <FormField
                       control={form.control}
-                      name="nickname"
+                      name='nickname'
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>{t('userManagement.nickname')}</FormLabel>
@@ -460,7 +536,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                                 'userManagement.nicknamePlaceholder'
                               )}
                               {...field}
-                              className="bg-slate-50"
+                              className='bg-slate-50'
                             />
                           </FormControl>
                           <FormMessage />
@@ -469,20 +545,20 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     />
                     <FormField
                       control={form.control}
-                      name="birthDate"
+                      name='birthDate'
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>{t('userManagement.birthDate')}</FormLabel>
                           <FormControl>
-                            <div className="relative">
-                              <IconCalendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                            <div className='relative'>
+                              <IconCalendar className='absolute left-3 top-2.5 h-4 w-4 text-slate-500' />
                               <Input
-                                type="date"
+                                type='date'
                                 placeholder={t(
                                   'userManagement.birthDatePlaceholder'
                                 )}
                                 {...field}
-                                className="bg-slate-50 pl-10"
+                                className='bg-slate-50 pl-10'
                               />
                             </div>
                           </FormControl>
@@ -492,7 +568,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     />
                     <FormField
                       control={form.control}
-                      name="gender"
+                      name='gender'
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>{t('userManagement.gender')}</FormLabel>
@@ -501,7 +577,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                             onValueChange={field.onChange}
                           >
                             <FormControl>
-                              <SelectTrigger className="bg-slate-50">
+                              <SelectTrigger className='bg-slate-50'>
                                 <SelectValue
                                   placeholder={t(
                                     'userManagement.genderPlaceholder'
@@ -510,13 +586,13 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="male">
+                              <SelectItem value='male'>
                                 {t('userManagement.genderOptions.male')}
                               </SelectItem>
-                              <SelectItem value="female">
+                              <SelectItem value='female'>
                                 {t('userManagement.genderOptions.female')}
                               </SelectItem>
-                              <SelectItem value="other">
+                              <SelectItem value='other'>
                                 {t('userManagement.genderOptions.other')}
                               </SelectItem>
                             </SelectContent>
@@ -527,21 +603,21 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     />
                     <FormField
                       control={form.control}
-                      name="nationality"
+                      name='nationality'
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
                             {t('userManagement.nationality')}
                           </FormLabel>
                           <FormControl>
-                            <div className="relative">
-                              <IconFlag className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                            <div className='relative'>
+                              <IconFlag className='absolute left-3 top-2.5 h-4 w-4 text-slate-500' />
                               <Input
                                 placeholder={t(
                                   'userManagement.nationalityPlaceholder'
                                 )}
                                 {...field}
-                                className="bg-slate-50 pl-10"
+                                className='bg-slate-50 pl-10'
                               />
                             </div>
                           </FormControl>
@@ -556,15 +632,15 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.3 }}
-                  className="bg-white p-5 rounded-md border border-slate-200 shadow-sm"
+                  className='bg-white p-5 rounded-md border border-slate-200 shadow-sm'
                 >
-                  <h3 className="text-md font-medium text-slate-900 mb-4">
+                  <h3 className='text-md font-medium text-slate-900 mb-4'>
                     {t('userManagement.imageAndPermissions')}
                   </h3>
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className='grid grid-cols-1 gap-4'>
                     <FormField
                       control={form.control}
-                      name="avatar"
+                      name='avatar'
                       render={({ field }) => {
                         const [previewUrl, setPreviewUrl] = useState<string>(
                           field.value || ''
@@ -743,8 +819,8 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                         return (
                           <FormItem>
                             <FormLabel>{t('userManagement.avatar')}</FormLabel>
-                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                              <Avatar className="h-20 w-20 rounded-md border-2 border-slate-200">
+                            <div className='flex flex-col sm:flex-row gap-4 items-start sm:items-center'>
+                              <Avatar className='h-20 w-20 rounded-md border-2 border-slate-200'>
                                 <AvatarImage
                                   src={
                                     previewUrl ||
@@ -754,20 +830,20 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                                       'lastName'
                                     )}&size=80&background=random`
                                   }
-                                  alt="Avatar preview"
+                                  alt='Avatar preview'
                                 />
-                                <AvatarFallback className="rounded-md bg-slate-100">
-                                  <IconUserCircle className="h-10 w-10 text-slate-400" />
+                                <AvatarFallback className='rounded-md bg-slate-100'>
+                                  <IconUserCircle className='h-10 w-10 text-slate-400' />
                                 </AvatarFallback>
                               </Avatar>
-                              <div className="flex-1 space-y-2">
+                              <div className='flex-1 space-y-2'>
                                 <FormControl>
-                                  <div className="relative">
-                                    <IconPhoto className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                                  <div className='relative'>
+                                    <IconPhoto className='absolute left-3 top-2.5 h-4 w-4 text-slate-500' />
                                     <Input
-                                      placeholder="https://example.com/avatar.jpg"
+                                      placeholder='https://example.com/avatar.jpg'
                                       {...field}
-                                      className="bg-slate-50 pl-10"
+                                      className='bg-slate-50 pl-10'
                                       onChange={(e) => {
                                         field.onChange(e);
                                         if (e.target.value) {
@@ -783,9 +859,9 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                                   </div>
                                 </FormControl>
 
-                                <div className="flex flex-col gap-2">
+                                <div className='flex flex-col gap-2'>
                                   <label
-                                    htmlFor="avatar-upload"
+                                    htmlFor='avatar-upload'
                                     className={`flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300 transition-all cursor-pointer w-full ${
                                       isUploadingAvatar
                                         ? 'opacity-50 cursor-not-allowed'
@@ -795,23 +871,23 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                                     {isUploadingAvatar ? (
                                       <>
                                         <svg
-                                          className="animate-spin h-4 w-4 text-slate-700"
-                                          xmlns="http://www.w3.org/2000/svg"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
+                                          className='animate-spin h-4 w-4 text-slate-700'
+                                          xmlns='http://www.w3.org/2000/svg'
+                                          fill='none'
+                                          viewBox='0 0 24 24'
                                         >
                                           <circle
-                                            className="opacity-25"
-                                            cx="12"
-                                            cy="12"
-                                            r="10"
-                                            stroke="currentColor"
-                                            strokeWidth="4"
+                                            className='opacity-25'
+                                            cx='12'
+                                            cy='12'
+                                            r='10'
+                                            stroke='currentColor'
+                                            strokeWidth='4'
                                           ></circle>
                                           <path
-                                            className="opacity-75"
-                                            fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            className='opacity-75'
+                                            fill='currentColor'
+                                            d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
                                           ></path>
                                         </svg>
                                         <span>
@@ -820,7 +896,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                                       </>
                                     ) : (
                                       <>
-                                        <IconUpload className="h-4 w-4" />
+                                        <IconUpload className='h-4 w-4' />
                                         <span>
                                           {t('userManagement.uploadAvatar')}
                                         </span>
@@ -828,34 +904,34 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                                     )}
                                   </label>
                                   <input
-                                    id="avatar-upload"
-                                    type="file"
-                                    accept=".jpg,.jpeg,.png"
-                                    className="hidden"
+                                    id='avatar-upload'
+                                    type='file'
+                                    accept='.jpg,.jpeg,.png'
+                                    className='hidden'
                                     onChange={handleFileChange}
                                     disabled={isUploadingAvatar}
                                   />
 
                                   {localFile && !showCropper && (
-                                    <div className="text-xs text-slate-500 flex items-center">
-                                      <IconAlertCircle className="h-3 w-3 mr-1" />
+                                    <div className='text-xs text-slate-500 flex items-center'>
+                                      <IconAlertCircle className='h-3 w-3 mr-1' />
                                       {localFile.name} (
                                       {(localFile.size / 1024).toFixed(1)}KB)
                                     </div>
                                   )}
 
-                                  <p className="text-xs text-slate-500">
+                                  <p className='text-xs text-slate-500'>
                                     {t('userManagement.avatarFormat')}
                                   </p>
                                 </div>
                               </div>
                             </div>
                             {showCropper && (
-                              <div className="mt-4 border rounded-md p-4 bg-slate-50">
-                                <h4 className="text-sm font-medium mb-2">
+                              <div className='mt-4 border rounded-md p-4 bg-slate-50'>
+                                <h4 className='text-sm font-medium mb-2'>
                                   {t('userManagement.cropAvatar')}
                                 </h4>
-                                <div className="relative h-[300px] w-full mb-4">
+                                <div className='relative h-[300px] w-full mb-4'>
                                   {originalImageUrl && (
                                     <Cropper
                                       image={originalImageUrl}
@@ -868,33 +944,33 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                                       rotation={0}
                                       minZoom={1}
                                       maxZoom={3}
-                                      cropShape="rect"
+                                      cropShape='rect'
                                       {...({} as any)}
                                     />
                                   )}
                                 </div>
-                                <div className="flex items-center justify-between mb-4">
-                                  <span className="text-xs">
+                                <div className='flex items-center justify-between mb-4'>
+                                  <span className='text-xs'>
                                     {t('userManagement.zoom')}:
                                   </span>
                                   <input
-                                    type="range"
+                                    type='range'
                                     value={zoom}
                                     min={1}
                                     max={3}
                                     step={0.1}
-                                    aria-labelledby="Zoom"
+                                    aria-labelledby='Zoom'
                                     onChange={(e) =>
                                       setZoom(Number(e.target.value))
                                     }
-                                    className="w-full mx-2"
+                                    className='w-full mx-2'
                                   />
                                 </div>
-                                <div className="flex justify-end gap-2">
+                                <div className='flex justify-end gap-2'>
                                   <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
+                                    type='button'
+                                    variant='outline'
+                                    size='sm'
                                     onClick={() => {
                                       setShowCropper(false);
                                       setOriginalImageUrl('');
@@ -904,9 +980,9 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                                     {t('userManagement.cancel')}
                                   </Button>
                                   <Button
-                                    type="button"
-                                    variant="default"
-                                    size="sm"
+                                    type='button'
+                                    variant='default'
+                                    size='sm'
                                     onClick={uploadCroppedImage}
                                     disabled={isUploadingAvatar}
                                   >
@@ -924,7 +1000,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     />
                     <FormField
                       control={form.control}
-                      name="roleIds"
+                      name='roleIds'
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>{t('userManagement.role')}</FormLabel>
@@ -941,9 +1017,9 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                             }}
                           >
                             <FormControl>
-                              <div className="relative">
-                                <IconShield className="absolute left-3 top-2.5 h-4 w-4 text-slate-500 z-10" />
-                                <SelectTrigger className="bg-slate-50 pl-10">
+                              <div className='relative'>
+                                <IconShield className='absolute left-3 top-2.5 h-4 w-4 text-slate-500 z-10' />
+                                <SelectTrigger className='bg-slate-50 pl-10'>
                                   <SelectValue
                                     placeholder={t(
                                       'userManagement.rolePlaceholder'
@@ -971,17 +1047,17 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                       )}
                     />
                   </div>
-                  <div className="mt-4">
+                  <div className='mt-4'>
                     <FormField
                       control={form.control}
-                      name="isVerified"
+                      name='isVerified'
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border border-slate-200 p-4 bg-slate-50">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">
+                        <FormItem className='flex flex-row items-center justify-between rounded-lg border border-slate-200 p-4 bg-slate-50'>
+                          <div className='space-y-0.5'>
+                            <FormLabel className='text-base'>
                               {t('userManagement.emailVerification')}
                             </FormLabel>
-                            <div className="text-sm text-slate-500">
+                            <div className='text-sm text-slate-500'>
                               {field.value
                                 ? t('userManagement.userVerified')
                                 : t('userManagement.userUnverified')}
@@ -991,7 +1067,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                             <Switch
                               checked={field.value}
                               onCheckedChange={field.onChange}
-                              className="data-[state=checked]:bg-slate-900"
+                              className='data-[state=checked]:bg-slate-900'
                             />
                           </FormControl>
                         </FormItem>
@@ -1002,40 +1078,40 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
               </form>
             </Form>
           </ScrollArea>
-          <DialogFooter className="p-6 border-t flex gap-2">
+          <DialogFooter className='p-6 border-t flex gap-2'>
             <Button
-              variant="outline"
+              variant='outline'
               onClick={() => onOpenChange(false)}
-              className="transition-all duration-200 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900"
+              className='transition-all duration-200 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900'
             >
               {t('userManagement.cancel')}
             </Button>
             <Button
-              type="submit"
+              type='submit'
               onClick={form.handleSubmit(onSubmit)}
               disabled={form.formState.isSubmitting || isUploading}
-              className="bg-primary transition-all duration-200 hover:bg-primary/90 hover:shadow-lg hover:scale-105"
+              className='bg-primary transition-all duration-200 hover:bg-primary/90 hover:shadow-lg hover:scale-105'
             >
               {form.formState.isSubmitting || isUploading ? (
-                <div className="flex items-center gap-2">
+                <div className='flex items-center gap-2'>
                   <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
+                    className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'
+                    xmlns='http://www.w3.org/2000/svg'
+                    fill='none'
+                    viewBox='0 0 24 24'
                   >
                     <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
+                      className='opacity-25'
+                      cx='12'
+                      cy='12'
+                      r='10'
+                      stroke='currentColor'
+                      strokeWidth='4'
                     ></circle>
                     <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      className='opacity-75'
+                      fill='currentColor'
+                      d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
                     ></path>
                   </svg>
                   {t('userManagement.processing')}

@@ -25,7 +25,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Camera, User, Calendar, Globe } from 'lucide-react';
+import {
+  Loader2,
+  Camera,
+  User,
+  Calendar,
+  Globe,
+  Upload,
+  Image,
+  AlertCircle,
+} from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Card,
@@ -36,6 +45,16 @@ import {
 } from '@/components/ui/card';
 import { format, parseISO } from 'date-fns';
 import { toast as sonnerToast } from 'sonner';
+import dynamic from 'next/dynamic';
+import { getCroppedImg } from '../../../utils/crop-image';
+
+// Dùng dynamic import cho Cropper để tránh lỗi SSR
+const Cropper = dynamic(
+  () => import('react-easy-crop').then((mod) => mod.default),
+  {
+    ssr: false,
+  }
+);
 
 // Interface cho profile người dùng
 interface UserProfile {
@@ -76,7 +95,15 @@ type Country = {
   image: string;
 };
 
-// Schema validation - đã xóa phoneNumber
+// Interface cho kết quả crop
+interface CropArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// Schema validation - thêm avatarFile
 const profileFormSchema = z.object({
   firstName: z
     .string()
@@ -110,6 +137,22 @@ const profileFormSchema = z.object({
     })
     .optional(),
   avatar: z.string().optional(),
+  avatarFile: z
+    .instanceof(File)
+    .optional()
+    .refine(
+      (file) => !file || file.size >= 1024, // 1KB
+      'File phải lớn hơn 1KB'
+    )
+    .refine(
+      (file) => !file || file.size <= 5 * 1024 * 1024, // 5MB
+      'File không được vượt quá 5MB'
+    )
+    .refine(
+      (file) =>
+        !file || ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type),
+      'Chỉ chấp nhận file định dạng JPG, JPEG hoặc PNG'
+    ),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -132,6 +175,16 @@ export function UserProfileForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoadingCountries, setIsLoadingCountries] = useState(false);
+
+  // Thêm các state cho việc crop ảnh
+  const [showCropper, setShowCropper] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<CropArea | null>(
+    null
+  );
+  const [originalImageUrl, setOriginalImageUrl] = useState<string>('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // Log để kiểm tra dữ liệu
   console.log('UserProfile from props:', userProfile);
@@ -202,33 +255,132 @@ export function UserProfileForm({
       gender: userProfile?.gender || '',
       nationality: userProfile?.nationality || '',
       avatar: userProfile?.avatar || '',
+      avatarFile: undefined,
     },
   });
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  // Logic xử lý file change từ users-action-dialog
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
-    // Kiểm tra định dạng file
-    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
-      sonnerToast.error('Chỉ chấp nhận file ảnh JPG, PNG hoặc GIF');
+    // Check file type
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+      toast({
+        title: 'Định dạng không hỗ trợ',
+        description: 'Chỉ chấp nhận file định dạng JPG, JPEG hoặc PNG',
+        variant: 'destructive',
+      });
       return;
     }
 
-    // Kiểm tra kích thước file (tối đa 5MB)
+    // Check file size
+    if (file.size < 1024) {
+      toast({
+        title: 'File quá nhỏ',
+        description: 'File phải lớn hơn 1KB',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
-      sonnerToast.error('Kích thước file không được vượt quá 5MB');
+      toast({
+        title: 'File quá lớn',
+        description: 'File không được vượt quá 5MB',
+        variant: 'destructive',
+      });
       return;
     }
 
+    // Tạo preview URL
+    const objectUrl = URL.createObjectURL(file);
+    setOriginalImageUrl(objectUrl);
+    setShowCropper(true);
     setAvatarFile(file);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target) {
-        setAvatarPreview(e.target.result as string);
+  };
+
+  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const uploadCroppedImage = async () => {
+    try {
+      if (!croppedAreaPixels || !avatarFile || !originalImageUrl) return;
+
+      setIsUploadingAvatar(true);
+
+      // Tạo ảnh đã crop
+      const croppedImageBlob = await getCroppedImg(
+        originalImageUrl,
+        croppedAreaPixels
+      );
+
+      if (!croppedImageBlob) {
+        throw new Error('Không thể tạo ảnh đã cắt');
       }
-    };
-    reader.readAsDataURL(file);
+
+      // Tạo file từ blob
+      const croppedFile = new File([croppedImageBlob], avatarFile.name, {
+        type: avatarFile.type,
+      });
+
+      // Tạo preview URL
+      const croppedPreviewUrl = URL.createObjectURL(croppedImageBlob);
+      setAvatarPreview(croppedPreviewUrl);
+
+      // Upload file đã cắt
+      const uploadResponse = await storageApi.uploadSingleFile(
+        croppedFile,
+        'users'
+      );
+
+      console.log('Upload response:', uploadResponse);
+
+      // Sử dụng kiểu any để tránh lỗi kiểu dữ liệu
+      const responseData = uploadResponse.data as any;
+
+      if (responseData && responseData.success === true && responseData.data) {
+        // Lấy URL từ response data
+        const fileUrl = responseData.data.fileUrl;
+
+        if (fileUrl) {
+          console.log('File URL:', fileUrl);
+          // Cập nhật trường avatar trong form
+          form.setValue('avatar', fileUrl);
+
+          // Hiển thị thông báo thành công
+          toast({
+            title: 'Thành công',
+            description: 'Đã tải lên ảnh đại diện đã cắt',
+          });
+
+          // Đóng cropper
+          setShowCropper(false);
+        } else {
+          toast({
+            title: 'Lỗi',
+            description: 'Không tìm thấy URL file trong phản hồi',
+            variant: 'destructive',
+          });
+        }
+      } else {
+        toast({
+          title: 'Lỗi',
+          description: 'Không thể tải lên hình ảnh. Vui lòng thử lại.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading cropped file:', error);
+      toast({
+        title: 'Lỗi',
+        description: 'Đã xảy ra lỗi khi tải lên. Vui lòng thử lại.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   const handleAvatarClick = () => {
@@ -239,31 +391,110 @@ export function UserProfileForm({
     try {
       setIsSubmitting(true);
 
-      if (data.avatar !== userProfile.avatar && userProfile.avatar) {
-        try {
-          await storageApi.deleteSingleFile(userProfile.avatar);
-        } catch (error) {
-          console.error('Lỗi khi xóa avatar cũ:', error);
-          // Tiếp tục cập nhật ngay cả khi xóa thất bại
+      // Helper function để kiểm tra giá trị có rỗng không
+      const isEmpty = (value: any) => {
+        return value === '' || value === null || value === undefined;
+      };
+
+      // Helper function để kiểm tra trường có thay đổi không
+      const hasChanged = (newValue: any, oldValue: any) => {
+        // Nếu cả hai đều rỗng thì không coi là thay đổi
+        if (isEmpty(newValue) && isEmpty(oldValue)) {
+          return false;
+        }
+        return newValue !== oldValue;
+      };
+
+      // Tạo object chỉ chứa những trường thay đổi
+      const changedFields: any = {};
+
+      // Kiểm tra từng trường và chỉ thêm vào changedFields nếu có thay đổi
+      if (hasChanged(data.firstName, userProfile.firstName)) {
+        changedFields.firstName = data.firstName;
+      }
+
+      if (hasChanged(data.lastName, userProfile.lastName)) {
+        changedFields.lastName = data.lastName;
+      }
+
+      if (
+        hasChanged(data.nickname, userProfile.nickname) &&
+        !isEmpty(data.nickname)
+      ) {
+        changedFields.nickname = data.nickname;
+      }
+
+      if (
+        hasChanged(data.gender, userProfile.gender) &&
+        !isEmpty(data.gender)
+      ) {
+        changedFields.gender = data.gender;
+      }
+
+      if (
+        hasChanged(data.nationality, userProfile.nationality) &&
+        !isEmpty(data.nationality)
+      ) {
+        changedFields.nationality = data.nationality;
+      }
+
+      // Xử lý birthDate - so sánh với giá trị đã format
+      const currentFormattedBirthDate = formatDate(userProfile.birthDate);
+      if (
+        hasChanged(data.birthDate, currentFormattedBirthDate) &&
+        !isEmpty(data.birthDate)
+      ) {
+        changedFields.birthDate = format(
+          new Date(data.birthDate!),
+          "yyyy-MM-dd'T'HH:mm:ssXXX"
+        );
+      }
+
+      // Xử lý avatar
+      if (hasChanged(data.avatar, userProfile.avatar)) {
+        if (!isEmpty(data.avatar)) {
+          changedFields.avatar = data.avatar;
         }
       }
 
-      // Chuyển đổi lại định dạng ngày sinh (nếu có)
-      const formattedData = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        nickname: data.nickname || '',
-        avatar: data.avatar || '',
-        gender: data.gender || '',
-        nationality: data.nationality || '',
-        birthDate: data.birthDate
-          ? format(new Date(data.birthDate), "yyyy-MM-dd'T'HH:mm:ssXXX")
-          : '',
-      };
+      // Nếu không có trường nào thay đổi, không gửi request
+      if (Object.keys(changedFields).length === 0) {
+        toast({
+          title: 'Thông báo',
+          description: 'Không có thông tin nào được thay đổi.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
-      // Gọi API cập nhật thông tin
-      const response = await userApi.updateProfile(formattedData);
+      console.log('Payload sẽ gửi:', changedFields);
+
+      // Lưu avatar cũ để xóa sau khi cập nhật thành công
+      const oldAvatar =
+        userProfile.avatar && userProfile.avatar.trim() !== ''
+          ? userProfile.avatar
+          : null;
+
+      // Gọi API cập nhật thông tin với chỉ những trường thay đổi
+      const response = await userApi.updateProfile(changedFields);
       console.log('API Response:', response);
+
+      // Xóa avatar cũ sau khi cập nhật thành công (không phụ thuộc vào response structure)
+      if (oldAvatar && data.avatar && data.avatar !== oldAvatar) {
+        try {
+          console.log('Đang xóa avatar cũ:', oldAvatar);
+          await storageApi.deleteSingleFile(oldAvatar);
+          console.log('Đã xóa avatar cũ thành công');
+        } catch (deleteError) {
+          console.error('Lỗi khi xóa avatar cũ:', deleteError);
+          // Không throw lỗi vì cập nhật đã thành công, chỉ ghi log
+          toast({
+            title: 'Cảnh báo',
+            description: 'Cập nhật thành công nhưng không thể xóa avatar cũ.',
+            variant: 'destructive',
+          });
+        }
+      }
 
       // Cập nhật state nếu API trả về thành công
       if (response && response.data && response.success) {
@@ -271,17 +502,30 @@ export function UserProfileForm({
         const profileData = response.data as ProfileResponse;
         console.log('Profile Data:', profileData);
 
-        // Cập nhật UserProfile trong parent component
-        onProfileUpdated({
-          ...userProfile,
-          firstName: profileData.firstName,
-          lastName: profileData.lastName,
-          nickname: profileData.nickname || '',
-          avatar: profileData.avatar || '',
-          birthDate: profileData.birthDate || '',
-          gender: profileData.gender || '',
-          nationality: profileData.nationality || '',
-        });
+        // Cập nhật UserProfile trong parent component - chỉ cập nhật những trường thay đổi
+        const updatedProfile = { ...userProfile };
+
+        if (changedFields.firstName)
+          updatedProfile.firstName = profileData.firstName;
+        if (changedFields.lastName)
+          updatedProfile.lastName = profileData.lastName;
+        if (changedFields.nickname !== undefined)
+          updatedProfile.nickname = profileData.nickname || '';
+        if (changedFields.avatar !== undefined)
+          updatedProfile.avatar = profileData.avatar || '';
+        if (changedFields.birthDate !== undefined)
+          updatedProfile.birthDate = profileData.birthDate || '';
+        if (changedFields.gender !== undefined)
+          updatedProfile.gender = profileData.gender || '';
+        if (changedFields.nationality !== undefined)
+          updatedProfile.nationality = profileData.nationality || '';
+
+        onProfileUpdated(updatedProfile);
+      }
+
+      // Cập nhật preview với avatar mới
+      if (changedFields.avatar) {
+        setAvatarPreview(data.avatar);
       }
 
       toast({
@@ -310,88 +554,150 @@ export function UserProfileForm({
   };
 
   // Tính tên hiển thị từ firstName và lastName
-  const displayName = `${userProfile?.firstName || ''} ${userProfile?.lastName || ''
-    }`.trim();
+  const displayName = `${userProfile?.firstName || ''} ${
+    userProfile?.lastName || ''
+  }`.trim();
 
   return (
-    <Card className="border-0 shadow-none">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+    <Card className='border-0 shadow-none'>
+      <CardHeader className='space-y-1'>
+        <CardTitle className='text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'>
           Thông tin cá nhân
         </CardTitle>
-        <CardDescription className="text-base">
+        <CardDescription className='text-base'>
           Cập nhật và quản lý thông tin cá nhân của bạn
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-8">
+        <div className='space-y-8'>
           {/* Avatar Section */}
-          <div className="flex flex-col items-center space-y-4 px-2 sm:px-4">
-            <div className="relative group">
+          <div className='flex flex-col items-center space-y-4 px-2 sm:px-4'>
+            <div className='relative group'>
               <Avatar
-                className="h-24 w-24 sm:h-28 sm:w-28 cursor-pointer border-4 border-white dark:border-gray-800 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105"
+                className='h-24 w-24 sm:h-28 sm:w-28 cursor-pointer border-4 border-white dark:border-gray-800 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105'
                 onClick={handleAvatarClick}
               >
                 <AvatarImage
                   src={avatarPreview || undefined}
                   alt={displayName}
-                  className="object-cover"
+                  className='object-cover'
                 />
-                <AvatarFallback className="text-lg sm:text-xl bg-gradient-to-br from-primary to-primary/80 text-white">
+                <AvatarFallback className='text-lg sm:text-xl bg-gradient-to-br from-primary to-primary/80 text-white'>
                   {getInitials(displayName)}
                 </AvatarFallback>
               </Avatar>
               <div
-                className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center cursor-pointer backdrop-blur-sm"
+                className='absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center cursor-pointer backdrop-blur-sm'
                 onClick={handleAvatarClick}
               >
-                <Camera className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+                <Camera className='h-6 w-6 sm:h-7 sm:w-7 text-white' />
               </div>
               <input
-                type="file"
+                type='file'
                 ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
+                className='hidden'
+                accept='image/*'
                 onChange={handleFileChange}
               />
             </div>
-            <div className="text-center space-y-2">
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+            <div className='text-center space-y-2'>
+              <p className='text-xs sm:text-sm text-gray-500 dark:text-gray-400'>
                 Nhấn vào ảnh để thay đổi
               </p>
-              <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200">
+              <h3 className='text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200'>
                 {userProfile?.email}
               </h3>
               {userProfile?.createdAt && (
-                <p className="text-xs sm:text-sm text-muted-foreground">
+                <p className='text-xs sm:text-sm text-muted-foreground'>
                   Thành viên từ{' '}
                   {new Date(userProfile.createdAt).toLocaleDateString('vi-VN')}
                 </p>
               )}
             </div>
+
+            {/* Cropper Section */}
+            {showCropper && (
+              <div className='mt-4 border rounded-md p-4 bg-slate-50 w-full'>
+                <h4 className='text-sm font-medium mb-2'>Cắt ảnh đại diện</h4>
+                <div className='relative h-[300px] w-full mb-4'>
+                  {originalImageUrl && (
+                    <Cropper
+                      image={originalImageUrl}
+                      crop={crop}
+                      zoom={zoom}
+                      aspect={1}
+                      onCropChange={setCrop}
+                      onCropComplete={onCropComplete}
+                      onZoomChange={setZoom}
+                      rotation={0}
+                      minZoom={1}
+                      maxZoom={3}
+                      cropShape='rect'
+                      {...({} as any)}
+                    />
+                  )}
+                </div>
+                <div className='flex items-center justify-between mb-4'>
+                  <span className='text-xs'>Zoom:</span>
+                  <input
+                    type='range'
+                    value={zoom}
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    aria-labelledby='Zoom'
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                    className='w-full mx-2'
+                  />
+                </div>
+                <div className='flex justify-end gap-2'>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    onClick={() => {
+                      setShowCropper(false);
+                      setOriginalImageUrl('');
+                      setAvatarFile(null);
+                    }}
+                  >
+                    Hủy
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='default'
+                    size='sm'
+                    onClick={uploadCroppedImage}
+                    disabled={isUploadingAvatar}
+                  >
+                    {isUploadingAvatar ? 'Đang xử lý...' : 'Cắt và tải lên'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+              <div className='grid grid-cols-1 gap-6 sm:grid-cols-2'>
                 {/* Họ */}
                 <FormField
                   control={form.control}
-                  name="lastName"
+                  name='lastName'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                        <User className="h-4 w-4" />
+                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
+                        <User className='h-4 w-4' />
                         Họ
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Nguyễn"
+                          placeholder='Nguyễn'
                           {...field}
-                          className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg"
+                          className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'
                         />
                       </FormControl>
-                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
+                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
                     </FormItem>
                   )}
                 />
@@ -399,21 +705,21 @@ export function UserProfileForm({
                 {/* Tên */}
                 <FormField
                   control={form.control}
-                  name="firstName"
+                  name='firstName'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                        <User className="h-4 w-4" />
+                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
+                        <User className='h-4 w-4' />
                         Tên
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Văn A"
+                          placeholder='Văn A'
                           {...field}
-                          className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg"
+                          className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'
                         />
                       </FormControl>
-                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
+                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
                     </FormItem>
                   )}
                 />
@@ -421,20 +727,20 @@ export function UserProfileForm({
                 {/* Biệt danh */}
                 <FormField
                   control={form.control}
-                  name="nickname"
+                  name='nickname'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
                         Biệt danh
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Nhập biệt danh (tùy chọn)"
+                          placeholder='Nhập biệt danh (tùy chọn)'
                           {...field}
-                          className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg"
+                          className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'
                         />
                       </FormControl>
-                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
+                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
                     </FormItem>
                   )}
                 />
@@ -442,21 +748,21 @@ export function UserProfileForm({
                 {/* Ngày sinh */}
                 <FormField
                   control={form.control}
-                  name="birthDate"
+                  name='birthDate'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
+                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
+                        <Calendar className='h-4 w-4' />
                         Ngày sinh
                       </FormLabel>
                       <FormControl>
                         <Input
-                          type="date"
+                          type='date'
                           {...field}
-                          className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg"
+                          className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'
                         />
                       </FormControl>
-                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
+                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
                     </FormItem>
                   )}
                 />
@@ -464,10 +770,10 @@ export function UserProfileForm({
                 {/* Giới tính */}
                 <FormField
                   control={form.control}
-                  name="gender"
+                  name='gender'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300'>
                         Giới tính
                       </FormLabel>
                       <Select
@@ -475,17 +781,17 @@ export function UserProfileForm({
                         defaultValue={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg">
-                            <SelectValue placeholder="Chọn giới tính" />
+                          <SelectTrigger className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'>
+                            <SelectValue placeholder='Chọn giới tính' />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Nam">Nam</SelectItem>
-                          <SelectItem value="Nữ">Nữ</SelectItem>
-                          <SelectItem value="Khác">Khác</SelectItem>
+                          <SelectItem value='Nam'>Nam</SelectItem>
+                          <SelectItem value='Nữ'>Nữ</SelectItem>
+                          <SelectItem value='Khác'>Khác</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
+                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
                     </FormItem>
                   )}
                 />
@@ -493,11 +799,11 @@ export function UserProfileForm({
                 {/* Quốc tịch */}
                 <FormField
                   control={form.control}
-                  name="nationality"
+                  name='nationality'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                        <Globe className="h-4 w-4" />
+                      <FormLabel className='text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2'>
+                        <Globe className='h-4 w-4' />
                         Quốc tịch
                       </FormLabel>
                       <Select
@@ -505,7 +811,7 @@ export function UserProfileForm({
                         defaultValue={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg">
+                          <SelectTrigger className='h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/20 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg'>
                             <SelectValue
                               placeholder={
                                 isLoadingCountries
@@ -515,7 +821,7 @@ export function UserProfileForm({
                             />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent className="max-h-[200px]">
+                        <SelectContent className='max-h-[200px]'>
                           {countries.map((country) => (
                             <SelectItem key={country.id} value={country.name}>
                               {country.name}
@@ -523,22 +829,22 @@ export function UserProfileForm({
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormMessage className="text-xs text-red-500 dark:text-red-400" />
+                      <FormMessage className='text-xs text-red-500 dark:text-red-400' />
                     </FormItem>
                   )}
                 />
               </div>
 
               {/* Submit Button */}
-              <div className="flex justify-end pt-4">
+              <div className='flex justify-end pt-4'>
                 <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="min-w-[140px] h-11 text-sm font-medium transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 bg-primary hover:bg-primary/90 rounded-lg"
+                  type='submit'
+                  disabled={isSubmitting || isUploadingAvatar}
+                  className='min-w-[140px] h-11 text-sm font-medium transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 bg-primary hover:bg-primary/90 rounded-lg'
                 >
-                  {isLoading ? (
+                  {isSubmitting || isUploadingAvatar ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                       Đang cập nhật...
                     </>
                   ) : (
