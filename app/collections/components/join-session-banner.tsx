@@ -58,16 +58,7 @@ export function JoinSessionBanner() {
 
           <form onSubmit={handleJoinSession} className='w-full max-w-[20rem]'>
             <div className='flex items-center gap-2 mb-3'>
-              <motion.div
-                className='relative flex-1'
-                animate={{
-                  width: sessionCode.trim() ? 'calc(100% - 7rem)' : '100%',
-                }}
-                transition={{
-                  duration: 0.6,
-                  ease: [0.4, 0.0, 0.2, 1],
-                }}
-              >
+              <div className='relative flex-1'>
                 <Input
                   value={sessionCode}
                   onChange={(e) => {
@@ -75,10 +66,10 @@ export function JoinSessionBanner() {
                     setError(null);
                   }}
                   placeholder={t('collections.enterPinCode')}
-                  className='pl-10 h-12 bg-white/10 text-white placeholder:text-white/70 border-white/30 focus:border-white focus:ring-white/30 rounded-xl tracking-wide w-full'
+                  className='pl-10 h-12 bg-white/10 text-white placeholder:text-white/70 border-white/30 focus:border-white focus:ring-white/30 rounded-xl tracking-wide'
                 />
                 <Code className='absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/70' />
-              </motion.div>
+              </div>
 
               {sessionCode.trim() && (
                 <motion.div
@@ -86,8 +77,8 @@ export function JoinSessionBanner() {
                   animate={{ opacity: 1, scale: 1, width: 'auto' }}
                   exit={{ opacity: 0, scale: 0.8, width: 0 }}
                   transition={{
-                    duration: 0.6,
-                    ease: [0.4, 0.0, 0.2, 1],
+                    duration: 0.4,
+                    ease: [0.25, 0.1, 0.25, 1],
                   }}
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
