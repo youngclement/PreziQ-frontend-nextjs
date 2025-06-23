@@ -932,7 +932,7 @@ export default function HostActivities({
 
   // Đặt CountdownOverlay ở mức cao nhất với vị trí z-index lớn để luôn hiển thị đè lên mọi phần tử
   return (
-    <div className='min-h-screen bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white'>
+    <div className='min-h-[100dvh] bg-gradient-to-b from-[#0a1b25] to-[#0f2231] text-white'>
       {/* Hiển thị CountdownOverlay với z-index cao hơn các phần tử khác khi KHÔNG ở chế độ toàn màn hình */}
       {showCountdown && !isFullscreenMode && (
         <div className='fixed inset-0 z-[9999]'>
@@ -1358,8 +1358,8 @@ export default function HostActivities({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
               className={`
-                bg-[#0e1c26]/80 backdrop-blur-md rounded-xl shadow-xl overflow-hidden border border-white/5
-                ${isFullscreenMode ? 'h-screen rounded-none border-0' : ''}
+                relative card-gradient backdrop-blur-xl border border-white/10 overflow-hidden transition-all duration-500
+                ${isFullscreenMode ? 'h-[100dvh] rounded-none border-0' : ''}
               `}
             >
               {!isFullscreenMode && (
@@ -1372,7 +1372,7 @@ export default function HostActivities({
               <div
                 className={`${
                   isFullscreenMode
-                    ? 'h-screen flex items-center justify-center'
+                    ? 'h-[100dvh] flex items-center justify-center'
                     : 'p-6'
                 }`}
               >
@@ -1481,7 +1481,7 @@ export default function HostActivities({
           <motion.div
             className={`backdrop-blur-md shadow-xl border-l border-white/10 
               overflow-hidden flex-shrink-0 transition-all duration-300 ease-in-out
-              ${isFullscreenMode ? 'h-screen' : ''}
+              ${isFullscreenMode ? 'h-[100dvh]' : ''}
               ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}
               md:static md:bg-[#0e1c26]/95 md:h-full
               ${

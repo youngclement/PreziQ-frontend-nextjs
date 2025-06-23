@@ -163,6 +163,23 @@ export function LocationQuestionPlayer({
               disabled,
             });
 
+            // Kiểm tra khoảng cách với các vị trí đã chọn (validation 1km)
+            if (userSelectedLocations && userSelectedLocations.length > 0) {
+              const threshold = 0.01; // 1km threshold
+              const isTooClose = userSelectedLocations.some(
+                (existing) =>
+                  Math.abs(existing.lat - lat) < threshold &&
+                  Math.abs(existing.lng - lng) < threshold
+              );
+
+              if (isTooClose) {
+                console.log(
+                  '[LocationQuestionPlayer] Vị trí quá gần với vị trí đã chọn, bỏ qua'
+                );
+                return; // Không tạo marker nếu quá gần
+              }
+            }
+
             // Tạo marker mới cho selection này
             const newMarker = new mapboxgl.Marker({
               color: '#FF0000',
@@ -586,102 +603,34 @@ export function LocationQuestionPlayer({
       currentMarkersCount: userMarkersRef.current.length,
     });
 
-    // Nếu không có userSelectedLocations, không xóa markers ngay lập tức
-    // vì có thể markers đang được tạo từ click handler
-    if (!userSelectedLocations?.length) {
-      console.log(
-        '[LocationQuestionPlayer] No userSelectedLocations, keeping existing markers for now'
-      );
-      return;
-    }
-
-    // Chỉ cập nhật khi userSelectedLocations khác với số lượng markers hiện tại
-    if (userMarkersRef.current.length === userSelectedLocations.length) {
-      // Kiểm tra xem vị trí có khác nhau không
-      let needUpdate = false;
-      for (let i = 0; i < userSelectedLocations.length; i++) {
-        const marker = userMarkersRef.current[i];
-        const location = userSelectedLocations[i];
-        const lngLat = marker.getLngLat();
-
-        // Kiểm tra sự khác biệt trong tọa độ
-        if (
-          Math.abs(lngLat.lng - location.lng) > 0.000001 ||
-          Math.abs(lngLat.lat - location.lat) > 0.000001
-        ) {
-          needUpdate = true;
-          break;
-        }
-      }
-
-      if (!needUpdate) {
-        console.log('[LocationQuestionPlayer] User markers đã đồng bộ, bỏ qua');
-        return; // Đã đồng bộ, không cần làm gì
-      }
-    }
-
-    // Chỉ cập nhật nếu số lượng markers khác với userSelectedLocations
-    // hoặc có sự khác biệt về vị trí
+    // Luôn cập nhật markers để đồng bộ với userSelectedLocations
+    // Xóa tất cả markers cũ trước khi tạo mới
     console.log(
-      '[LocationQuestionPlayer] Updating user markers to match userSelectedLocations'
+      '[LocationQuestionPlayer] Đồng bộ hóa markers với userSelectedLocations'
     );
 
-    // Xóa tất cả markers cũ trước khi tạo mới
     userMarkersRef.current.forEach((marker) => marker.remove());
     userMarkersRef.current = [];
 
-    // Tạo markers mới cho tất cả userSelectedLocations
-    userSelectedLocations.forEach((location, index) => {
-      const userMarker = new mapboxgl.Marker({
-        color: '#FF0000', // Màu đỏ cho user selection
-        draggable: false,
-      })
-        .setLngLat([location.lng, location.lat])
-        .addTo(mapRef.current!);
-
-      userMarkersRef.current.push(userMarker);
-
-      console.log(
-        `[LocationQuestionPlayer] Tạo user marker ${index + 1}:`,
-        location
-      );
-    });
-  }, [userSelectedLocations]);
-
-  // Effect riêng để đảm bảo user markers luôn được hiển thị khi showCorrectLocation changes
-  useEffect(() => {
-    if (!mapRef.current || !userSelectedLocations?.length) {
-      return;
-    }
-
-    console.log(
-      '[LocationQuestionPlayer] Ensuring user markers are visible after showCorrectLocation change'
-    );
-
-    // Kiểm tra và tái tạo user markers nếu cần
-    if (userMarkersRef.current.length !== userSelectedLocations.length) {
-      // Xóa markers cũ
-      userMarkersRef.current.forEach((marker) => marker.remove());
-      userMarkersRef.current = [];
-
-      // Tạo lại markers
+    // Tạo markers mới cho tất cả userSelectedLocations (nếu có)
+    if (userSelectedLocations && userSelectedLocations.length > 0) {
       userSelectedLocations.forEach((location, index) => {
         const userMarker = new mapboxgl.Marker({
-          color: '#FF0000',
+          color: '#FF0000', // Màu đỏ cho user selection
           draggable: false,
         })
           .setLngLat([location.lng, location.lat])
           .addTo(mapRef.current!);
 
         userMarkersRef.current.push(userMarker);
+
         console.log(
-          `[LocationQuestionPlayer] Re-created user marker ${
-            index + 1
-          } after showCorrectLocation change`
+          `[LocationQuestionPlayer] Tạo user marker ${index + 1}:`,
+          location
         );
       });
     }
-  }, [showCorrectLocation, userSelectedLocations]);
+  }, [userSelectedLocations]);
 
   return (
     <Card className='w-full'>
@@ -757,7 +706,7 @@ export function LocationQuestionPlayer({
         <div className='relative'>
           <div
             ref={mapContainerRef}
-            className='w-full h-[400px] bg-slate-100 dark:bg-slate-800 rounded-lg'
+            className='w-full h-[300px] sm:h-[400px] bg-slate-100 dark:bg-slate-800 rounded-lg'
           />
         </div>
 
