@@ -602,6 +602,11 @@ i18next
             success: 'Success',
             inviteSuccess: 'Invitation sent successfully',
             inviteError: 'Could not send invitation',
+            cropAvatar: 'Crop Avatar',
+            cropAvatarDesc:
+              'Kéo và thả để cắt ảnh đại diện của bạn. Nhấn "Lưu" để áp dụng.',
+            zoom: 'Zoom',
+            cropAndUpload: 'Crop and Upload',
             columns: {
               avatar: 'Avatar',
               email: 'Email',
@@ -1643,6 +1648,11 @@ i18next
             success: 'Thành công',
             inviteSuccess: 'Đã gửi lời mời thành công',
             inviteError: 'Không thể gửi lời mời',
+            cropAvatar: 'Cắt ảnh đại diện',
+            cropAvatarDesc:
+              'Kéo và thả để cắt ảnh đại diện của bạn. Nhấn "Lưu" để áp dụng.',
+            zoom: 'Phóng to',
+            cropAndUpload: 'Cắt và tải lên',
             columns: {
               avatar: 'Ảnh đại diện',
               email: 'Email',
