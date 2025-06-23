@@ -691,7 +691,7 @@ export function MatchingPairSettings({
       const originalMatchingData = matchingData;
 
       try {
-        // ✅ Optimistic update - remove item immediately from UI
+        // Optimistic update
         setMatchingData((prev) => {
           if (!prev) return prev;
           return {
@@ -707,16 +707,8 @@ export function MatchingPairSettings({
           };
         });
 
-        // ✅ API call
+        // API call
         await activitiesApi.deleteMatchingPairItem(activityId, itemId);
-
-        // ✅ Always refresh from server after deletion
-        if (onRefreshActivity) {
-          await onRefreshActivity();
-        }
-
-        // ✅ Force refresh to ensure UI updates
-        forceRefresh();
 
         toast({
           title: 'Success',
@@ -725,7 +717,7 @@ export function MatchingPairSettings({
       } catch (error) {
         console.error('❌ Failed to delete item:', error);
 
-        // ✅ Rollback optimistic update on error
+        // Rollback optimistic update on error
         setMatchingData(originalMatchingData);
 
         toast({
@@ -737,7 +729,7 @@ export function MatchingPairSettings({
         setIsUpdating(false);
       }
     },
-    [activityId, onRefreshActivity, forceRefresh]
+    [activityId, matchingData]
   );
 
   // Handle item selection với validation
