@@ -182,6 +182,9 @@ i18next
           // User Auth
           email: 'Email',
           password: 'Password',
+          firstName: 'First Name',
+          lastName: 'Last Name',
+          phoneNumber: 'Phone Number',
           forgotPassword: 'Forgot Password?',
           dontHaveAccount: "Don't have an account?",
           alreadyHaveAccount: 'Already have an account?',
@@ -330,6 +333,33 @@ i18next
           payment: 'Payment',
           notifications: 'Notifications',
           logout: 'Logout',
+
+          // Forgot Password
+          forgotPasswordTitle: 'Forgot Password',
+          forgotPasswordDescription:
+            'Enter your email to receive a password reset link.',
+          sendResetLink: 'Send Reset Link',
+          sending: 'Sending...',
+          forgotPasswordFailed: 'Forgot Password Failed',
+          forgotPasswordGenericError: 'An error occurred, please try again.',
+          emailPlaceholderForgot: 'name@example.com',
+
+          // Register Page
+          welcome: 'Welcome',
+          joinPreziQ:
+            'Join PreziQ to explore amazing presentations and connect with like-minded creators.',
+          firstNameRequired: 'First name is required',
+          lastNameRequired: 'Last name is required',
+          phoneNumberRequired: 'Phone number is required',
+          passwordRequired: 'Password is required',
+          confirmPasswordRequired: 'Confirm password is required',
+          byCreatingAccount: 'By creating an account, you agree to our',
+          termsAndConditions: 'terms and conditions',
+          privacyPolicy: 'privacy policy',
+          createAnAccount: 'Create an account',
+          logIn: 'Log in',
+          phoneNumberPlaceholder: 'e.g., 0886332809',
+          emailRequired: 'Email is required',
 
           // New achievements translations
           achievementName: 'Achievement Name',
@@ -1049,14 +1079,6 @@ i18next
             profilePageTitle: 'Personal Information',
             profilePageDescription:
               'Manage your personal information and account security easily and securely',
-            // personalInfoCard: 'Thông tin cá nhân',
-            // personalInfoCardDesc:
-            //   'Cập nhật họ tên, ngày sinh và thông tin cá nhân khác',
-            // emailSettingsCard: 'Cài đặt email',
-            // emailSettingsCardDesc:
-            //   'Thay đổi địa chỉ email và xác thực tài khoản',
-            // securityCard: 'Bảo mật',
-            // securityCardDesc: 'Đổi mật khẩu và tăng cường bảo mật tài khoản',
           },
         },
       },
@@ -1205,6 +1227,9 @@ i18next
           // User Auth
           email: 'Email',
           password: 'Mật khẩu',
+          firstName: 'Tên',
+          lastName: 'Họ',
+          phoneNumber: 'Số điện thoại',
           forgotPassword: 'Quên mật khẩu?',
           dontHaveAccount: 'Chưa có tài khoản?',
           alreadyHaveAccount: 'Đã có tài khoản?',
@@ -1355,6 +1380,33 @@ i18next
           notifications: 'Thông báo',
           logout: 'Đăng xuất',
 
+          // Forgot Password
+          forgotPasswordTitle: 'Quên mật khẩu',
+          forgotPasswordDescription:
+            'Nhập email của bạn để nhận liên kết đặt lại mật khẩu.',
+          sendResetLink: 'Gửi liên kết đặt lại',
+          sending: 'Đang gửi...',
+          forgotPasswordFailed: 'Quên mật khẩu thất bại',
+          forgotPasswordGenericError: 'Đã xảy ra lỗi, vui lòng thử lại.',
+          emailPlaceholderForgot: 'ten@example.com',
+
+          // Register Page
+          welcome: 'Chào mừng',
+          joinPreziQ:
+            'Tham gia PreziQ để khám phá những bài thuyết trình tuyệt vời và kết nối với những người sáng tạo cùng chí hướng.',
+          firstNameRequired: 'Tên là bắt buộc',
+          lastNameRequired: 'Họ là bắt buộc',
+          phoneNumberRequired: 'Số điện thoại là bắt buộc',
+          passwordRequired: 'Mật khẩu là bắt buộc',
+          confirmPasswordRequired: 'Xác nhận mật khẩu là bắt buộc',
+          byCreatingAccount: 'Bằng cách tạo tài khoản, bạn đồng ý với',
+          termsAndConditions: 'điều khoản và điều kiện',
+          privacyPolicy: 'chính sách bảo mật',
+          createAnAccount: 'Tạo tài khoản',
+          logIn: 'Đăng nhập',
+          phoneNumberPlaceholder: 'ví dụ: 0886332809',
+          emailRequired: 'Email là bắt buộc',
+
           // New achievements translations
           achievementName: 'Tên thành tựu',
           achievementDescription: 'Mô tả',
@@ -1478,7 +1530,7 @@ i18next
             uploading: 'Đang tải lên...',
             fileInfo: 'Thông tin tệp',
             fileSize: 'KB',
-            formatInfo: 'Định dạng: JPG, JPEG, PNG, SVG (tối đa 5MB)',
+            formatInfo: 'Định dạng: JPG, JPEG, PNG, SVG (max 5MB)',
             dragDrop: 'Kéo và thả biểu tượng vào đây',
             or: 'hoặc',
             browse: 'Duyệt tệp',
@@ -2026,14 +2078,6 @@ i18next
             profilePageTitle: 'Hồ sơ cá nhân',
             profilePageDescription:
               'Quản lý thông tin cá nhân và bảo mật tài khoản của bạn một cách dễ dàng và an toàn',
-            // personalInfoCard: 'Thông tin cá nhân',
-            // personalInfoCardDesc:
-            //   'Cập nhật họ tên, ngày sinh và thông tin cá nhân khác',
-            // emailSettingsCard: 'Cài đặt email',
-            // emailSettingsCardDesc:
-            //   'Thay đổi địa chỉ email và xác thực tài khoản',
-            // securityCard: 'Bảo mật',
-            // securityCardDesc: 'Đổi mật khẩu và tăng cường bảo mật tài khoản',
           },
         },
       },
