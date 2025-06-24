@@ -806,35 +806,40 @@ export function MatchingPairSettings({
           }
         );
 
-        if (response?.data?.connection) {
+        // Xử lý response và update UI
+        if (response?.data?.data) {
+          const newConnection = {
+            quizMatchingPairConnectionId:
+              response.data.data.quizMatchingPairConnectionId,
+            leftItem: response.data.data.leftItem,
+            rightItem: response.data.data.rightItem,
+          };
+
           setMatchingData((prev) => {
             if (!prev) return prev;
-            const exists = prev.connections.some(
-              (c) =>
-                c.quizMatchingPairConnectionId ===
-                response.data.connection.quizMatchingPairConnectionId
-            );
-            if (exists) return prev;
             return {
               ...prev,
-              connections: [...prev.connections, response.data.connection],
+              connections: [...prev.connections, newConnection],
             };
           });
-        } else if (response?.data?.quizMatchingPairAnswer) {
-          setMatchingData(response.data.quizMatchingPairAnswer);
-          onMatchingDataUpdate?.(response.data.quizMatchingPairAnswer);
-        }
 
-        // Thêm dòng này để luôn refresh lại từ server
-        if (onRefreshActivity) {
-          await onRefreshActivity();
+          toast({
+            title: 'Success',
+            description: 'Items connected successfully',
+          });
         }
-        forceRefresh();
+      } catch (error) {
+        console.error('Connection error:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to create connection.',
+          variant: 'destructive',
+        });
       } finally {
         setIsConnecting(false);
       }
     },
-    [activityId, onMatchingDataUpdate, onRefreshActivity, forceRefresh]
+    [activityId]
   );
 
   // Disconnect logic với better error handling
