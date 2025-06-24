@@ -472,85 +472,139 @@ export function MatchingPairSettings({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const activeIsLeft = active.id.toString().startsWith('left-');
-    const overIsLeft = over.id.toString().startsWith('left-');
+    const originalMatchingData = matchingData;
+    setIsUpdating(true);
 
-    if (activeIsLeft === overIsLeft) {
-      // Reorder trong cùng cột
-      const items = activeIsLeft ? leftItems : rightItems;
-      const oldIndex = items.findIndex(
-        (item) =>
-          `${activeIsLeft ? 'left' : 'right'}-${
-            item.quizMatchingPairItemId
-          }` === active.id
-      );
-      const newIndex = items.findIndex(
-        (item) =>
-          `${activeIsLeft ? 'left' : 'right'}-${
-            item.quizMatchingPairItemId
-          }` === over.id
-      );
-      if (oldIndex !== -1 && newIndex !== -1) {
-        await handleReorderItems(
-          activeIsLeft ? 'left' : 'right',
-          oldIndex,
-          newIndex
+    try {
+      const activeIsLeft = active.id.toString().startsWith('left-');
+      const overIsLeft = over.id.toString().startsWith('left-');
+
+      if (activeIsLeft === overIsLeft) {
+        // Case 1: Reorder trong cùng một cột
+        const items = activeIsLeft ? leftItems : rightItems;
+        const oldIndex = items.findIndex(
+          (item) =>
+            `${activeIsLeft ? 'left' : 'right'}-${
+              item.quizMatchingPairItemId
+            }` === active.id
         );
-      }
-    } else {
-      // Kéo sang cột khác
-      const fromItems = activeIsLeft ? leftItems : rightItems;
-      const toItems = activeIsLeft ? rightItems : leftItems;
-      const fromIndex = fromItems.findIndex(
-        (item) =>
-          `${activeIsLeft ? 'left' : 'right'}-${
-            item.quizMatchingPairItemId
-          }` === active.id
-      );
-      const toIndex = toItems.findIndex(
-        (item) =>
-          `${!activeIsLeft ? 'left' : 'right'}-${
-            item.quizMatchingPairItemId
-          }` === over.id
-      );
+        const newIndex = items.findIndex(
+          (item) =>
+            `${activeIsLeft ? 'left' : 'right'}-${
+              item.quizMatchingPairItemId
+            }` === over.id
+        );
+        const movedItem = items[oldIndex];
 
-      if (fromIndex !== -1) {
-        setIsUpdating(true);
-        try {
-          const item = fromItems[fromIndex];
-          if (!item.quizMatchingPairItemId) return;
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const reordered = arrayMove(items, oldIndex, newIndex);
+          const updatedItems = reordered.map((item, index) => ({
+            ...item,
+            displayOrder: index + 1,
+          }));
+          const otherItems = activeIsLeft ? rightItems : leftItems;
+
+          setMatchingData((prev) => ({
+            ...prev!,
+            items: [...otherItems, ...updatedItems],
+          }));
 
           await activitiesApi.updateReorderQuizItem(
             activityId,
-            item.quizMatchingPairItemId!,
+            movedItem.quizMatchingPairItemId!,
             {
-              quizMatchingPairItemId: item.quizMatchingPairItemId!,
-              content: item.content || '',
-              isLeftColumn: !activeIsLeft,
-              displayOrder: (toIndex !== -1 ? toIndex : toItems.length) + 1,
+              ...movedItem,
+              displayOrder: newIndex + 1,
             }
           );
+        }
+      } else {
+        // Case 2: Di chuyển item sang cột khác
+        const fromItems = activeIsLeft ? leftItems : rightItems;
+        const toItems = activeIsLeft ? rightItems : leftItems;
+        const fromIndex = fromItems.findIndex(
+          (item) =>
+            `${activeIsLeft ? 'left' : 'right'}-${
+              item.quizMatchingPairItemId
+            }` === active.id
+        );
+        const toIndex = toItems.findIndex(
+          (item) =>
+            `${!activeIsLeft ? 'left' : 'right'}-${
+              item.quizMatchingPairItemId
+            }` === over.id
+        );
+        const movedItem = fromItems[fromIndex];
 
-          // ✅ FIX 6: Always refresh after moving items
-          if (onRefreshActivity) {
-            await onRefreshActivity();
-          }
-          forceRefresh();
+        if (fromIndex !== -1) {
+          // Xóa item khỏi cột cũ và thêm vào cột mới
+          const newFromItems = fromItems.filter(
+            (i) => i.quizMatchingPairItemId !== movedItem.quizMatchingPairItemId
+          );
+          const newToItems = [...toItems];
+          newToItems.splice(toIndex, 0, {
+            ...movedItem,
+            isLeftColumn: !activeIsLeft,
+          });
 
-          toast({
-            title: 'Success',
-            description: 'Item moved to other column successfully',
-          });
-        } catch (error) {
-          toast({
-            title: 'Error',
-            description: 'Failed to move item to other column',
-            variant: 'destructive',
-          });
-        } finally {
-          setIsUpdating(false);
+          // Cập nhật lại displayOrder cho cả 2 cột
+          const updatedFrom = newFromItems.map((item, index) => ({
+            ...item,
+            displayOrder: index + 1,
+          }));
+          const updatedTo = newToItems.map((item, index) => ({
+            ...item,
+            displayOrder: index + 1,
+          }));
+
+          const allItems = activeIsLeft
+            ? [...updatedFrom, ...updatedTo]
+            : [...updatedTo, ...updatedFrom];
+
+          // Xóa các connection liên quan đến item bị di chuyển
+          const newConnections = (
+            originalMatchingData?.connections || []
+          ).filter(
+            (conn) =>
+              conn.leftItem.quizMatchingPairItemId !==
+                movedItem.quizMatchingPairItemId &&
+              conn.rightItem.quizMatchingPairItemId !==
+                movedItem.quizMatchingPairItemId
+          );
+
+          setMatchingData((prev) => ({
+            ...prev!,
+            items: allItems,
+            connections: newConnections,
+          }));
+
+          await activitiesApi.updateReorderQuizItem(
+            activityId,
+            movedItem.quizMatchingPairItemId!,
+            {
+              ...movedItem,
+              isLeftColumn: !activeIsLeft,
+              displayOrder: toIndex + 1,
+            }
+          );
         }
       }
+
+      // Đồng bộ lại state từ server để đảm bảo dữ liệu chính xác nhất
+      if (onRefreshActivity) {
+        await onRefreshActivity();
+      }
+      forceRefresh();
+    } catch (error) {
+      console.error('Failed to update item position', error);
+      setMatchingData(originalMatchingData); // Rollback nếu có lỗi
+      toast({
+        title: 'Error',
+        description: 'Failed to move item.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
