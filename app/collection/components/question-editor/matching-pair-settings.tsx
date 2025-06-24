@@ -1,7 +1,6 @@
 'use client';
 
 import type React from 'react';
-
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -156,7 +155,6 @@ function SortableItem({
       )}
       onClick={onSelect}
     >
-      {/* Drag Handle */}
       <div
         {...attributes}
         {...listeners}
@@ -166,7 +164,6 @@ function SortableItem({
         <GripVertical className="h-4 w-4" />
       </div>
 
-      {/* Item Input */}
       <div className="flex-1 space-y-1">
         <Label className="text-xs text-gray-500 dark:text-gray-400">
           {columnName}
@@ -184,7 +181,6 @@ function SortableItem({
         />
       </div>
 
-      {/* Delete Button */}
       <Button
         variant="ghost"
         size="icon"
@@ -198,7 +194,6 @@ function SortableItem({
         <Trash2 className="h-4 w-4 text-red-500" />
       </Button>
 
-      {/* Connection Indicator */}
       {isConnected && (
         <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
           <span className="text-white text-xs font-bold">✓</span>
@@ -228,30 +223,24 @@ export function MatchingPairSettings({
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
   const [selectedRight, setSelectedRight] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-
-  // ✅ FIX 1: Better state management với force refresh key
   const [refreshKey, setRefreshKey] = useState(0);
   const [matchingData, setMatchingData] =
     useState<QuizMatchingPairAnswer | null>(
       question.quizMatchingPairAnswer || question.matching_data || null
     );
 
-  // ✅ FIX 2: Force refresh function
   const forceRefresh = useCallback(() => {
     setRefreshKey((prev) => prev + 1);
   }, []);
 
-  // ✅ FIX 3: Better sync với props - always update when question changes
   useEffect(() => {
     const newData =
       question.quizMatchingPairAnswer || question.matching_data || null;
-
     setMatchingData(newData || null);
     setSelectedLeft(null);
     setSelectedRight(null);
   }, [activityId, settingsUpdateTrigger]);
 
-  // State cho column names
   const [leftColumnTitle, setLeftColumnTitle] = useState(
     matchingData?.leftColumnName || leftColumnName
   );
@@ -259,20 +248,16 @@ export function MatchingPairSettings({
     matchingData?.rightColumnName || rightColumnName
   );
 
-  // Thêm state cho lỗi input
   const [leftColumnError, setLeftColumnError] = useState('');
   const [rightColumnError, setRightColumnError] = useState('');
 
-  // Cập nhật column titles khi matchingData thay đổi
   useEffect(() => {
     setLeftColumnTitle(matchingData?.leftColumnName || leftColumnName);
     setRightColumnTitle(matchingData?.rightColumnName || rightColumnName);
   }, [matchingData, leftColumnName, rightColumnName]);
 
-  // Debounced function để update column names
   const debouncedUpdateColumnNames = useCallback(
     (left: string, right: string) => {
-      // Nếu có cột nào trống thì không gọi API và set lỗi
       let hasError = false;
       if (!left.trim()) {
         setLeftColumnError('Vui lòng nhập tên cột bên trái');
@@ -336,7 +321,6 @@ export function MatchingPairSettings({
             onColumnNamesChange(left, right);
           }
 
-          // ✅ FIX 4: Always refresh after column name update
           if (onRefreshActivity) {
             await onRefreshActivity();
           }
@@ -363,7 +347,6 @@ export function MatchingPairSettings({
     ]
   );
 
-  // Sửa hàm handleColumnNameChange để clear lỗi khi user nhập lại
   const handleColumnNameChange = (side: 'left' | 'right', value: string) => {
     if (side === 'left') {
       setLeftColumnTitle(value);
@@ -376,7 +359,6 @@ export function MatchingPairSettings({
     }
   };
 
-  // ✅ FIX 5: Better memoization với debug logging
   const leftItems = useMemo(() => {
     if (!matchingData?.items) {
       console.log('📝 No left items - matchingData.items is empty');
@@ -385,7 +367,6 @@ export function MatchingPairSettings({
     const items = matchingData.items
       .filter((item) => item.isLeftColumn)
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-
     console.log('📝 Left items:', items.length, items);
     return items;
   }, [matchingData?.items]);
@@ -398,12 +379,10 @@ export function MatchingPairSettings({
     const items = matchingData.items
       .filter((item) => !item.isLeftColumn)
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-
     console.log('📝 Right items:', items.length, items);
     return items;
   }, [matchingData?.items]);
 
-  // Tạo Set chứa các itemId đã kết nối
   const connectedLeftIds = useMemo(
     () =>
       new Set(
@@ -424,7 +403,6 @@ export function MatchingPairSettings({
     [matchingData?.connections]
   );
 
-  // Bảng màu cho connections
   const connectionColors = [
     'bg-red-100 border-red-400 text-red-700',
     'bg-blue-100 border-blue-400 text-blue-700',
@@ -434,7 +412,6 @@ export function MatchingPairSettings({
     'bg-pink-100 border-pink-400 text-pink-700',
   ];
 
-  // Map itemId -> colorClass
   const itemIdToColor = useMemo(() => {
     const map: Record<string, string> = {};
     (matchingData?.connections ?? [])
@@ -480,7 +457,6 @@ export function MatchingPairSettings({
       const overIsLeft = over.id.toString().startsWith('left-');
 
       if (activeIsLeft === overIsLeft) {
-        // Case 1: Reorder trong cùng một cột
         const items = activeIsLeft ? leftItems : rightItems;
         const oldIndex = items.findIndex(
           (item) =>
@@ -519,7 +495,6 @@ export function MatchingPairSettings({
           );
         }
       } else {
-        // Case 2: Di chuyển item sang cột khác
         const fromItems = activeIsLeft ? leftItems : rightItems;
         const toItems = activeIsLeft ? rightItems : leftItems;
         const fromIndex = fromItems.findIndex(
@@ -537,7 +512,6 @@ export function MatchingPairSettings({
         const movedItem = fromItems[fromIndex];
 
         if (fromIndex !== -1) {
-          // Xóa item khỏi cột cũ và thêm vào cột mới
           const newFromItems = fromItems.filter(
             (i) => i.quizMatchingPairItemId !== movedItem.quizMatchingPairItemId
           );
@@ -547,7 +521,6 @@ export function MatchingPairSettings({
             isLeftColumn: !activeIsLeft,
           });
 
-          // Cập nhật lại displayOrder cho cả 2 cột
           const updatedFrom = newFromItems.map((item, index) => ({
             ...item,
             displayOrder: index + 1,
@@ -561,7 +534,6 @@ export function MatchingPairSettings({
             ? [...updatedFrom, ...updatedTo]
             : [...updatedTo, ...updatedFrom];
 
-          // Xóa các connection liên quan đến item bị di chuyển
           const newConnections = (
             originalMatchingData?.connections || []
           ).filter(
@@ -590,14 +562,13 @@ export function MatchingPairSettings({
         }
       }
 
-      // Đồng bộ lại state từ server để đảm bảo dữ liệu chính xác nhất
       if (onRefreshActivity) {
         await onRefreshActivity();
       }
       forceRefresh();
     } catch (error) {
       console.error('Failed to update item position', error);
-      setMatchingData(originalMatchingData); // Rollback nếu có lỗi
+      setMatchingData(originalMatchingData);
       toast({
         title: 'Error',
         description: 'Failed to move item.',
@@ -616,30 +587,22 @@ export function MatchingPairSettings({
     const currentItems = side === 'left' ? leftItems : rightItems;
     const reorderedItems = arrayMove(currentItems, startIndex, endIndex);
 
-    // Optimistic UI Update
     setMatchingData((prev) => {
       if (!prev) return prev;
-
       const updatedSideItemsWithOrder = reorderedItems.map((item, index) => ({
         ...item,
         displayOrder: index + 1,
       }));
-
       const otherSideItems = prev.items.filter(
         (item) => item.isLeftColumn !== (side === 'left')
       );
-
       const newItems = [...otherSideItems, ...updatedSideItemsWithOrder];
-
-      // ✅ Giữ nguyên connections, không map lại
       return {
         ...prev,
         items: newItems,
-        // connections: prev.connections,
       };
     });
 
-    // API calls
     try {
       const updatePromises = reorderedItems.map((item, index) =>
         activitiesApi.updateReorderQuizItem(
@@ -655,7 +618,6 @@ export function MatchingPairSettings({
       );
       await Promise.all(updatePromises);
 
-      // ✅ Sau khi reorder, luôn đồng bộ lại state từ server
       if (onRefreshActivity) {
         await onRefreshActivity();
       }
@@ -673,7 +635,6 @@ export function MatchingPairSettings({
     async (itemId: string, value: string) => {
       if (!matchingData?.items) return;
 
-      // Optimistic update: chỉ update content của item, giữ nguyên connections
       setMatchingData((prev) => {
         if (!prev) return prev;
         return {
@@ -683,7 +644,6 @@ export function MatchingPairSettings({
               ? { ...item, content: value }
               : item
           ),
-          // giữ nguyên connections
         };
       });
 
@@ -703,60 +663,86 @@ export function MatchingPairSettings({
               displayOrder: item.displayOrder || 0,
             }
           );
-          // Nếu muốn fetch lại từ server, phải đảm bảo server trả về connections đầy đủ!
-          // Nếu không, không nên fetch lại ở đây.
         } catch (error) {
-          // ... error handling, có thể rollback nếu cần
+          console.error('Failed to update item:', error);
         }
       }
     },
     [matchingData, activityId]
   );
 
-  // ✅ FIX 7: Improved handleAddPair với better error handling
   const handleAddPair = useCallback(async () => {
     console.log('🔄 Adding new pair...');
     setIsUpdating(true);
+    const originalMatchingData = matchingData;
+
+    // Create temporary pair items
+    const newLeftItem: QuizMatchingPairItem = {
+      content: '',
+      isLeftColumn: true,
+      displayOrder: leftItems.length + 1,
+    };
+    const newRightItem: QuizMatchingPairItem = {
+      content: '',
+      isLeftColumn: false,
+      displayOrder: rightItems.length + 1,
+    };
+
+    // Optimistic update: Add new pair to local state
+    setMatchingData((prev: any) => {
+      const currentItems = prev?.items || [];
+      return {
+        ...prev,
+        items: [...currentItems, newLeftItem, newRightItem],
+        connections: prev?.connections || [],
+      };
+    });
+
     try {
       const response = await activitiesApi.addMatchingPair(activityId);
       console.log('✅ Add pair response:', response);
 
-      // ✅ Always refresh from server after adding
-      if (onRefreshActivity) {
-        await onRefreshActivity();
-      }
+      // Update state with actual server data
+      if (response?.data?.quizMatchingPairAnswer && originalMatchingData) {
+        setMatchingData((prev) => {
+          if (!prev) return response.data.quizMatchingPairAnswer;
 
-      // ✅ Update local state if we have response data
-      if (response?.data?.quizMatchingPairAnswer) {
-        setMatchingData(response.data.quizMatchingPairAnswer);
+          const newItems = originalMatchingData.items;
+          const serverItems = response.data.quizMatchingPairAnswer.items || [];
+          return {
+            ...response.data.quizMatchingPairAnswer,
+            items: [
+              ...newItems,
+              ...serverItems.filter(
+                (item: any) =>
+                  item.displayOrder === newLeftItem.displayOrder ||
+                  item.displayOrder === newRightItem.displayOrder
+              ),
+            ],
+          };
+        });
+
         if (onMatchingDataUpdate) {
           onMatchingDataUpdate(response.data.quizMatchingPairAnswer);
         }
-      } else if (response?.data?.connection) {
-        setMatchingData((prev) => {
-          if (!prev) return prev;
-          const exists = prev.connections.some(
-            (c) =>
-              c.quizMatchingPairConnectionId ===
-              response.data.connection.quizMatchingPairConnectionId
-          );
-          if (exists) return prev;
-          return {
-            ...prev,
-            connections: [...prev.connections, response.data.connection],
-          };
-        });
       }
-
-      // ✅ Force refresh to ensure UI updates
-      forceRefresh();
 
       toast({
         title: 'Success',
         description: 'New pair added successfully',
       });
+
+      // Optionally refresh from server to ensure consistency
+      if (onRefreshActivity) {
+        await onRefreshActivity();
+      }
+      forceRefresh();
     } catch (error) {
       console.error('❌ Failed to add pair:', error);
+
+      // Rollback optimistic update
+      setMatchingData(originalMatchingData);
+
       toast({
         title: 'Error',
         description: 'Failed to add new pair',
@@ -765,19 +751,22 @@ export function MatchingPairSettings({
     } finally {
       setIsUpdating(false);
     }
-  }, [activityId, onMatchingDataUpdate, onRefreshActivity, forceRefresh]);
+  }, [
+    activityId,
+    onMatchingDataUpdate,
+    onRefreshActivity,
+    forceRefresh,
+    leftItems.length,
+    rightItems.length,
+  ]);
 
-  // ✅ FIX 8: Improved handleDeleteItem với better state management
   const handleDeleteItem = useCallback(
     async (itemId: string, side: 'left' | 'right') => {
       console.log('🗑️ Deleting item:', itemId, side);
       setIsUpdating(true);
-
-      // Store original state for potential rollback
       const originalMatchingData = matchingData;
 
       try {
-        // Optimistic update
         setMatchingData((prev) => {
           if (!prev) return prev;
           return {
@@ -793,7 +782,6 @@ export function MatchingPairSettings({
           };
         });
 
-        // API call
         await activitiesApi.deleteMatchingPairItem(activityId, itemId);
 
         toast({
@@ -802,10 +790,7 @@ export function MatchingPairSettings({
         });
       } catch (error) {
         console.error('❌ Failed to delete item:', error);
-
-        // Rollback optimistic update on error
         setMatchingData(originalMatchingData);
-
         toast({
           title: 'Error',
           description: 'Failed to delete item',
@@ -818,7 +803,6 @@ export function MatchingPairSettings({
     [activityId, matchingData]
   );
 
-  // Handle item selection với validation
   const handleSelectItem = useCallback(
     (side: 'left' | 'right', itemId: string) => {
       if (isConnecting || isUpdating) return;
@@ -844,7 +828,6 @@ export function MatchingPairSettings({
     [isConnecting, isUpdating]
   );
 
-  // Connection logic với better error handling
   const handleConnect = useCallback(
     async (leftItem: QuizMatchingPairItem, rightItem: QuizMatchingPairItem) => {
       if (!leftItem.quizMatchingPairItemId || !rightItem.quizMatchingPairItemId)
@@ -860,7 +843,6 @@ export function MatchingPairSettings({
           }
         );
 
-        // Xử lý response và update UI
         if (response?.data?.data) {
           const newConnection = {
             quizMatchingPairConnectionId:
@@ -896,13 +878,11 @@ export function MatchingPairSettings({
     [activityId]
   );
 
-  // Disconnect logic với better error handling
   const handleDisconnect = useCallback(
     async (connection: QuizMatchingPairConnection) => {
       if (!connection.quizMatchingPairConnectionId) return;
       setIsConnecting(true);
 
-      // Optimistic update: Xóa connection khỏi local state ngay
       setMatchingData((prev) => {
         if (!prev) return prev;
         return {
@@ -920,9 +900,7 @@ export function MatchingPairSettings({
           activityId,
           connection.quizMatchingPairConnectionId
         );
-        // Nếu BE trả về answer mới, replace local state nếu muốn
       } catch (error) {
-        // Nếu lỗi, rollback: thêm lại connection vào local state
         setMatchingData((prev) => {
           if (!prev) return prev;
           return {
@@ -942,7 +920,6 @@ export function MatchingPairSettings({
     [activityId]
   );
 
-  // Connection handling effect với better logic
   useEffect(() => {
     const handleConnection = async () => {
       if (!selectedLeft || !selectedRight || isConnecting) return;
@@ -960,21 +937,18 @@ export function MatchingPairSettings({
         return;
       }
 
-      // Check if connection already exists
       const existingConnection = matchingData?.connections?.find(
         (conn) =>
           conn.leftItem.quizMatchingPairItemId === selectedLeft &&
           conn.rightItem.quizMatchingPairItemId === selectedRight
       );
 
-      // Reset selections immediately for better UX
       setSelectedLeft(null);
       setSelectedRight(null);
 
       if (existingConnection) {
         await handleDisconnect(existingConnection);
       } else {
-        // Check if either item is already connected to something else
         const leftAlreadyConnected = matchingData?.connections?.find(
           (conn) => conn.leftItem.quizMatchingPairItemId === selectedLeft
         );
@@ -1008,7 +982,6 @@ export function MatchingPairSettings({
     handleDisconnect,
   ]);
 
-  // ✅ FIX 9: Better refresh handling
   useEffect(() => {
     if (onRefreshActivity && settingsUpdateTrigger > 0) {
       console.log('🔄 Settings update trigger changed, refreshing...');
@@ -1018,7 +991,6 @@ export function MatchingPairSettings({
     }
   }, [settingsUpdateTrigger, onRefreshActivity, forceRefresh]);
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (updateTimeoutRef.current) {
@@ -1027,7 +999,6 @@ export function MatchingPairSettings({
     };
   }, []);
 
-  // ✅ FIX 10: Debug logging để track state changes
   useEffect(() => {
     console.log('🔍 MatchingData changed:', {
       itemsCount: matchingData?.items?.length || 0,
@@ -1069,7 +1040,6 @@ export function MatchingPairSettings({
         </div>
       </div>
 
-      {/* Instructions */}
       <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
         <p className="text-sm text-blue-700 dark:text-blue-300">
           <strong>Instructions:</strong> Click on items from left and right
@@ -1078,7 +1048,6 @@ export function MatchingPairSettings({
         </p>
       </div>
 
-      {/* Debug Info - Remove in production */}
       <div className="bg-gray-50 dark:bg-gray-900/20 p-2 rounded text-xs">
         <p>
           Debug: Items: {matchingData?.items?.length || 0}, Left:{' '}
@@ -1087,7 +1056,6 @@ export function MatchingPairSettings({
         </p>
       </div>
 
-      {/* Display items in grid layout */}
       {isUpdating ? (
         <div className="flex justify-center items-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1216,7 +1184,6 @@ export function MatchingPairSettings({
         </Button>
       </div>
 
-      {/* Connection Status */}
       {(selectedLeft || selectedRight) && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
           <p className="text-sm text-yellow-700 dark:text-yellow-300">
