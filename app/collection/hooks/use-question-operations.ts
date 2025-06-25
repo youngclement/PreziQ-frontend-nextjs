@@ -30,7 +30,8 @@ export function useQuestionOperations(
   setActiveQuestionIndex: (index: number) => void,
   activity: Activity | null,
   setActivity: (activity: Activity | null) => void,
-  refreshCollectionData: () => Promise<void>
+  refreshCollectionData: () => Promise<void>,
+  refreshMatchingPairData?: (activityId: string) => Promise<void>
 ) {
   const [timeLimit, setTimeLimit] = useState(30); // seconds
 
@@ -917,6 +918,11 @@ export function useQuestionOperations(
         matching_data: updatedMatchingData,
       };
       setQuestions(updatedQuestions);
+
+      // Refresh matching pair data to ensure consistency
+      if (refreshMatchingPairData) {
+        await refreshMatchingPairData(activityId);
+      }
     } catch (error) {
       console.error('Error updating matching pair:', error);
     }

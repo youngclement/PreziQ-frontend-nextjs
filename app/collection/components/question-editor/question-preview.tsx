@@ -194,7 +194,7 @@ export function QuestionPreview({
   timeLimit,
   backgroundImage,
   previewMode = true,
-  onQuestionLocationChange = () => { },
+  onQuestionLocationChange = () => {},
   onQuestionTextChange,
   onOptionChange,
   onChangeQuestion,
@@ -207,8 +207,8 @@ export function QuestionPreview({
   onUpdateActivityBackground,
   onAddQuestion,
   onDeleteActivity,
-  onAddOption = () => { },
-  onDeleteOption = () => { },
+  onAddOption = () => {},
+  onDeleteOption = () => {},
   onReorderOptions,
   leftColumnName,
   rightColumnName,
@@ -277,8 +277,8 @@ export function QuestionPreview({
     const handleReorderSuccess = (event: CustomEvent) => {
       setIsReordering(false);
       toast({
-        title: "✅ Sắp xếp thành công",
-        description: "Thứ tự các bước đã được cập nhật.",
+        title: '✅ Sắp xếp thành công',
+        description: 'Thứ tự các bước đã được cập nhật.',
         duration: 2000,
       });
     };
@@ -286,22 +286,34 @@ export function QuestionPreview({
     const handleReorderError = (event: CustomEvent) => {
       setIsReordering(false);
       toast({
-        title: "❌ Lỗi sắp xếp",
-        description: "Không thể cập nhật thứ tự. Vui lòng thử lại.",
-        variant: "destructive",
+        title: '❌ Lỗi sắp xếp',
+        description: 'Không thể cập nhật thứ tự. Vui lòng thử lại.',
+        variant: 'destructive',
         duration: 3000,
       });
     };
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('reorder:success', handleReorderSuccess as EventListener);
-      window.addEventListener('reorder:error', handleReorderError as EventListener);
+      window.addEventListener(
+        'reorder:success',
+        handleReorderSuccess as EventListener
+      );
+      window.addEventListener(
+        'reorder:error',
+        handleReorderError as EventListener
+      );
     }
 
     return () => {
       if (typeof window !== 'undefined') {
-        window.removeEventListener('reorder:success', handleReorderSuccess as EventListener);
-        window.removeEventListener('reorder:error', handleReorderError as EventListener);
+        window.removeEventListener(
+          'reorder:success',
+          handleReorderSuccess as EventListener
+        );
+        window.removeEventListener(
+          'reorder:error',
+          handleReorderError as EventListener
+        );
       }
     };
   }, [toast]);
@@ -440,8 +452,8 @@ export function QuestionPreview({
       // Luôn ưu tiên sử dụng màu từ global storage trước
       const savedColor =
         typeof window !== 'undefined' &&
-          window.savedBackgroundColors &&
-          activity.id
+        window.savedBackgroundColors &&
+        activity.id
           ? window.savedBackgroundColors[activity.id]
           : null;
 
@@ -973,13 +985,13 @@ export function QuestionPreview({
                     ? viewMode === 'mobile'
                       ? 300
                       : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                      ? 650
+                      : 812
                     : viewMode === 'mobile'
-                      ? 300
-                      : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                    ? 300
+                    : viewMode === 'tablet'
+                    ? 650
+                    : 812
                 }
                 height={460}
                 zoom={1}
@@ -1019,7 +1031,7 @@ export function QuestionPreview({
                 <DynamicLocationQuestionEditor
                   questionText={question.question_text}
                   locationAnswers={getLocationAnswers(question, activity)}
-                  onLocationChange={() => { }} // Read-only, so no-op
+                  onLocationChange={() => {}} // Read-only, so no-op
                   questionIndex={questionIndex}
                   readonly={true}
                 />
@@ -1374,8 +1386,8 @@ export function QuestionPreview({
                         option.is_correct
                           ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                           : isTrue
-                            ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                            : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                          ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                          : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
                         // Only show pointer cursor when edit mode is enabled
                         editMode !== null
                           ? 'cursor-pointer hover:shadow-md'
@@ -1557,8 +1569,16 @@ export function QuestionPreview({
 
                   {editMode !== null && (
                     <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      <svg
+                        className="h-3 w-3"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       <span className="text-xs">Drag handle để di chuyển</span>
                     </div>
@@ -1572,36 +1592,46 @@ export function QuestionPreview({
                       <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
                         <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                          <span className="text-sm font-medium">Đang cập nhật...</span>
+                          <span className="text-sm font-medium">
+                            Đang cập nhật...
+                          </span>
                         </div>
                       </div>
                     )}
 
                     <DragDropContext
                       onDragStart={() => {
-                        console.log("🎯 REORDER PREVIEW: Drag started");
+                        console.log('🎯 REORDER PREVIEW: Drag started');
                       }}
                       onDragEnd={(result: DropResult) => {
-                        console.log("🎯 REORDER PREVIEW: Drag operation completed", {
-                          source: result.source,
-                          destination: result.destination,
-                          reason: result.reason,
-                          questionIndex: questionIndex
-                        });
+                        console.log(
+                          '🎯 REORDER PREVIEW: Drag operation completed',
+                          {
+                            source: result.source,
+                            destination: result.destination,
+                            reason: result.reason,
+                            questionIndex: questionIndex,
+                          }
+                        );
 
                         if (
                           !result.destination ||
                           result.destination.index === result.source.index
                         ) {
-                          console.log("🎯 REORDER PREVIEW: No reorder needed (same position or no destination)");
+                          console.log(
+                            '🎯 REORDER PREVIEW: No reorder needed (same position or no destination)'
+                          );
                           return;
                         }
 
-                        console.log("🎯 REORDER PREVIEW: Calling onReorderOptions", {
-                          sourceIndex: result.source.index,
-                          destinationIndex: result.destination.index,
-                          questionIndex: questionIndex
-                        });
+                        console.log(
+                          '🎯 REORDER PREVIEW: Calling onReorderOptions',
+                          {
+                            sourceIndex: result.source.index,
+                            destinationIndex: result.destination.index,
+                            questionIndex: questionIndex,
+                          }
+                        );
 
                         // Set loading state
                         setIsReordering(true);
@@ -1614,14 +1644,17 @@ export function QuestionPreview({
                         }
                       }}
                     >
-                      <Droppable droppableId={`reorder-preview-droppable-${questionIndex}`}>
+                      <Droppable
+                        droppableId={`reorder-preview-droppable-${questionIndex}`}
+                      >
                         {(provided, snapshot) => (
                           <div
                             {...provided.droppableProps}
                             ref={provided.innerRef}
                             className={cn(
-                              "relative space-y-2",
-                              snapshot.isDraggingOver && "bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-2"
+                              'relative space-y-2',
+                              snapshot.isDraggingOver &&
+                                'bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-2'
                             )}
                           >
                             {/* Connecting line for visual guidance */}
@@ -1634,10 +1667,12 @@ export function QuestionPreview({
                               .map((option, index) => (
                                 <Draggable
                                   key={
-                                    option.id || `option-${option.display_order}-${questionIndex}`
+                                    option.id ||
+                                    `option-${option.display_order}-${questionIndex}`
                                   }
                                   draggableId={
-                                    option.id || `option-${option.display_order}-${questionIndex}`
+                                    option.id ||
+                                    `option-${option.display_order}-${questionIndex}`
                                   }
                                   index={index}
                                 >
@@ -1647,17 +1682,22 @@ export function QuestionPreview({
                                       {...provided.draggableProps}
                                       className={cn(
                                         'flex items-center gap-2 p-1.5 relative mb-2 transition-all duration-300',
-                                        snapshot.isDragging ? 'z-50 scale-105' : 'z-10'
+                                        snapshot.isDragging
+                                          ? 'z-50 scale-105'
+                                          : 'z-10'
                                       )}
                                       style={{
                                         ...provided.draggableProps.style,
                                       }}
                                     >
                                       {/* Step number */}
-                                      <div className={cn(
-                                        "flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-600 text-sm font-semibold text-white shadow-lg relative z-10 transition-all duration-300",
-                                        snapshot.isDragging && 'scale-110 shadow-xl ring-2 ring-blue-400'
-                                      )}>
+                                      <div
+                                        className={cn(
+                                          'flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-600 text-sm font-semibold text-white shadow-lg relative z-10 transition-all duration-300',
+                                          snapshot.isDragging &&
+                                            'scale-110 shadow-xl ring-2 ring-blue-400'
+                                        )}
+                                      >
                                         {index + 1}
                                       </div>
 
@@ -1678,8 +1718,9 @@ export function QuestionPreview({
                                         <div
                                           {...provided.dragHandleProps}
                                           className={cn(
-                                            "w-6 h-6 flex-shrink-0 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center cursor-grab text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors",
-                                            snapshot.isDragging && "cursor-grabbing bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-400"
+                                            'w-6 h-6 flex-shrink-0 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center cursor-grab text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors',
+                                            snapshot.isDragging &&
+                                              'cursor-grabbing bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-400'
                                           )}
                                         >
                                           <GripVertical className="h-3 w-3" />
@@ -1747,7 +1788,11 @@ export function QuestionPreview({
                       <div className="font-medium mb-1">Hướng dẫn sử dụng:</div>
                       <ul className="space-y-1">
                         <li>• Bật chế độ chỉnh sửa để kéo thả sắp xếp lại</li>
-                        <li>• Giữ vào biểu tượng <GripVertical className="inline h-3 w-3 mx-1" /> để kéo</li>
+                        <li>
+                          • Giữ vào biểu tượng{' '}
+                          <GripVertical className="inline h-3 w-3 mx-1" /> để
+                          kéo
+                        </li>
                         <li>• Thứ tự sẽ được lưu tự động khi thả</li>
                       </ul>
                     </div>
@@ -1765,12 +1810,12 @@ export function QuestionPreview({
                   question.options.length <= 2
                     ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
                     : question.options.length <= 4
-                      ? 'grid grid-cols-2 gap-3'
-                      : 'grid grid-cols-2 gap-3 md:grid-cols-3',
+                    ? 'grid grid-cols-2 gap-3'
+                    : 'grid grid-cols-2 gap-3 md:grid-cols-3',
                   viewMode === 'mobile' && 'grid-cols-1',
                   viewMode === 'tablet' &&
-                  question.options.length > 4 &&
-                  'grid-cols-2'
+                    question.options.length > 4 &&
+                    'grid-cols-2'
                 )}
               >
                 {/* Direct rendering of choice options */}
@@ -2113,7 +2158,7 @@ export function QuestionPreview({
 
       activitiesApi
         .updateTypeAnswerQuiz(question.activity_id, payload)
-        .then(() => { })
+        .then(() => {})
         .catch((error) => {
           console.error('Error updating correct answer:', error);
         })
@@ -2754,6 +2799,32 @@ export function QuestionPreview({
     };
   }, [debouncedUpdateLocationQuiz]);
 
+  // Enhanced onChangeQuestion with matching pair refresh
+  const handleQuestionChange = async (index: number) => {
+    const currentQuestion = questions[activeQuestionIndex];
+    const newQuestion = questions[index];
+
+    // If switching from a matching pair to another question, trigger refresh
+    if (
+      currentQuestion?.question_type === 'matching_pair' &&
+      newQuestion?.question_type === 'matching_pair' &&
+      currentQuestion.activity_id !== newQuestion.activity_id
+    ) {
+      // Dispatch custom event to trigger refresh
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('matching-pair:refresh-needed', {
+          detail: {
+            activityId: newQuestion.activity_id,
+            questionIndex: index,
+          },
+        });
+        window.dispatchEvent(event);
+      }
+    }
+
+    onChangeQuestion(index);
+  };
+
   return (
     <Card
       className={cn(
@@ -2904,14 +2975,14 @@ interface OptionItemProps {
   option: QuizOption;
   index: number;
   questionType:
-  | 'multiple_choice'
-  | 'multiple_response'
-  | 'true_false'
-  | 'text_answer'
-  | 'slide'
-  | 'info_slide'
-  | 'reorder'
-  | 'location';
+    | 'multiple_choice'
+    | 'multiple_response'
+    | 'true_false'
+    | 'text_answer'
+    | 'slide'
+    | 'info_slide'
+    | 'reorder'
+    | 'location';
   questionIndex: number;
   onOptionEdit?: (
     questionIndex: number,

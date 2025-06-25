@@ -699,7 +699,6 @@ export function MatchingPairSettings({
     setIsUpdating(true);
     const originalMatchingData = matchingData;
 
-    // Create temporary pair items
     const newLeftItem: QuizMatchingPairItem = {
       content: '',
       isLeftColumn: true,
@@ -726,11 +725,11 @@ export function MatchingPairSettings({
       console.log('✅ Add pair response:', response);
 
       // Update state with actual server data
-      if (response?.data?.quizMatchingPairAnswer && originalMatchingData) {
+      if (response?.data?.quizMatchingPairAnswer) {
         setMatchingData((prev) => {
           if (!prev) return response.data.quizMatchingPairAnswer;
 
-          const newItems = originalMatchingData.items;
+          const newItems = originalMatchingData?.items || [];
           const serverItems = response.data.quizMatchingPairAnswer.items || [];
           return {
             ...response.data.quizMatchingPairAnswer,
@@ -755,7 +754,7 @@ export function MatchingPairSettings({
         description: 'New pair added successfully',
       });
 
-      // Optionally refresh from server to ensure consistency
+      // Use the new refresh function if available
       if (onRefreshActivity) {
         await onRefreshActivity();
       }
