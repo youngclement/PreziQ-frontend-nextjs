@@ -188,9 +188,15 @@ export function UserProfileForm({
   );
   const [originalImageUrl, setOriginalImageUrl] = useState<string>('');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(
+    userProfile?.avatar || null
+  );
   // Log để kiểm tra dữ liệu
   console.log('UserProfile from props:', userProfile);
+
+  useEffect(() => {
+    setCurrentAvatarUrl(userProfile?.avatar || null);
+  }, [userProfile?.avatar]);
 
   // Test toast khi component mount
   useEffect(() => {
@@ -460,6 +466,11 @@ export function UserProfileForm({
         return newValue !== oldValue;
       };
 
+      const currentAvatar =
+        currentAvatarUrl && currentAvatarUrl.trim() !== ''
+          ? currentAvatarUrl
+          : null;
+
       // Tạo object chỉ chứa những trường thay đổi
       const changedFields: any = {};
 
@@ -535,10 +546,10 @@ export function UserProfileForm({
       console.log('API Response:', response);
 
       // Xóa avatar cũ sau khi cập nhật thành công (không phụ thuộc vào response structure)
-      if (oldAvatar && data.avatar && data.avatar !== oldAvatar) {
+      if (currentAvatar && data.avatar && data.avatar !== currentAvatar) {
         try {
-          console.log('Đang xóa avatar cũ:', oldAvatar);
-          await storageApi.deleteSingleFile(oldAvatar);
+          console.log('Đang xóa avatar cũ:', currentAvatar);
+          await storageApi.deleteSingleFile(currentAvatar);
           console.log('Đã xóa avatar cũ thành công');
         } catch (deleteError) {
           console.error('Lỗi khi xóa avatar cũ:', deleteError);
@@ -581,6 +592,7 @@ export function UserProfileForm({
       // Cập nhật preview với avatar mới
       if (changedFields.avatar) {
         setAvatarPreview(data.avatar);
+        setCurrentAvatarUrl(data.avatar || null);
       }
 
       toast({

@@ -104,7 +104,7 @@ import { useToast } from '@/hooks/use-toast';
 
 // Add import at the top
 import { MatchingPairPreview } from './matching-pair-preview';
-
+import { useLanguage } from '@/contexts/language-context';
 interface QuestionPreviewProps {
   questions: QuizQuestion[];
   activeQuestionIndex: number;
@@ -262,6 +262,8 @@ export function QuestionPreview({
       }
     >
   >({});
+
+  const { t } = useLanguage();
 
   // Add this state to track when we need to force re-render
   const [renderKey, setRenderKey] = useState(0);
@@ -775,16 +777,15 @@ export function QuestionPreview({
 
   const getQuestionTypeDisplayName = (questionType: string) => {
     const displayNames = {
-      multiple_choice: 'Single Choice',
-      multiple_response: 'Multiple Choice',
-      // Keep others unchanged but formatted nicely
-      true_false: 'True False',
-      text_answer: 'Text Answer',
-      reorder: 'Reorder',
-      location: 'Location',
-      slide: 'Slide',
-      info_slide: 'Info Slide',
-      matching_pair: 'Matching Pair',
+      multiple_choice: t('activity.types.multiple_choice'),
+      multiple_response: t('activity.types.multiple_response'),
+      true_false: t('activity.types.true_false'),
+      text_answer: t('activity.types.text_answer'),
+      reorder: t('activity.types.reorder'),
+      location: t('activity.types.location'),
+      slide: t('activity.types.slide'),
+      info_slide: t('activity..types.info_slide'),
+      matching_pair: t('activity.types.matching_pair'),
     };
 
     return (
@@ -1374,8 +1375,8 @@ export function QuestionPreview({
                         option.is_correct
                           ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                           : isTrue
-                            ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                            : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                          ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                          : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
                         // Only show pointer cursor when edit mode is enabled
                         editMode !== null
                           ? 'cursor-pointer hover:shadow-md'
@@ -1469,7 +1470,7 @@ export function QuestionPreview({
                   {editMode !== null ? (
                     <div className="flex items-center">
                       <span className="font-medium mr-2 text-gray-700 dark:text-white">
-                        Correct answer:
+                        {t('activity.correctAnswer')}
                       </span>
                       <Input
                         value={
@@ -1557,8 +1558,16 @@ export function QuestionPreview({
 
                   {editMode !== null && (
                     <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      <svg
+                        className="h-3 w-3"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       <span className="text-xs">Drag handle để di chuyển</span>
                     </div>
@@ -1572,36 +1581,46 @@ export function QuestionPreview({
                       <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
                         <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                          <span className="text-sm font-medium">Đang cập nhật...</span>
+                          <span className="text-sm font-medium">
+                            Đang cập nhật...
+                          </span>
                         </div>
                       </div>
                     )}
 
                     <DragDropContext
                       onDragStart={() => {
-                        console.log("🎯 REORDER PREVIEW: Drag started");
+                        console.log('🎯 REORDER PREVIEW: Drag started');
                       }}
                       onDragEnd={(result: DropResult) => {
-                        console.log("🎯 REORDER PREVIEW: Drag operation completed", {
-                          source: result.source,
-                          destination: result.destination,
-                          reason: result.reason,
-                          questionIndex: questionIndex
-                        });
+                        console.log(
+                          '🎯 REORDER PREVIEW: Drag operation completed',
+                          {
+                            source: result.source,
+                            destination: result.destination,
+                            reason: result.reason,
+                            questionIndex: questionIndex,
+                          }
+                        );
 
                         if (
                           !result.destination ||
                           result.destination.index === result.source.index
                         ) {
-                          console.log("🎯 REORDER PREVIEW: No reorder needed (same position or no destination)");
+                          console.log(
+                            '🎯 REORDER PREVIEW: No reorder needed (same position or no destination)'
+                          );
                           return;
                         }
 
-                        console.log("🎯 REORDER PREVIEW: Calling onReorderOptions", {
-                          sourceIndex: result.source.index,
-                          destinationIndex: result.destination.index,
-                          questionIndex: questionIndex
-                        });
+                        console.log(
+                          '🎯 REORDER PREVIEW: Calling onReorderOptions',
+                          {
+                            sourceIndex: result.source.index,
+                            destinationIndex: result.destination.index,
+                            questionIndex: questionIndex,
+                          }
+                        );
 
                         // Set loading state
                         setIsReordering(true);
@@ -1614,14 +1633,17 @@ export function QuestionPreview({
                         }
                       }}
                     >
-                      <Droppable droppableId={`reorder-preview-droppable-${questionIndex}`}>
+                      <Droppable
+                        droppableId={`reorder-preview-droppable-${questionIndex}`}
+                      >
                         {(provided, snapshot) => (
                           <div
                             {...provided.droppableProps}
                             ref={provided.innerRef}
                             className={cn(
-                              "relative space-y-2",
-                              snapshot.isDraggingOver && "bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-2"
+                              'relative space-y-2',
+                              snapshot.isDraggingOver &&
+                                'bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-2'
                             )}
                           >
                             {/* Connecting line for visual guidance */}
@@ -1634,10 +1656,12 @@ export function QuestionPreview({
                               .map((option, index) => (
                                 <Draggable
                                   key={
-                                    option.id || `option-${option.display_order}-${questionIndex}`
+                                    option.id ||
+                                    `option-${option.display_order}-${questionIndex}`
                                   }
                                   draggableId={
-                                    option.id || `option-${option.display_order}-${questionIndex}`
+                                    option.id ||
+                                    `option-${option.display_order}-${questionIndex}`
                                   }
                                   index={index}
                                 >
@@ -1647,17 +1671,22 @@ export function QuestionPreview({
                                       {...provided.draggableProps}
                                       className={cn(
                                         'flex items-center gap-2 p-1.5 relative mb-2 transition-all duration-300',
-                                        snapshot.isDragging ? 'z-50 scale-105' : 'z-10'
+                                        snapshot.isDragging
+                                          ? 'z-50 scale-105'
+                                          : 'z-10'
                                       )}
                                       style={{
                                         ...provided.draggableProps.style,
                                       }}
                                     >
                                       {/* Step number */}
-                                      <div className={cn(
-                                        "flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-600 text-sm font-semibold text-white shadow-lg relative z-10 transition-all duration-300",
-                                        snapshot.isDragging && 'scale-110 shadow-xl ring-2 ring-blue-400'
-                                      )}>
+                                      <div
+                                        className={cn(
+                                          'flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-600 text-sm font-semibold text-white shadow-lg relative z-10 transition-all duration-300',
+                                          snapshot.isDragging &&
+                                            'scale-110 shadow-xl ring-2 ring-blue-400'
+                                        )}
+                                      >
                                         {index + 1}
                                       </div>
 
@@ -1678,8 +1707,9 @@ export function QuestionPreview({
                                         <div
                                           {...provided.dragHandleProps}
                                           className={cn(
-                                            "w-6 h-6 flex-shrink-0 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center cursor-grab text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors",
-                                            snapshot.isDragging && "cursor-grabbing bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-400"
+                                            'w-6 h-6 flex-shrink-0 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center cursor-grab text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors',
+                                            snapshot.isDragging &&
+                                              'cursor-grabbing bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-400'
                                           )}
                                         >
                                           <GripVertical className="h-3 w-3" />
@@ -1747,7 +1777,11 @@ export function QuestionPreview({
                       <div className="font-medium mb-1">Hướng dẫn sử dụng:</div>
                       <ul className="space-y-1">
                         <li>• Bật chế độ chỉnh sửa để kéo thả sắp xếp lại</li>
-                        <li>• Giữ vào biểu tượng <GripVertical className="inline h-3 w-3 mx-1" /> để kéo</li>
+                        <li>
+                          • Giữ vào biểu tượng{' '}
+                          <GripVertical className="inline h-3 w-3 mx-1" /> để
+                          kéo
+                        </li>
                         <li>• Thứ tự sẽ được lưu tự động khi thả</li>
                       </ul>
                     </div>
@@ -1765,12 +1799,12 @@ export function QuestionPreview({
                   question.options.length <= 2
                     ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
                     : question.options.length <= 4
-                      ? 'grid grid-cols-2 gap-3'
-                      : 'grid grid-cols-2 gap-3 md:grid-cols-3',
+                    ? 'grid grid-cols-2 gap-3'
+                    : 'grid grid-cols-2 gap-3 md:grid-cols-3',
                   viewMode === 'mobile' && 'grid-cols-1',
                   viewMode === 'tablet' &&
-                  question.options.length > 4 &&
-                  'grid-cols-2'
+                    question.options.length > 4 &&
+                    'grid-cols-2'
                 )}
               >
                 {/* Direct rendering of choice options */}
@@ -1874,7 +1908,7 @@ export function QuestionPreview({
                   >
                     <Plus className="h-5 w-5 text-blue-500" />
                     <span className="text-sm font-medium text-blue-500">
-                      Add Option
+                      {t('activity.addOption')}
                     </span>
                   </div>
                 )}
@@ -2765,7 +2799,7 @@ export function QuestionPreview({
       <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
         <div className="flex items-center gap-4">
           <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Preview
+            {t('activity.preview')}
           </CardTitle>
           <div className="flex items-center space-x-2">
             <Switch
@@ -2780,7 +2814,7 @@ export function QuestionPreview({
               }}
             />
             <Label htmlFor="edit-mode" className="text-xs">
-              Edit Mode
+              {t('activity.editMode')}
             </Label>
           </div>
           {isSaving && (
@@ -2788,7 +2822,7 @@ export function QuestionPreview({
               variant="outline"
               className="bg-blue-50 text-blue-700 border-blue-200"
             >
-              Saving...
+             {t('activity.saving')}
             </Badge>
           )}
         </div>
@@ -2842,7 +2876,7 @@ export function QuestionPreview({
                     onClick={() => handleDeleteActivity(question.activity_id)}
                   >
                     <Trash className="h-4 w-4 mr-1" />
-                    Delete
+                    {t('activity.delete')}
                   </Button>
                 )}
               </div>
@@ -2867,7 +2901,7 @@ export function QuestionPreview({
               onClick={() => onAddQuestion()}
             >
               <Plus className="h-4 w-4" />
-              Add Activity
+             {t('activity.addQuestion')}
             </Button>
           </div>
         </div>
@@ -2877,10 +2911,9 @@ export function QuestionPreview({
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Activity</DialogTitle>
+            <DialogTitle>{t('activity.deleteActivity')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this activity? This action cannot
-              be undone.
+             {t('activity.confirmDelete')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2 mt-4">

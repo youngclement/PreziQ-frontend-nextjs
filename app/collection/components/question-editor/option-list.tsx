@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { QuizOption } from "../types";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/contexts/language-context";
 
 interface OptionListProps {
     options: QuizOption[];
@@ -26,6 +27,7 @@ export function OptionList({
     onOptionChange,
     onDeleteOption
 }: OptionListProps) {
+    const { t } = useLanguage();
     // Reference to the option container to scroll to newly added options
     const optionsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -57,8 +59,8 @@ export function OptionList({
         <div className="flex justify-between items-center">
           <Label>
             {questionType === 'multiple_response'
-              ? 'Select All That Apply'
-              : 'Select One Answer'}
+              ? t('activity.selectMultiple')
+              : t('activity.selectOne')}
           </Label>
           <Button
             size="sm"
@@ -66,7 +68,7 @@ export function OptionList({
             onClick={onAddOption}
             disabled={options.length > 9}
           >
-            <Plus className="h-3.5 w-3.5 mr-2" /> Add Option
+            <Plus className="h-3.5 w-3.5 mr-2" /> {t('activity.addOption')}
           </Button>
         </div>
 
@@ -110,7 +112,7 @@ export function OptionList({
                         true
                       )
                     }
-                    placeholder="Enter option text"
+                    placeholder={t('activity.enterOptionTextPlaceholder')}
                     onBlur={(e) => {
                       onOptionChange(
                         activeQuestionIndex,
@@ -137,7 +139,7 @@ export function OptionList({
                     }
                     className="h-4 w-4"
                   />
-                  <Label>Correct Answer</Label>
+                  <Label>{t('activity.correctAnswer')}</Label>
                 </div>
 
                 <Button
