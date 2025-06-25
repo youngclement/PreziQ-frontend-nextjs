@@ -239,22 +239,45 @@ export function MatchingPairSettings({
     setMatchingData(newData || null);
     setSelectedLeft(null);
     setSelectedRight(null);
-  }, [activityId, settingsUpdateTrigger]);
+  }, [
+    activityId,
+    settingsUpdateTrigger,
+    question.quizMatchingPairAnswer,
+    question.matching_data,
+  ]);
 
   const [leftColumnTitle, setLeftColumnTitle] = useState(
-    matchingData?.leftColumnName || leftColumnName
+    question.quizMatchingPairAnswer?.leftColumnName ||
+      question.matching_data?.leftColumnName ||
+      leftColumnName
   );
   const [rightColumnTitle, setRightColumnTitle] = useState(
-    matchingData?.rightColumnName || rightColumnName
+    question.quizMatchingPairAnswer?.rightColumnName ||
+      question.matching_data?.rightColumnName ||
+      rightColumnName
   );
+
+  useEffect(() => {
+    const newLeftColumnName = matchingData?.leftColumnName || leftColumnName;
+    const newRightColumnName = matchingData?.rightColumnName || rightColumnName;
+
+    setLeftColumnTitle((prev) => {
+      if (prev !== newLeftColumnName) {
+        return newLeftColumnName;
+      }
+      return prev;
+    });
+
+    setRightColumnTitle((prev) => {
+      if (prev !== newRightColumnName) {
+        return newRightColumnName;
+      }
+      return prev;
+    });
+  }, [matchingData, leftColumnName, rightColumnName]);
 
   const [leftColumnError, setLeftColumnError] = useState('');
   const [rightColumnError, setRightColumnError] = useState('');
-
-  useEffect(() => {
-    setLeftColumnTitle(matchingData?.leftColumnName || leftColumnName);
-    setRightColumnTitle(matchingData?.rightColumnName || rightColumnName);
-  }, [matchingData, leftColumnName, rightColumnName]);
 
   const debouncedUpdateColumnNames = useCallback(
     (left: string, right: string) => {
