@@ -900,10 +900,24 @@ export function QuestionSettings({
                     activity.quiz?.questionText || activeQuestion.question_text,
                   timeLimitSeconds: value,
                   pointType: activity.quiz?.pointType || (pointType as any),
+                  leftColumnName:
+                    leftColumnName ||
+                    matchingData?.leftColumnName ||
+                    'Left Item',
+                  rightColumnName:
+                    rightColumnName ||
+                    matchingData?.rightColumnName ||
+                    'Right Item',
                   quizMatchingPairAnswer: {
                     ...matchingData,
-                    leftColumnName: leftColumnName || 'Left Item',
-                    rightColumnName: rightColumnName || 'Right Item',
+                    leftColumnName:
+                      leftColumnName ||
+                      matchingData?.leftColumnName ||
+                      'Left Item',
+                    rightColumnName:
+                      rightColumnName ||
+                      matchingData?.rightColumnName ||
+                      'Right Item',
                   },
                 });
               }
@@ -1541,10 +1555,22 @@ export function QuestionSettings({
                   activity.quiz?.questionText || activeQuestion.question_text,
                 timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
                 pointType: typedPointType,
+                leftColumnName:
+                  leftColumnName || matchingData?.leftColumnName || 'Left Item',
+                rightColumnName:
+                  rightColumnName ||
+                  matchingData?.rightColumnName ||
+                  'Right Item',
                 quizMatchingPairAnswer: {
                   ...matchingData,
-                  leftColumnName: leftColumnName || 'Left Item',
-                  rightColumnName: rightColumnName || 'Right Item',
+                  leftColumnName:
+                    leftColumnName ||
+                    matchingData?.leftColumnName ||
+                    'Left Item',
+                  rightColumnName:
+                    rightColumnName ||
+                    matchingData?.rightColumnName ||
+                    'Right Item',
                 },
               });
             }
