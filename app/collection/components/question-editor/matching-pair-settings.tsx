@@ -310,11 +310,12 @@ export function MatchingPairSettings({
           const payload: MatchingPairQuizPayload = {
             type: 'MATCHING_PAIRS',
             questionText: question.question_text || '',
-            timeLimitSeconds: question.time_limit_seconds,
-            pointType: question.pointType as
-              | 'STANDARD'
-              | 'NO_POINTS'
-              | 'DOUBLE_POINTS',
+            timeLimitSeconds: question.time_limit_seconds || 30,
+            pointType:
+              (question.pointType as
+                | 'STANDARD'
+                | 'NO_POINTS'
+                | 'DOUBLE_POINTS') || 'STANDARD',
             leftColumnName: left,
             rightColumnName: right,
             quizMatchingPairAnswer: {

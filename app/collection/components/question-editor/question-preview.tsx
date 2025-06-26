@@ -272,6 +272,11 @@ export function QuestionPreview({
   // Add state for reorder feedback
   const [isReordering, setIsReordering] = useState(false);
 
+  // Thêm state để lưu trữ question text đang edit
+  const [editingQuestionText, setEditingQuestionText] = useState<
+    Record<number, string>
+  >({});
+
   // Listen for reorder events to show feedback
   useEffect(() => {
     const handleReorderSuccess = (event: CustomEvent) => {
@@ -1117,34 +1122,65 @@ export function QuestionPreview({
               </div>
             </div>
 
-            {/* Question Text */}
+            {/* Question Text - Cập nhật để hỗ trợ chỉnh sửa */}
             <div className="flex-1 flex flex-col items-center justify-center z-10 py-6 px-5">
               {editMode !== null ? (
                 <div className="w-full max-w-2xl">
                   <Textarea
                     value={
-                      question.question_text ||
-                      `Matching Pair Question ${questionIndex + 1}`
+                      // Ưu tiên text đang edit, sau đó mới đến text từ BE
+                      editingQuestionText[questionIndex] !== undefined
+                        ? editingQuestionText[questionIndex]
+                        : question.question_text ||
+                          `Matching Pair Question ${questionIndex + 1}`
                     }
-                    onChange={(e) =>
-                      onQuestionTextChange(e.target.value, questionIndex, true)
-                    }
+                    onChange={(e) => {
+                      // Lưu vào local state ngay lập tức
+                      setEditingQuestionText((prev) => ({
+                        ...prev,
+                        [questionIndex]: e.target.value,
+                      }));
+                      onQuestionTextChange(e.target.value, questionIndex, true);
+                    }}
                     className="resize-none custom-scrollbar text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
-                    onBlur={(e) =>
-                      onQuestionTextChange(e.target.value, questionIndex, false)
-                    }
+                    onBlur={(e) => {
+                      // Xóa khỏi local state khi blur
+                      setEditingQuestionText((prev) => {
+                        const newState = { ...prev };
+                        delete newState[questionIndex];
+                        return newState;
+                      });
+                      onQuestionTextChange(
+                        e.target.value,
+                        questionIndex,
+                        false
+                      );
+                      // Cập nhật activity title khi blur
+                      if (question.activity_id && activity) {
+                        updateActivity(
+                          { title: e.target.value },
+                          question.activity_id
+                        );
+                        // Add this line to update matching pair question text
+                        updateMatchingPairQuestionText(
+                          questionIndex,
+                          e.target.value
+                        );
+                      }
+                    }}
+                    placeholder="Enter your matching pair question..."
                   />
                   <style jsx global>{`
                     .custom-scrollbar::-webkit-scrollbar {
-                      width: 16px; /* Tăng width lên */
+                      width: 16px;
                     }
                     .custom-scrollbar::-webkit-scrollbar-track {
-                      background: transparent; /* Track trong suốt */
+                      background: transparent;
                     }
                     .custom-scrollbar::-webkit-scrollbar-thumb {
                       background: rgba(255, 255, 255, 0.4);
                       border-radius: 8px;
-                      border: 4px solid transparent; /* Tạo viền trong suốt */
+                      border: 4px solid transparent;
                       background-clip: padding-box;
                     }
                     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -2823,6 +2859,55 @@ export function QuestionPreview({
     }
 
     onChangeQuestion(index);
+  };
+
+  // Add this function after the updateActivity function
+  const updateMatchingPairQuestionText = async (
+    questionIndex: number,
+    newText: string
+  ) => {
+    const question = questions[questionIndex];
+    if (
+      !question ||
+      question.question_type !== 'matching_pair' ||
+      !question.activity_id
+    ) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      // Get the current matching pair data
+      const matchingData =
+        question.quizMatchingPairAnswer || question.matching_data;
+
+      if (matchingData) {
+        await activitiesApi.updateMatchingPairQuiz(question.activity_id, {
+          type: 'MATCHING_PAIRS',
+          questionText: newText,
+          timeLimitSeconds: question.time_limit_seconds || timeLimit,
+          pointType: question.pointType || 'STANDARD',
+          leftColumnName:
+            leftColumnName || matchingData?.leftColumnName || 'Left Item',
+          rightColumnName:
+            rightColumnName || matchingData?.rightColumnName || 'Right Item',
+          quizMatchingPairAnswer: {
+            ...matchingData,
+            leftColumnName:
+              leftColumnName || matchingData?.leftColumnName || 'Left Item',
+            rightColumnName:
+              rightColumnName || matchingData?.rightColumnName || 'Right Item',
+          },
+        });
+
+        console.log('Matching pair question text updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating matching pair question text:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

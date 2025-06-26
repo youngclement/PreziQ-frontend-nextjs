@@ -73,8 +73,8 @@ export function useQuestionOperations(
           activity_type_id: newActivityData.activityType,
           orderIndex: newActivityData.orderIndex || highestOrderIndex + 1,
           createdAt: newActivityData.createdAt,
-          updatedAt: newActivityData.createdAt, // Using createdAt as default for updatedAt
-          createdBy: '', // Adding empty string as default for createdBy
+          updatedAt: newActivityData.createdAt,
+          createdBy: newActivityData.createdBy || '',
         };
 
         // Update activities array
@@ -94,34 +94,9 @@ export function useQuestionOperations(
         // Set the active question index to the new question (which is now the last one)
         setActiveQuestionIndex(updatedQuestions.length - 1);
 
-        // Update API with default quiz data
-        await activitiesApi.updateButtonsQuiz(newActivityData.activityId, {
-          type: 'CHOICE',
-          questionText: 'Default question',
-          timeLimitSeconds: 30,
-          pointType: 'STANDARD',
-          answers: [
-            { answerText: 'Option 1', isCorrect: true, explanation: 'Correct' },
-            {
-              answerText: 'Option 2',
-              isCorrect: false,
-              explanation: 'Incorrect',
-            },
-            {
-              answerText: 'Option 3',
-              isCorrect: false,
-              explanation: 'Incorrect',
-            },
-            {
-              answerText: 'Option 4',
-              isCorrect: false,
-              explanation: 'Incorrect',
-            },
-          ],
-        });
-
-        // Remove the call to refreshCollectionData to prevent page reload
-        // This is not needed since we've already updated our local state
+        // Let BE create the default quiz data instead of hard coding
+        // The quiz data will be populated when the collection is refreshed
+        // or when the user interacts with the question
       }
     } catch (error) {
       console.error('Error adding question:', error);
@@ -265,17 +240,19 @@ export function useQuestionOperations(
     value: string,
     questionIndex: number
   ) => {
-    // Get the activity ID directly from the active question
-    const activeQuestionActivityId =
-      questions[activeQuestionIndex]?.activity_id;
-    if (!activeQuestionActivityId) return;
-
-    // Find the correct activity for this question
-    const targetActivity = activities.find(
-      (a) => a.id === activeQuestionActivityId
+    console.log(
+      '🔄 Changing question type to:',
+      value,
+      'for question:',
+      questionIndex
     );
+
+    const targetActivity = activities.find(
+      (act) => act.id === questions[questionIndex].activity_id
+    );
+
     if (!targetActivity) {
-      console.error('Activity not found for the active question');
+      console.error('❌ No activity found for question:', questionIndex);
       return;
     }
 
@@ -292,32 +269,32 @@ export function useQuestionOperations(
     try {
       // Update the activity type in the API
 
-      // Chỉ gọi API update activity type nếu không phải matching pair
-      // Chỉ gọi API update activity type nếu không phải matching pair
+      // Xử lý đặc biệt cho matching pair
       if (value === 'matching_pair') {
+        console.log('🎯 Converting to matching pair...');
+
         // 1. Đảm bảo activity trên BE đã là QUIZ_MATCHING_PAIRS
         await activitiesApi.updateActivity(targetActivity.id, {
           activityType: 'QUIZ_MATCHING_PAIRS',
         });
 
-        // 2. Lấy tên cột từ state (nếu có) hoặc dùng default
+        // 2. Lấy tên cột từ state (nếu có) hoặc để BE tự tạo
         const existingMatchingData =
-          questions[activeQuestionIndex].matching_data ||
-          questions[activeQuestionIndex].quizMatchingPairAnswer;
-
+          questions[questionIndex].matching_data ||
+          questions[questionIndex].quizMatchingPairAnswer;
         const leftColumnName =
           existingMatchingData?.leftColumnName || 'Left Column';
         const rightColumnName =
           existingMatchingData?.rightColumnName || 'Right Column';
 
-        // 3. Gửi quiz data cho matching pair
+        // 3. Gửi quiz data cho matching pair và để BE trả về dữ liệu hoàn chỉnh
         const response = await activitiesApi.updateMatchingPairQuiz(
           targetActivity.id,
           {
             type: 'MATCHING_PAIRS',
             questionText:
-              questions[activeQuestionIndex].question_text ||
-              'Default matching pair question',
+              questions[questionIndex].question_text ||
+              'Match the items in the left column with the correct items in the right column',
             timeLimitSeconds: timeLimit,
             pointType: 'STANDARD',
             leftColumnName,
@@ -325,240 +302,261 @@ export function useQuestionOperations(
           }
         );
 
-        // Determine new matching data from API response or create a fallback
+        console.log('✅ Matching pair API response:', response);
+
+        // 4. Sử dụng dữ liệu hoàn chỉnh từ BE thay vì hard code
         let newMatchingData;
         if (response?.data?.quizMatchingPairAnswer) {
           newMatchingData = response.data.quizMatchingPairAnswer;
+          console.log('📊 Using BE data:', newMatchingData);
         } else {
-          // Fallback: build the object if API does not return it
+          // Fallback chỉ khi BE không trả về dữ liệu
+          console.warn(
+            '⚠️ BE did not return matching pair data, using fallback'
+          );
           newMatchingData = {
-            ...existingMatchingData,
-            quizMatchingPairAnswerId:
-              existingMatchingData?.quizMatchingPairAnswerId || '',
+            quizMatchingPairAnswerId: '',
             leftColumnName,
             rightColumnName,
-            items: existingMatchingData?.items || [],
-            connections: existingMatchingData?.connections || [],
+            items: [],
+            connections: [],
           };
         }
 
-        // Update the question state once
+        // 5. Cập nhật question state với dữ liệu từ BE
         const updatedQuestions = [...questions];
-        updatedQuestions[activeQuestionIndex] = {
-          ...updatedQuestions[activeQuestionIndex],
+        updatedQuestions[questionIndex] = {
+          ...updatedQuestions[questionIndex],
+          question_type: 'matching_pair',
+          question_text:
+            response?.data?.quizMatchingPairAnswer?.questionText ||
+            questions[questionIndex].question_text ||
+            'Match the items in the left column with the correct items in the right column',
           matching_data: newMatchingData,
+          quizMatchingPairAnswer: newMatchingData,
           options: [], // Matching pairs don't use standard options
         };
         setQuestions(updatedQuestions);
+
+        // 6. Cập nhật activity state
+        setActivity({
+          ...targetActivity,
+          activity_type_id: 'QUIZ_MATCHING_PAIRS',
+        });
+
+        console.log('✅ Matching pair conversion completed');
       } else {
+        // Xử lý các loại question khác như cũ
         await activitiesApi.updateActivity(targetActivity.id, {
           activityType: activityType as any,
         });
-      }
 
-      // Update our local state
-      setActivity({
-        ...targetActivity,
-        activity_type_id: activityType,
-      });
-
-      // Update the question in our local state
-      const updatedQuestions = [...questions];
-      const currentQuestion = updatedQuestions[activeQuestionIndex];
-      let options = [...currentQuestion.options];
-      const currentType = currentQuestion.question_type;
-      let newMatchingData = currentQuestion.matching_data; // Giữ lại dữ liệu cũ
-      if (value === 'true_false') {
-        options = [
-          { option_text: 'True', is_correct: true, display_order: 0 },
-          { option_text: 'False', is_correct: false, display_order: 1 },
-        ];
-        if (!activity) return;
-        await activitiesApi.updateTrueFalseQuiz(activity.id, {
-          type: 'TRUE_FALSE',
-          questionText:
-            updatedQuestions[activeQuestionIndex].question_text ||
-            'Default question',
-          timeLimitSeconds: timeLimit,
-          pointType: 'STANDARD',
-          correctAnswer: true,
-        });
-      } else if (value === 'text_answer') {
-        options = [];
-        if (!activity) return;
-        await activitiesApi.updateTypeAnswerQuiz(activity.id, {
-          type: 'TYPE_ANSWER',
-          questionText:
-            updatedQuestions[activeQuestionIndex].question_text ||
-            'Default question',
-          timeLimitSeconds: timeLimit,
-          pointType: 'STANDARD',
-          correctAnswer: 'Answer',
+        // Update our local state
+        setActivity({
+          ...targetActivity,
+          activity_type_id: activityType,
         });
 
-        updatedQuestions[activeQuestionIndex].correct_answer_text = 'Answer';
-      } else if (value === 'multiple_choice') {
-        if (currentType === 'true_false') {
-          const hasTrueSelected = options.some(
-            (opt) => opt.option_text.toLowerCase() === 'true' && opt.is_correct
-          );
-
+        // Update the question in our local state
+        const updatedQuestions = [...questions];
+        const currentQuestion = updatedQuestions[questionIndex];
+        let options = [...currentQuestion.options];
+        const currentType = currentQuestion.question_type;
+        let newMatchingData = currentQuestion.matching_data; // Giữ lại dữ liệu cũ
+        if (value === 'true_false') {
           options = [
-            {
-              option_text: 'Option 1',
-              is_correct: hasTrueSelected,
-              display_order: 0,
-            },
-            {
-              option_text: 'Option 2',
-              is_correct: !hasTrueSelected,
-              display_order: 1,
-            },
-            { option_text: 'Option 3', is_correct: false, display_order: 2 },
-            { option_text: 'Option 4', is_correct: false, display_order: 3 },
+            { option_text: 'True', is_correct: true, display_order: 0 },
+            { option_text: 'False', is_correct: false, display_order: 1 },
           ];
-        } else if (options.length < 2) {
-          options = [
-            { option_text: 'Option 1', is_correct: true, display_order: 0 },
-            { option_text: 'Option 2', is_correct: false, display_order: 1 },
-            { option_text: 'Option 3', is_correct: false, display_order: 2 },
-            { option_text: 'Option 4', is_correct: false, display_order: 3 },
-          ];
-        } else {
-          let hasCorrect = false;
-          options = options.map((option, idx) => {
-            if (option.is_correct && !hasCorrect) {
-              hasCorrect = true;
-              return option;
-            }
-            return { ...option, is_correct: false };
+          if (!activity) return;
+          await activitiesApi.updateTrueFalseQuiz(activity.id, {
+            type: 'TRUE_FALSE',
+            questionText:
+              updatedQuestions[questionIndex].question_text ||
+              'Default question',
+            timeLimitSeconds: timeLimit,
+            pointType: 'STANDARD',
+            correctAnswer: true,
+          });
+        } else if (value === 'text_answer') {
+          options = [];
+          if (!activity) return;
+          await activitiesApi.updateTypeAnswerQuiz(activity.id, {
+            type: 'TYPE_ANSWER',
+            questionText:
+              updatedQuestions[questionIndex].question_text ||
+              'Default question',
+            timeLimitSeconds: timeLimit,
+            pointType: 'STANDARD',
+            correctAnswer: 'Answer',
           });
 
-          if (!hasCorrect && options.length > 0) {
-            options[0] = { ...options[0], is_correct: true };
-          }
-        }
+          updatedQuestions[questionIndex].correct_answer_text = 'Answer';
+        } else if (value === 'multiple_choice') {
+          if (currentType === 'true_false') {
+            const hasTrueSelected = options.some(
+              (opt) =>
+                opt.option_text.toLowerCase() === 'true' && opt.is_correct
+            );
 
-        if (!activity) return;
-
-        await activitiesApi.updateButtonsQuiz(activity.id, {
-          type: 'CHOICE',
-          questionText:
-            updatedQuestions[activeQuestionIndex].question_text ||
-            'Default question',
-          timeLimitSeconds: timeLimit,
-          pointType: 'STANDARD',
-          answers: options.map((opt) => ({
-            answerText: opt.option_text,
-            isCorrect: opt.is_correct,
-            explanation: '',
-          })),
-        });
-      } else if (value === 'multiple_response') {
-        if (currentType === 'true_false') {
-          const hasTrueSelected = options.some(
-            (opt) => opt.option_text.toLowerCase() === 'true' && opt.is_correct
-          );
-
-          options = [
-            {
-              option_text: 'Option 1',
-              is_correct: hasTrueSelected,
-              display_order: 0,
-            },
-            {
-              option_text: 'Option 2',
-              is_correct: !hasTrueSelected,
-              display_order: 1,
-            },
-            { option_text: 'Option 3', is_correct: false, display_order: 2 },
-            { option_text: 'Option 4', is_correct: false, display_order: 3 },
-          ];
-        } else if (options.length < 2) {
-          options = [
-            { option_text: 'Option 1', is_correct: true, display_order: 0 },
-            { option_text: 'Option 2', is_correct: true, display_order: 1 },
-            { option_text: 'Option 3', is_correct: false, display_order: 2 },
-            { option_text: 'Option 4', is_correct: false, display_order: 3 },
-          ];
-        }
-        if (!activity) return;
-        await activitiesApi.updateCheckboxesQuiz(activity.id, {
-          type: 'CHOICE',
-          questionText:
-            updatedQuestions[activeQuestionIndex].question_text ||
-            'Default question',
-          timeLimitSeconds: timeLimit,
-          pointType: 'STANDARD',
-          answers: options.map((opt) => ({
-            answerText: opt.option_text,
-            isCorrect: opt.is_correct,
-            explanation: '',
-          })),
-        });
-      } else if (value === 'reorder') {
-        options = [
-          { option_text: 'Step 1', is_correct: false, display_order: 0 },
-          { option_text: 'Step 2', is_correct: false, display_order: 1 },
-          { option_text: 'Step 3', is_correct: false, display_order: 2 },
-          { option_text: 'Step 4', is_correct: false, display_order: 3 },
-        ];
-        if (!activity) return;
-        await activitiesApi.updateReorderQuiz(activity.id, {
-          type: 'REORDER',
-          questionText:
-            updatedQuestions[activeQuestionIndex].question_text ||
-            'Arrange in the correct order',
-          timeLimitSeconds: timeLimit,
-          pointType: 'STANDARD',
-          correctOrder: options.map((opt) => opt.option_text),
-        });
-      } else if (value === 'slide' || value === 'info_slide') {
-        // Both slide types use empty options
-        options = [];
-
-        // Maintain any existing slide content when switching between slide types
-        let slideContent = updatedQuestions[activeQuestionIndex].slide_content;
-        let slideImage = updatedQuestions[activeQuestionIndex].slide_image;
-
-        if (!slideContent) {
-          if (currentType === 'info_slide' || currentType === 'slide') {
-            // Keep existing content if switching between slide types
-            slideContent = updatedQuestions[activeQuestionIndex].slide_content;
+            options = [
+              {
+                option_text: 'Option 1',
+                is_correct: hasTrueSelected,
+                display_order: 0,
+              },
+              {
+                option_text: 'Option 2',
+                is_correct: !hasTrueSelected,
+                display_order: 1,
+              },
+              { option_text: 'Option 3', is_correct: false, display_order: 2 },
+              { option_text: 'Option 4', is_correct: false, display_order: 3 },
+            ];
+          } else if (options.length < 2) {
+            options = [
+              { option_text: 'Option 1', is_correct: true, display_order: 0 },
+              { option_text: 'Option 2', is_correct: false, display_order: 1 },
+              { option_text: 'Option 3', is_correct: false, display_order: 2 },
+              { option_text: 'Option 4', is_correct: false, display_order: 3 },
+            ];
           } else {
-            // Default content for new slides
-            slideContent = 'Add your slide content here...';
+            let hasCorrect = false;
+            options = options.map((option, idx) => {
+              if (option.is_correct && !hasCorrect) {
+                hasCorrect = true;
+                return option;
+              }
+              return { ...option, is_correct: false };
+            });
+
+            if (!hasCorrect && options.length > 0) {
+              options[0] = { ...options[0], is_correct: true };
+            }
           }
+
+          if (!activity) return;
+
+          await activitiesApi.updateButtonsQuiz(activity.id, {
+            type: 'CHOICE',
+            questionText:
+              updatedQuestions[questionIndex].question_text ||
+              'Default question',
+            timeLimitSeconds: timeLimit,
+            pointType: 'STANDARD',
+            answers: options.map((opt) => ({
+              answerText: opt.option_text,
+              isCorrect: opt.is_correct,
+              explanation: '',
+            })),
+          });
+        } else if (value === 'multiple_response') {
+          if (currentType === 'true_false') {
+            const hasTrueSelected = options.some(
+              (opt) =>
+                opt.option_text.toLowerCase() === 'true' && opt.is_correct
+            );
+
+            options = [
+              {
+                option_text: 'Option 1',
+                is_correct: hasTrueSelected,
+                display_order: 0,
+              },
+              {
+                option_text: 'Option 2',
+                is_correct: !hasTrueSelected,
+                display_order: 1,
+              },
+              { option_text: 'Option 3', is_correct: false, display_order: 2 },
+              { option_text: 'Option 4', is_correct: false, display_order: 3 },
+            ];
+          } else if (options.length < 2) {
+            options = [
+              { option_text: 'Option 1', is_correct: true, display_order: 0 },
+              { option_text: 'Option 2', is_correct: true, display_order: 1 },
+              { option_text: 'Option 3', is_correct: false, display_order: 2 },
+              { option_text: 'Option 4', is_correct: false, display_order: 3 },
+            ];
+          }
+          if (!activity) return;
+          await activitiesApi.updateCheckboxesQuiz(activity.id, {
+            type: 'CHOICE',
+            questionText:
+              updatedQuestions[questionIndex].question_text ||
+              'Default question',
+            timeLimitSeconds: timeLimit,
+            pointType: 'STANDARD',
+            answers: options.map((opt) => ({
+              answerText: opt.option_text,
+              isCorrect: opt.is_correct,
+              explanation: '',
+            })),
+          });
+        } else if (value === 'reorder') {
+          options = [
+            { option_text: 'Step 1', is_correct: false, display_order: 0 },
+            { option_text: 'Step 2', is_correct: false, display_order: 1 },
+            { option_text: 'Step 3', is_correct: false, display_order: 2 },
+            { option_text: 'Step 4', is_correct: false, display_order: 3 },
+          ];
+          if (!activity) return;
+          await activitiesApi.updateReorderQuiz(activity.id, {
+            type: 'REORDER',
+            questionText:
+              updatedQuestions[questionIndex].question_text ||
+              'Arrange in the correct order',
+            timeLimitSeconds: timeLimit,
+            pointType: 'STANDARD',
+            correctOrder: options.map((opt) => opt.option_text),
+          });
+        } else if (value === 'slide' || value === 'info_slide') {
+          // Both slide types use empty options
+          options = [];
+
+          // Maintain any existing slide content when switching between slide types
+          let slideContent = updatedQuestions[questionIndex].slide_content;
+          let slideImage = updatedQuestions[questionIndex].slide_image;
+
+          if (!slideContent) {
+            if (currentType === 'info_slide' || currentType === 'slide') {
+              // Keep existing content if switching between slide types
+              slideContent = updatedQuestions[questionIndex].slide_content;
+            } else {
+              // Default content for new slides
+              slideContent = 'Add your slide content here...';
+            }
+          }
+
+          // Update the API
+          // Note: This would need to be implemented in the API backend
+          if (!activity) return;
+
+          // Add slide-specific update API call here when available
+          // For now, just update the local state
         }
 
-        // Update the API
-        // Note: This would need to be implemented in the API backend
-        if (!activity) return;
+        // Update the question with new type and options
+        updatedQuestions[questionIndex] = {
+          ...updatedQuestions[questionIndex],
+          question_type: value as
+            | 'multiple_choice'
+            | 'multiple_response'
+            | 'true_false'
+            | 'text_answer'
+            | 'slide'
+            | 'info_slide'
+            | 'location'
+            | 'reorder'
+            | 'matching_pair',
+          options,
+          matching_data: newMatchingData,
+        };
 
-        // Add slide-specific update API call here when available
-        // For now, just update the local state
+        setQuestions(updatedQuestions);
       }
-
-      // Update the question with new type and options
-      updatedQuestions[activeQuestionIndex] = {
-        ...updatedQuestions[activeQuestionIndex],
-        question_type: value as
-          | 'multiple_choice'
-          | 'multiple_response'
-          | 'true_false'
-          | 'text_answer'
-          | 'slide'
-          | 'info_slide'
-          | 'location'
-          | 'reorder'
-          | 'matching_pair',
-        options,
-        matching_data: newMatchingData,
-      };
-
-      setQuestions(updatedQuestions);
     } catch (error) {
-      console.error('Error updating question type:', error);
+      console.error('❌ Error changing question type:', error);
     }
   };
 

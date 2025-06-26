@@ -176,12 +176,14 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                   question.question_text =
                     act.quiz?.questionText || act.title || 'Match the pairs';
                   question.time_limit_seconds = act.quiz?.timeLimitSeconds;
-                  question.pointType = act.quiz?.pointType;
+                  // Ensure pointType is properly set from API with fallback
+                  question.pointType = act.quiz?.pointType || 'STANDARD';
 
                   // Use the actual matching pair data from API
                   if (act.quiz?.quizMatchingPairAnswer) {
                     const matchingData = act.quiz.quizMatchingPairAnswer;
                     question.matching_data = matchingData;
+                    question.quizMatchingPairAnswer = matchingData;
 
                     // Convert API structure to the expected options format
                     const options: MatchingPairOption[] = [];
@@ -367,7 +369,10 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                   ...question,
                   matching_data: matchingData,
                   quizMatchingPairAnswer: matchingData,
-                  // Update options if needed
+                  pointType:
+                    targetActivity.quiz?.pointType ||
+                    question.pointType ||
+                    'STANDARD',
                   options:
                     matchingData.items?.map((item: any) => ({
                       id: item.quizMatchingPairItemId,
@@ -441,6 +446,20 @@ export function useCollectionData(collectionId: string, activityId?: string) {
           // Refresh if it's been more than 5 seconds since last refresh
           if (timeSinceLastRefresh > 5000) {
             await refreshMatchingPairData(correctActivity.id);
+          } else {
+            // Even if we don't refresh, ensure pointType is synced
+            setQuestions((prevQuestions) =>
+              prevQuestions.map((question) => {
+                if (question.activity_id === activeQuestionActivityId) {
+                  return {
+                    ...question,
+                    pointType:
+                      correctActivity.quiz?.pointType || question.pointType,
+                  };
+                }
+                return question;
+              })
+            );
           }
         }
       }

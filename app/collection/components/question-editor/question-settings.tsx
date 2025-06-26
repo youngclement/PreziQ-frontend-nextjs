@@ -374,6 +374,8 @@ export function QuestionSettings({
       setTitle(activity.title || '');
       setDescription(activity.description || '');
       setIsPublished(activity.is_published || false);
+
+      // Update pointType from activity quiz data
       setPointType(activity.quiz?.pointType || 'STANDARD');
 
       // Check if we've switched to a different activity
@@ -426,11 +428,14 @@ export function QuestionSettings({
     if (activeQuestion) {
       //setCorrectAnswerText(activeQuestion.correct_answer_text || '');
       setActiveType(activeQuestion.question_type || 'multiple_choice');
+      // Add this line to update pointType from activeQuestion
+      setPointType(activeQuestion.pointType || 'STANDARD');
     }
   }, [
     activeQuestion,
     activeQuestion.activity_id,
     activeQuestion.correct_answer_text,
+    activeQuestion.pointType, // Add this dependency
   ]);
 
   // // Update text answer when changing
@@ -2408,6 +2413,22 @@ export function QuestionSettings({
       </div>
     );
   };
+
+  // Force re-render when activity changes to ensure state is fresh
+  useEffect(() => {
+    if (activity && activity.id !== prevActivityId) {
+      // Reset all local state when switching to a different activity
+      setPointType(activity.quiz?.pointType || 'STANDARD');
+      setBackgroundColor(activity.backgroundColor || '#FFFFFF');
+      setTitle(activity.title || '');
+      setDescription(activity.description || '');
+      setIsPublished(activity.is_published || false);
+      setActiveType(activeQuestion?.question_type || 'multiple_choice');
+
+      // Force a re-render by updating the trigger
+      setSettingsUpdateTrigger((prev) => prev + 1);
+    }
+  }, [activity?.id, prevActivityId, activeQuestion?.question_type]);
 
   return (
     <Card className="border-none overflow-hidden shadow-md h-full w-full">
