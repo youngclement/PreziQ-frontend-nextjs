@@ -7,6 +7,7 @@ import { Activity, QuizQuestion } from '../components/types';
 import { createEmptyQuestion } from '../utils/question-helpers';
 import { mapQuestionTypeToActivityType } from '../utils/question-type-mapping';
 import { CollectionService } from '../services/collection-service';
+import type { ActivityType } from '@/api-client/activities-api';
 
 // Define activity type constants instead of using enum
 export const ACTIVITY_TYPES = {
@@ -38,7 +39,9 @@ export function useQuestionOperations(
   /**
    * Add a new question to the collection
    */
-  const handleAddQuestion = async () => {
+  const handleAddQuestion = async (
+    questionType: QuizQuestion['question_type'] = 'multiple_choice'
+  ) => {
     try {
       // Find highest orderIndex to determine new activity's position
       const highestOrderIndex = activities.reduce((max, act) => {
@@ -47,56 +50,90 @@ export function useQuestionOperations(
         return Math.max(max, orderIndex);
       }, -1);
 
-      // Create a new activity in the collection with next orderIndex
+      // Prepare payload
       const payload = {
         collectionId: collectionId,
-        activityType: ACTIVITY_TYPES.QUIZ_BUTTONS,
+        activityType:
+          questionType === 'matching_pair'
+            ? ('QUIZ_MATCHING_PAIRS' as ActivityType)
+            : (ACTIVITY_TYPES.QUIZ_BUTTONS as ActivityType),
         title: 'New Question',
         description: 'This is a new question',
         isPublished: true,
-        orderIndex: highestOrderIndex + 1, // Add next in sequence
+        orderIndex: highestOrderIndex + 1,
       };
 
-      const response = await activitiesApi.createActivity(payload);
+      let response;
+      if (questionType === 'matching_pair') {
+        response = await CollectionService.createMatchingPairActivity(payload);
+      } else {
+        response = await activitiesApi.createActivity(payload);
+      }
 
       if (response && response.data && response.data.data) {
-        // Get the new activity data
         const newActivityData = response.data.data;
-
+        // Fetch full activity detail for matching pair
+        let activityDetail = newActivityData;
+        if (questionType === 'matching_pair') {
+          const detailRes = await activitiesApi.getActivityById(
+            newActivityData.activityId
+          );
+          if (detailRes && detailRes.data && detailRes.data.data) {
+            activityDetail = detailRes.data.data;
+          }
+        }
         // Add the new activity to our local state
         const newActivity: Activity = {
-          id: newActivityData.activityId,
-          title: newActivityData.title,
+          id: activityDetail.activityId,
+          title: activityDetail.title,
           collection_id: collectionId,
-          description: newActivityData.description,
-          is_published: newActivityData.isPublished,
-          activity_type_id: newActivityData.activityType,
-          orderIndex: newActivityData.orderIndex || highestOrderIndex + 1,
-          createdAt: newActivityData.createdAt,
-          updatedAt: newActivityData.createdAt,
-          createdBy: newActivityData.createdBy || '',
+          description: activityDetail.description,
+          is_published: activityDetail.isPublished,
+          activity_type_id: activityDetail.activityType,
+          orderIndex: activityDetail.orderIndex || highestOrderIndex + 1,
+          createdAt: activityDetail.createdAt,
+          updatedAt: activityDetail.updatedAt,
+          createdBy: activityDetail.createdBy || '',
+          quiz: activityDetail.quiz,
         };
-
-        // Update activities array
         const updatedActivities = [...activities, newActivity];
         setActivities(updatedActivities);
-
-        // Create a new question for this activity
-        const newQuestion = createEmptyQuestion(newActivityData.activityId);
-
-        // Add the new question at the end of the questions array
-        const updatedQuestions = [...questions, newQuestion];
+        // Map activity to question (follow use-collection-data.ts logic)
+        let newQuestion: QuizQuestion;
+        if (
+          questionType === 'matching_pair' &&
+          activityDetail.quiz?.quizMatchingPairAnswer
+        ) {
+          const matchingData = activityDetail.quiz.quizMatchingPairAnswer;
+          newQuestion = {
+            id: activityDetail.activityId,
+            activity_id: activityDetail.activityId,
+            question_text:
+              activityDetail.quiz.questionText || activityDetail.title || '',
+            question_type: 'matching_pair',
+            correct_answer_text: '',
+            options: (matchingData.items || []).map((item: any) => ({
+              id: item.quizMatchingPairItemId,
+              quizMatchingPairItemId: item.quizMatchingPairItemId,
+              content: item.content,
+              isLeftColumn: item.isLeftColumn,
+              display_order: item.displayOrder || 0,
+            })),
+            matching_data: matchingData,
+            quizMatchingPairAnswer: matchingData,
+            time_limit_seconds: activityDetail.quiz.timeLimitSeconds,
+            pointType: activityDetail.quiz.pointType || 'STANDARD',
+          };
+        } else {
+          newQuestion = createEmptyQuestion(
+            activityDetail.activityId,
+            questionType
+          );
+        }
+        const updatedQuestions: QuizQuestion[] = [...questions, newQuestion];
         setQuestions(updatedQuestions);
-
-        // Set this as current activity
         setActivity(newActivity);
-
-        // Set the active question index to the new question (which is now the last one)
         setActiveQuestionIndex(updatedQuestions.length - 1);
-
-        // Let BE create the default quiz data instead of hard coding
-        // The quiz data will be populated when the collection is refreshed
-        // or when the user interacts with the question
       }
     } catch (error) {
       console.error('Error adding question:', error);
@@ -237,7 +274,7 @@ export function useQuestionOperations(
    * Handle changing the question type
    */
   const handleQuestionTypeChange = async (
-    value: string,
+    value: QuizQuestion['question_type'],
     questionIndex: number
   ) => {
     console.log(
@@ -324,7 +361,7 @@ export function useQuestionOperations(
         }
 
         // 5. Cập nhật question state với dữ liệu từ BE
-        const updatedQuestions = [...questions];
+        const updatedQuestions: QuizQuestion[] = [...questions];
         updatedQuestions[questionIndex] = {
           ...updatedQuestions[questionIndex],
           question_type: 'matching_pair',
@@ -344,7 +381,43 @@ export function useQuestionOperations(
           activity_type_id: 'QUIZ_MATCHING_PAIRS',
         });
 
+        // After updating, fetch the latest activity detail and update state
+        const detailRes = await activitiesApi.getActivityById(
+          targetActivity.id
+        );
+        if (detailRes && detailRes.data && detailRes.data.data) {
+          const activityDetail = detailRes.data.data;
+          const matchingData = activityDetail.quiz?.quizMatchingPairAnswer;
+          const updatedQuestions: QuizQuestion[] = [...questions];
+          updatedQuestions[questionIndex] = {
+            id: activityDetail.activityId,
+            activity_id: activityDetail.activityId,
+            question_text:
+              activityDetail.quiz?.questionText || activityDetail.title || '',
+            question_type: 'matching_pair',
+            correct_answer_text: '',
+            options: (matchingData?.items || []).map((item: any) => ({
+              id: item.quizMatchingPairItemId,
+              quizMatchingPairItemId: item.quizMatchingPairItemId,
+              content: item.content,
+              isLeftColumn: item.isLeftColumn,
+              display_order: item.displayOrder || 0,
+            })),
+            matching_data: matchingData,
+            quizMatchingPairAnswer: matchingData,
+            time_limit_seconds: activityDetail.quiz?.timeLimitSeconds,
+            pointType: activityDetail.quiz?.pointType || 'STANDARD',
+          };
+          setQuestions(updatedQuestions);
+          setActivity({
+            ...targetActivity,
+            activity_type_id: 'QUIZ_MATCHING_PAIRS',
+            quiz: activityDetail.quiz,
+          });
+        }
+
         console.log('✅ Matching pair conversion completed');
+        return;
       } else {
         // Xử lý các loại question khác như cũ
         await activitiesApi.updateActivity(targetActivity.id, {

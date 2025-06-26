@@ -1,7 +1,7 @@
-import { toast } from "sonner";
-import axiosClient from "@/api-client/axios-client";
+import { toast } from 'sonner';
+import axiosClient from '@/api-client/axios-client';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Define types for location quiz data
 interface LocationAnswer {
@@ -46,23 +46,23 @@ export const CollectionService = {
       const response = await fetch(
         `${API_BASE_URL}/collections/${collectionId}/activities/reorder`,
         {
-          method: "PUT",
+          method: 'PUT',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({ orderedActivityIds }),
-          credentials: "include",
+          credentials: 'include',
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to reorder activities");
+        throw new Error(errorData.message || 'Failed to reorder activities');
       }
 
       return await response.json();
     } catch (error) {
-      console.error("Error reordering activities:", error);
+      console.error('Error reordering activities:', error);
       throw error;
     }
   },
@@ -81,25 +81,25 @@ export const CollectionService = {
       const response = await fetch(
         `${API_BASE_URL}/activities/${activityId}/questions/reorder`,
         {
-          method: "PUT",
+          method: 'PUT',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({ orderedQuestionIds }),
-          credentials: "include",
+          credentials: 'include',
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to reorder questions");
+        throw new Error(errorData.message || 'Failed to reorder questions');
       }
 
       return await response.json();
     } catch (error) {
-      console.error("Error reordering questions:", error);
+      console.error('Error reordering questions:', error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to reorder questions"
+        error instanceof Error ? error.message : 'Failed to reorder questions'
       );
       throw error;
     }
@@ -115,24 +115,24 @@ export const CollectionService = {
       const response = await fetch(
         `${API_BASE_URL}/collections/${collectionId}`,
         {
-          method: "GET",
+          method: 'GET',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
-          credentials: "include",
+          credentials: 'include',
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to fetch collection");
+        throw new Error(errorData.message || 'Failed to fetch collection');
       }
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching collection:", error);
+      console.error('Error fetching collection:', error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to fetch collection"
+        error instanceof Error ? error.message : 'Failed to fetch collection'
       );
       throw error;
     }
@@ -148,27 +148,72 @@ export const CollectionService = {
       const response = await fetch(
         `${API_BASE_URL}/collections/${payload.collectionId}/activities`,
         {
-          method: "POST",
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify(payload),
-          credentials: "include",
+          credentials: 'include',
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create location quiz");
+        throw new Error(errorData.message || 'Failed to create location quiz');
       }
 
       return await response.json();
     } catch (error) {
-      console.error("Error creating location quiz:", error);
+      console.error('Error creating location quiz:', error);
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to create location quiz"
+          : 'Failed to create location quiz'
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new matching pair quiz activity
+   * @param payload Data for creating a new matching pair quiz
+   * @returns Promise with the created activity
+   */
+  createMatchingPairActivity: async (
+    payload: Omit<CreateLocationQuizPayload, 'activityType'> & {
+      activityType?: string;
+    }
+  ) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/collections/${payload.collectionId}/activities`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...payload,
+            activityType: 'QUIZ_MATCHING_PAIRS',
+          }),
+          credentials: 'include',
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || 'Failed to create matching pair quiz'
+        );
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating matching pair quiz:', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to create matching pair quiz'
       );
       throw error;
     }

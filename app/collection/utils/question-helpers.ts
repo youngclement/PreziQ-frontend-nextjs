@@ -72,27 +72,8 @@ export const createEmptyQuestion = (
       return {
         ...baseQuestion,
         question_type: 'matching_pair',
-        question_text: 'Matching Pairs Question',
-        options: [
-          {
-            id: 'pair-1',
-            left_text: 'Left Item 1',
-            right_text: 'Right Item 1',
-            is_correct: true,
-            pair_id: 'pair-1',
-            display_order: 0,
-            option_text: '',
-          },
-          {
-            id: 'pair-2',
-            left_text: 'Left Item 2',
-            right_text: 'Right Item 2',
-            is_correct: true,
-            pair_id: 'pair-2',
-            display_order: 1,
-            option_text: '',
-          },
-        ],
+        question_text: '',
+        options: [],
       };
 
     default:
