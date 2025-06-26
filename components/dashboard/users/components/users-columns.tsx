@@ -106,7 +106,7 @@ export const useColumns = () => {
           <div className="flex items-center">
             <Badge
               variant="outline"
-              className="bg-blue-50 text-blue-700 hover:bg-blue-100 font-normal max-w-full overflow-hidden"
+              className="bg-blue-50 dark:bg-zinc-700 dark:text-slate-100 text-blue-700 hover:bg-blue-100 font-normal max-w-full overflow-hidden"
               title={email}
             >
               <span className="truncate block max-w-[180px]">{email}</span>
@@ -128,7 +128,7 @@ export const useColumns = () => {
         return (
           <Badge
             variant="outline"
-            className="font-normal bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors hover:scale-105 max-w-full"
+            className="font-normal bg-slate-50 dark:bg-slate-600 dark:text-slate-200 text-slate-700 hover:bg-slate-100 transition-colors hover:scale-105 max-w-full"
             title={firstName}
           >
             <span className="truncate block max-w-[130px]">{firstName}</span>
@@ -149,7 +149,7 @@ export const useColumns = () => {
         return (
           <Badge
             variant="outline"
-            className="font-normal bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors hover:scale-105 max-w-full"
+            className="font-normal bg-slate-50 dark:bg-slate-600 dark:text-slate-200 text-slate-700 hover:bg-slate-100 transition-colors hover:scale-105 max-w-full"
             title={lastName}
           >
             <span className="truncate block max-w-[130px]">{lastName}</span>
