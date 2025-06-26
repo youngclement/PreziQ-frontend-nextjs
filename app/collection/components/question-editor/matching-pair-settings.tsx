@@ -509,6 +509,20 @@ export function MatchingPairSettings({
             items: [...otherItems, ...updatedItems],
           }));
 
+          setMatchingData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              connections: (prev.connections || []).filter(
+                (conn) =>
+                  conn.leftItem.quizMatchingPairItemId !==
+                    movedItem.quizMatchingPairItemId &&
+                  conn.rightItem.quizMatchingPairItemId !==
+                    movedItem.quizMatchingPairItemId
+              ),
+            };
+          });
+
           await activitiesApi.updateReorderQuizItem(
             activityId,
             movedItem.quizMatchingPairItemId!,
@@ -573,6 +587,20 @@ export function MatchingPairSettings({
             items: allItems,
             connections: newConnections,
           }));
+
+          setMatchingData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              connections: (prev.connections || []).filter(
+                (conn) =>
+                  conn.leftItem.quizMatchingPairItemId !==
+                    movedItem.quizMatchingPairItemId &&
+                  conn.rightItem.quizMatchingPairItemId !==
+                    movedItem.quizMatchingPairItemId
+              ),
+            };
+          });
 
           await activitiesApi.updateReorderQuizItem(
             activityId,
