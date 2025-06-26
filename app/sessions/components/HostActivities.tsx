@@ -960,6 +960,7 @@ export default function HostActivities({
             sessionWebSocket={sessionWs}
             currentActivityId={currentRankingActivityId}
             onClose={handleCloseRankingChange}
+            onNextActivity={handleNextActivity}
             isFullscreenMode={false}
           />
         )}
@@ -1056,39 +1057,60 @@ export default function HostActivities({
               </motion.div>
 
               {/* Thêm nút hiển thị bảng xếp hạng (chỉ hiển thị khi canShowRanking = true) */}
-              {canShowRanking && (
+              {canShowRanking &&
+                activityTransitionState === 'showing_current' && (
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className='ml-2'
+                  >
+                    <Button
+                      onClick={() => {
+                        if (currentActivity && currentActivity.activityId) {
+                          sessionWs.requestRankingUpdate(
+                            currentActivity.activityId
+                          );
+                          setCurrentRankingActivityId(
+                            currentActivity.activityId
+                          );
+                          setShowRankingChange(true);
+                          setActivityTransitionState('showing_ranking');
+                        }
+                      }}
+                      className='bg-[rgb(213,189,255)] hover:bg-[rgb(213,189,255)]/90 text-black border border-white/20 flex items-center gap-2'
+                    >
+                      <BarChart className='h-4 w-4' />
+                      <span>Xem bảng xếp hạng</span>
+                    </Button>
+                  </motion.div>
+                )}
+
+              {/* Nút tiếp theo cho mobile - hiển thị khi không có bảng xếp hạng hoặc đang ở trạng thái showing_ranking */}
+              {((!canShowRanking &&
+                activityTransitionState === 'showing_current') ||
+                activityTransitionState === 'showing_ranking') && (
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
                   className='ml-2'
                 >
                   <Button
                     onClick={handleNextActivity}
-                    className='bg-[rgb(213,189,255)] hover:bg-[rgb(213,189,255)]/90 text-black border border-white/20 flex items-center gap-2'
+                    disabled={!isConnected || noMoreActivities}
+                    className='bg-[rgb(198,234,132)] hover:bg-[rgb(198,234,132)]/90 text-black font-medium disabled:opacity-50 flex items-center gap-2'
                   >
-                    <BarChart className='h-4 w-4' />
-                    <span>Xếp hạng</span>
+                    {activityTransitionState === 'showing_ranking'
+                      ? 'Tiếp tục'
+                      : 'Hoạt động tiếp theo'}
+                    <ArrowRight className='h-4 w-4' />
                   </Button>
                 </motion.div>
               )}
             </div>
 
             <div className='flex space-x-3'>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button
-                  onClick={handleNextActivity}
-                  disabled={!isConnected || noMoreActivities}
-                  className='bg-[rgb(198,234,132)] hover:bg-[rgb(198,234,132)]/90 text-black font-medium disabled:opacity-50 flex items-center gap-2'
-                >
-                  Hoạt động tiếp theo
-                  <ArrowRight className='h-4 w-4' />
-                </Button>
-              </motion.div>
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -1404,6 +1426,7 @@ export default function HostActivities({
                         sessionWebSocket={sessionWs}
                         currentActivityId={currentRankingActivityId}
                         onClose={handleCloseRankingChange}
+                        onNextActivity={handleNextActivity}
                         isFullscreenMode={true}
                       />
                     </div>
