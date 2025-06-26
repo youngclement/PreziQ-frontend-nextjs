@@ -19,6 +19,7 @@ import {
 import { AnimationOrderItem } from './animation-order-item';
 import type { SlideElementPayload } from '@/types/slideInterface';
 import { Layers, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { useLanguage } from '@/contexts/language-context';
 // Define interface for custom events
 export interface SlideElementEvent extends CustomEvent {
   detail: {
@@ -53,6 +54,7 @@ export const AnimationOrderList = ({
     null
   );
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { t } = useLanguage();
 
   const updateItemsWithAnimation = useCallback(
     (objectId: string, animationName: string) => {
@@ -361,10 +363,10 @@ export const AnimationOrderList = ({
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
-                Animation Timeline
+                {t('activity.slide.animationTimeline')}
               </h3>
               <p className="text-sm text-gray-500">
-                {items.length} elements
+                {items.length} {t('activity.slide.elementsCount')}
               </p>
             </div>
           </div>
@@ -391,11 +393,10 @@ export const AnimationOrderList = ({
             <Info className="w-8 h-8 text-gray-400" />
           </div>
           <h4 className="text-lg font-medium text-gray-900 mb-2">
-            No elements yet
+            {t('activity.slide.noElementsYet')}
           </h4>
           <p className="text-gray-500 max-w-sm mx-auto">
-            Add elements to your slide to see them appear here. You can then
-            drag to reorder and adjust animation timing.
+            {t('activity.slide.noElementsDescription')}
           </p>
         </div>
       )}
@@ -407,11 +408,13 @@ export const AnimationOrderList = ({
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-blue-800">
-                <p className="font-medium mb-1">Drag & Drop Tips:</p>
+                <p className="font-medium mb-1">
+                  {t('activity.slide.dragDropTips')}
+                </p>
                 <ul className="text-xs space-y-1 text-blue-700">
-                  <li>• Drag vertically to reorder elements</li>
-                  <li>• Drag horizontally to change hierarchy levels</li>
-                  <li>• Elements with the same level will animate together</li>
+                  <li>{t('activity.slide.dragVertically')}</li>
+                  <li>{t('activity.slide.dragHorizontally')}</li>
+                  <li>{t('activity.slide.sameLevelAnimation')}</li>
                 </ul>
               </div>
             </div>

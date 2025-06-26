@@ -2170,7 +2170,7 @@ export function QuestionSettings({
         <div>
           <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
             <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-            Question Type
+            {t('activity.questionType')}
           </h3>
           <QuestionTypeSelector />
         </div>
@@ -2434,7 +2434,7 @@ export function QuestionSettings({
               <div>
                 <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                  Question Type
+                  {t('activity.questionType')}
                 </h3>
                 <QuestionTypeSelector />
               </div>

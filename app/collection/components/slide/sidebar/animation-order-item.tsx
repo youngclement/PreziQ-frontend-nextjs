@@ -5,7 +5,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { GripVertical } from 'lucide-react';
 import Image from 'next/image';
 import type { SlideElementPayload } from '@/types/slideInterface';
-
+import { useLanguage } from '@/contexts/language-context';
 interface AnimationOrderItemProps {
   item: SlideElementPayload;
   slideId: string;
@@ -42,6 +42,7 @@ export const AnimationOrderItem = ({
       textContent = 'Text Element';
     }
   }
+  const { t } = useLanguage();
 
   return (
     <div
@@ -97,7 +98,8 @@ export const AnimationOrderItem = ({
       >
         <div className="font-medium">
           {item.entryAnimation != 'none' && item.entryAnimation
-            ? item?.entryAnimation :'No Animation'}
+            ? item?.entryAnimation
+            : t('activity.noAnimation')}
         </div>
         {item.entryAnimation && item.entryAnimation !== 'none' && (
           <div className="flex gap-1.5">

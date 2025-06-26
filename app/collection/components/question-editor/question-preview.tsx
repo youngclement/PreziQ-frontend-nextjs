@@ -1233,7 +1233,7 @@ export function QuestionPreview({
           </CardContent>
         </Card>
       );
-    }
+    } 
 
     // Modified for question cards without slide type
     if (!isSlideType) {
@@ -1512,7 +1512,9 @@ export function QuestionPreview({
                       className="flex items-center cursor-pointer transition-all hover:bg-blue-50 dark:hover:bg-blue-900/30 p-2 rounded-md -mx-2"
                       onClick={() => setEditMode('text_answer_edit')}
                     >
-                      <span className="font-medium">Correct answer:</span>{' '}
+                      <span className="font-medium">
+                        {t('activity.correctAnswer')}:
+                      </span>{' '}
                       <span className="ml-1 font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800">
                         {question.correct_answer_text ||
                           (question.options &&
@@ -1534,12 +1536,12 @@ export function QuestionPreview({
                   {editMode !== null ? (
                     <p className="flex items-center">
                       <Info className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
-                      Click outside or press Enter to save your changes
+                      {t('activity.textAnswerHelpTextEditMode')}
                     </p>
                   ) : (
                     <p className="flex items-center">
                       <Info className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
-                      Click on the answer to edit it when in edit mode
+                      {t('activity.textAnswerHelpText')}
                     </p>
                   )}
                 </div>
@@ -1551,8 +1553,8 @@ export function QuestionPreview({
                     <MoveVertical className="h-3.5 w-3.5 mr-1.5" />
                     <span>
                       {editMode !== null
-                        ? 'Kéo thả để sắp xếp các bước (chế độ chỉnh sửa đã bật)'
-                        : 'Thứ tự các bước - Bật chế độ chỉnh sửa để sắp xếp lại'}
+                        ? `${t('activity.reorderHelpTextEditMode')}`
+                        : `${t('activity.reorderHelpText')}`}
                     </span>
                   </div>
 
@@ -1569,7 +1571,9 @@ export function QuestionPreview({
                           clipRule="evenodd"
                         />
                       </svg>
-                      <span className="text-xs">Drag handle để di chuyển</span>
+                      <span className="text-xs">
+                        {t('activity.hintReorder')}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1774,15 +1778,17 @@ export function QuestionPreview({
                       <line x1="12" y1="16" x2="12.01" y2="16"></line>
                     </svg>
                     <div>
-                      <div className="font-medium mb-1">Hướng dẫn sử dụng:</div>
+                      <div className="font-medium mb-1">
+                        {t('activity.instructions')}
+                      </div>
                       <ul className="space-y-1">
-                        <li>• Bật chế độ chỉnh sửa để kéo thả sắp xếp lại</li>
+                        <li>• {t('activity.reorderHelpText2')}</li>
                         <li>
-                          • Giữ vào biểu tượng{' '}
-                          <GripVertical className="inline h-3 w-3 mx-1" /> để
-                          kéo
+                          • {t('activity.reorderHelpTextEditMode2')}
+                          <GripVertical className="inline h-3 w-3 mx-1" /> 
+                          {t('activity.toDrag')}
                         </li>
-                        <li>• Thứ tự sẽ được lưu tự động khi thả</li>
+                        <li>• {t('activity.autoSaveOrder')}</li>
                       </ul>
                     </div>
                   </div>
