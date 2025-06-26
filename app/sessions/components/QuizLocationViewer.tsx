@@ -368,9 +368,22 @@ export default function QuizLocationViewer({
       // Tự động submit câu trả lời nếu đã chọn nhưng chưa gửi
       if (userSelectedLocations.length && !isSubmitted && !isSubmitting) {
         console.log(
-          '[QuizLocationViewer] Tự động gửi đáp án khi hết thời gian'
+          '[QuizLocationViewer] Tự động gửi đáp án khi hết thời gian',
+          {
+            userSelectedLocations,
+            isSubmitted,
+            isSubmitting,
+            locationsCount: userSelectedLocations.length,
+          }
         );
         handleSubmit();
+      } else {
+        console.log('[QuizLocationViewer] Không tự động submit vì:', {
+          hasLocations: userSelectedLocations.length > 0,
+          isSubmitted,
+          isSubmitting,
+          timeLeft,
+        });
       }
 
       return;
@@ -470,45 +483,26 @@ export default function QuizLocationViewer({
     (isCorrect: boolean, distance: number, userLocation?: LocationData) => {
       if (isSubmitted || isQuizEnded) return;
 
-      // Lưu vị trí user chọn với validation
+      // Lưu vị trí user chọn với logic thay thế
       if (userLocation) {
         // Use functional update to get the latest state
         setUserSelectedLocations((prevLocations) => {
-          // Kiểm tra xem vị trí có trùng lặp không
-          const isDuplicate = prevLocations.some(
-            (existing) =>
-              Math.abs(existing.lat - userLocation.lat) < 0.001 &&
-              Math.abs(existing.lng - userLocation.lng) < 0.001
-          );
+          const maxAllowed = correctAnswers.length || 1;
 
-          if (isDuplicate) {
-            // Set error outside the functional update
-            setTimeout(
-              () =>
-                setError('Vị trí này đã được chọn. Vui lòng chọn vị trí khác.'),
-              0
+          // Nếu đã đạt giới hạn tối đa, xóa location đầu tiên
+          let newLocations = [...prevLocations];
+          if (newLocations.length >= maxAllowed) {
+            newLocations.shift(); // Xóa phần tử đầu tiên
+            console.log(
+              `[QuizLocation] Đã đạt giới hạn tối đa ${maxAllowed}, xóa location đầu tiên`
             );
-            return prevLocations; // Return unchanged
           }
 
-          // Kiểm tra số lượng tối đa
-          if (prevLocations.length >= correctAnswers.length) {
-            setTimeout(
-              () =>
-                setError(
-                  `Chỉ được chọn tối đa ${correctAnswers.length} vị trí.`
-                ),
-              0
-            );
-            return prevLocations; // Return unchanged
-          }
+          // Thêm vị trí mới vào cuối danh sách
+          newLocations.push(userLocation);
 
-          // Thêm vị trí mới vào danh sách
-          const newLocations = [...prevLocations, userLocation];
-
-          // Log after confirming we're going to add
           console.log(
-            `[QuizLocation] Đã thêm vị trí ${newLocations.length}/${correctAnswers.length}:`,
+            `[QuizLocation] Đã thêm vị trí ${newLocations.length}/${maxAllowed}:`,
             userLocation
           );
 
@@ -825,6 +819,23 @@ export default function QuizLocationViewer({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
+            {(() => {
+              // Debug log trước khi render LocationQuestionPlayer
+              console.log(
+                '[QuizLocationViewer] Render LocationQuestionPlayer với props:',
+                {
+                  showCorrectLocation: isQuizEnded || activity.hostShowAnswer,
+                  disabled: isSubmitted || isQuizEnded,
+                  userSelectedLocations,
+                  userSelectedLocationsCount: userSelectedLocations.length,
+                  isQuizEnded,
+                  isSubmitted,
+                  hostShowAnswer: activity.hostShowAnswer,
+                  correctAnswers,
+                }
+              );
+              return null;
+            })()}
             <LocationQuestionPlayer
               questionText={activity.quiz.questionText}
               locationData={locationData}
