@@ -69,18 +69,22 @@ export const useGenerateSidebarData = (user: User | null): SidebarData => {
   const defaultUser: SidebarUser = {
     name: t('user'),
     email: 'user@example.com',
-    avatar: '/avatars/shadcn.jpg',
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      t('user')
+    )}&background=random&size=200&color=fff`,
   };
 
   // Generate user data from API user
   const sidebarUser: SidebarUser = user
     ? {
-
-      name: `${user.firstName} ${user.lastName}`.trim() || t('user'),
-      email: user.email || 'user@example.com',
-      avatar: '/avatars/shadcn.jpg', // Có thể thêm avatar URL từ API sau
-    }
-
+        name: `${user.firstName} ${user.lastName}`.trim() || t('user'),
+        email: user.email || 'user@example.com',
+        avatar:
+          user.avatar ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            `${user.firstName} ${user.lastName}`
+          )}&background=random&size=200&color=fff`,
+      }
     : defaultUser;
 
   return {
@@ -162,12 +166,14 @@ export const generateSidebarData = (
   // Generate user data from API user
   const sidebarUser: SidebarUser = user
     ? {
-
-      name: `${user.firstName} ${user.lastName}`.trim() || 'Người dùng',
-      email: user.email || 'user@example.com',
-      avatar: '/avatars/shadcn.jpg', // Có thể thêm avatar URL từ API sau
-    }
-
+        name: `${user.firstName} ${user.lastName}`.trim() || 'Người dùng',
+        email: user.email || 'user@example.com',
+        avatar:
+          user.avatar ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            `${user.firstName} ${user.lastName}`
+          )}&background=random&size=200&color=fff`,
+      }
     : defaultUser;
 
   return {
@@ -195,13 +201,11 @@ export const generateSidebarData = (
         items: [
           {
             title: t ? t('dashboard') : 'Dashboard',
-
             url: '/dashboard',
             icon: LayoutDashboard,
           },
           {
             title: t ? t('chat') : 'Chat',
-
             url: '/dashboard/chats',
             icon: MessageSquare,
           },
@@ -212,25 +216,21 @@ export const generateSidebarData = (
         items: [
           {
             title: t ? t('roles') : 'Vai trò',
-
             url: '/dashboard/roles',
             icon: Package,
           },
           {
             title: t ? t('permissions') : 'Quyền',
-
             url: '/dashboard/permissions',
             icon: ShieldAlert,
           },
           {
             title: t ? t('users') : 'Người dùng',
-
             url: '/dashboard/users',
             icon: Users,
           },
           {
             title: t ? t('achievements') : 'Thành tích',
-
             url: '/dashboard/achievements',
             icon: Award,
           },
