@@ -1192,6 +1192,7 @@ i18next
             toDrag: 'to drag',
             image: 'Image',
             upload: 'Upload',
+            moduleCollection: 'Module Collection',
             slide: {
               colorTab: 'Color',
               imageTab: 'Image',
@@ -2347,6 +2348,7 @@ i18next
             toDrag: 'để kéo',
             image: 'Hình ảnh',
             upload: 'Tải lên',
+            moduleCollection: 'Bộ sưu tập',
             slide: {
               dragAndDropUpload: 'Kéo và thả để tải lên',
               selectFromComputer: 'Chọn từ máy tính',

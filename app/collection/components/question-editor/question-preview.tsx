@@ -2907,7 +2907,7 @@ export function QuestionPreview({
               onClick={() => onAddQuestion()}
             >
               <Plus className="h-4 w-4" />
-             {t('activity.addQuestion')}
+             {t('activity.addActivity')}
             </Button>
           </div>
         </div>
