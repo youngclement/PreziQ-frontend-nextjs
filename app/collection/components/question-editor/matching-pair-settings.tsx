@@ -395,12 +395,30 @@ export function MatchingPairSettings({
   );
 
   const connectionColors = [
-    'bg-red-100 border-red-400 text-red-700',
-    'bg-blue-100 border-blue-400 text-blue-700',
-    'bg-yellow-100 border-yellow-400 text-yellow-700',
-    'bg-green-100 border-green-400 text-green-700',
-    'bg-purple-100 border-purple-400 text-purple-700',
-    'bg-pink-100 border-pink-400 text-pink-700',
+    {
+      light: 'bg-red-100 border-red-400 text-red-700',
+      dark: 'dark:bg-rose-500/40 dark:border-rose-300 dark:text-rose-100',
+    },
+    {
+      light: 'bg-blue-100 border-blue-400 text-blue-700',
+      dark: 'dark:bg-cyan-500/40 dark:border-cyan-300 dark:text-cyan-100',
+    },
+    {
+      light: 'bg-yellow-100 border-yellow-400 text-yellow-700',
+      dark: 'dark:bg-amber-400/30 dark:border-amber-200 dark:text-amber-50',
+    },
+    {
+      light: 'bg-green-100 border-green-400 text-green-700',
+      dark: 'dark:bg-lime-500/30 dark:border-lime-300 dark:text-lime-100',
+    },
+    {
+      light: 'bg-purple-100 border-purple-400 text-purple-700',
+      dark: 'dark:bg-violet-500/30 dark:border-violet-300 dark:text-violet-100',
+    },
+    {
+      light: 'bg-pink-100 border-pink-400 text-pink-700',
+      dark: 'dark:bg-fuchsia-500/30 dark:border-fuchsia-300 dark:text-fuchsia-100',
+    },
   ];
 
   const itemIdToColor = useMemo(() => {
@@ -413,9 +431,13 @@ export function MatchingPairSettings({
       .forEach((conn, idx) => {
         const color = connectionColors[idx % connectionColors.length];
         if (conn.leftItem?.quizMatchingPairItemId)
-          map[conn.leftItem.quizMatchingPairItemId] = color;
+          map[
+            conn.leftItem.quizMatchingPairItemId
+          ] = `${color.light} ${color.dark}`;
         if (conn.rightItem?.quizMatchingPairItemId)
-          map[conn.rightItem.quizMatchingPairItemId] = color;
+          map[
+            conn.rightItem.quizMatchingPairItemId
+          ] = `${color.light} ${color.dark}`;
       });
     return map;
   }, [matchingData?.connections]);
