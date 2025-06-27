@@ -312,7 +312,7 @@ export default function QuizTrueOrFalseViewer({
           </div>
 
           {/* Question Text */}
-          <div className='flex flex-col items-center z-10 px-4 md:px-6 py-6 md:py-8'>
+          {/* <div className='flex flex-col items-center z-10 px-4 md:px-6 py-6 md:py-8'>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -328,7 +328,7 @@ export default function QuizTrueOrFalseViewer({
                 </p>
               )}
             </motion.div>
-          </div>
+          </div> */}
         </motion.div>
 
         {/* Progress Bars */}
