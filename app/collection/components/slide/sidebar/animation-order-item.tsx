@@ -6,6 +6,7 @@ import { GripVertical } from 'lucide-react';
 import Image from 'next/image';
 import type { SlideElementPayload } from '@/types/slideInterface';
 import { useLanguage } from '@/contexts/language-context';
+import { useTheme } from 'next-themes';
 interface AnimationOrderItemProps {
   item: SlideElementPayload;
   slideId: string;
@@ -25,6 +26,8 @@ export const AnimationOrderItem = ({
     transition,
     isDragging,
   } = useSortable({ id: item.slideElementId || `temp-${Date.now()}` });
+
+  const { theme } = useTheme();
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -49,12 +52,18 @@ export const AnimationOrderItem = ({
       ref={setNodeRef}
       style={style}
       className={`
-        flex items-center gap-3 p-3 bg-white rounded-lg border
-        ${isDragging ? 'border-blue-500 shadow-md z-10' : 'border-gray-200'}
+        flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border
         ${
-          isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white'
+          isDragging
+            ? 'border-blue-500 dark:border-blue-400 shadow-md z-10'
+            : 'border-gray-200 dark:border-gray-700'
         }
-        hover:bg-gray-50 hover:shadow-md hover:scale-[1.02]
+        ${
+          isSelected
+            ? 'border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-950/50'
+            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+        }
+        hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-md hover:scale-[1.02]
         transition-all duration-200 relative group
       `}
       {...attributes}
@@ -63,20 +72,20 @@ export const AnimationOrderItem = ({
     >
       {/* Drag handle with tooltip */}
       <button
-        className="cursor-grab hover:text-blue-600 active:cursor-grabbing"
+        className="cursor-grab hover:text-blue-600 dark:hover:text-blue-400 active:cursor-grabbing"
         {...listeners}
         aria-label="Drag to reorder"
         title="Drag to reorder" // Tooltip for better UX
       >
-        <GripVertical size={18} className="text-gray-500" />
+        <GripVertical size={18} className="text-gray-500 dark:text-gray-400" />
       </button>
       {/* Visual indicator for nesting level */}
       <div
-        className="absolute -left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-500"
+        className="absolute -left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"
         style={{ opacity: isDragging ? 1 : 0 }}
       />
       {/* Content area with improved typography */}
-      <div className="flex-1 text-sm font-medium text-gray-700 truncate">
+      <div className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
         {item.slideElementType === 'TEXT' ? (
           textContent
         ) : item.slideElementType === 'IMAGE' && item.sourceUrl ? (
@@ -93,7 +102,7 @@ export const AnimationOrderItem = ({
       </div>
       {/* Animation details with hover tooltip */}
       <div
-        className="text-xs text-gray-600 text-right space-y-1"
+        className="text-xs text-gray-600 dark:text-gray-400 text-right space-y-1"
         title={`Animation: ${item.entryAnimation || 'None'}`}
       >
         <div className="font-medium">
@@ -104,7 +113,7 @@ export const AnimationOrderItem = ({
         {item.entryAnimation && item.entryAnimation !== 'none' && (
           <div className="flex gap-1.5">
             <span
-              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-600"
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400"
               title={`Duration: ${item.entryAnimationDuration || 1.0}s`}
             >
               {item.entryAnimationDuration
@@ -113,7 +122,7 @@ export const AnimationOrderItem = ({
             </span>
             {item.entryAnimationDelay && item.entryAnimationDelay > 0 && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600"
+                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400"
                 title={`Delay: ${item.entryAnimationDelay.toFixed(1)}s`}
               >
                 {item.entryAnimationDelay.toFixed(1)}s

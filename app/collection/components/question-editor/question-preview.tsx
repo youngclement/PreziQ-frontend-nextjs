@@ -894,10 +894,8 @@ export function QuestionPreview({
       return (
         <div
           className={cn(
-            'border-none rounded-xl shadow-lg overflow-hidden transition-all duration-300 mx-auto',
-            isActive
-              ? 'ring-2 ring-primary/20 scale-100'
-              : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
+            'border-none rounded-xl shadow-lg pb-5 overflow-hidden transition-all duration-300 mx-auto',
+           
             viewMode === 'desktop' && 'max-w-full w-full',
             viewMode === 'tablet' && 'max-w-4xl w-full',
             viewMode === 'mobile' && 'max-w-sm'
@@ -907,10 +905,10 @@ export function QuestionPreview({
             backgroundPosition: 'center',
           }}
         >
-          <div className="flex flex-col items-center gap-3 w-full px-4 pb-8 pt-4 bg-gradient-to-br from-indigo-100/90 via-purple-100/80 to-blue-100/90 dark:from-indigo-900/90 dark:via-purple-900/80 dark:to-blue-900/95 min-h-[400px]">
-            <div className="w-full flex justify-between mb-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
-                {isSaving && <span className="text-blue-500">(Saving...)</span>}
+          <div className="flex flex-col items-center gap-3 w-full  min-h-[400px]">
+            <div className="w-full flex justify-start mb-3">
+              <div className="flex items-center px-4 gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+                {/* {isSaving && <span className="text-blue-500">(Saving...)</span>} */}
               </div>
               <motion.div
                 className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-400 px-4 py-2 rounded-full shadow-md"
