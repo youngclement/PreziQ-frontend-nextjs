@@ -35,6 +35,50 @@ const shimmerStyles = `
   .animate-shimmer {
     animation: shimmer 3s ease-in-out infinite;
   }
+  
+  /* Mobile text handling improvements */
+  .mobile-text-fix {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    -moz-hyphens: auto;
+    line-height: 1.4;
+  }
+  
+  .item-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 45px;
+    padding: 8px 6px;
+    font-size: 0.75rem;
+  }
+  
+  @media (min-width: 640px) {
+    .item-container {
+      min-height: 55px;
+      padding: 10px 8px;
+      font-size: 0.875rem;
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .item-container {
+      min-height: 65px;
+      padding: 12px 10px;
+      font-size: 0.875rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .item-container {
+      min-height: 70px;
+      padding: 16px;
+      font-size: 1rem;
+    }
+  }
 `;
 
 // Define types based on WebSocket data structure
@@ -628,18 +672,18 @@ export function QuizMatchingPairViewer({
           >
             <div
               ref={containerRef}
-              className='matching-pair-preview relative p-6 md:p-8 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 min-h-[400px] w-full'
+              className='matching-pair-preview relative p-3 sm:p-4 md:p-6 lg:p-8 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 min-h-[260px] sm:min-h-[300px] md:min-h-[400px] w-full'
               key={`preview-${forceUpdate}`}
             >
-              <div className='flex justify-between items-start gap-12 max-w-6xl mx-auto'>
+              <div className='flex flex-row justify-between items-start gap-4 sm:gap-6 md:gap-10 lg:gap-12 max-w-6xl mx-auto'>
                 {/* Column A */}
-                <div className='w-1/2 flex flex-col items-center gap-6'>
-                  <div className='w-full bg-gradient-to-r from-blue-500 to-purple-600 p-4 rounded-xl shadow-lg'>
-                    <h3 className='font-bold text-xl text-center text-white drop-shadow-sm'>
+                <div className='w-[42%] sm:w-[44%] md:w-[45%] lg:w-1/2 flex flex-col items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6'>
+                  <div className='w-full bg-gradient-to-r from-blue-500 to-purple-600 p-2 sm:p-3 md:p-4 rounded-xl shadow-lg'>
+                    <h3 className='font-bold text-xs sm:text-base md:text-lg lg:text-xl text-center text-white drop-shadow-sm break-words'>
                       {leftColumnName}
                     </h3>
                   </div>
-                  <div className='w-full space-y-4'>
+                  <div className='w-full space-y-1.5 sm:space-y-2 md:space-y-3 lg:space-y-4'>
                     {shuffledLeftColumn.map((item, index) => {
                       // Find the connection for this item
                       const connectionColor = pairColorMap.get(
@@ -653,7 +697,7 @@ export function QuizMatchingPairViewer({
                           key={`${item.quizMatchingPairItemId}-${forceUpdate}`}
                           id={`item-${item.quizMatchingPairItemId}`}
                           className={cn(
-                            'p-4 rounded-2xl text-center transition-all duration-300 w-full border-2 shadow-lg hover:shadow-xl cursor-pointer relative overflow-hidden',
+                            'item-container rounded-2xl text-center transition-all duration-300 w-full border-2 shadow-lg hover:shadow-xl cursor-pointer relative overflow-hidden',
                             isSelected && 'ring-2 ring-blue-400 ring-offset-2',
                             !connectionColor &&
                               'bg-gradient-to-r from-white to-blue-50 dark:from-gray-700 dark:to-gray-600 text-gray-800 dark:text-gray-200 border-blue-200 dark:border-gray-500 hover:from-blue-50 hover:to-blue-100 dark:hover:from-gray-600 dark:hover:to-gray-500'
@@ -679,8 +723,8 @@ export function QuizMatchingPairViewer({
                           <div className='absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer' />
 
                           {/* Content */}
-                          <div className='relative z-10'>
-                            <p className='text-sm md:text-base font-semibold drop-shadow-sm'>
+                          <div className='relative z-10 w-full'>
+                            <p className='mobile-text-fix text-xs sm:text-sm md:text-base lg:text-base font-semibold drop-shadow-sm'>
                               {item.content}
                             </p>
                           </div>
@@ -700,13 +744,13 @@ export function QuizMatchingPairViewer({
                 </div>
 
                 {/* Column B */}
-                <div className='w-1/2 flex flex-col items-center gap-6'>
-                  <div className='w-full bg-gradient-to-r from-purple-600 to-pink-500 p-4 rounded-xl shadow-lg'>
-                    <h3 className='font-bold text-xl text-center text-white drop-shadow-sm'>
+                <div className='w-[42%] sm:w-[44%] md:w-[45%] lg:w-1/2 flex flex-col items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6'>
+                  <div className='w-full bg-gradient-to-r from-purple-600 to-pink-500 p-2 sm:p-3 md:p-4 rounded-xl shadow-lg'>
+                    <h3 className='font-bold text-xs sm:text-base md:text-lg lg:text-xl text-center text-white drop-shadow-sm break-words'>
                       {rightColumnName}
                     </h3>
                   </div>
-                  <div className='w-full space-y-4'>
+                  <div className='w-full space-y-1.5 sm:space-y-2 md:space-y-3 lg:space-y-4'>
                     {shuffledRightColumn.map((item, index) => {
                       // Find the connection for this item
                       const connectionColor = pairColorMap.get(
@@ -720,7 +764,7 @@ export function QuizMatchingPairViewer({
                           key={`${item.quizMatchingPairItemId}-${forceUpdate}`}
                           id={`item-${item.quizMatchingPairItemId}`}
                           className={cn(
-                            'p-4 rounded-2xl text-center transition-all duration-300 w-full border-2 shadow-lg hover:shadow-xl cursor-pointer relative overflow-hidden',
+                            'item-container rounded-2xl text-center transition-all duration-300 w-full border-2 shadow-lg hover:shadow-xl cursor-pointer relative overflow-hidden',
                             isSelected &&
                               'ring-2 ring-purple-400 ring-offset-2',
                             !connectionColor &&
@@ -750,8 +794,8 @@ export function QuizMatchingPairViewer({
                           <div className='absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer' />
 
                           {/* Content */}
-                          <div className='relative z-10'>
-                            <p className='text-sm md:text-base font-semibold drop-shadow-sm'>
+                          <div className='relative z-10 w-full'>
+                            <p className='mobile-text-fix text-xs sm:text-sm md:text-base lg:text-base font-semibold drop-shadow-sm'>
                               {item.content}
                             </p>
                           </div>
@@ -831,14 +875,14 @@ export function QuizMatchingPairViewer({
                               : pathColor
                           }
                           strokeWidth={
-                            showCorrectAnswer && isCorrectConnection ? '4' : '3'
+                            showCorrectAnswer && isCorrectConnection ? '5' : '4'
                           }
                           fill='none'
                           strokeLinecap='round'
                           initial={{
                             pathLength: 0,
                             opacity: 0,
-                            strokeWidth: 3,
+                            strokeWidth: 4,
                           }}
                           animate={{
                             pathLength: 1,
@@ -848,7 +892,7 @@ export function QuizMatchingPairViewer({
                                 ? 0
                                 : 1,
                             strokeWidth:
-                              showCorrectAnswer && isCorrectConnection ? 4 : 3,
+                              showCorrectAnswer && isCorrectConnection ? 5 : 4,
                           }}
                           exit={{
                             pathLength: 0,
@@ -874,8 +918,8 @@ export function QuizMatchingPairViewer({
                           style={{
                             filter:
                               showCorrectAnswer && isCorrectConnection
-                                ? 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.5))'
-                                : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+                                ? 'drop-shadow(0 0 10px rgba(16, 185, 129, 0.6))'
+                                : 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))',
                           }}
                         />
                       );
@@ -891,7 +935,7 @@ export function QuizMatchingPairViewer({
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className='mt-6 w-full'
+              className='mt-4 sm:mt-6 w-full px-2 sm:px-0'
             >
               <div className='max-w-md mx-auto'>
                 <Button
@@ -902,7 +946,7 @@ export function QuizMatchingPairViewer({
                     userConnections.length === 0 ||
                     timeLeft <= 0
                   }
-                  className='w-full px-8 py-6 text-lg font-bold bg-gradient-to-r from-[rgb(198,234,132)] to-[rgb(228,248,141)] hover:from-[rgb(158,227,72)] hover:to-[rgb(211,232,124)] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                  className='w-full px-4 sm:px-8 py-4 sm:py-6 text-base sm:text-lg font-bold bg-gradient-to-r from-[rgb(198,234,132)] to-[rgb(228,248,141)] hover:from-[rgb(158,227,72)] hover:to-[rgb(211,232,124)] text-slate-900 shadow-lg flex items-center justify-center gap-2'
                 >
                   {isSubmitting ? (
                     <>
@@ -914,33 +958,33 @@ export function QuizMatchingPairViewer({
                           ease: 'linear',
                         }}
                       >
-                        <Loader2 className='h-5 w-5' />
+                        <Loader2 className='h-4 w-4 sm:h-5 sm:w-5' />
                       </motion.div>
                       <span>Đang gửi...</span>
                     </>
                   ) : isSubmitted ? (
                     <>
-                      <CheckCircle className='h-5 w-5' />
+                      <CheckCircle className='h-4 w-4 sm:h-5 sm:w-5' />
                       <span>Đã gửi câu trả lời</span>
                     </>
                   ) : (
                     <>
                       <span>Gửi câu trả lời</span>
-                      <ArrowRight className='h-5 w-5' />
+                      <ArrowRight className='h-4 w-4 sm:h-5 sm:w-5' />
                     </>
                   )}
                 </Button>
 
                 {/* Progress indicator */}
-                <div className='mt-4 text-center'>
-                  <div className='flex items-center justify-center gap-2 text-sm text-white/70'>
+                <div className='mt-3 sm:mt-4 text-center'>
+                  <div className='flex items-center justify-center gap-2 text-xs sm:text-sm text-white/70'>
                     <div className='flex gap-1'>
                       {Array.from({ length: items.length / 2 }).map(
                         (_, index) => (
                           <div
                             key={index}
                             className={cn(
-                              'w-2 h-2 rounded-full transition-all duration-300',
+                              'w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300',
                               index < userConnections.length
                                 ? showCorrectAnswer
                                   ? 'bg-green-500'
@@ -951,7 +995,7 @@ export function QuizMatchingPairViewer({
                         )
                       )}
                     </div>
-                    <span className='ml-2'>
+                    <span className='ml-2 text-xs sm:text-sm'>
                       {userConnections.length} / {items.length / 2} cặp
                     </span>
                   </div>
@@ -961,10 +1005,10 @@ export function QuizMatchingPairViewer({
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className='mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 text-sm'
+                    className='mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 text-xs sm:text-sm'
                   >
-                    <XCircle className='w-4 h-4' />
-                    {submitError}
+                    <XCircle className='w-4 h-4 flex-shrink-0' />
+                    <span className='mobile-text-fix'>{submitError}</span>
                   </motion.div>
                 )}
               </div>
