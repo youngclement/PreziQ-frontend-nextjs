@@ -553,12 +553,6 @@ export function UserProfileForm({
           console.log('Đã xóa avatar cũ thành công');
         } catch (deleteError) {
           console.error('Lỗi khi xóa avatar cũ:', deleteError);
-          // Không throw lỗi vì cập nhật đã thành công, chỉ ghi log
-          toast({
-            title: 'Cảnh báo',
-            description: t('profile.oldAvatarDeleteWarning'),
-            variant: 'destructive',
-          });
         }
       }
 

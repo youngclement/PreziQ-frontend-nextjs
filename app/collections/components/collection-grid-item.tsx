@@ -310,7 +310,7 @@ export function CollectionGridItem({
             <AlertDialogDescription className="text-gray-600 dark:text-gray-300">
               Bạn có chắc chắn muốn xoá{' '}
               <span className="font-medium text-gray-900 dark:text-white">
-                "{collection.title}"
+                &quot;{collection.title}&quot;
               </span>{' '}
               không? Hành động này không thể hoàn tác.
             </AlertDialogDescription>

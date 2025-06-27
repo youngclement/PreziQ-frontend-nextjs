@@ -193,6 +193,15 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
       });
     }
 
+    try {
+      await activitiesApi.updateActivity(slideId, {
+        backgroundColor: '',
+        backgroundImage: url,
+      });
+    } catch (err) {
+      console.error('Error saving background color:', err);
+    }
+
     // // Clear savedBackgroundColors cho slide này
     // if (typeof window !== 'undefined' && window.savedBackgroundColors) {
     //   window.savedBackgroundColors[slideId] = '';

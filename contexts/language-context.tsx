@@ -1115,6 +1115,7 @@ i18next
             backgroundColor: 'Background Color',
             backgroundImage: 'Background Image',
             backgroundImagePlaceholder: 'Enter image URL',
+            backgroundImageUrl: 'Background Image URL',
             pastelColors: 'Pastel Colors',
             uploadImage: 'Upload Image',
             clearBackground: 'Clear',
@@ -1566,7 +1567,7 @@ i18next
           // New achievements translations
           achievementName: 'Tên thành tựu',
           achievementDescription: 'Mô tả',
-          achievementRequiredPoints: 'Điểm yêu cầu',
+          achievementRequiredPoints: 'điểm',
           achievementCreatedAt: 'Ngày tạo',
           achievementSearchPlaceholder: 'Tìm kiếm thành tựu...',
           achievementNoResults: 'Không tìm thấy kết quả',

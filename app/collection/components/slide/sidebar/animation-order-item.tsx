@@ -99,7 +99,7 @@ export const AnimationOrderItem = ({
         <div className="font-medium">
           {item.entryAnimation != 'none' && item.entryAnimation
             ? item?.entryAnimation
-            : t('activity.noAnimation')}
+            : t('activity.slide.noAnimation')}
         </div>
         {item.entryAnimation && item.entryAnimation !== 'none' && (
           <div className="flex gap-1.5">

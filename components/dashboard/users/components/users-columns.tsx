@@ -255,11 +255,16 @@ export const useColumns = () => {
             }
           );
         };
-
         return (
           <div className="flex flex-wrap gap-1 max-w-[180px]">
             {visibleRoles.map((role) => {
-              if (!role || typeof role !== 'object' || !role.id || !role.name) {
+              if (
+                !role ||
+                typeof role !== 'object' ||
+                !role.roleId ||
+                !role.name
+              ) {
+                console.log('Invalid role:', role);
                 return null;
               }
 
@@ -371,7 +376,7 @@ export const useColumns = () => {
         return (
           <Badge
             variant="outline"
-            className="bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors font-normal px-2 max-w-[160px]"
+            className="bg-slate-50 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:bg-slate-700 dark:hover:bg-slate-900 transition-colors font-normal px-2 max-w-[160px]"
             title={formattedDate}
           >
             <span className="truncate block">{formattedDate}</span>
