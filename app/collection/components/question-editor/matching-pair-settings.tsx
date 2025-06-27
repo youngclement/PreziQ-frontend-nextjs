@@ -14,6 +14,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -75,45 +76,20 @@ function SortableItem({
   connectionColor?: string;
 }) {
   const [inputValue, setInputValue] = useState(item.content || '');
-  const updateTimeoutRef = useRef<NodeJS.Timeout>();
-  const isUserTypingRef = useRef(false);
-
-  useEffect(() => {
-    if (!isUserTypingRef.current && item.content !== inputValue) {
-      setInputValue(item.content || '');
-    }
-  }, [item.content, inputValue]);
-
-  const debouncedUpdate = useCallback(
-    (value: string) => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-
-      updateTimeoutRef.current = setTimeout(() => {
-        if (item.quizMatchingPairItemId) {
-          onOptionChange(item.quizMatchingPairItemId, value);
-        }
-      }, 300);
-    },
-    [item.quizMatchingPairItemId, onOptionChange]
-  );
+  const lastSavedValueRef = useRef(item.content || '');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    isUserTypingRef.current = true;
     setInputValue(value);
-    debouncedUpdate(value);
-  };
-
-  const handleInputFocus = () => {
-    isUserTypingRef.current = true;
   };
 
   const handleInputBlur = () => {
-    setTimeout(() => {
-      isUserTypingRef.current = false;
-    }, 100);
+    if (inputValue !== lastSavedValueRef.current) {
+      if (item.quizMatchingPairItemId) {
+        onOptionChange(item.quizMatchingPairItemId, inputValue);
+        lastSavedValueRef.current = inputValue;
+      }
+    }
   };
 
   const {
@@ -131,14 +107,6 @@ function SortableItem({
     transform: CSS.Transform.toString(transform),
     transition,
   };
-
-  useEffect(() => {
-    return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-    };
-  }, []);
 
   return (
     <div
@@ -173,7 +141,6 @@ function SortableItem({
           placeholder={`Enter ${columnName.toLowerCase()}`}
           value={inputValue}
           onChange={handleInputChange}
-          onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           className="w-full"
           disabled={isUpdating}
@@ -471,33 +438,42 @@ export function MatchingPairSettings({
   const handleDragEnd = async (event: DragEndEvent) => {
     isDraggingRef.current = false;
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+
+    if (active.id === over?.id) return;
 
     const originalMatchingData = matchingData;
     setIsUpdating(true);
 
     try {
       const activeIsLeft = active.id.toString().startsWith('left-');
-      const overIsLeft = over.id.toString().startsWith('left-');
+      const overIsLeft = over?.id.toString().startsWith('left-');
 
-      if (activeIsLeft === overIsLeft) {
+      // Tìm item đang được kéo
+      const fromItems = activeIsLeft ? leftItems : rightItems;
+      const fromIndex = fromItems.findIndex(
+        (item) =>
+          `${activeIsLeft ? 'left' : 'right'}-${
+            item.quizMatchingPairItemId
+          }` === active.id
+      );
+      const movedItem = fromItems[fromIndex];
+
+      if (fromIndex === -1 || !movedItem) {
+        throw new Error('Moved item not found');
+      }
+
+      if (over && activeIsLeft === overIsLeft) {
+        // Trường hợp kéo thả trong cùng một cột
         const items = activeIsLeft ? leftItems : rightItems;
-        const oldIndex = items.findIndex(
-          (item) =>
-            `${activeIsLeft ? 'left' : 'right'}-${
-              item.quizMatchingPairItemId
-            }` === active.id
-        );
         const newIndex = items.findIndex(
           (item) =>
             `${activeIsLeft ? 'left' : 'right'}-${
               item.quizMatchingPairItemId
             }` === over.id
         );
-        const movedItem = items[oldIndex];
 
-        if (oldIndex !== -1 && newIndex !== -1) {
-          const reordered = arrayMove(items, oldIndex, newIndex);
+        if (newIndex !== -1) {
+          const reordered = arrayMove(items, fromIndex, newIndex);
           const updatedItems = reordered.map((item, index) => ({
             ...item,
             displayOrder: index + 1,
@@ -509,6 +485,7 @@ export function MatchingPairSettings({
             items: [...otherItems, ...updatedItems],
           }));
 
+          // Xóa các kết nối liên quan
           setMatchingData((prev) => {
             if (!prev) return prev;
             return {
@@ -533,85 +510,69 @@ export function MatchingPairSettings({
           );
         }
       } else {
-        const fromItems = activeIsLeft ? leftItems : rightItems;
+        // Trường hợp kéo sang cột khác (bao gồm cột rỗng)
         const toItems = activeIsLeft ? rightItems : leftItems;
-        const fromIndex = fromItems.findIndex(
-          (item) =>
-            `${activeIsLeft ? 'left' : 'right'}-${
-              item.quizMatchingPairItemId
-            }` === active.id
-        );
-        const toIndex = toItems.findIndex(
-          (item) =>
-            `${!activeIsLeft ? 'left' : 'right'}-${
-              item.quizMatchingPairItemId
-            }` === over.id
-        );
-        const movedItem = fromItems[fromIndex];
+        let toIndex = over
+          ? toItems.findIndex(
+              (item) =>
+                `${!activeIsLeft ? 'left' : 'right'}-${
+                  item.quizMatchingPairItemId
+                }` === over.id
+            )
+          : 0;
+        if (toIndex === -1) toIndex = 0;
 
-        if (fromIndex !== -1) {
-          const newFromItems = fromItems.filter(
-            (i) => i.quizMatchingPairItemId !== movedItem.quizMatchingPairItemId
-          );
-          const newToItems = [...toItems];
-          newToItems.splice(toIndex, 0, {
+        // Xóa item khỏi cột nguồn
+        const newFromItems = fromItems.filter(
+          (i) => i.quizMatchingPairItemId !== movedItem.quizMatchingPairItemId
+        );
+        // Thêm item vào cột đích
+        const newToItems = [...toItems];
+        newToItems.splice(toIndex, 0, {
+          ...movedItem,
+          isLeftColumn: !activeIsLeft,
+          displayOrder: toIndex + 1,
+        });
+
+        // Cập nhật displayOrder cho cả hai cột
+        const updatedFrom = newFromItems.map((item, index) => ({
+          ...item,
+          displayOrder: index + 1,
+        }));
+        const updatedTo = newToItems.map((item, index) => ({
+          ...item,
+          displayOrder: index + 1,
+        }));
+
+        const allItems = activeIsLeft
+          ? [...updatedFrom, ...updatedTo]
+          : [...updatedTo, ...updatedFrom];
+
+        // Xóa các kết nối liên quan
+        const newConnections = (originalMatchingData?.connections || []).filter(
+          (conn) =>
+            conn.leftItem.quizMatchingPairItemId !==
+              movedItem.quizMatchingPairItemId &&
+            conn.rightItem.quizMatchingPairItemId !==
+              movedItem.quizMatchingPairItemId
+        );
+
+        setMatchingData((prev) => ({
+          ...prev!,
+          items: allItems,
+          connections: newConnections,
+        }));
+
+        // Gọi API để cập nhật
+        await activitiesApi.updateReorderQuizItem(
+          activityId,
+          movedItem.quizMatchingPairItemId!,
+          {
             ...movedItem,
             isLeftColumn: !activeIsLeft,
-          });
-
-          const updatedFrom = newFromItems.map((item, index) => ({
-            ...item,
-            displayOrder: index + 1,
-          }));
-          const updatedTo = newToItems.map((item, index) => ({
-            ...item,
-            displayOrder: index + 1,
-          }));
-
-          const allItems = activeIsLeft
-            ? [...updatedFrom, ...updatedTo]
-            : [...updatedTo, ...updatedFrom];
-
-          const newConnections = (
-            originalMatchingData?.connections || []
-          ).filter(
-            (conn) =>
-              conn.leftItem.quizMatchingPairItemId !==
-                movedItem.quizMatchingPairItemId &&
-              conn.rightItem.quizMatchingPairItemId !==
-                movedItem.quizMatchingPairItemId
-          );
-
-          setMatchingData((prev) => ({
-            ...prev!,
-            items: allItems,
-            connections: newConnections,
-          }));
-
-          setMatchingData((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              connections: (prev.connections || []).filter(
-                (conn) =>
-                  conn.leftItem.quizMatchingPairItemId !==
-                    movedItem.quizMatchingPairItemId &&
-                  conn.rightItem.quizMatchingPairItemId !==
-                    movedItem.quizMatchingPairItemId
-              ),
-            };
-          });
-
-          await activitiesApi.updateReorderQuizItem(
-            activityId,
-            movedItem.quizMatchingPairItemId!,
-            {
-              ...movedItem,
-              isLeftColumn: !activeIsLeft,
-              displayOrder: toIndex + 1,
-            }
-          );
-        }
+            displayOrder: toIndex + 1,
+          }
+        );
       }
 
       if (onRefreshActivity) {
@@ -1060,6 +1021,21 @@ export function MatchingPairSettings({
     });
   }, [matchingData, leftItems.length, rightItems.length, refreshKey]);
 
+  function DroppableColumn({
+    id,
+    children,
+  }: {
+    id: string;
+    children: React.ReactNode;
+  }) {
+    const { setNodeRef } = useDroppable({ id });
+    return (
+      <div ref={setNodeRef} className="min-h-[40px] flex flex-col space-y-2">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -1126,48 +1102,46 @@ export function MatchingPairSettings({
               )}
               strategy={verticalListSortingStrategy}
             >
-              <div className="space-y-3 min-h-[40px]">
+              <DroppableColumn id="left-column">
                 <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
                   {leftColumnTitle}
                 </h3>
-                <div className="space-y-2 min-h-[40px] flex flex-col">
-                  {leftItems.length === 0 && (
-                    <div className="text-gray-400 text-center py-4 border border-dashed rounded-lg">
-                      No items yet. Add a pair to get started.
-                    </div>
-                  )}
-                  {leftItems.map((item, index) => (
-                    <SortableItem
-                      key={`left-${item.quizMatchingPairItemId}-${refreshKey}`}
-                      item={item}
-                      index={index}
-                      onOptionChange={handleInputChange}
-                      onDelete={() =>
-                        handleDeleteItem(
-                          item.quizMatchingPairItemId || '',
-                          'left'
-                        )
-                      }
-                      columnName={leftColumnTitle}
-                      isUpdating={isUpdating || isConnecting}
-                      side="left"
-                      isSelected={selectedLeft === item.quizMatchingPairItemId}
-                      onSelect={() =>
-                        handleSelectItem(
-                          'left',
-                          item.quizMatchingPairItemId || ''
-                        )
-                      }
-                      isConnected={connectedLeftIds.has(
-                        item.quizMatchingPairItemId
-                      )}
-                      connectionColor={
-                        itemIdToColor[item.quizMatchingPairItemId || '']
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
+                {leftItems.length === 0 && (
+                  <div className="text-gray-400 text-center py-4 border border-dashed rounded-lg">
+                    No items yet. Add a pair to get started.
+                  </div>
+                )}
+                {leftItems.map((item, index) => (
+                  <SortableItem
+                    key={`left-${item.quizMatchingPairItemId}-${refreshKey}`}
+                    item={item}
+                    index={index}
+                    onOptionChange={handleInputChange}
+                    onDelete={() =>
+                      handleDeleteItem(
+                        item.quizMatchingPairItemId || '',
+                        'left'
+                      )
+                    }
+                    columnName={leftColumnTitle}
+                    isUpdating={isUpdating || isConnecting}
+                    side="left"
+                    isSelected={selectedLeft === item.quizMatchingPairItemId}
+                    onSelect={() =>
+                      handleSelectItem(
+                        'left',
+                        item.quizMatchingPairItemId || ''
+                      )
+                    }
+                    isConnected={connectedLeftIds.has(
+                      item.quizMatchingPairItemId
+                    )}
+                    connectionColor={
+                      itemIdToColor[item.quizMatchingPairItemId || '']
+                    }
+                  />
+                ))}
+              </DroppableColumn>
             </SortableContext>
 
             <SortableContext
@@ -1176,48 +1150,46 @@ export function MatchingPairSettings({
               )}
               strategy={verticalListSortingStrategy}
             >
-              <div className="space-y-3">
+              <DroppableColumn id="right-column">
                 <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
                   {rightColumnTitle}
                 </h3>
-                <div className="space-y-2">
-                  {rightItems.length === 0 && (
-                    <div className="text-gray-400 text-center py-4 border border-dashed rounded-lg">
-                      No items yet. Add a pair to get started.
-                    </div>
-                  )}
-                  {rightItems.map((item, index) => (
-                    <SortableItem
-                      key={`right-${item.quizMatchingPairItemId}-${refreshKey}`}
-                      item={item}
-                      index={index}
-                      onOptionChange={handleInputChange}
-                      onDelete={() =>
-                        handleDeleteItem(
-                          item.quizMatchingPairItemId || '',
-                          'right'
-                        )
-                      }
-                      columnName={rightColumnTitle}
-                      isUpdating={isUpdating || isConnecting}
-                      side="right"
-                      isSelected={selectedRight === item.quizMatchingPairItemId}
-                      onSelect={() =>
-                        handleSelectItem(
-                          'right',
-                          item.quizMatchingPairItemId || ''
-                        )
-                      }
-                      isConnected={connectedRightIds.has(
-                        item.quizMatchingPairItemId
-                      )}
-                      connectionColor={
-                        itemIdToColor[item.quizMatchingPairItemId || '']
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
+                {rightItems.length === 0 && (
+                  <div className="text-gray-400 text-center py-4 border border-dashed rounded-lg">
+                    No items yet. Add a pair to get started.
+                  </div>
+                )}
+                {rightItems.map((item, index) => (
+                  <SortableItem
+                    key={`right-${item.quizMatchingPairItemId}-${refreshKey}`}
+                    item={item}
+                    index={index}
+                    onOptionChange={handleInputChange}
+                    onDelete={() =>
+                      handleDeleteItem(
+                        item.quizMatchingPairItemId || '',
+                        'right'
+                      )
+                    }
+                    columnName={rightColumnTitle}
+                    isUpdating={isUpdating || isConnecting}
+                    side="right"
+                    isSelected={selectedRight === item.quizMatchingPairItemId}
+                    onSelect={() =>
+                      handleSelectItem(
+                        'right',
+                        item.quizMatchingPairItemId || ''
+                      )
+                    }
+                    isConnected={connectedRightIds.has(
+                      item.quizMatchingPairItemId
+                    )}
+                    connectionColor={
+                      itemIdToColor[item.quizMatchingPairItemId || '']
+                    }
+                  />
+                ))}
+              </DroppableColumn>
             </SortableContext>
           </div>
         </DndContext>

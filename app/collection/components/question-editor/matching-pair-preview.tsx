@@ -4,7 +4,7 @@ import type React from 'react';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Info } from 'lucide-react';
+import { Info, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import type { QuizQuestion } from '../types';
@@ -116,6 +116,7 @@ export function MatchingPairPreview({
     startItem: null,
     currentMousePos: null,
   });
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   // Get matching data from the question with fallback
   const matchingData = useMemo(() => {
@@ -493,6 +494,18 @@ export function MatchingPairPreview({
     }
   }, [dragState.isDragging, handleMouseMove]);
 
+  const toggleExpand = useCallback((itemId: string) => {
+    setExpandedItems((prev) => {
+      const newSet = new Set(prev);
+      if (prev.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  }, []);
+
   // If no matching data, show empty state
   if (!matchingData) {
     return (
@@ -513,9 +526,9 @@ export function MatchingPairPreview({
       )}
       key={`preview-${dataVersion}-${settingsUpdateTrigger}`}
     >
-      <div className="flex justify-between items-start gap-4 md:gap-8">
+      <div className="flex justify-around items-start gap-4 md:gap-8">
         {/* Column A */}
-        <div className="w-1/2 flex flex-col items-center gap-2 md:gap-3">
+        <div className="w-1/3 flex flex-col items-center gap-2 md:gap-3">
           <h3 className="font-bold text-lg text-center text-gray-700 dark:text-gray-300">
             {matchingData.leftColumnName || leftColumnName}
           </h3>
@@ -574,9 +587,57 @@ export function MatchingPairPreview({
                   layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
-                  <p className="text-sm md:text-base">{item.content}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p
+                      className={cn(
+                        'text-sm md:text-base max-w-full',
+                        expandedItems.has(item.quizMatchingPairItemId ?? '')
+                          ? 'whitespace-pre-line break-words'
+                          : 'truncate'
+                      )}
+                      style={
+                        expandedItems.has(item.quizMatchingPairItemId ?? '')
+                          ? { maxHeight: 300, overflow: 'auto' }
+                          : { maxHeight: 24, overflow: 'hidden' }
+                      }
+                      onClick={() => {
+                        if (item.quizMatchingPairItemId)
+                          toggleExpand(item.quizMatchingPairItemId);
+                      }}
+                      title={
+                        expandedItems.has(item.quizMatchingPairItemId ?? '')
+                          ? ''
+                          : item.content
+                      }
+                    >
+                      {item.content}
+                    </p>
+                    <button
+                      type="button"
+                      className="ml-1 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (item.quizMatchingPairItemId)
+                          toggleExpand(item.quizMatchingPairItemId);
+                      }}
+                      tabIndex={-1}
+                      aria-label={
+                        expandedItems.has(item.quizMatchingPairItemId ?? '')
+                          ? 'Thu nhỏ'
+                          : 'Xem chi tiết'
+                      }
+                    >
+                      <Eye
+                        size={16}
+                        className={
+                          expandedItems.has(item.quizMatchingPairItemId ?? '')
+                            ? 'text-blue-500'
+                            : ''
+                        }
+                      />
+                    </button>
+                  </div>
                 </motion.div>
               );
             })}
@@ -584,7 +645,7 @@ export function MatchingPairPreview({
         </div>
 
         {/* Column B */}
-        <div className="w-1/2 flex flex-col items-center gap-2 md:gap-3">
+        <div className="w-1/3 flex flex-col items-center gap-2 md:gap-3">
           <h3 className="font-bold text-lg text-center text-gray-700 dark:text-gray-300">
             {matchingData.rightColumnName || rightColumnName}
           </h3>
@@ -643,9 +704,57 @@ export function MatchingPairPreview({
                   layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
-                  <p className="text-sm md:text-base">{item.content}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p
+                      className={cn(
+                        'text-sm md:text-base max-w-full',
+                        expandedItems.has(item.quizMatchingPairItemId ?? '')
+                          ? 'whitespace-pre-line break-words'
+                          : 'truncate'
+                      )}
+                      style={
+                        expandedItems.has(item.quizMatchingPairItemId ?? '')
+                          ? { maxHeight: 300, overflow: 'auto' }
+                          : { maxHeight: 24, overflow: 'hidden' }
+                      }
+                      onClick={() => {
+                        if (item.quizMatchingPairItemId)
+                          toggleExpand(item.quizMatchingPairItemId);
+                      }}
+                      title={
+                        expandedItems.has(item.quizMatchingPairItemId ?? '')
+                          ? ''
+                          : item.content
+                      }
+                    >
+                      {item.content}
+                    </p>
+                    <button
+                      type="button"
+                      className="ml-1 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (item.quizMatchingPairItemId)
+                          toggleExpand(item.quizMatchingPairItemId);
+                      }}
+                      tabIndex={-1}
+                      aria-label={
+                        expandedItems.has(item.quizMatchingPairItemId ?? '')
+                          ? 'Thu nhỏ'
+                          : 'Xem chi tiết'
+                      }
+                    >
+                      <Eye
+                        size={16}
+                        className={
+                          expandedItems.has(item.quizMatchingPairItemId ?? '')
+                            ? 'text-blue-500'
+                            : ''
+                        }
+                      />
+                    </button>
+                  </div>
                 </motion.div>
               );
             })}
@@ -656,7 +765,7 @@ export function MatchingPairPreview({
       {/* SVG for drawing connection lines */}
       <svg
         ref={svgRef}
-        className="absolute top-0 left-0 w-full h-full"
+        className="absolute top-0 left-0 w-full h-full pointer-events-none"
         style={{ zIndex: 20 }}
         key={`svg-${dataVersion}-${settingsUpdateTrigger}`}
       >
@@ -707,6 +816,7 @@ export function MatchingPairPreview({
                   onClick={() => {
                     if (!previewMode && editMode) handleConnectionClick(conn);
                   }}
+                  className="pointer-events-auto"
                 />
                 {/* Path chính để hiển thị */}
                 <motion.path
@@ -714,7 +824,7 @@ export function MatchingPairPreview({
                     conn.leftItem.quizMatchingPairItemId!,
                     conn.rightItem.quizMatchingPairItemId!
                   )}
-                  className="stroke-2 transition-all duration-300"
+                  className="stroke-2 transition-all duration-300 pointer-events-auto"
                   stroke={pathColor}
                   strokeWidth="2.5"
                   fill="none"
