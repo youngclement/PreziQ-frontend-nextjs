@@ -348,16 +348,9 @@ function QuizDemoCard({ demo, viewMode, isActive, onClick }: QuizDemoCardProps) 
             case 'INFO_SLIDE':
                 return (
                     <div className="space-y-2">
-                        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-md p-3 min-h-[60px] flex items-center justify-center">
-                            <div className="text-center">
-                                <FileText className="h-5 w-5 text-indigo-500 mx-auto mb-1" />
-                                <p className="text-xs font-medium mb-1">
-                                    <TranslatedText text="Educational Content" translationKey="quiz.educationalContent" />
-                                </p>
-                                <p className="text-xs text-gray-600 dark:text-gray-400 max-w-xs">
-                                    <TranslatedText text={demo.content || ''} translationKey="quiz.webDevContent" />
-                                </p>
-                            </div>
+                        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-md p-3 min-h-[60px] flex flex-col items-center justify-center">
+                            <img src="https://www.saokim.com.vn/blog/wp-content/uploads/2020/03/download-mien-phi-slide-1.jpg.webp" alt="slide demo" className="w-full max-w-xs rounded-md mb-2" />
+
                         </div>
                     </div>
                 );
@@ -387,7 +380,11 @@ function QuizDemoCard({ demo, viewMode, isActive, onClick }: QuizDemoCardProps) 
                 <div className={cn(
                     'aspect-[16/7] rounded-t-lg flex flex-col shadow-sm relative overflow-hidden bg-gradient-to-br',
                     demo.color
-                )}>
+                )} style={{
+                    backgroundImage: `url('https://cdn-ikpkein.nitrocdn.com/INKfFkcZaxYxVZdBkWNQHypzuEwJDgiD/assets/images/optimized/rev-8fef668/www.proofreading.co.uk/wordpress/wp-content/uploads/2024/06/icaruseducation_converting_assertive_to_interrogative_sentenc_3c043580-ef81-4376-9ecf-979c300756f2_1.png')`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                }}>
                     <div className="absolute inset-0 bg-black/20" />
 
                     {/* Status Bar */}

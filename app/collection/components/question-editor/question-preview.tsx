@@ -1728,13 +1728,26 @@ export function QuestionPreview({
                         setIsReordering(true);
 
                         if (onReorderOptions) {
-                          // Patch: fallback for 2-arg signature
-                          const maybePromise = onReorderOptions(
-                            result.source.index,
-                            result.destination.index
-                          );
-                          if (maybePromise && typeof maybePromise.finally === 'function') {
-                            maybePromise.finally(() => setIsReordering(false));
+                          // Cập nhật local state (nếu có callback), sau đó gọi API updateReorderQuiz
+                          const updatedOptions = [...activeQuestion.options];
+                          const [removed] = updatedOptions.splice(result.source.index, 1);
+                          updatedOptions.splice(result.destination.index, 0, removed);
+                          // Gọi callback cập nhật state nếu có
+                          if (typeof onReorderOptions === 'function') {
+                            onReorderOptions(result.source.index, result.destination.index);
+                          }
+                          // Gọi API cập nhật thứ tự mới
+                          if (activity && activity.id) {
+                            const correctOrder = updatedOptions.map(opt => opt.option_text);
+                            activitiesApi.updateReorderQuiz(activity.id, {
+                              type: 'REORDER',
+                              questionText: activeQuestion.question_text,
+                              timeLimitSeconds: timeLimit,
+                              pointType: 'STANDARD',
+                              correctOrder: correctOrder,
+                            } as import('@/api-client/activities-api').ReorderQuizPayload)
+                              .then(() => setIsReordering(false))
+                              .catch(() => setIsReordering(false));
                           } else {
                             setIsReordering(false);
                           }

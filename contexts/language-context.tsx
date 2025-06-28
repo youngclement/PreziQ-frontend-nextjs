@@ -87,15 +87,15 @@ i18next
           // Testimonials Section
           testimonialsTitle: 'What Our Users Say',
           testimonialDesc: 'Thousands of teams and individuals trust PreziQ',
-          testimonialAuthor1: 'Sarah Johnson',
+          testimonialAuthor1: 'Quach Phu Thuan',
           testimonialRole1: 'Marketing Director',
           testimonialText1:
             'PreziQ transformed our marketing presentations. The AI features saved us countless hours and the interactive elements keep our audience engaged.',
-          testimonialAuthor2: 'Michael Chen',
+          testimonialAuthor2: 'Dui Le',
           testimonialRole2: 'University Professor',
           testimonialText2:
             'The game-based learning features have completely changed how I teach. My students are more engaged and retain information better.',
-          testimonialAuthor3: 'Emily Rodriguez',
+          testimonialAuthor3: 'QuanC3',
           testimonialRole3: 'Sales Executive',
           testimonialText3:
             'Our conversion rates have increased by 40% since we started using PreziQ for sales presentations. The interactive features make all the difference.',
