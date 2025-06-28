@@ -237,7 +237,7 @@ export default function QuizTrueOrFalseViewer({
             backgroundImage: activity.backgroundImage
               ? `url(${activity.backgroundImage})`
               : undefined,
-            backgroundColor: activity.backgroundColor || '#0e2838',
+            backgroundColor: activity.backgroundColor || '#AFB2AF',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -279,9 +279,10 @@ export default function QuizTrueOrFalseViewer({
                 <motion.div
                   key={`${answeredCount}-${totalParticipants}`}
                   className={`
-                    flex items-center gap-1.5 mr-2 ${answeredCount >= totalParticipants
-                      ? 'bg-black bg-opacity-30 border-[rgb(198,234,132)]/30 shadow-[rgb(198,234,132)]/10'
-                      : 'bg-black bg-opacity-30 border-[rgb(255,198,121)]/30 shadow-[rgb(255,198,121)]/10'
+                    flex items-center gap-1.5 mr-2 ${
+                      answeredCount >= totalParticipants
+                        ? 'bg-black bg-opacity-30 border-[rgb(198,234,132)]/30 shadow-[rgb(198,234,132)]/10'
+                        : 'bg-black bg-opacity-30 border-[rgb(255,198,121)]/30 shadow-[rgb(255,198,121)]/10'
                     } border border-white/10 px-2 py-1 rounded-full text-xs font-medium`}
                   animate={{
                     scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
@@ -322,11 +323,11 @@ export default function QuizTrueOrFalseViewer({
               <h2 className='text-base md:text-xl lg:text-2xl font-bold text-center text-white drop-shadow-lg'>
                 {activity.quiz.questionText}
               </h2>
-              {activity.description && (
+              {/* {activity.description && (
                 <p className='mt-2 text-xs md:text-sm text-white/80 text-center'>
                   {activity.description}
                 </p>
-              )}
+              )} */}
             </motion.div>
           </div>
         </motion.div>
@@ -401,8 +402,9 @@ export default function QuizTrueOrFalseViewer({
                   key={answer.quizAnswerId}
                   whileHover={{ scale: !isAnswered && !isQuizEnded ? 1.03 : 1 }}
                   whileTap={{ scale: !isAnswered && !isQuizEnded ? 0.97 : 1 }}
-                  className={`relative rounded-xl ${isSelected ? 'z-10' : 'z-0'
-                    }`}
+                  className={`relative rounded-xl ${
+                    isSelected ? 'z-10' : 'z-0'
+                  }`}
                   onClick={() =>
                     !isAnswered &&
                     !isQuizEnded &&
@@ -542,8 +544,8 @@ export default function QuizTrueOrFalseViewer({
           {/* Results */}
           <AnimatePresence>
             {(isAnswered && isQuizEnded) ||
-              isQuizEnded ||
-              activity.hostShowAnswer ? (
+            isQuizEnded ||
+            activity.hostShowAnswer ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}

@@ -2164,12 +2164,12 @@ i18next
             personalInfoDescription:
               'Cập nhật và quản lý thông tin cá nhân của bạn',
             personalInfoCard: 'Thông tin cá nhân',
-            personalInfoCardDesc:
-              'Update your name, birth date and other personal information',
-            emailSettingsCard: 'Email Settings',
-            emailSettingsCardDesc: 'Change email address and verify account',
-            securityCard: 'Security',
-            securityCardDesc: 'Change password and enhance account security',
+            personalInfoCardDesc: 'Cập nhật thông tin cá nhân của bạn',
+            emailSettingsCard: 'Cài đặt email',
+            emailSettingsCardDesc:
+              'Thay đổi địa chỉ email và xác thực tài khoản',
+            securityCard: 'Bảo mật',
+            securityCardDesc: 'Thay đổi mật khẩu và nâng cao bảo mật tài khoản',
             lastName: 'Họ',
             firstName: 'Tên',
             nickname: 'Biệt danh',

@@ -13,8 +13,73 @@ import {
   Link,
   Clock,
   Users,
+  Link2,
+  Image,
+  AlertCircle,
+  ArrowRight,
 } from 'lucide-react';
 import { SessionWebSocket } from '@/websocket/sessionWebSocket';
+import { Card } from '@/components/ui/card';
+
+// Add shimmer animation styles
+const shimmerStyles = `
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%) skewX(-12deg);
+    }
+    100% {
+      transform: translateX(200%) skewX(-12deg);
+    }
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 3s ease-in-out infinite;
+  }
+  
+  /* Mobile text handling improvements */
+  .mobile-text-fix {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    -moz-hyphens: auto;
+    line-height: 1.4;
+  }
+  
+  .item-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 45px;
+    padding: 8px 6px;
+    font-size: 0.75rem;
+  }
+  
+  @media (min-width: 640px) {
+    .item-container {
+      min-height: 55px;
+      padding: 10px 8px;
+      font-size: 0.875rem;
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .item-container {
+      min-height: 65px;
+      padding: 12px 10px;
+      font-size: 0.875rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .item-container {
+      min-height: 70px;
+      padding: 16px;
+      font-size: 1rem;
+    }
+  }
+`;
 
 // Define types based on WebSocket data structure
 interface MatchingPairItem {
@@ -49,6 +114,7 @@ export interface ActivityData {
   };
   backgroundImage?: string;
   hostShowAnswer?: boolean;
+  backgroundColor?: string;
 }
 
 interface QuizMatchingPairViewerProps {
@@ -57,6 +123,7 @@ interface QuizMatchingPairViewerProps {
   sessionCode: string;
   sessionId?: string;
   isParticipating?: boolean;
+  isFullscreenMode?: boolean;
 }
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -68,14 +135,15 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
+// Updated colors to match question-viewer
 const PAIR_COLORS = [
-  '#3b82f6', // Blue
-  '#8b5cf6', // Purple
-  '#06b6d4', // Cyan
-  '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#ef4444', // Red
-  '#ec4899', // Pink
+  '#3b82f6', // blue
+  '#a855f7', // purple
+  '#eab308', // yellow
+  '#f97316', // orange
+  '#06b6d4', // cyan
+  '#ec4899', // pink
+  '#6366f1', // indigo
 ];
 
 interface UserConnection {
@@ -89,6 +157,7 @@ export function QuizMatchingPairViewer({
   sessionCode,
   sessionId,
   isParticipating = true,
+  isFullscreenMode = false,
 }: QuizMatchingPairViewerProps) {
   const { t } = useTranslation();
   const [userConnections, setUserConnections] = useState<UserConnection[]>([]);
@@ -99,6 +168,7 @@ export function QuizMatchingPairViewer({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -116,6 +186,7 @@ export function QuizMatchingPairViewer({
   const [animationPhase, setAnimationPhase] = useState<
     'hiding_wrong' | 'showing_correct' | 'completed'
   >('completed');
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   const { quiz, backgroundImage } = activity;
   const { quizMatchingPairAnswer } = quiz;
@@ -128,7 +199,9 @@ export function QuizMatchingPairViewer({
   const [shuffledRightColumn, setShuffledRightColumn] = useState<
     MatchingPairItem[]
   >([]);
-  const [previewUpdate, setPreviewUpdate] = useState(0);
+
+  // Thêm state để theo dõi khi cần redraw connections
+  const [shouldRedrawConnections, setShouldRedrawConnections] = useState(false);
 
   useEffect(() => {
     const leftItems = items.filter((item) => item.isLeftColumn);
@@ -142,7 +215,7 @@ export function QuizMatchingPairViewer({
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
-        setPreviewUpdate((prev) => prev + 1);
+        setForceUpdate((prev) => prev + 1);
       }
     };
     const resizeObserver = new ResizeObserver(updateSize);
@@ -152,12 +225,128 @@ export function QuizMatchingPairViewer({
     return () => resizeObserver.disconnect();
   }, []);
 
-  const colorMap = useMemo(() => {
+  // Thêm useEffect để theo dõi thay đổi fullscreen mode
+  useEffect(() => {
+    // Delay một chút để đảm bảo layout đã hoàn thành
+    const timer = setTimeout(() => {
+      setForceUpdate((prev) => prev + 1);
+      setShouldRedrawConnections(true);
+    }, 300); // Tăng delay để đợi animation hoàn thành
+
+    return () => clearTimeout(timer);
+  }, [isFullscreenMode]);
+
+  // Thêm useEffect để theo dõi thay đổi kích thước window (bao gồm sidebar)
+  useEffect(() => {
+    const handleResize = () => {
+      // Delay để đảm bảo layout đã hoàn thành
+      setTimeout(() => {
+        setForceUpdate((prev) => prev + 1);
+        setShouldRedrawConnections(true);
+      }, 400); // Tăng delay để đợi animation hoàn thành
+    };
+
+    // Lắng nghe event từ leaderboard để biết khi nào sidebar thay đổi
+    const handleLeaderboardChange = (event: CustomEvent) => {
+      console.log(
+        '[QuizMatchingPair] Leaderboard layout changed:',
+        event.detail
+      );
+      setTimeout(() => {
+        setForceUpdate((prev) => prev + 1);
+        setShouldRedrawConnections(true);
+      }, 500); // Tăng delay để đảm bảo animation hoàn thành
+    };
+
+    // Lắng nghe event từ sidebar toggle
+    const handleSidebarChange = (event: CustomEvent) => {
+      console.log('[QuizMatchingPair] Sidebar layout changed:', event.detail);
+      setTimeout(() => {
+        setForceUpdate((prev) => prev + 1);
+        setShouldRedrawConnections(true);
+      }, 600); // Tăng delay để đảm bảo sidebar animation hoàn thành
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener(
+      'leaderboardLayoutChange',
+      handleLeaderboardChange as EventListener
+    );
+    window.addEventListener(
+      'sidebarLayoutChange',
+      handleSidebarChange as EventListener
+    );
+
+    // Theo dõi thay đổi DOM để phát hiện sidebar toggle
+    const observer = new MutationObserver(() => {
+      setTimeout(() => {
+        setShouldRedrawConnections(true);
+      }, 300); // Tăng delay để đợi animation
+    });
+
+    // Observe changes to the body class (có thể có class cho sidebar state)
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+      subtree: true,
+    });
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener(
+        'leaderboardLayoutChange',
+        handleLeaderboardChange as EventListener
+      );
+      window.removeEventListener(
+        'sidebarLayoutChange',
+        handleSidebarChange as EventListener
+      );
+      observer.disconnect();
+    };
+  }, []);
+
+  // Thêm useEffect để redraw connections khi cần thiết
+  useEffect(() => {
+    if (shouldRedrawConnections) {
+      const timer = setTimeout(() => {
+        setForceUpdate((prev) => prev + 1);
+        setShouldRedrawConnections(false);
+      }, 150); // Tăng delay để đợi animation hoàn thành
+
+      return () => clearTimeout(timer);
+    }
+  }, [shouldRedrawConnections]);
+
+  // Đảm bảo user connections luôn sync với correct connections khi show answer và layout thay đổi
+  useEffect(() => {
+    if (
+      showCorrectAnswer &&
+      correctConnections.length > 0 &&
+      animationPhase === 'completed'
+    ) {
+      setUserConnections([...correctConnections]);
+    }
+  }, [forceUpdate, showCorrectAnswer, correctConnections, animationPhase]);
+
+  // Thêm logic để force redraw khi layout thay đổi trong khi hiển thị đáp án
+  useEffect(() => {
+    if (showCorrectAnswer && shouldRedrawConnections) {
+      // Trigger thêm một lần force update để đảm bảo paths được redraw
+      setTimeout(() => {
+        setForceUpdate((prev) => prev + 1);
+      }, 200); // Tăng delay để đợi animation hoàn thành
+    }
+  }, [showCorrectAnswer, shouldRedrawConnections]);
+
+  // Create color map for pairs based on connection IDs
+  const pairColorMap = useMemo(() => {
     const map = new Map<string, string>();
-    userConnections.forEach((conn, index) => {
-      const color = PAIR_COLORS[index % PAIR_COLORS.length];
-      map.set(conn.leftId, color);
-      map.set(conn.rightId, color);
+    userConnections.forEach((connection, index) => {
+      if (connection.leftId && connection.rightId) {
+        const color = PAIR_COLORS[index % PAIR_COLORS.length];
+        map.set(connection.leftId, color);
+        map.set(connection.rightId, color);
+      }
     });
     return map;
   }, [userConnections]);
@@ -325,19 +514,56 @@ export function QuizMatchingPairViewer({
     const bElement = document.getElementById(`item-${bId}`);
     const svgElement = svgRef.current;
 
-    if (!aElement || !bElement || !svgElement) return '';
+    if (!aElement || !bElement || !svgElement) {
+      // Nếu elements chưa sẵn sàng, trigger redraw sau một chút với retry logic
+      const retryCount = (window as any).pathRetryCount || 0;
+      if (retryCount < 5) {
+        // Giới hạn số lần retry
+        (window as any).pathRetryCount = retryCount + 1;
+        setTimeout(() => {
+          setShouldRedrawConnections(true);
+          if (retryCount >= 4) {
+            (window as any).pathRetryCount = 0; // Reset counter sau khi retry
+          }
+        }, 200 * (retryCount + 1)); // Tăng delay theo số lần retry để đợi animation
+      }
+      return '';
+    }
+
+    // Reset retry counter khi thành công
+    (window as any).pathRetryCount = 0;
 
     const svgRect = svgElement.getBoundingClientRect();
     const aRect = aElement.getBoundingClientRect();
     const bRect = bElement.getBoundingClientRect();
+
+    // Đảm bảo tính toán chính xác với scroll offset
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft =
+      window.pageXOffset || document.documentElement.scrollLeft;
 
     const startX = aRect.right - svgRect.left;
     const startY = aRect.top + aRect.height / 2 - svgRect.top;
     const endX = bRect.left - svgRect.left;
     const endY = bRect.top + bRect.height / 2 - svgRect.top;
 
-    const controlX1 = startX + (endX - startX) * 0.25;
+    // Validate coordinates để đảm bảo không có NaN hoặc Infinity
+    if (
+      !isFinite(startX) ||
+      !isFinite(startY) ||
+      !isFinite(endX) ||
+      !isFinite(endY)
+    ) {
+      console.warn(
+        '[QuizMatchingPair] Invalid coordinates detected, retrying...'
+      );
+      setTimeout(() => setShouldRedrawConnections(true), 300); // Tăng delay để đợi animation
+      return '';
+    }
+
+    // Calculate control points for smooth curve
     const controlY = startY + (endY - startY) / 2;
+    const controlX1 = startX + (endX - startX) * 0.25;
     const controlX2 = startX + (endX - startX) * 0.75;
 
     return `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
@@ -345,139 +571,176 @@ export function QuizMatchingPairViewer({
 
   return (
     <div
-      className='flex flex-col h-full w-full relative overflow-hidden'
-      style={{
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
+      className='min-h-full bg-transparent'
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      {/* Background overlay */}
-      <div className='absolute inset-0 bg-gradient-to-br from-blue-50/90 via-white/95 to-purple-50/90 dark:from-gray-900/95 dark:via-gray-800/95 dark:to-gray-900/95'></div>
-
-      {/* Header với thời gian và số người tham gia */}
-      <div className='relative z-10 p-4 md:p-6'>
+      <style>{shimmerStyles}</style>
+      <Card className='bg-black bg-opacity-30 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
+        {/* Header với thời gian và tiến trình */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className='flex justify-between items-center mb-4'
-        >
-          {/* Timer */}
-          <motion.div
-            className='flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20'
-            animate={{
-              scale: timeLeft < 10 ? [1, 1.05, 1] : 1,
-            }}
-            transition={{
-              duration: 0.5,
-              repeat: timeLeft < 10 ? Infinity : 0,
-              repeatType: 'reverse',
-            }}
-          >
-            <Clock className='h-4 w-4 text-blue-600' />
-            <span
-              className={`font-mono font-bold ${
-                timeLeft < 10
-                  ? 'text-red-600'
-                  : 'text-gray-700 dark:text-gray-300'
-              }`}
-            >
-              {formatTime(timeLeft)}
-            </span>
-          </motion.div>
-
-          {/* Participants counter */}
-          <motion.div
-            className='flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20'
-            animate={{
-              scale: answeredCount > 0 ? [1, 1.05, 1] : 1,
-            }}
-            transition={{ duration: 0.3 }}
-          >
-            <Users className='h-4 w-4 text-purple-600' />
-            <span className='font-semibold text-gray-700 dark:text-gray-300'>
-              {answeredCount}/{totalParticipants}
-            </span>
-          </motion.div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className='text-center'
-        >
-          <h1 className='text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2'>
-            {activity.title}
-          </h1>
-          {activity.description && (
-            <p className='text-gray-600 dark:text-gray-300 text-sm md:text-base max-w-2xl mx-auto'>
-              {activity.description}
-            </p>
-          )}
-        </motion.div>
-      </div>
-
-      {/* Progress bars */}
-      <div className='relative z-10 w-full'>
-        {/* Time Progress */}
-        <motion.div
-          className='h-1 bg-gradient-to-r from-blue-500 to-blue-600'
-          initial={{ width: '100%' }}
-          animate={{
-            width: `${Math.min(
-              100,
-              Math.max(0, (timeLeft / activity.quiz.timeLimitSeconds) * 100)
-            )}%`,
+          className='rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
+          style={{
+            backgroundImage: activity.backgroundImage
+              ? `url(${activity.backgroundImage})`
+              : undefined,
+            backgroundColor: activity.backgroundColor || '#AFB2AF',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
           }}
-          transition={{ duration: 0.1 }}
-        />
-        {/* Participants Progress */}
-        <motion.div
-          className='h-1 bg-gradient-to-r from-purple-500 to-purple-600'
-          initial={{ width: '0%' }}
-          animate={{
-            width: `${Math.min(
-              100,
-              Math.max(
-                0,
-                (answeredCount / Math.max(1, totalParticipants)) * 100
-              )
-            )}%`,
-          }}
-          transition={{ duration: 0.1 }}
-        />
-      </div>
-
-      <div className='flex-grow p-4 md:p-6 flex items-center justify-center relative z-10'>
-        <div
-          ref={containerRef}
-          className='matching-pair-preview relative p-6 md:p-8 rounded-2xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl shadow-2xl w-full max-w-6xl border border-white/20'
         >
-          {/* Question text */}
-          {quiz.questionText && (
+          {/* Overlay */}
+          <div className='absolute inset-0 bg-black bg-opacity-30' />
+
+          {/* Status Bar */}
+          <div className='sticky top-0 left-0 right-0 h-12 bg-black bg-opacity-40 backdrop-blur-sm border-b border-white/5 flex items-center justify-between px-5 text-white z-20'>
+            <div className='flex items-center gap-3'>
+              <div className='h-7 w-7 rounded-full bg-[rgb(198,234,132)] flex items-center justify-center shadow-md'>
+                <Link2 className='h-4 w-4 text-black' />
+              </div>
+              <div className='text-xs capitalize font-medium text-white/80'>
+                Ghép cặp
+              </div>
+            </div>
+            <div className='flex items-center gap-2'>
+              <motion.div
+                className='flex items-center gap-1.5 bg-black bg-opacity-30 border border-white/10 px-2 py-1 rounded-full text-xs font-medium'
+                animate={{
+                  opacity: timeLeft < 10 ? [0.7, 1] : 1,
+                  scale: timeLeft < 10 ? [1, 1.05, 1] : 1,
+                }}
+                transition={{
+                  duration: 0.5,
+                  repeat: timeLeft < 10 ? Infinity : 0,
+                  repeatType: 'reverse',
+                }}
+              >
+                <Clock className='h-3.5 w-3.5 text-[rgb(198,234,132)]' />
+                <span
+                  className={timeLeft < 10 ? 'text-red-300' : 'text-white/90'}
+                >
+                  {formatTime(timeLeft)}
+                </span>
+              </motion.div>
+
+              {/* Participants counter */}
+              <motion.div
+                key={`${answeredCount}-${totalParticipants}`}
+                className={`
+                  flex items-center gap-1.5 mr-2 ${
+                    answeredCount >= totalParticipants
+                      ? 'bg-black bg-opacity-30 border-[rgb(198,234,132)]/30 shadow-[rgb(198,234,132)]/10'
+                      : 'bg-black bg-opacity-30 border-[rgb(255,198,121)]/30 shadow-[rgb(255,198,121)]/10'
+                  } border border-white/10 px-2 py-1 rounded-full text-xs font-medium`}
+                animate={{
+                  scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
+                  transition: { duration: 0.5 },
+                }}
+              >
+                <Users className='h-3.5 w-3.5 text-[rgb(198,234,132)]' />
+                <span
+                  className={
+                    answeredCount >= totalParticipants
+                      ? 'text-[rgb(198,234,132)]'
+                      : 'text-[rgb(255,198,121)]'
+                  }
+                >
+                  {answeredCount}
+                </span>
+                <span className='text-white/50'>/{totalParticipants}</span>
+                <span className='ml-1 text-xs opacity-75'>
+                  (
+                  {Math.round(
+                    (answeredCount / Math.max(1, totalParticipants)) * 100
+                  )}
+                  %)
+                </span>
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Question Text */}
+          <div className='flex flex-col items-center z-10 px-4 md:px-6 py-6 md:py-8'>
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className='mb-6 text-center'
+              transition={{ duration: 0.5 }}
+              className='w-full flex flex-col items-center justify-center'
             >
-              <h2 className='text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200'>
-                {quiz.questionText}
+              <h2 className='text-base md:text-xl lg:text-2xl font-bold text-center text-white drop-shadow-lg'>
+                {quiz.questionText ||
+                  activity.title ||
+                  'Matching Pairs Question'}
               </h2>
+              {/* {activity.description && (
+                <p className='mt-2 text-xs md:text-sm text-white/80 text-center'>
+                  {activity.description}
+                </p>
+              )} */}
             </motion.div>
-          )}
+          </div>
+        </motion.div>
+
+        {/* Progress Bars */}
+        <div className='w-full'>
+          {/* Time Progress */}
+          <motion.div
+            className='h-1 bg-[rgb(198,234,132)]'
+            initial={{ width: '100%' }}
+            animate={{
+              width: `${Math.min(
+                100,
+                Math.max(0, (timeLeft / activity.quiz.timeLimitSeconds) * 100)
+              )}%`,
+            }}
+            transition={{ duration: 0.1 }}
+          />
+          {/* Participants Progress */}
+          <motion.div
+            className='h-1 bg-[rgb(173,216,255)]'
+            initial={{ width: '0%' }}
+            animate={{
+              width: `${Math.min(
+                100,
+                Math.max(
+                  0,
+                  (answeredCount / Math.max(1, totalParticipants)) * 100
+                )
+              )}%`,
+            }}
+            transition={{ duration: 0.1 }}
+          />
+        </div>
+
+        {/* Matching Pairs Content */}
+        <div className='p-3 sm:p-6 bg-black bg-opacity-20'>
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                className='mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-white/90'
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <div className='flex items-center gap-2'>
+                  <AlertCircle className='h-5 w-5 text-red-400' />
+                  <span>{error}</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Results display khi có đáp án */}
           <AnimatePresence>
             {showCorrectAnswer && (
               <motion.div
-                className='mb-6 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 border border-blue-200 dark:border-gray-500'
+                className='mb-4 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               >
                 {activity.hostShowAnswer && !isSubmitted ? (
                   <motion.div
-                    className='flex items-center gap-2 text-blue-600 dark:text-blue-400'
+                    className='flex items-center gap-2 text-[rgb(198,234,132)]'
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.2, type: 'spring', stiffness: 400 }}
@@ -491,7 +754,7 @@ export function QuizMatchingPairViewer({
                   </motion.div>
                 ) : isQuizEnded && !isSubmitted ? (
                   <motion.div
-                    className='flex items-center gap-2 text-blue-600 dark:text-blue-400'
+                    className='flex items-center gap-2 text-[rgb(198,234,132)]'
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.2, type: 'spring', stiffness: 400 }}
@@ -523,7 +786,7 @@ export function QuizMatchingPairViewer({
                       {isCorrect ? 'Chính xác!' : 'Chưa chính xác'}
                     </span>
                     {!isCorrect && (
-                      <span className='text-gray-600 dark:text-gray-400 ml-2'>
+                      <span className='text-white/70 ml-2'>
                         {isAnimatingAnswer
                           ? '(Đang hiển thị đáp án đúng...)'
                           : '(Đáp án đúng đã được hiển thị)'}
@@ -538,461 +801,381 @@ export function QuizMatchingPairViewer({
           {/* Thông báo đã gửi câu trả lời */}
           {isSubmitted && !isQuizEnded && (
             <motion.div
-              className='mb-6 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+              className='mb-4 p-4 rounded-xl bg-[#0e2838]/50 border border-[rgb(198,234,132)]/30 text-white/90'
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className='flex items-center gap-2'>
+              <div className='flex items-center gap-2 mb-2 text-[rgb(198,234,132)]'>
                 <CheckCircle className='h-5 w-5' />
                 <span className='font-semibold'>Đã gửi câu trả lời!</span>
               </div>
-              <p className='mt-1 text-sm'>
+              <p className='text-white/70'>
                 Câu trả lời của bạn đã được ghi nhận. Kết quả sẽ được hiển thị
                 khi quiz kết thúc.
               </p>
             </motion.div>
           )}
 
-          <div className='flex justify-between items-start gap-6 md:gap-12'>
-            {/* Left Column - với hiệu ứng khi hiển thị đáp án */}
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{
-                opacity: 1,
-                x: 0,
-                scale: showCorrectAnswer ? [1, 1.02, 1] : 1,
-              }}
-              transition={{
-                duration: showCorrectAnswer ? 2 : 0.5,
-                repeat: showCorrectAnswer ? 3 : 0,
-              }}
-              className='w-1/2 flex flex-col items-center gap-4'
-            >
-              <div className='relative'>
-                <h3
-                  className={`font-bold text-xl text-center text-gray-700 dark:text-gray-200 mb-4 px-6 py-3 text-white rounded-full shadow-lg transition-all duration-500 ${
-                    showCorrectAnswer
-                      ? 'bg-gradient-to-r from-green-500 to-green-600'
-                      : 'bg-gradient-to-r from-blue-500 to-blue-600'
-                  }`}
-                >
-                  {leftColumnName}
-                </h3>
-                <div
-                  className={`absolute -top-2 -left-2 w-4 h-4 rounded-full animate-pulse transition-colors duration-500 ${
-                    showCorrectAnswer ? 'bg-green-400' : 'bg-blue-400'
-                  }`}
-                ></div>
-              </div>
-              {/* Left column items */}
-              <div className='w-full space-y-3'>
-                {shuffledLeftColumn.map((item, index) => {
-                  const connectionColor = colorMap.get(
-                    item.quizMatchingPairItemId
-                  );
-                  const isSelected =
-                    selectedItem?.id === item.quizMatchingPairItemId;
-                  const isConnected = connectionColor;
-
-                  return (
-                    <motion.div
-                      key={item.quizMatchingPairItemId}
-                      id={`item-${item.quizMatchingPairItemId}`}
-                      initial={{ opacity: 0, x: -30 }}
-                      animate={{
-                        opacity: 1,
-                        x: 0,
-                        scale:
-                          showCorrectAnswer && isConnected ? [1, 1.05, 1] : 1,
-                      }}
-                      transition={{
-                        delay: index * 0.1,
-                        scale: { duration: 0.3, delay: index * 0.1 },
-                      }}
-                      className={cn(
-                        'p-4 rounded-xl text-center transition-all duration-500 w-full border-2 relative overflow-hidden group',
-                        isParticipating &&
-                          !showCorrectAnswer &&
-                          'cursor-pointer hover:shadow-lg',
-                        isSelected
-                          ? 'ring-4 ring-blue-400 ring-opacity-50 shadow-xl scale-105'
-                          : '',
-                        isConnected
-                          ? 'text-white shadow-xl'
-                          : 'bg-gradient-to-r from-white to-gray-50 dark:from-gray-700 dark:to-gray-600 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-400'
-                      )}
-                      style={
-                        isConnected
-                          ? {
-                              backgroundColor: connectionColor,
-                              borderColor: connectionColor,
-                              boxShadow: `0 10px 25px -5px ${connectionColor}40`,
-                            }
-                          : {}
-                      }
-                      onClick={() =>
-                        !showCorrectAnswer &&
-                        handleItemClick('left', item.quizMatchingPairItemId)
-                      }
-                      whileHover={{
-                        scale: isParticipating && !showCorrectAnswer ? 1.02 : 1,
-                        y: isParticipating && !showCorrectAnswer ? -2 : 0,
-                      }}
-                      whileTap={{ scale: !showCorrectAnswer ? 0.98 : 1 }}
-                      layout
-                    >
-                      {/* Connection indicator */}
-                      {/* {isConnected && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className='absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md'
-                        >
-                          <Link className='w-3 h-3 text-gray-600' />
-                        </motion.div>
-                      )} */}
-
-                      {/* Selection indicator */}
-                      {isSelected && !showCorrectAnswer && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className='absolute -top-1 -left-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-md'
-                        >
-                          <CheckCircle className='w-3 h-3 text-white' />
-                        </motion.div>
-                      )}
-
-                      <p className='text-sm md:text-base font-medium leading-relaxed'>
-                        {item.content}
-                      </p>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-
-            {/* Center divider */}
-            <div
-              className={`absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-px h-3/4 transition-all duration-500 ${
-                showCorrectAnswer
-                  ? 'bg-gradient-to-b from-transparent via-green-400 to-transparent'
-                  : 'bg-gradient-to-b from-transparent via-gray-300 dark:via-gray-600 to-transparent'
-              }`}
-            ></div>
-
-            {/* Right Column - với hiệu ứng tương tự */}
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{
-                opacity: 1,
-                x: 0,
-                scale: showCorrectAnswer ? [1, 1.02, 1] : 1,
-              }}
-              transition={{
-                duration: showCorrectAnswer ? 2 : 0.5,
-                repeat: showCorrectAnswer ? 3 : 0,
-              }}
-              className='w-1/2 flex flex-col items-center gap-4'
-            >
-              <div className='relative'>
-                <h3
-                  className={`font-bold text-xl text-center text-gray-700 dark:text-gray-200 mb-4 px-6 py-3 text-white rounded-full shadow-lg transition-all duration-500 ${
-                    showCorrectAnswer
-                      ? 'bg-gradient-to-r from-green-500 to-green-600'
-                      : 'bg-gradient-to-r from-purple-500 to-purple-600'
-                  }`}
-                >
-                  {rightColumnName}
-                </h3>
-                <div
-                  className={`absolute -top-2 -right-2 w-4 h-4 rounded-full animate-pulse transition-colors duration-500 ${
-                    showCorrectAnswer ? 'bg-green-400' : 'bg-purple-400'
-                  }`}
-                ></div>
-              </div>
-              {/* Right column items */}
-              <div className='w-full space-y-3'>
-                {shuffledRightColumn.map((item, index) => {
-                  const connectionColor = colorMap.get(
-                    item.quizMatchingPairItemId
-                  );
-                  const isSelected =
-                    selectedItem?.id === item.quizMatchingPairItemId;
-                  const isConnected = connectionColor;
-
-                  return (
-                    <motion.div
-                      key={item.quizMatchingPairItemId}
-                      id={`item-${item.quizMatchingPairItemId}`}
-                      initial={{ opacity: 0, x: 30 }}
-                      animate={{
-                        opacity: 1,
-                        x: 0,
-                        scale:
-                          showCorrectAnswer && isConnected ? [1, 1.05, 1] : 1,
-                      }}
-                      transition={{
-                        delay: index * 0.1,
-                        scale: { duration: 0.3, delay: index * 0.1 },
-                      }}
-                      className={cn(
-                        'p-4 rounded-xl text-center transition-all duration-500 w-full border-2 relative overflow-hidden group',
-                        isParticipating &&
-                          !showCorrectAnswer &&
-                          'cursor-pointer hover:shadow-lg',
-                        isSelected
-                          ? 'ring-4 ring-purple-400 ring-opacity-50 shadow-xl scale-105'
-                          : '',
-                        isConnected
-                          ? 'text-white shadow-xl'
-                          : 'bg-gradient-to-r from-white to-gray-50 dark:from-gray-700 dark:to-gray-600 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-purple-300 dark:hover:border-purple-400'
-                      )}
-                      style={
-                        isConnected
-                          ? {
-                              backgroundColor: connectionColor,
-                              borderColor: connectionColor,
-                              boxShadow: `0 10px 25px -5px ${connectionColor}40`,
-                            }
-                          : {}
-                      }
-                      onClick={() =>
-                        !showCorrectAnswer &&
-                        handleItemClick('right', item.quizMatchingPairItemId)
-                      }
-                      whileHover={{
-                        scale: isParticipating && !showCorrectAnswer ? 1.02 : 1,
-                        y: isParticipating && !showCorrectAnswer ? -2 : 0,
-                      }}
-                      whileTap={{ scale: !showCorrectAnswer ? 0.98 : 1 }}
-                      layout
-                    >
-                      {/* Connection indicator */}
-                      {/* {isConnected && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className='absolute -top-1 -left-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md'
-                        >
-                          <Link className='w-3 h-3 text-gray-600' />
-                        </motion.div>
-                      )} */}
-
-                      {/* Selection indicator */}
-                      {isSelected && !showCorrectAnswer && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className='absolute -top-1 -right-1 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center shadow-md'
-                        >
-                          <CheckCircle className='w-3 h-3 text-white' />
-                        </motion.div>
-                      )}
-
-                      <p className='text-sm md:text-base font-medium leading-relaxed'>
-                        {item.content}
-                      </p>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Connection lines với animation cải tiến */}
-          <svg
-            ref={svgRef}
-            className='absolute top-0 left-0 w-full h-full pointer-events-none'
-            style={{ zIndex: 1 }}
-            key={previewUpdate}
+          {/* Matching Pairs Interface */}
+          <motion.div
+            className='rounded-xl overflow-hidden shadow-xl border border-white/10'
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <defs>
-              {PAIR_COLORS.map((color) => (
-                <marker
-                  key={color}
-                  id={`marker-${color.replace('#', '')}`}
-                  markerWidth='12'
-                  markerHeight='12'
-                  refX='6'
-                  refY='6'
-                  orient='auto'
-                >
-                  <circle
-                    cx='6'
-                    cy='6'
-                    r='5'
-                    fill={color}
-                    stroke='white'
-                    strokeWidth='2'
-                  />
-                </marker>
-              ))}
-            </defs>
-            <g>
-              <AnimatePresence>
-                {userConnections.map((conn, index) => {
-                  const pathColor = colorMap.get(conn.leftId) || PAIR_COLORS[0];
-                  const isCorrectConnection = correctConnections.some(
-                    (correctConn) =>
-                      correctConn.leftId === conn.leftId &&
-                      correctConn.rightId === conn.rightId
-                  );
-
-                  // Quyết định hiển thị dựa trên animation phase
-                  const shouldShow =
-                    !isAnimatingAnswer ||
-                    (animationPhase === 'hiding_wrong' &&
-                      isCorrectConnection) ||
-                    animationPhase === 'showing_correct' ||
-                    animationPhase === 'completed';
-
-                  if (!shouldShow) return null;
-
-                  return (
-                    <motion.path
-                      key={`${conn.leftId}-${conn.rightId}`}
-                      d={getConnectionPath(conn.leftId, conn.rightId)}
-                      stroke={
-                        showCorrectAnswer && isCorrectConnection
-                          ? '#10b981'
-                          : pathColor
-                      }
-                      strokeWidth={
-                        showCorrectAnswer && isCorrectConnection ? '4' : '3'
-                      }
-                      fill='none'
-                      strokeLinecap='round'
-                      initial={{
-                        pathLength: 0,
-                        opacity: 0,
-                        strokeWidth: 3,
-                      }}
-                      animate={{
-                        pathLength: 1,
-                        opacity:
-                          animationPhase === 'hiding_wrong' &&
-                          !isCorrectConnection
-                            ? 0
-                            : 1,
-                        strokeWidth:
-                          showCorrectAnswer && isCorrectConnection ? 4 : 3,
-                      }}
-                      exit={{
-                        pathLength: 0,
-                        opacity: 0,
-                        transition: { duration: 0.3 },
-                      }}
-                      transition={{
-                        pathLength: { duration: 0.5, ease: 'easeOut' },
-                        opacity: { duration: 0.3 },
-                        strokeWidth: { duration: 0.3 },
-                      }}
-                      markerStart={`url(#marker-${(showCorrectAnswer &&
-                      isCorrectConnection
-                        ? '#10b981'
-                        : pathColor
-                      ).replace('#', '')})`}
-                      markerEnd={`url(#marker-${(showCorrectAnswer &&
-                      isCorrectConnection
-                        ? '#10b981'
-                        : pathColor
-                      ).replace('#', '')})`}
-                      filter='drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
-                      style={{
-                        filter:
-                          showCorrectAnswer && isCorrectConnection
-                            ? 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.5))'
-                            : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-                      }}
-                    />
-                  );
-                })}
-              </AnimatePresence>
-            </g>
-          </svg>
-        </div>
-      </div>
-
-      {/* Footer with submit button */}
-      {isParticipating && !isSubmitted && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className='w-full px-4 pb-6 md:px-8 md:pb-8 relative z-10'
-        >
-          <div className='max-w-md mx-auto'>
-            <Button
-              onClick={handleSubmit}
-              disabled={
-                isSubmitting ||
-                isSubmitted ||
-                userConnections.length === 0 ||
-                timeLeft <= 0
-              }
-              className={cn(
-                'w-full text-lg font-bold py-6 rounded-2xl shadow-xl transition-all duration-300 transform',
-                isSubmitted
-                  ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
-                  : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 hover:scale-105',
-                (userConnections.length === 0 || timeLeft <= 0) &&
-                  'opacity-50 cursor-not-allowed hover:scale-100'
-              )}
+            <div
+              ref={containerRef}
+              className='matching-pair-preview relative p-3 sm:p-4 md:p-6 lg:p-8 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 min-h-[260px] sm:min-h-[300px] md:min-h-[400px] w-full'
+              key={`preview-${forceUpdate}`}
             >
-              {isSubmitting ? (
-                <Loader2 className='mr-3 h-6 w-6 animate-spin' />
-              ) : isSubmitted ? (
-                <CheckCircle className='mr-3 h-6 w-6' />
-              ) : (
-                <Link className='mr-3 h-6 w-6' />
-              )}
-              {isSubmitted
-                ? t('Đã gửi câu trả lời')
-                : isSubmitting
-                ? t('Đang gửi...')
-                : timeLeft <= 0
-                ? t('Hết thời gian')
-                : t('Gửi câu trả lời')}
-            </Button>
+              <div className='flex flex-row justify-between items-start gap-4 sm:gap-6 md:gap-10 lg:gap-12 max-w-6xl mx-auto'>
+                {/* Column A */}
+                <div className='w-[42%] sm:w-[44%] md:w-[45%] lg:w-1/2 flex flex-col items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6'>
+                  <div className='w-full bg-gradient-to-r from-blue-500 to-purple-600 p-2 sm:p-3 md:p-4 rounded-xl shadow-lg'>
+                    <h3 className='font-bold text-xs sm:text-base md:text-lg lg:text-xl text-center text-white drop-shadow-sm break-words'>
+                      {leftColumnName}
+                    </h3>
+                  </div>
+                  <div className='w-full space-y-1.5 sm:space-y-2 md:space-y-3 lg:space-y-4'>
+                    {shuffledLeftColumn.map((item, index) => {
+                      // Find the connection for this item
+                      const connectionColor = pairColorMap.get(
+                        item.quizMatchingPairItemId
+                      );
+                      const isSelected =
+                        selectedItem?.id === item.quizMatchingPairItemId;
 
-            {/* Progress indicator */}
-            <div className='mt-4 text-center'>
-              <div className='flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400'>
-                <div className='flex gap-1'>
-                  {Array.from({ length: items.length / 2 }).map((_, index) => (
-                    <div
-                      key={index}
-                      className={cn(
-                        'w-2 h-2 rounded-full transition-all duration-300',
-                        index < userConnections.length
-                          ? showCorrectAnswer
-                            ? 'bg-green-500'
-                            : 'bg-blue-500'
-                          : 'bg-gray-300 dark:bg-gray-600'
-                      )}
-                    />
-                  ))}
+                      return (
+                        <motion.div
+                          key={`${item.quizMatchingPairItemId}-${forceUpdate}`}
+                          id={`item-${item.quizMatchingPairItemId}`}
+                          className={cn(
+                            'item-container rounded-2xl text-center transition-all duration-300 w-full border-2 shadow-lg hover:shadow-xl cursor-pointer relative overflow-hidden',
+                            isSelected && 'ring-2 ring-blue-400 ring-offset-2',
+                            !connectionColor &&
+                              'bg-gradient-to-r from-white to-blue-50 dark:from-gray-700 dark:to-gray-600 text-gray-800 dark:text-gray-200 border-blue-200 dark:border-gray-500 hover:from-blue-50 hover:to-blue-100 dark:hover:from-gray-600 dark:hover:to-gray-500'
+                          )}
+                          style={
+                            connectionColor
+                              ? {
+                                  background: `linear-gradient(135deg, ${connectionColor}, ${connectionColor}dd)`,
+                                  borderColor: connectionColor,
+                                  color: 'white',
+                                  boxShadow: `0 4px 20px ${connectionColor}40`,
+                                }
+                              : {}
+                          }
+                          onClick={() =>
+                            !showCorrectAnswer &&
+                            handleItemClick('left', item.quizMatchingPairItemId)
+                          }
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          {/* Shimmer effect */}
+                          <div className='absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer' />
+
+                          {/* Content */}
+                          <div className='relative z-10 w-full'>
+                            <p className='mobile-text-fix text-xs sm:text-sm md:text-base lg:text-base font-semibold drop-shadow-sm'>
+                              {item.content}
+                            </p>
+                          </div>
+
+                          {/* Selected indicator */}
+                          {isSelected && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className='absolute top-2 right-2 w-3 h-3 bg-blue-400 rounded-full shadow-lg'
+                            />
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <span className='ml-2'>
-                  {userConnections.length} / {items.length / 2} cặp
-                </span>
-              </div>
-            </div>
 
-            {submitError && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className='mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 text-sm'
+                {/* Column B */}
+                <div className='w-[42%] sm:w-[44%] md:w-[45%] lg:w-1/2 flex flex-col items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6'>
+                  <div className='w-full bg-gradient-to-r from-purple-600 to-pink-500 p-2 sm:p-3 md:p-4 rounded-xl shadow-lg'>
+                    <h3 className='font-bold text-xs sm:text-base md:text-lg lg:text-xl text-center text-white drop-shadow-sm break-words'>
+                      {rightColumnName}
+                    </h3>
+                  </div>
+                  <div className='w-full space-y-1.5 sm:space-y-2 md:space-y-3 lg:space-y-4'>
+                    {shuffledRightColumn.map((item, index) => {
+                      // Find the connection for this item
+                      const connectionColor = pairColorMap.get(
+                        item.quizMatchingPairItemId
+                      );
+                      const isSelected =
+                        selectedItem?.id === item.quizMatchingPairItemId;
+
+                      return (
+                        <motion.div
+                          key={`${item.quizMatchingPairItemId}-${forceUpdate}`}
+                          id={`item-${item.quizMatchingPairItemId}`}
+                          className={cn(
+                            'item-container rounded-2xl text-center transition-all duration-300 w-full border-2 shadow-lg hover:shadow-xl cursor-pointer relative overflow-hidden',
+                            isSelected &&
+                              'ring-2 ring-purple-400 ring-offset-2',
+                            !connectionColor &&
+                              'bg-gradient-to-r from-white to-purple-50 dark:from-gray-700 dark:to-gray-600 text-gray-800 dark:text-gray-200 border-purple-200 dark:border-gray-500 hover:from-purple-50 hover:to-purple-100 dark:hover:from-gray-600 dark:hover:to-gray-500'
+                          )}
+                          style={
+                            connectionColor
+                              ? {
+                                  background: `linear-gradient(135deg, ${connectionColor}, ${connectionColor}dd)`,
+                                  borderColor: connectionColor,
+                                  color: 'white',
+                                  boxShadow: `0 4px 20px ${connectionColor}40`,
+                                }
+                              : {}
+                          }
+                          onClick={() =>
+                            !showCorrectAnswer &&
+                            handleItemClick(
+                              'right',
+                              item.quizMatchingPairItemId
+                            )
+                          }
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          {/* Shimmer effect */}
+                          <div className='absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer' />
+
+                          {/* Content */}
+                          <div className='relative z-10 w-full'>
+                            <p className='mobile-text-fix text-xs sm:text-sm md:text-base lg:text-base font-semibold drop-shadow-sm'>
+                              {item.content}
+                            </p>
+                          </div>
+
+                          {/* Selected indicator */}
+                          {isSelected && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className='absolute top-2 right-2 w-3 h-3 bg-purple-400 rounded-full shadow-lg'
+                            />
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Connection lines*/}
+              <svg
+                ref={svgRef}
+                className='absolute top-0 left-0 w-full h-full pointer-events-none'
+                style={{ zIndex: 1 }}
+                key={`svg-${forceUpdate}`}
               >
-                <XCircle className='w-4 h-4' />
-                {submitError}
-              </motion.div>
-            )}
-          </div>
-        </motion.div>
-      )}
+                <defs>
+                  {PAIR_COLORS.map((color) => (
+                    <marker
+                      key={color}
+                      id={`marker-${color.replace('#', '')}`}
+                      markerWidth='8'
+                      markerHeight='8'
+                      refX='4'
+                      refY='4'
+                      orient='auto'
+                    >
+                      <circle
+                        cx='4'
+                        cy='4'
+                        r='3'
+                        fill='white'
+                        stroke={color}
+                        strokeWidth='1.5'
+                      />
+                    </marker>
+                  ))}
+                </defs>
+                <g>
+                  <AnimatePresence>
+                    {userConnections.map((conn, index) => {
+                      const pathColor =
+                        pairColorMap.get(conn.leftId) || PAIR_COLORS[0];
+                      const isCorrectConnection = correctConnections.some(
+                        (correctConn) =>
+                          correctConn.leftId === conn.leftId &&
+                          correctConn.rightId === conn.rightId
+                      );
+
+                      // Quyết định hiển thị dựa trên animation phase
+                      const shouldShow =
+                        !isAnimatingAnswer ||
+                        (animationPhase === 'hiding_wrong' &&
+                          isCorrectConnection) ||
+                        animationPhase === 'showing_correct' ||
+                        animationPhase === 'completed';
+
+                      if (!shouldShow) return null;
+
+                      // Re-calculate path để đảm bảo vị trí chính xác
+                      const pathData = getConnectionPath(
+                        conn.leftId,
+                        conn.rightId
+                      );
+
+                      return (
+                        <motion.path
+                          key={`${conn.leftId}-${conn.rightId}-${forceUpdate}`}
+                          d={pathData}
+                          stroke={
+                            showCorrectAnswer && isCorrectConnection
+                              ? '#10b981'
+                              : pathColor
+                          }
+                          strokeWidth={
+                            showCorrectAnswer && isCorrectConnection ? '5' : '4'
+                          }
+                          fill='none'
+                          strokeLinecap='round'
+                          initial={{
+                            pathLength: 0,
+                            opacity: 0,
+                            strokeWidth: 4,
+                          }}
+                          animate={{
+                            pathLength: 1,
+                            opacity:
+                              animationPhase === 'hiding_wrong' &&
+                              !isCorrectConnection
+                                ? 0
+                                : 1,
+                            strokeWidth:
+                              showCorrectAnswer && isCorrectConnection ? 5 : 4,
+                          }}
+                          exit={{
+                            pathLength: 0,
+                            opacity: 0,
+                            transition: { duration: 0.3 },
+                          }}
+                          transition={{
+                            pathLength: { duration: 0.5, ease: 'easeOut' },
+                            opacity: { duration: 0.3 },
+                            strokeWidth: { duration: 0.3 },
+                          }}
+                          markerStart={`url(#marker-${(showCorrectAnswer &&
+                          isCorrectConnection
+                            ? '#10b981'
+                            : pathColor
+                          ).replace('#', '')})`}
+                          markerEnd={`url(#marker-${(showCorrectAnswer &&
+                          isCorrectConnection
+                            ? '#10b981'
+                            : pathColor
+                          ).replace('#', '')})`}
+                          filter='drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                          style={{
+                            filter:
+                              showCorrectAnswer && isCorrectConnection
+                                ? 'drop-shadow(0 0 10px rgba(16, 185, 129, 0.6))'
+                                : 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))',
+                          }}
+                        />
+                      );
+                    })}
+                  </AnimatePresence>
+                </g>
+              </svg>
+            </div>
+          </motion.div>
+
+          {/* Submit Button */}
+          {isParticipating && !isSubmitted && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className='mt-4 sm:mt-6 w-full px-2 sm:px-0'
+            >
+              <div className='max-w-md mx-auto'>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={
+                    isSubmitting ||
+                    isSubmitted ||
+                    userConnections.length === 0 ||
+                    timeLeft <= 0
+                  }
+                  className='w-full px-4 sm:px-8 py-4 sm:py-6 text-base sm:text-lg font-bold bg-gradient-to-r from-[rgb(198,234,132)] to-[rgb(228,248,141)] hover:from-[rgb(158,227,72)] hover:to-[rgb(211,232,124)] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                >
+                  {isSubmitting ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1,
+                          ease: 'linear',
+                        }}
+                      >
+                        <Loader2 className='h-4 w-4 sm:h-5 sm:w-5' />
+                      </motion.div>
+                      <span>Đang gửi...</span>
+                    </>
+                  ) : isSubmitted ? (
+                    <>
+                      <CheckCircle className='h-4 w-4 sm:h-5 sm:w-5' />
+                      <span>Đã gửi câu trả lời</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Gửi câu trả lời</span>
+                      <ArrowRight className='h-4 w-4 sm:h-5 sm:w-5' />
+                    </>
+                  )}
+                </Button>
+
+                {/* Progress indicator */}
+                <div className='mt-3 sm:mt-4 text-center'>
+                  <div className='flex items-center justify-center gap-2 text-xs sm:text-sm text-white/70'>
+                    <div className='flex gap-1'>
+                      {Array.from({ length: items.length / 2 }).map(
+                        (_, index) => (
+                          <div
+                            key={index}
+                            className={cn(
+                              'w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300',
+                              index < userConnections.length
+                                ? showCorrectAnswer
+                                  ? 'bg-green-500'
+                                  : 'bg-[rgb(198,234,132)]'
+                                : 'bg-gray-300 dark:bg-gray-600'
+                            )}
+                          />
+                        )
+                      )}
+                    </div>
+                    <span className='ml-2 text-xs sm:text-sm'>
+                      {userConnections.length} / {items.length / 2} cặp
+                    </span>
+                  </div>
+                </div>
+
+                {submitError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className='mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 text-xs sm:text-sm'
+                  >
+                    <XCircle className='w-4 h-4 flex-shrink-0' />
+                    <span className='mobile-text-fix'>{submitError}</span>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
