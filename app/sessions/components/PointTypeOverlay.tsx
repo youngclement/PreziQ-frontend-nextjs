@@ -40,7 +40,7 @@ export default function PointTypeOverlay({
     switch (pointType) {
       case 'DOUBLE_POINTS':
         return {
-          title: 'ĐIỂM ĐÔI!',
+          title: 'Double Point!',
           subtitle: 'Câu hỏi này có giá trị gấp đôi điểm số',
           icon: <Zap className='h-16 w-16' />,
           bgGradient: 'from-yellow-400 via-orange-500 to-red-500',
@@ -50,7 +50,7 @@ export default function PointTypeOverlay({
         };
       case 'NO_POINTS':
         return {
-          title: 'KHÔNG TÍNH ĐIỂM',
+          title: 'No Point',
           subtitle: 'Câu hỏi này chỉ để thảo luận và không tính điểm',
           icon: <Ban className='h-16 w-16' />,
           bgGradient: 'from-gray-600 via-gray-700 to-gray-800',

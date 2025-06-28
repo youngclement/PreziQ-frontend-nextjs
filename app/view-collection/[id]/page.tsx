@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { collectionsApi } from '@/api-client';
+import { useLanguage } from '@/contexts/language-context';
 import {
   Clock,
   User,
@@ -24,6 +25,7 @@ import {
   List,
   Search,
   Filter,
+  Copy,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -55,6 +57,7 @@ export default function ViewCollectionPage({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const collectionId = params.id;
 
   // State management
@@ -71,6 +74,7 @@ export default function ViewCollectionPage({
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [currentActivityIndex, setCurrentActivityIndex] = useState(0);
+  const [isCoying, setIsCoying] = useState(false);
 
   // Memoized calculations
   const collectionStats: CollectionStats = useMemo(() => {
@@ -131,26 +135,30 @@ export default function ViewCollectionPage({
   const activityTypeOptions = useMemo(() => {
     const types = Array.from(new Set(activities.map((a) => a.activityType)));
     return [
-      { value: 'all', label: 'Tất cả', count: activities.length },
+      {
+        value: 'all',
+        label: t('viewCollection.all'),
+        count: activities.length,
+      },
       ...types.map((type) => ({
         value: type,
         label: getActivityTypeLabel(type),
         count: activities.filter((a) => a.activityType === type).length,
       })),
     ];
-  }, [activities]);
+  }, [activities, t]);
 
   function getActivityTypeLabel(type: string): string {
     const typeMap: Record<string, string> = {
-      QUIZ_BUTTONS: 'Trắc nghiệm',
-      QUIZ_CHECKBOXES: 'Nhiều lựa chọn',
-      QUIZ_TRUE_OR_FALSE: 'Đúng/Sai',
-      QUIZ_TYPE_ANSWER: 'Điền từ',
-      QUIZ_REORDER: 'Sắp xếp',
-      QUIZ_LOCATION: 'Địa điểm',
-      QUIZ_MATCHING_PAIRS: 'Ghép cặp',
-      INFO_SLIDE: 'Slide thông tin',
-      SLIDE: 'Slide',
+      QUIZ_BUTTONS: t('quiz.type.quiz_buttons'),
+      QUIZ_CHECKBOXES: t('quiz.type.quiz_checkboxes'),
+      QUIZ_TRUE_OR_FALSE: t('quiz.type.quiz_true_or_false'),
+      QUIZ_TYPE_ANSWER: t('quiz.type.quiz_type_answer'),
+      QUIZ_REORDER: t('quiz.type.quiz_reorder'),
+      QUIZ_LOCATION: t('quiz.type.quiz_location'),
+      QUIZ_MATCHING_PAIRS: t('quiz.type.quiz_matching_pairs'),
+      INFO_SLIDE: t('quiz.type.info_slide'),
+      SLIDE: t('quiz.type.info_slide'),
     };
     return typeMap[type] || type;
   }
@@ -228,17 +236,18 @@ export default function ViewCollectionPage({
   }, [searchParams]);
 
   const formatDateToLocale = (dateString?: string) => {
-    if (!dateString) return 'Ngày không xác định';
+    if (!dateString) return t('common.unknownDate') || 'Ngày không xác định';
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Ngày không hợp lệ';
+      if (isNaN(date.getTime()))
+        return t('common.invalidDate') || 'Ngày không hợp lệ';
       return date.toLocaleDateString('vi-VN', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
       });
     } catch (e) {
-      return 'Ngày không hợp lệ';
+      return t('common.invalidDate') || 'Ngày không hợp lệ';
     }
   };
 
@@ -266,8 +275,8 @@ export default function ViewCollectionPage({
       // Fallback: copy to clipboard
       await navigator.clipboard.writeText(window.location.href);
       toast({
-        title: 'Đã sao chép',
-        description: 'Link đã được sao chép vào clipboard',
+        title: t('viewCollection.shareSuccess'),
+        description: t('viewCollection.shareSuccessDescription'),
       });
     }
   };
@@ -275,25 +284,63 @@ export default function ViewCollectionPage({
   const toggleBookmark = () => {
     setIsBookmarked(!isBookmarked);
     toast({
-      title: isBookmarked ? 'Đã bỏ đánh dấu' : 'Đã đánh dấu',
+      title: isBookmarked
+        ? t('viewCollection.bookmarkRemoved')
+        : t('viewCollection.bookmarkAdded'),
       description: isBookmarked
-        ? 'Đã xóa khỏi danh sách yêu thích'
-        : 'Đã thêm vào danh sách yêu thích',
+        ? t('viewCollection.bookmarkRemovedDescription')
+        : t('viewCollection.bookmarkAddedDescription'),
     });
   };
 
   const toggleLike = () => {
     setIsLiked(!isLiked);
     toast({
-      title: isLiked ? 'Đã bỏ thích' : 'Đã thích',
-      description: isLiked ? 'Đã bỏ thích collection' : 'Đã thích collection',
+      title: isLiked ? t('viewCollection.unliked') : t('viewCollection.liked'),
+      description: isLiked
+        ? t('viewCollection.unlikedDescription')
+        : t('viewCollection.likedDescription'),
     });
+  };
+
+  const handleCopy = async () => {
+    setIsCoying(true);
+
+    try {
+      const response = await collectionsApi.copyCollection(collectionId);
+
+      // Hiển thị toast thành công
+      toast({
+        title: t('viewCollection.copySuccess'),
+        description: t('viewCollection.copySuccessDescription', {
+          title: response.data.data.title,
+        }),
+        duration: 3000,
+      });
+
+      // Redirect đến collection mới
+      router.push(
+        `/collection?collectionId=${response.data.data.collectionId}`
+      );
+    } catch (error) {
+      console.error('Error copying collection:', error);
+
+      // Hiển thị toast lỗi
+      toast({
+        title: t('viewCollection.copyError'),
+        description: t('viewCollection.copyErrorDescription'),
+        variant: 'destructive',
+        duration: 3000,
+      });
+    } finally {
+      setIsCoying(false);
+    }
   };
 
   // Enhanced loading state with skeleton
   if (isLoading) {
     return (
-      <DefaultLayout showBackButton={true} title='Đang tải...'>
+      <DefaultLayout showBackButton={true} title={t('viewCollection.loading')}>
         <div className='min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-teal-50 dark:from-slate-900 dark:via-slate-800 dark:to-teal-900'>
           <div className='container max-w-7xl mx-auto px-4 py-8'>
             <div className='animate-pulse'>
@@ -326,7 +373,7 @@ export default function ViewCollectionPage({
   // Error state
   if (error || !collection) {
     return (
-      <DefaultLayout showBackButton={true} title='Lỗi'>
+      <DefaultLayout showBackButton={true} title={t('viewCollection.error')}>
         <div className='min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-teal-50 dark:from-slate-900 dark:via-slate-800 dark:to-teal-900'>
           <div className='container max-w-7xl mx-auto px-4 py-16 text-center'>
             <motion.div
@@ -338,14 +385,14 @@ export default function ViewCollectionPage({
                 <Eye className='w-8 h-8 text-red-600 dark:text-red-400' />
               </div>
               <h1 className='text-2xl font-bold mb-4 text-gray-900 dark:text-white'>
-                Oops! Có lỗi xảy ra
+                {t('viewCollection.oopsError')}
               </h1>
               <p className='text-muted-foreground mb-6'>
-                {error || 'Không tìm thấy collection'}
+                {error || t('viewCollection.collectionNotFound')}
               </p>
               <Button onClick={() => router.back()} variant='outline'>
                 <ArrowLeft className='w-4 h-4 mr-2' />
-                Quay lại
+                {t('viewCollection.goBack')}
               </Button>
             </motion.div>
           </div>
@@ -406,52 +453,70 @@ export default function ViewCollectionPage({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
-                    className='flex flex-wrap gap-4'
+                    className='grid grid-cols-2 md:grid-cols-5 gap-3 max-w-4xl'
                   >
                     <Button
                       size='lg'
-                      className='bg-white text-gray-900 hover:bg-gray-100'
+                      className='bg-black/20 backdrop-blur-sm border-2 border-white text-white hover:bg-white hover:text-gray-900 dark:bg-gray-800/70 dark:border-gray-200 dark:text-white dark:hover:bg-white dark:hover:text-gray-900 font-semibold shadow-lg w-full'
+                      onClick={() =>
+                        router.push(`/sessions/host/${collectionId}`)
+                      }
                     >
-                      <Play className='w-5 h-5 mr-2' />
-                      Bắt đầu học
+                      <Play className='w-4 h-4 mr-1.5' />
+                      {t('viewCollection.startLearning')}
                     </Button>
 
                     <Button
                       size='lg'
                       variant='outline'
-                      className='border-white text-white hover:bg-white hover:text-gray-900'
+                      className='bg-black/20 backdrop-blur-sm border-2 border-white text-white hover:bg-white hover:text-gray-900 dark:bg-gray-800/70 dark:border-gray-200 dark:text-white dark:hover:bg-white dark:hover:text-gray-900 font-semibold shadow-lg w-full'
                       onClick={handleShare}
                     >
-                      <Share2 className='w-5 h-5 mr-2' />
-                      Chia sẻ
+                      <Share2 className='w-4 h-4 mr-1.5' />
+                      {t('viewCollection.share')}
                     </Button>
 
                     <Button
                       size='lg'
                       variant='outline'
-                      className='border-white text-white hover:bg-white hover:text-gray-900'
+                      className='bg-black/20 backdrop-blur-sm border-2 border-white text-white hover:bg-white hover:text-gray-900 dark:bg-gray-800/70 dark:border-gray-200 dark:text-white dark:hover:bg-white dark:hover:text-gray-900 font-semibold shadow-lg w-full'
                       onClick={toggleBookmark}
                     >
                       <Bookmark
-                        className={`w-5 h-5 mr-2 ${
+                        className={`w-4 h-4 mr-1.5 ${
                           isBookmarked ? 'fill-current' : ''
                         }`}
                       />
-                      {isBookmarked ? 'Đã lưu' : 'Lưu'}
+                      {isBookmarked
+                        ? t('viewCollection.saved')
+                        : t('viewCollection.save')}
                     </Button>
 
                     <Button
                       size='lg'
                       variant='outline'
-                      className='border-white text-white hover:bg-white hover:text-gray-900'
+                      className='bg-black/20 backdrop-blur-sm border-2 border-white text-white hover:bg-white hover:text-gray-900 dark:bg-gray-800/70 dark:border-gray-200 dark:text-white dark:hover:bg-white dark:hover:text-gray-900 font-semibold shadow-lg w-full'
                       onClick={toggleLike}
                     >
                       <Heart
-                        className={`w-5 h-5 mr-2 ${
+                        className={`w-4 h-4 mr-1.5 ${
                           isLiked ? 'fill-current text-red-400' : ''
                         }`}
                       />
-                      Thích
+                      {t('viewCollection.like')}
+                    </Button>
+
+                    <Button
+                      size='lg'
+                      variant='outline'
+                      className='bg-black/20 backdrop-blur-sm border-2 border-white text-white hover:bg-white hover:text-gray-900 dark:bg-gray-800/70 dark:border-gray-200 dark:text-white dark:hover:bg-white dark:hover:text-gray-900 font-semibold shadow-lg w-full col-span-2 md:col-span-1'
+                      onClick={handleCopy}
+                      disabled={isCoying}
+                    >
+                      <Copy className='w-4 h-4 mr-1.5' />
+                      {isCoying
+                        ? t('viewCollection.copying')
+                        : t('viewCollection.copy')}
                     </Button>
                   </motion.div>
                 </div>
@@ -471,7 +536,9 @@ export default function ViewCollectionPage({
                   <div className='text-2xl font-bold text-blue-900'>
                     {collectionStats.totalActivities}
                   </div>
-                  <div className='text-sm text-blue-700'>Hoạt động</div>
+                  <div className='text-sm text-blue-700'>
+                    {t('viewCollection.activities')}
+                  </div>
                 </CardContent>
               </Card>
 
@@ -481,7 +548,9 @@ export default function ViewCollectionPage({
                   <div className='text-2xl font-bold text-green-900'>
                     {collectionStats.totalQuestions}
                   </div>
-                  <div className='text-sm text-green-700'>Câu hỏi</div>
+                  <div className='text-sm text-green-700'>
+                    {t('viewCollection.questions')}
+                  </div>
                 </CardContent>
               </Card>
 
@@ -491,7 +560,9 @@ export default function ViewCollectionPage({
                   <div className='text-2xl font-bold text-purple-900'>
                     {formatDuration(collectionStats.estimatedDuration)}
                   </div>
-                  <div className='text-sm text-purple-700'>Thời gian</div>
+                  <div className='text-sm text-purple-700'>
+                    {t('viewCollection.time')}
+                  </div>
                 </CardContent>
               </Card>
 
@@ -501,7 +572,9 @@ export default function ViewCollectionPage({
                   <div className='text-2xl font-bold text-orange-900'>
                     {collectionStats.difficulty}
                   </div>
-                  <div className='text-sm text-orange-700'>Độ khó</div>
+                  <div className='text-sm text-orange-700'>
+                    {t('viewCollection.difficulty')}
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -511,26 +584,29 @@ export default function ViewCollectionPage({
               <CardContent className='p-6'>
                 <div className='grid md:grid-cols-3 gap-6'>
                   <div className='space-y-3'>
-                    <h3 className='font-semibold text-lg mb-3'>Thông tin</h3>
+                    <h3 className='font-semibold text-lg mb-3'>
+                      {t('viewCollection.information')}
+                    </h3>
                     <div className='flex items-center text-sm text-muted-foreground'>
                       <Calendar className='mr-2 h-4 w-4' />
-                      Tạo lúc: {formatDateToLocale(collection.createdAt)}
+                      {t('viewCollection.createdAt')}{' '}
+                      {formatDateToLocale(collection.createdAt)}
                     </div>
                     {collection.createdBy && (
                       <div className='flex items-center text-sm text-muted-foreground'>
                         <User className='mr-2 h-4 w-4' />
-                        Tác giả: {collection.createdBy}
+                        {t('viewCollection.author')} {collection.createdBy}
                       </div>
                     )}
                     <div className='flex items-center text-sm text-muted-foreground'>
                       <Users className='mr-2 h-4 w-4' />
-                      Học viên: 0 người đang học
+                      {t('viewCollection.students', { count: '0' })}
                     </div>
                   </div>
 
                   <div className='space-y-3'>
                     <h3 className='font-semibold text-lg mb-3'>
-                      Loại nội dung
+                      {t('viewCollection.contentTypes')}
                     </h3>
                     <div className='flex flex-wrap gap-2'>
                       {Object.entries(collectionStats.activityTypes).map(
@@ -548,10 +624,12 @@ export default function ViewCollectionPage({
                   </div>
 
                   <div className='space-y-3'>
-                    <h3 className='font-semibold text-lg mb-3'>Tiến độ</h3>
+                    <h3 className='font-semibold text-lg mb-3'>
+                      {t('viewCollection.progress')}
+                    </h3>
                     <div className='space-y-2'>
                       <div className='flex justify-between text-sm'>
-                        <span>Hoàn thành</span>
+                        <span>{t('viewCollection.completed')}</span>
                         <span>0/{collectionStats.totalActivities}</span>
                       </div>
                       <Progress value={0} className='h-2' />
@@ -584,21 +662,21 @@ export default function ViewCollectionPage({
                       className='flex items-center gap-2'
                     >
                       <Eye className='w-4 h-4' />
-                      Preview
+                      {t('viewCollection.preview')}
                     </TabsTrigger>
                     <TabsTrigger
                       value='list'
                       className='flex items-center gap-2'
                     >
                       <List className='w-4 h-4' />
-                      Danh sách
+                      {t('viewCollection.list')}
                     </TabsTrigger>
                     <TabsTrigger
                       value='grid'
                       className='flex items-center gap-2'
                     >
                       <Grid3X3 className='w-4 h-4' />
-                      Lưới
+                      {t('viewCollection.grid')}
                     </TabsTrigger>
                   </TabsList>
 
@@ -606,7 +684,7 @@ export default function ViewCollectionPage({
                     <div className='relative flex-1'>
                       <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
                       <Input
-                        placeholder='Tìm kiếm hoạt động...'
+                        placeholder={t('viewCollection.searchActivities')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className='pl-10'
@@ -655,13 +733,17 @@ export default function ViewCollectionPage({
                                     )}
                                   </Badge>
                                   <span className='text-sm text-muted-foreground'>
-                                    Hoạt động {index + 1}
+                                    {t('viewCollection.activity', {
+                                      number: (index + 1).toString(),
+                                    })}
                                   </span>
                                 </div>
                                 <h3 className='font-semibold text-lg mb-2'>
                                   {activity.quiz?.questionText ||
                                     activity.title ||
-                                    `Hoạt động ${index + 1}`}
+                                    t('viewCollection.activity', {
+                                      number: (index + 1).toString(),
+                                    })}
                                 </h3>
                                 {activity.description && (
                                   <p className='text-muted-foreground text-sm mb-3'>
@@ -712,7 +794,9 @@ export default function ViewCollectionPage({
                             <CardTitle className='text-lg group-hover:text-primary transition-colors'>
                               {activity.quiz?.questionText ||
                                 activity.title ||
-                                `Hoạt động ${index + 1}`}
+                                t('viewCollection.activity', {
+                                  number: (index + 1).toString(),
+                                })}
                             </CardTitle>
                           </CardHeader>
                           <CardContent>
@@ -751,14 +835,15 @@ export default function ViewCollectionPage({
                 <div className='w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4'>
                   <BookOpen className='w-8 h-8 text-gray-400' />
                 </div>
-                <h3 className='text-xl font-semibold mb-2'>Chưa có nội dung</h3>
+                <h3 className='text-xl font-semibold mb-2'>
+                  {t('viewCollection.noContent')}
+                </h3>
                 <p className='text-muted-foreground mb-6'>
-                  Collection này chưa có hoạt động nào. Hãy quay lại sau khi có
-                  thêm nội dung.
+                  {t('viewCollection.noContentDescription')}
                 </p>
                 <Button variant='outline' onClick={() => router.back()}>
                   <ArrowLeft className='w-4 h-4 mr-2' />
-                  Quay lại
+                  {t('viewCollection.goBack')}
                 </Button>
               </div>
             </motion.div>

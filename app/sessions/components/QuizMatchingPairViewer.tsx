@@ -598,7 +598,7 @@ export function QuizMatchingPairViewer({
                 <Link2 className='h-4 w-4 text-black' />
               </div>
               <div className='text-xs capitalize font-medium text-white/80'>
-                Ghép cặp
+                Matching Pairs
               </div>
             </div>
             <div className='flex items-center gap-2'>

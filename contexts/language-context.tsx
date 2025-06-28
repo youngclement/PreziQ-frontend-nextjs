@@ -109,7 +109,6 @@ i18next
           testimonialText5:
             'The game-based learning features have completely changed how I teach. My students are more engaged and retain information better.',
 
-
           // Text Marquee Section
           trustedBy: 'Trusted by innovative companies worldwide',
           marqueeTextFirst: 'Create Impressive Presentations with PreziQ',
@@ -142,7 +141,8 @@ i18next
           quizTypes: 'Interactive Quiz Gallery',
           'quiz.exploreTitle': 'Explore ',
           'quiz.quizFormats': 'Quiz Formats',
-          'quiz.mainDescription': 'From multiple choice to location questions, create rich interactive learning experiences with PreziQ',
+          'quiz.mainDescription':
+            'From multiple choice to location questions, create rich interactive learning experiences with PreziQ',
           'quiz.demo': 'Demo',
           'quiz.typeAnswer': 'Type your answer here...',
           'quiz.correctAnswer': 'Correct answer:',
@@ -153,14 +153,19 @@ i18next
           'quiz.capitals': 'Capitals',
           'quiz.dragToConnect': 'Drag to connect',
           'quiz.educationalContent': 'Educational Content',
-          'quiz.webDevContent': 'Web development is the process of building websites and web applications...',
+          'quiz.webDevContent':
+            'Web development is the process of building websites and web applications...',
           'quiz.question.multiple-choice': 'What is the capital of France?',
-          'quiz.question.multiple-response': 'Which of these are programming languages?',
-          'quiz.question.true-false': 'The Earth is the third planet from the Sun.',
+          'quiz.question.multiple-response':
+            'Which of these are programming languages?',
+          'quiz.question.true-false':
+            'The Earth is the third planet from the Sun.',
           'quiz.question.type-answer': 'What is 15 + 27?',
-          'quiz.question.reorder': 'Arrange these events in chronological order:',
+          'quiz.question.reorder':
+            'Arrange these events in chronological order:',
           'quiz.question.location': 'Where is the Eiffel Tower located?',
-          'quiz.question.matching-pairs': 'Match the countries with their capitals:',
+          'quiz.question.matching-pairs':
+            'Match the countries with their capitals:',
           'quiz.question.info-slide': 'Introduction to Web Development',
           'quiz.title.multiple-choice': 'Multiple Choice Quiz',
           'quiz.title.multiple-response': 'Multiple Response Quiz',
@@ -170,14 +175,21 @@ i18next
           'quiz.title.location': 'Location Quiz',
           'quiz.title.matching-pairs': 'Matching Pairs Quiz',
           'quiz.title.info-slide': 'Info Slide',
-          'quiz.description.multiple-choice': 'Students select one correct answer from multiple options',
-          'quiz.description.multiple-response': 'Students can select multiple correct answers',
+          'quiz.description.multiple-choice':
+            'Students select one correct answer from multiple options',
+          'quiz.description.multiple-response':
+            'Students can select multiple correct answers',
           'quiz.description.true-false': 'Simple binary choice questions',
-          'quiz.description.type-answer': 'Students type their answer in a text field',
-          'quiz.description.reorder': 'Students arrange items in the correct order',
-          'quiz.description.location': 'Students identify locations on an interactive map',
-          'quiz.description.matching-pairs': 'Students connect related items from two columns',
-          'quiz.description.info-slide': 'Present information without quiz interaction',
+          'quiz.description.type-answer':
+            'Students type their answer in a text field',
+          'quiz.description.reorder':
+            'Students arrange items in the correct order',
+          'quiz.description.location':
+            'Students identify locations on an interactive map',
+          'quiz.description.matching-pairs':
+            'Students connect related items from two columns',
+          'quiz.description.info-slide':
+            'Present information without quiz interaction',
           'quiz.type.quiz_buttons': 'multiple choice',
           'quiz.type.quiz_checkboxes': 'multiple response',
           'quiz.type.quiz_true_or_false': 'true or false',
@@ -190,7 +202,8 @@ i18next
           'quiz.features.intuitive': 'Intuitive and easy-to-use interface',
           'quiz.features.basicKnowledge': 'Perfect for basic knowledge testing',
           'quiz.features.multipleChoice': 'Select multiple correct answers',
-          'quiz.features.comprehensive': 'Comprehensive understanding assessment',
+          'quiz.features.comprehensive':
+            'Comprehensive understanding assessment',
           'quiz.features.flexibleScoring': 'Flexible scoring system',
           'quiz.features.binaryChoice': 'Simple binary choice',
           'quiz.features.quickAssessment': 'Quick assessment tool',
@@ -219,7 +232,8 @@ i18next
           'quiz.tryNow.matching-pairs': 'Try Matching Pairs Now',
           'quiz.tryNow.info-slide': 'Try Info Slide Now',
           'quiz.readyToCreate': 'Ready to Create Your Quiz?',
-          'quiz.ctaDescription': 'Start creating engaging interactive quizzes with PreziQ today',
+          'quiz.ctaDescription':
+            'Start creating engaging interactive quizzes with PreziQ today',
           'quiz.startCreating': 'Start Creating Quiz',
 
           // FAQ Section
@@ -1331,6 +1345,106 @@ i18next
               bounceDescription: 'Bounce effect',
             },
           },
+
+          // View Collection Page
+          'viewCollection.loading': 'Loading...',
+          'viewCollection.error': 'Error',
+          'viewCollection.oopsError': 'Oops! An error occurred',
+          'viewCollection.collectionNotFound': 'Collection not found',
+          'viewCollection.goBack': 'Go back',
+          'viewCollection.startLearning': 'Start Learning',
+          'viewCollection.share': 'Share',
+          'viewCollection.save': 'Save',
+          'viewCollection.saved': 'Saved',
+          'viewCollection.like': 'Like',
+          'viewCollection.copy': 'Copy',
+          'viewCollection.copying': 'Copying...',
+          'viewCollection.activities': 'Activities',
+          'viewCollection.questions': 'Questions',
+          'viewCollection.time': 'Time',
+          'viewCollection.difficulty': 'Difficulty',
+          'viewCollection.information': 'Information',
+          'viewCollection.createdAt': 'Created at:',
+          'viewCollection.author': 'Author:',
+          'viewCollection.students': 'Students: {count} people learning',
+          'viewCollection.contentTypes': 'Content Types',
+          'viewCollection.progress': 'Progress',
+          'viewCollection.completed': 'Completed',
+          'viewCollection.preview': 'Preview',
+          'viewCollection.list': 'List',
+          'viewCollection.grid': 'Grid',
+          'viewCollection.searchActivities': 'Search activities...',
+          'viewCollection.all': 'All',
+          'viewCollection.noContent': 'No content yet',
+          'viewCollection.noContentDescription':
+            'This collection has no activities yet. Please come back when more content is added.',
+          'viewCollection.activity': 'Activity {number}',
+          'viewCollection.copySuccess': 'Copy successful!',
+          'viewCollection.copySuccessDescription':
+            'Collection "{title}" has been copied.',
+          'viewCollection.copyError': 'Copy error',
+          'viewCollection.copyErrorDescription':
+            'Unable to copy collection. Please try again.',
+          'viewCollection.shareSuccess': 'Copied to clipboard',
+          'viewCollection.shareSuccessDescription':
+            'Link has been copied to clipboard',
+          'viewCollection.bookmarkAdded': 'Bookmarked',
+          'viewCollection.bookmarkAddedDescription': 'Added to favorites list',
+          'viewCollection.bookmarkRemoved': 'Bookmark removed',
+          'viewCollection.bookmarkRemovedDescription':
+            'Removed from favorites list',
+          'viewCollection.liked': 'Liked',
+          'viewCollection.likedDescription': 'Liked collection',
+          'viewCollection.unliked': 'Unliked',
+          'viewCollection.unlikedDescription': 'Unliked collection',
+
+          // Question Viewer
+          'questionViewer.noActivities': 'No activities',
+          'questionViewer.noActivitiesDescription':
+            'This collection has no activities added yet.',
+          'questionViewer.showList': 'Show list',
+          'questionViewer.hideList': 'Hide list',
+          'questionViewer.showAnswers': 'Show answers',
+          'questionViewer.sound': 'Sound',
+          'questionViewer.viewMode': 'View mode',
+          'questionViewer.mobile': 'Mobile',
+          'questionViewer.tablet': 'Tablet',
+          'questionViewer.desktop': 'Desktop',
+          'questionViewer.fullscreen': 'Fullscreen',
+          'questionViewer.fullscreenShortcut': '(F)',
+          'questionViewer.activities': 'activities',
+          'questionViewer.currentlyViewing': 'Currently viewing',
+          'questionViewer.questionList': 'Question list',
+          'questionViewer.mapLoadingError':
+            'Cannot load map. Please check internet connection.',
+          'questionViewer.mapInitError': 'Map initialization error',
+          'questionViewer.loadingMap': 'Loading map...',
+          'questionViewer.legend': 'Legend:',
+          'questionViewer.exactLocation': 'Exact location',
+          'questionViewer.acceptableArea': 'Acceptable area (radius)',
+          'questionViewer.pointsToFind': '{count} points to find',
+          'questionViewer.correctLocation': 'Location',
+          'questionViewer.latitude': 'Latitude:',
+          'questionViewer.longitude': 'Longitude:',
+          'questionViewer.radius': 'Radius:',
+          'questionViewer.point': 'Point {number}',
+          'questionViewer.noMatchingPairsData': 'No matching pairs data',
+          'questionViewer.typeAnswerHere': 'Type your answer here...',
+          'questionViewer.correctAnswer': 'Correct answer:',
+          'questionViewer.notSpecified': 'Not specified',
+          'questionViewer.readOnlyPreview':
+            'This is a read-only preview of the text answer question',
+          'questionViewer.reorderSteps':
+            'Order of steps - Enable edit mode to rearrange',
+          'questionViewer.dragHint': 'Drag handle to move',
+          'questionViewer.step': 'Step',
+          'questionViewer.infoSlide': 'Info Slide',
+          'questionViewer.slide': 'Slide',
+          'questionViewer.activity': 'Activity {number}',
+
+          // Common
+          'common.unknownDate': 'Unknown date',
+          'common.invalidDate': 'Invalid date',
         },
       },
       vi: {
@@ -1387,7 +1501,7 @@ i18next
           testimonialAuthor2: 'Lê Phạm Thanh Duy',
           testimonialRole2: 'Giáo sư Đại học',
           testimonialText2:
-            'Các tính năng học tập dựa trên trò chơi đã thay đổi hoàn toàn cách tôi giảng dạy. Sinh viên của tôi hứng thú hơn và ghi nhớ thông tin tốt hơn.',
+            'The game-based learning features have completely changed how I teach. My students are more engaged and retain information better.',
           testimonialAuthor3: 'Lê Trần Hoàng Kiên',
           testimonialRole3: 'Giám đốc Bán hàng',
           testimonialText3:
@@ -1424,7 +1538,8 @@ i18next
           quizTypes: 'Thư viện Quiz Tương tác',
           'quiz.exploreTitle': 'Khám phá ',
           'quiz.quizFormats': 'Các Định Dạng Quiz',
-          'quiz.mainDescription': 'Từ trắc nghiệm đến câu hỏi vị trí, tạo nên trải nghiệm học tập tương tác phong phú với PreziQ',
+          'quiz.mainDescription':
+            'Từ trắc nghiệm đến câu hỏi vị trí, tạo nên trải nghiệm học tập tương tác phong phú với PreziQ',
           'quiz.demo': 'Demo',
           'quiz.typeAnswer': 'Nhập câu trả lời của bạn...',
           'quiz.correctAnswer': 'Đáp án đúng:',
@@ -1435,14 +1550,18 @@ i18next
           'quiz.capitals': 'Thủ đô',
           'quiz.dragToConnect': 'Kéo để kết nối',
           'quiz.educationalContent': 'Nội dung giáo dục',
-          'quiz.webDevContent': 'Phát triển web là quá trình xây dựng trang web và ứng dụng web...',
+          'quiz.webDevContent':
+            'Phát triển web là quá trình xây dựng trang web và ứng dụng web...',
           'quiz.question.multiple-choice': 'Thủ đô của Pháp là gì?',
-          'quiz.question.multiple-response': 'Những ngôn ngữ lập trình nào sau đây?',
-          'quiz.question.true-false': 'Trái Đất là hành tinh thứ ba tính từ Mặt Trời.',
+          'quiz.question.multiple-response':
+            'Những ngôn ngữ lập trình nào sau đây?',
+          'quiz.question.true-false':
+            'Trái Đất là hành tinh thứ ba tính từ Mặt Trời.',
           'quiz.question.type-answer': '15 + 27 bằng bao nhiêu?',
           'quiz.question.reorder': 'Sắp xếp các sự kiện theo thứ tự thời gian:',
           'quiz.question.location': 'Tháp Eiffel nằm ở đâu?',
-          'quiz.question.matching-pairs': 'Ghép các quốc gia với thủ đô của chúng:',
+          'quiz.question.matching-pairs':
+            'Ghép các quốc gia với thủ đô của chúng:',
           'quiz.question.info-slide': 'Giới thiệu về Phát triển Web',
           'quiz.title.multiple-choice': 'Quiz Trắc nghiệm',
           'quiz.title.multiple-response': 'Quiz Đa lựa chọn',
@@ -1452,14 +1571,21 @@ i18next
           'quiz.title.location': 'Quiz Vị trí',
           'quiz.title.matching-pairs': 'Quiz Ghép cặp',
           'quiz.title.info-slide': 'Slide thông tin',
-          'quiz.description.multiple-choice': 'Học sinh chọn một đáp án đúng từ nhiều lựa chọn',
-          'quiz.description.multiple-response': 'Học sinh có thể chọn nhiều đáp án đúng',
+          'quiz.description.multiple-choice':
+            'Học sinh chọn một đáp án đúng từ nhiều lựa chọn',
+          'quiz.description.multiple-response':
+            'Học sinh có thể chọn nhiều đáp án đúng',
           'quiz.description.true-false': 'Câu hỏi lựa chọn nhị phân đơn giản',
-          'quiz.description.type-answer': 'Học sinh nhập câu trả lời vào trường văn bản',
-          'quiz.description.reorder': 'Học sinh sắp xếp các mục theo thứ tự đúng',
-          'quiz.description.location': 'Học sinh xác định vị trí trên bản đồ tương tác',
-          'quiz.description.matching-pairs': 'Học sinh kết nối các mục liên quan từ hai cột',
-          'quiz.description.info-slide': 'Trình bày thông tin mà không cần tương tác quiz',
+          'quiz.description.type-answer':
+            'Học sinh nhập câu trả lời vào trường văn bản',
+          'quiz.description.reorder':
+            'Học sinh sắp xếp các mục theo thứ tự đúng',
+          'quiz.description.location':
+            'Học sinh xác định vị trí trên bản đồ tương tác',
+          'quiz.description.matching-pairs':
+            'Học sinh kết nối các mục liên quan từ hai cột',
+          'quiz.description.info-slide':
+            'Trình bày thông tin mà không cần tương tác quiz',
           'quiz.type.quiz_buttons': 'trắc nghiệm',
           'quiz.type.quiz_checkboxes': 'đa lựa chọn',
           'quiz.type.quiz_true_or_false': 'đúng sai',
@@ -1470,7 +1596,8 @@ i18next
           'quiz.type.info_slide': 'slide thông tin',
           'quiz.features.singleChoice': 'Chọn một đáp án đúng duy nhất',
           'quiz.features.intuitive': 'Giao diện trực quan, dễ sử dụng',
-          'quiz.features.basicKnowledge': 'Phù hợp cho kiểm tra kiến thức cơ bản',
+          'quiz.features.basicKnowledge':
+            'Phù hợp cho kiểm tra kiến thức cơ bản',
           'quiz.features.multipleChoice': 'Chọn nhiều đáp án đúng',
           'quiz.features.comprehensive': 'Đánh giá hiểu biết toàn diện',
           'quiz.features.flexibleScoring': 'Linh hoạt trong chấm điểm',
@@ -1501,7 +1628,8 @@ i18next
           'quiz.tryNow.matching-pairs': 'Thử ngay Ghép cặp',
           'quiz.tryNow.info-slide': 'Thử ngay Slide thông tin',
           'quiz.readyToCreate': 'Sẵn sàng tạo Quiz của bạn?',
-          'quiz.ctaDescription': 'Bắt đầu tạo những bài quiz tương tác hấp dẫn với PreziQ ngay hôm nay',
+          'quiz.ctaDescription':
+            'Bắt đầu tạo những bài quiz tương tác hấp dẫn với PreziQ ngay hôm nay',
           'quiz.startCreating': 'Bắt đầu tạo Quiz',
 
           // FAQ Section
@@ -2573,6 +2701,108 @@ i18next
               bounceDescription: 'Hiệu ứng nảy',
             },
           },
+
+          // View Collection Page
+          'viewCollection.loading': 'Đang tải...',
+          'viewCollection.error': 'Lỗi',
+          'viewCollection.oopsError': 'Oops! Có lỗi xảy ra',
+          'viewCollection.collectionNotFound': 'Không tìm thấy collection',
+          'viewCollection.goBack': 'Quay lại',
+          'viewCollection.startLearning': 'Bắt đầu học',
+          'viewCollection.share': 'Chia sẻ',
+          'viewCollection.save': 'Lưu',
+          'viewCollection.saved': 'Đã lưu',
+          'viewCollection.like': 'Thích',
+          'viewCollection.copy': 'Sao chép',
+          'viewCollection.copying': 'Đang sao chép...',
+          'viewCollection.activities': 'Hoạt động',
+          'viewCollection.questions': 'Câu hỏi',
+          'viewCollection.time': 'Thời gian',
+          'viewCollection.difficulty': 'Độ khó',
+          'viewCollection.information': 'Thông tin',
+          'viewCollection.createdAt': 'Tạo lúc:',
+          'viewCollection.author': 'Tác giả:',
+          'viewCollection.students': 'Học viên: {count} người đang học',
+          'viewCollection.contentTypes': 'Loại nội dung',
+          'viewCollection.progress': 'Tiến độ',
+          'viewCollection.completed': 'Hoàn thành',
+          'viewCollection.preview': 'Preview',
+          'viewCollection.list': 'Danh sách',
+          'viewCollection.grid': 'Lưới',
+          'viewCollection.searchActivities': 'Tìm kiếm hoạt động...',
+          'viewCollection.all': 'Tất cả',
+          'viewCollection.noContent': 'Chưa có nội dung',
+          'viewCollection.noContentDescription':
+            'Collection này chưa có hoạt động nào. Hãy quay lại sau khi có thêm nội dung.',
+          'viewCollection.activity': 'Hoạt động {number}',
+          'viewCollection.copySuccess': 'Sao chép thành công!',
+          'viewCollection.copySuccessDescription':
+            'Collection "{title}" đã được sao chép.',
+          'viewCollection.copyError': 'Lỗi sao chép',
+          'viewCollection.copyErrorDescription':
+            'Không thể sao chép collection. Vui lòng thử lại.',
+          'viewCollection.shareSuccess': 'Đã sao chép',
+          'viewCollection.shareSuccessDescription':
+            'Link đã được sao chép vào clipboard',
+          'viewCollection.bookmarkAdded': 'Đã đánh dấu',
+          'viewCollection.bookmarkAddedDescription':
+            'Đã thêm vào danh sách yêu thích',
+          'viewCollection.bookmarkRemoved': 'Đã bỏ đánh dấu',
+          'viewCollection.bookmarkRemovedDescription':
+            'Đã xóa khỏi danh sách yêu thích',
+          'viewCollection.liked': 'Đã thích',
+          'viewCollection.likedDescription': 'Đã thích collection',
+          'viewCollection.unliked': 'Đã bỏ thích',
+          'viewCollection.unlikedDescription': 'Đã bỏ thích collection',
+
+          // Question Viewer
+          'questionViewer.noActivities': 'Không có hoạt động nào',
+          'questionViewer.noActivitiesDescription':
+            'Collection này chưa có hoạt động nào được thêm vào.',
+          'questionViewer.showList': 'Hiện danh sách',
+          'questionViewer.hideList': 'Ẩn danh sách',
+          'questionViewer.showAnswers': 'Hiện đáp án',
+          'questionViewer.sound': 'Âm thanh',
+          'questionViewer.viewMode': 'Chế độ xem',
+          'questionViewer.mobile': 'Mobile',
+          'questionViewer.tablet': 'Tablet',
+          'questionViewer.desktop': 'Desktop',
+          'questionViewer.fullscreen': 'Toàn màn hình',
+          'questionViewer.fullscreenShortcut': '(F)',
+          'questionViewer.activities': 'hoạt động',
+          'questionViewer.currentlyViewing': 'Đang xem',
+          'questionViewer.questionList': 'Danh sách câu hỏi',
+          'questionViewer.mapLoadingError':
+            'Không thể tải bản đồ. Vui lòng kiểm tra kết nối internet.',
+          'questionViewer.mapInitError': 'Lỗi khởi tạo bản đồ',
+          'questionViewer.loadingMap': 'Đang tải bản đồ...',
+          'questionViewer.legend': 'Chú thích:',
+          'questionViewer.exactLocation': 'Vị trí chính xác',
+          'questionViewer.acceptableArea': 'Vùng chấp nhận (bán kính)',
+          'questionViewer.pointsToFind': '{count} điểm cần tìm',
+          'questionViewer.correctLocation': 'Location',
+          'questionViewer.latitude': 'Latitude:',
+          'questionViewer.longitude': 'Longitude:',
+          'questionViewer.radius': 'Radius:',
+          'questionViewer.point': 'Điểm {number}',
+          'questionViewer.noMatchingPairsData':
+            'Không có dữ liệu matching pairs',
+          'questionViewer.typeAnswerHere': 'Nhập câu trả lời tại đây...',
+          'questionViewer.correctAnswer': 'Đáp án đúng:',
+          'questionViewer.notSpecified': 'Không được chỉ định',
+          'questionViewer.readOnlyPreview':
+            'Đây là bản xem trước chỉ đọc của câu hỏi nhập văn bản',
+          'questionViewer.reorderSteps':
+            'Thứ tự các bước - Bật chế độ chỉnh sửa để sắp xếp lại',
+          'questionViewer.dragHint': 'Drag handle để di chuyển',
+          'questionViewer.step': 'Bước',
+          'questionViewer.infoSlide': 'Info Slide',
+          'questionViewer.slide': 'Slide',
+          'questionViewer.activity': 'Hoạt động {number}',
+
+          // Common
+          'common.unknownDate': 'Ngày không xác định',
+          'common.invalidDate': 'Ngày không hợp lệ',
         },
       },
     },
@@ -2607,12 +2837,29 @@ export const LanguageProvider = ({ children }: LanguageProviderProps) => {
       value={{
         language,
         setLanguage,
-        t: (key: string, options?: { [key: string]: string }) =>
-          isClient
-            ? t(key, options)
-            : key.startsWith('features')
-              ? 'Features'
-              : t(key, options),
+        t: (key: string, options?: { [key: string]: string }) => {
+          if (!isClient) {
+            // Server-side fallback
+            return key.startsWith('features') ? 'Features' : key;
+          }
+
+          // Client-side with proper interpolation
+          const translation = t(key, options);
+
+          // If translation contains placeholders and we have options, manually replace them
+          if (options && translation.includes('{')) {
+            let result = translation;
+            Object.entries(options).forEach(([placeholder, value]) => {
+              result = result.replace(
+                new RegExp(`{${placeholder}}`, 'g'),
+                value
+              );
+            });
+            return result;
+          }
+
+          return translation;
+        },
       }}
     >
       {children}
