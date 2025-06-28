@@ -355,7 +355,8 @@ export function useOptionOperations(
    */
   const handleReorderOptions = async (
     sourceIndex: number,
-    destinationIndex: number
+    destinationIndex: number,
+    onDone?: () => void
   ) => {
     if (!activity || activity.activity_type_id !== 'QUIZ_REORDER') return;
 
@@ -403,8 +404,12 @@ export function useOptionOperations(
         newOrder: reorderedOptions.map((opt) => opt.option_text),
         response: response?.data,
       });
+      if (onDone) onDone();
     } catch (error) {
-      console.error('🔄 REORDER: Error updating reorder steps:', error);
+
+      console.error("🔄 REORDER: Error updating reorder steps:", error);
+      if (onDone) onDone();
+
     }
   };
 

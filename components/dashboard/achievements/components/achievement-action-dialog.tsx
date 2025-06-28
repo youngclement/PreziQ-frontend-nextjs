@@ -77,18 +77,21 @@ function IconUrlFormField({
       name="iconUrl"
       render={({ field }) => (
         <FormItem>
-          <FormLabel>{t('iconUpload.title')}</FormLabel>
+          <FormLabel className="text-slate-700 dark:text-slate-300">
+            {t('iconUpload.title')}
+          </FormLabel>
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-            <Avatar className="h-20 w-20 rounded-md border-2 border-slate-200">
+            <Avatar className="h-20 w-20 rounded-md border-2 border-slate-200 dark:border-slate-700">
               <AvatarImage
                 src={
                   previewUrl ||
                   '/placeholder.svg?height=80&width=80' ||
+                  '/placeholder.svg' ||
                   '/placeholder.svg'
                 }
                 alt={t('iconUpload.preview')}
               />
-              <AvatarFallback className="rounded-md bg-primary/10">
+              <AvatarFallback className="rounded-md bg-primary/10 dark:bg-primary/20">
                 <Award className="h-10 w-10 text-primary" />
               </AvatarFallback>
             </Avatar>
@@ -97,7 +100,7 @@ function IconUrlFormField({
                 <Input
                   placeholder={t('iconUpload.urlPlaceholder')}
                   {...field}
-                  className="bg-slate-50"
+                  className="bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400"
                   onChange={(e) => {
                     field.onChange(e);
                     if (e.target.value) {
@@ -112,14 +115,14 @@ function IconUrlFormField({
               <div className="flex flex-col gap-2">
                 <label
                   htmlFor="icon-upload"
-                  className={`flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300 transition-all cursor-pointer w-full ${
+                  className={`flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded border border-slate-300 dark:border-slate-600 transition-all cursor-pointer w-full ${
                     isUploadingIcon ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
                   {isUploadingIcon ? (
                     <>
                       <svg
-                        className="animate-spin h-4 w-4 text-slate-700"
+                        className="animate-spin h-4 w-4 text-slate-700 dark:text-slate-300"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
                         viewBox="0 0 24 24"
@@ -157,14 +160,14 @@ function IconUrlFormField({
                 />
 
                 {localFile && (
-                  <div className="text-xs text-slate-500 flex items-center">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center">
                     <Award className="h-3 w-3 mr-1" />
                     {localFile.name} ({(localFile.size / 1024).toFixed(1)}
                     {t('iconUpload.fileSize')})
                   </div>
                 )}
 
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {t('iconUpload.formatInfo')}
                 </p>
               </div>
@@ -412,22 +415,22 @@ export function AchievementActionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[600px] p-0 gap-0 overflow-hidden border-slate-200 shadow-lg">
+      <DialogContent className="max-w-[600px] p-0 gap-0 overflow-hidden border-slate-200 dark:border-slate-700 shadow-lg bg-white dark:bg-zinc-900">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
           className="w-full"
         >
-          <DialogHeader className="p-6 pb-2 border-b bg-slate-50">
-            <DialogTitle className="text-xl">
+          <DialogHeader className="p-6 pb-2 border-b bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-slate-700">
+            <DialogTitle className="text-xl text-slate-900 dark:text-slate-100">
               {isEdit ? t('achievementEditTitle') : t('achievementAddTitle')}
             </DialogTitle>
-            <DialogDescription className="text-slate-500">
+            <DialogDescription className="text-slate-500 dark:text-slate-400">
               {isEdit ? t('achievementEditDesc') : t('achievementAddDesc')}
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="h-[65vh] px-6 py-4">
+          <ScrollArea className="h-[65vh] px-6 py-4 bg-white dark:bg-zinc-900">
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
@@ -437,9 +440,9 @@ export function AchievementActionDialog({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.1 }}
-                  className="bg-white p-5 rounded-md border border-slate-200 shadow-sm"
+                  className="bg-white dark:bg-zinc-800 p-5 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm"
                 >
-                  <h3 className="text-md font-medium text-slate-900 mb-4">
+                  <h3 className="text-md font-medium text-slate-900 dark:text-slate-100 mb-4">
                     {t('achievementBasicInfo')}
                   </h3>
                   <div className="grid grid-cols-1 gap-4">
@@ -448,12 +451,14 @@ export function AchievementActionDialog({
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('achievementName')}</FormLabel>
+                          <FormLabel className="text-slate-700 dark:text-slate-300">
+                            {t('achievementName')}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               placeholder={t('achievementNamePlaceholder')}
                               {...field}
-                              className="bg-slate-50"
+                              className="bg-slate-50 dark:bg-zinc-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400"
                             />
                           </FormControl>
                           <FormMessage />
@@ -465,14 +470,16 @@ export function AchievementActionDialog({
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('achievementDescription')}</FormLabel>
+                          <FormLabel className="text-slate-700 dark:text-slate-300">
+                            {t('achievementDescription')}
+                          </FormLabel>
                           <FormControl>
                             <Textarea
                               placeholder={t(
                                 'achievementDescriptionPlaceholder'
                               )}
                               {...field}
-                              className="bg-slate-50 min-h-[100px]"
+                              className="bg-slate-50 dark:bg-zinc-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 min-h-[100px]"
                             />
                           </FormControl>
                           <FormMessage />
@@ -484,7 +491,7 @@ export function AchievementActionDialog({
                       name="requiredPoints"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>
+                          <FormLabel className="text-slate-700 dark:text-slate-300">
                             {t('achievementRequiredPoints')}
                           </FormLabel>
                           <FormControl>
@@ -494,7 +501,7 @@ export function AchievementActionDialog({
                                 'achievementRequiredPointsPlaceholder'
                               )}
                               {...field}
-                              className="bg-slate-50"
+                              className="bg-slate-50 dark:bg-zinc-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400"
                             />
                           </FormControl>
                           <FormMessage />
@@ -508,9 +515,9 @@ export function AchievementActionDialog({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.2 }}
-                  className="bg-white p-5 rounded-md border border-slate-200 shadow-sm"
+                  className="bg-white dark:bg-zinc-800 p-5 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm"
                 >
-                  <h3 className="text-md font-medium text-slate-900 mb-4">
+                  <h3 className="text-md font-medium text-slate-900 dark:text-slate-100 mb-4">
                     {t('achievementIcon')}
                   </h3>
                   <IconUrlFormField
@@ -527,11 +534,11 @@ export function AchievementActionDialog({
               </form>
             </Form>
           </ScrollArea>
-          <DialogFooter className="p-6 border-t flex gap-2">
+          <DialogFooter className="p-6 border-t border-slate-200 dark:border-slate-700 flex gap-2 bg-white dark:bg-zinc-900">
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="transition-all duration-200 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900"
+              className="transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100 bg-white dark:bg-zinc-800 text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-600"
             >
               {t('achievementCancel')}
             </Button>

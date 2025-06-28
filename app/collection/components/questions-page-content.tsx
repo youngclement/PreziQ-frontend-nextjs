@@ -276,7 +276,11 @@ export default function QuestionsPageContent() {
     questionIndex: number,
     isTyping: boolean = false
   ) => {
-    if (activity && activity.activity_type_id === 'INFO_SLIDE') {
+    if (
+      activity &&
+      activity.activity_type_id === 'INFO_SLIDE' ||
+      activity?.activity_type_id === 'SLIDE'
+    ) {
       return;
     }
     // Update question text in local state

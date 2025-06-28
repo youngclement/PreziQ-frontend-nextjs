@@ -23,6 +23,24 @@ body {
   overflow-x: hidden;
   width: 100%;
   position: relative;
+  cursor: url("/images/acasi-cursor-default.svg") 2 2, default;
+}
+
+a,
+button,
+[role="button"] {
+  cursor: url("/images/acasi-cursor-pointer.svg") 2 2, pointer;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  cursor: url("/images/acasi-cursor-text.svg") 2 2, text;
+}
+
+body.waiting,
+.waiting {
+  cursor: url("/images/acasi-cursor-wait.svg") 2 2, wait !important;
 }
 @layer base {
   :root {
@@ -113,7 +131,7 @@ body {
     --game-color-5: 30 100% 65%; /* Orange */
   }
   .font-cursive {
-    font-family: 'Dancing Script', 'Brush Script MT', cursive, serif;
+    font-family: "Dancing Script", "Brush Script MT", cursive, serif;
     font-weight: 700;
   }
 }

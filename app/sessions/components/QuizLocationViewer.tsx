@@ -79,6 +79,7 @@ interface QuizActivityProps {
   onAnswerSubmit?: (locationData: LocationData) => void;
   sessionWebSocket?: SessionWebSocket;
   isParticipating?: boolean;
+  isFullscreenMode?: boolean;
 }
 
 export default function QuizLocationViewer({
@@ -88,6 +89,7 @@ export default function QuizLocationViewer({
   onAnswerSubmit,
   sessionWebSocket,
   isParticipating = true,
+  isFullscreenMode = false,
 }: QuizActivityProps) {
   // State cho nhiều vị trí user chọn (thay đổi từ single location thành array)
   const [userSelectedLocations, setUserSelectedLocations] = useState<
@@ -368,9 +370,22 @@ export default function QuizLocationViewer({
       // Tự động submit câu trả lời nếu đã chọn nhưng chưa gửi
       if (userSelectedLocations.length && !isSubmitted && !isSubmitting) {
         console.log(
-          '[QuizLocationViewer] Tự động gửi đáp án khi hết thời gian'
+          '[QuizLocationViewer] Tự động gửi đáp án khi hết thời gian',
+          {
+            userSelectedLocations,
+            isSubmitted,
+            isSubmitting,
+            locationsCount: userSelectedLocations.length,
+          }
         );
         handleSubmit();
+      } else {
+        console.log('[QuizLocationViewer] Không tự động submit vì:', {
+          hasLocations: userSelectedLocations.length > 0,
+          isSubmitted,
+          isSubmitting,
+          timeLeft,
+        });
       }
 
       return;
@@ -470,45 +485,26 @@ export default function QuizLocationViewer({
     (isCorrect: boolean, distance: number, userLocation?: LocationData) => {
       if (isSubmitted || isQuizEnded) return;
 
-      // Lưu vị trí user chọn với validation
+      // Lưu vị trí user chọn với logic thay thế
       if (userLocation) {
         // Use functional update to get the latest state
         setUserSelectedLocations((prevLocations) => {
-          // Kiểm tra xem vị trí có trùng lặp không
-          const isDuplicate = prevLocations.some(
-            (existing) =>
-              Math.abs(existing.lat - userLocation.lat) < 0.001 &&
-              Math.abs(existing.lng - userLocation.lng) < 0.001
-          );
+          const maxAllowed = correctAnswers.length || 1;
 
-          if (isDuplicate) {
-            // Set error outside the functional update
-            setTimeout(
-              () =>
-                setError('Vị trí này đã được chọn. Vui lòng chọn vị trí khác.'),
-              0
+          // Nếu đã đạt giới hạn tối đa, xóa location đầu tiên
+          let newLocations = [...prevLocations];
+          if (newLocations.length >= maxAllowed) {
+            newLocations.shift(); // Xóa phần tử đầu tiên
+            console.log(
+              `[QuizLocation] Đã đạt giới hạn tối đa ${maxAllowed}, xóa location đầu tiên`
             );
-            return prevLocations; // Return unchanged
           }
 
-          // Kiểm tra số lượng tối đa
-          if (prevLocations.length >= correctAnswers.length) {
-            setTimeout(
-              () =>
-                setError(
-                  `Chỉ được chọn tối đa ${correctAnswers.length} vị trí.`
-                ),
-              0
-            );
-            return prevLocations; // Return unchanged
-          }
+          // Thêm vị trí mới vào cuối danh sách
+          newLocations.push(userLocation);
 
-          // Thêm vị trí mới vào danh sách
-          const newLocations = [...prevLocations, userLocation];
-
-          // Log after confirming we're going to add
           console.log(
-            `[QuizLocation] Đã thêm vị trí ${newLocations.length}/${correctAnswers.length}:`,
+            `[QuizLocation] Đã thêm vị trí ${newLocations.length}/${maxAllowed}:`,
             userLocation
           );
 
@@ -544,10 +540,12 @@ export default function QuizLocationViewer({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Helper function để tính số lượng đáp án đúng
+  // Helper function để tính số lượng vùng đáp án được cover (sửa lại logic)
   const getCorrectAnswersCount = useCallback(() => {
-    return userSelectedLocations.filter((userLocation) =>
-      correctAnswers.some((correctAnswer) => {
+    // Thay đổi logic: Đếm số vùng correct answer được cover bởi ít nhất 1 user location
+    // thay vì đếm số user location nằm trong correct answer
+    return correctAnswers.filter((correctAnswer) =>
+      userSelectedLocations.some((userLocation) => {
         const distance = getDistanceFromLatLonInKm(
           userLocation.lat,
           userLocation.lng,
@@ -565,14 +563,14 @@ export default function QuizLocationViewer({
     const correctMatches = getCorrectAnswersCount();
     const totalCorrectAnswers = correctAnswers.length;
 
-    // Tính điểm: (số đáp án đúng / tổng số đáp án) * 100
+    // Tính điểm: (số vùng được cover / tổng số vùng) * 100
     const score = Math.round((correctMatches / totalCorrectAnswers) * 100);
 
-    console.log('[QuizLocation] Tính điểm multiple selection:', {
+    console.log('[QuizLocation] Tính điểm theo vùng được cover:', {
       userLocations: userSelectedLocations,
       correctAnswers,
-      correctMatches,
-      totalCorrectAnswers,
+      correctRegionsCovered: correctMatches,
+      totalRegions: totalCorrectAnswers,
       score,
     });
 
@@ -605,10 +603,16 @@ export default function QuizLocationViewer({
 
   return (
     <div
-      className='min-h-full bg-transparent'
+      className={`min-h-full bg-transparent ${
+        isFullscreenMode ? 'h-full flex flex-col' : ''
+      }`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <Card className='bg-black bg-opacity-30 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
+      <Card
+        className={`bg-black bg-opacity-30 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden ${
+          isFullscreenMode ? 'flex-1 flex flex-col h-full' : ''
+        }`}
+      >
         {/* Header với thời gian và tiến trình */}
         <motion.div
           className='rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
@@ -616,7 +620,7 @@ export default function QuizLocationViewer({
             backgroundImage: activity.backgroundImage
               ? `url(${activity.backgroundImage})`
               : undefined,
-            backgroundColor: activity.backgroundColor || '#0e2838',
+            backgroundColor: activity.backgroundColor || '#AFB2AF',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -702,11 +706,11 @@ export default function QuizLocationViewer({
               <h2 className='text-base md:text-xl lg:text-2xl font-bold text-center text-white drop-shadow-lg'>
                 {activity.quiz.questionText}
               </h2>
-              {activity.description && (
+              {/* {activity.description && (
                 <p className='mt-2 text-xs md:text-sm text-white/80 text-center'>
                   {activity.description}
                 </p>
-              )}
+              )} */}
             </motion.div>
           </div>
         </motion.div>
@@ -746,7 +750,11 @@ export default function QuizLocationViewer({
         </div>
 
         {/* Map */}
-        <div className='p-3 sm:p-6 bg-black bg-opacity-20'>
+        <div
+          className={`${
+            isFullscreenMode ? 'flex-1 flex flex-col p-2 sm:p-4' : 'p-3 sm:p-6'
+          } bg-black bg-opacity-20`}
+        >
           <AnimatePresence>
             {error && (
               <motion.div
@@ -766,7 +774,9 @@ export default function QuizLocationViewer({
           {/* Selected Locations Display */}
           {userSelectedLocations.length > 0 && (
             <motion.div
-              className='mt-4 p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30'
+              className={`${
+                isFullscreenMode ? 'mb-2' : 'mt-4'
+              } p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -820,11 +830,30 @@ export default function QuizLocationViewer({
 
           {/* Map */}
           <motion.div
-            className='rounded-xl overflow-hidden shadow-xl border border-white/10'
+            className={`rounded-xl overflow-hidden shadow-xl border border-white/10 ${
+              isFullscreenMode ? 'flex-1 min-h-0' : ''
+            }`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
+            {(() => {
+              // Debug log trước khi render LocationQuestionPlayer
+              console.log(
+                '[QuizLocationViewer] Render LocationQuestionPlayer với props:',
+                {
+                  showCorrectLocation: isQuizEnded || activity.hostShowAnswer,
+                  disabled: isSubmitted || isQuizEnded,
+                  userSelectedLocations,
+                  userSelectedLocationsCount: userSelectedLocations.length,
+                  isQuizEnded,
+                  isSubmitted,
+                  hostShowAnswer: activity.hostShowAnswer,
+                  correctAnswers,
+                }
+              );
+              return null;
+            })()}
             <LocationQuestionPlayer
               questionText={activity.quiz.questionText}
               locationData={locationData}
@@ -833,6 +862,7 @@ export default function QuizLocationViewer({
               disabled={isSubmitted || isQuizEnded}
               userSelectedLocations={userSelectedLocations}
               correctAnswers={correctAnswers}
+              isFullscreenMode={isFullscreenMode}
             />
           </motion.div>
 
@@ -842,13 +872,17 @@ export default function QuizLocationViewer({
             isParticipating &&
             userSelectedLocations.length > 0 && (
               <motion.div
-                className='mt-6 w-full'
+                className={`${isFullscreenMode ? 'mt-2' : 'mt-6'} w-full`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
               >
                 <Button
-                  className='w-full px-8 py-6 text-lg font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                  className={`w-full ${
+                    isFullscreenMode
+                      ? 'px-6 py-4 text-base'
+                      : 'px-8 py-6 text-lg'
+                  } font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2`}
                   disabled={isSubmitting || timeLeft <= 0}
                   onClick={handleSubmit}
                 >
@@ -879,7 +913,9 @@ export default function QuizLocationViewer({
           {/* Thông báo đã gửi câu trả lời khi submit nhưng chưa kết thúc quiz */}
           {isSubmitted && !showResults && !isQuizEnded && (
             <motion.div
-              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30 text-white/90'
+              className={`${
+                isFullscreenMode ? 'mt-2' : 'mt-6'
+              } p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30 text-white/90`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -895,32 +931,15 @@ export default function QuizLocationViewer({
             </motion.div>
           )}
 
-          {/* Show Time Expired Message when quiz has ended but not submitted
-          {isQuizEnded && !isSubmitted && (
-            <motion.div
-              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className='flex items-center gap-2 mb-2 text-amber-400'>
-                <Clock className='h-5 w-5' />
-                <span className='font-semibold'>Hết thời gian!</span>
-              </div>
-              <p className='text-white/70'>
-                Thời gian trả lời đã hết hoặc tất cả người tham gia đã trả lời.
-                Bạn không thể nộp câu trả lời nữa.
-              </p>
-            </motion.div>
-          )} */}
-
           {/* Results */}
           <AnimatePresence>
             {(isSubmitted && isQuizEnded) ||
             activity.hostShowAnswer ||
             isQuizEnded ? (
               <motion.div
-                className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
+                className={`${
+                  isFullscreenMode ? 'mt-2 mb-2' : 'mt-6'
+                } p-4 rounded-xl bg-[#0e2838]/50 border border-white/10`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
@@ -974,7 +993,7 @@ export default function QuizLocationViewer({
                               <p className='text-2xl font-bold text-[#aef359]'>
                                 {getCorrectAnswersCount()}
                               </p>
-                              <p className='text-xs text-white/60'>Đúng</p>
+                              <p className='text-xs text-white/60'>Vùng đúng</p>
                             </div>
                             <div>
                               <p className='text-2xl font-bold text-white/90'>
@@ -986,7 +1005,7 @@ export default function QuizLocationViewer({
                               <p className='text-2xl font-bold text-white/90'>
                                 {correctAnswers.length}
                               </p>
-                              <p className='text-xs text-white/60'>Tổng số</p>
+                              <p className='text-xs text-white/60'>Tổng vùng</p>
                             </div>
                           </div>
                         </div>
@@ -994,16 +1013,16 @@ export default function QuizLocationViewer({
                         <div>
                           <p className='text-white/70 mb-2'>
                             {calculateScore() === 0
-                              ? 'Chưa có vị trí nào đúng.'
+                              ? 'Chưa có vùng nào đúng.'
                               : calculateScore() < 50
                               ? `Bạn đã đúng ${getCorrectAnswersCount()}/${
                                   correctAnswers.length
-                                } vị trí. Cần cải thiện thêm!`
+                                } vùng. Cần cải thiện thêm!`
                               : calculateScore() < 100
                               ? `Khá tốt! Bạn đã đúng ${getCorrectAnswersCount()}/${
                                   correctAnswers.length
-                                } vị trí.`
-                              : `Xuất sắc! Bạn đã đúng tất cả ${correctAnswers.length} vị trí!`}
+                                } vùng.`
+                              : `Xuất sắc! Bạn đã đúng tất cả ${correctAnswers.length} vùng!`}
                           </p>
                           <div className='flex items-center justify-between'>
                             <p className='font-medium text-white/90'>

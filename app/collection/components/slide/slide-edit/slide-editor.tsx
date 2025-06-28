@@ -1152,7 +1152,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         rotation: img.angle || 0,
         layerOrder: canvas.getObjects().indexOf(img),
         slideElementType: 'IMAGE',
-        displayOrder: maxDisplayOrder + 1,
+        displayOrder: 0, //maxDisplayOrder + 1
         sourceUrl: url,
       };
       slidesApi
@@ -1160,7 +1160,7 @@ const FabricEditor: React.FC<FabricEditorProps> = ({
         .then((res) => {
           img.set('slideElementId', res.data.data.slideElementId);
           img.set('isNew', false);
-          img.set('displayOrder', maxDisplayOrder + 1);
+          img.set('displayOrder', 0); //maxDisplayOrder + 1
 
           // Tạo object element mới để gửi lên parent
           const newElement: SlideElementPayload = {

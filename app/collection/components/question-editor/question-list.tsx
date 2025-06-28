@@ -50,7 +50,7 @@ import axios from 'axios';
 import { activitiesApi } from '@/api-client/activities-api';
 import { ActivityType } from '@/api-client/activities-api';
 import { LoadingIndicator } from '@/components/common/loading-indicator';
-
+import { useLanguage } from '@/contexts/language-context';
 // Interface for props
 interface QuestionListProps {
   questions: QuizQuestion[];
@@ -219,6 +219,7 @@ export function QuestionList({
   const addButtonRef = useRef<HTMLDivElement>(null);
   const [renderKey, setRenderKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const { t } = useLanguage();
 
   // Scroll to the end of the activities list when a new activity is added
   React.useEffect(() => {
@@ -754,7 +755,7 @@ export function QuestionList({
         )}
       >
         <div className="w-5"></div> {/* Placeholder to maintain layout */}
-        <h3 className="text-xs font-medium text-gray-500">Module Collection</h3>
+        <h3 className="text-xs font-medium text-gray-500">{t('activity.moduleCollection')}</h3>
         <Button
           size="sm"
           variant="ghost"
@@ -852,7 +853,7 @@ export function QuestionList({
                         <>
                           <Plus className="h-5 w-5 text-primary" />
                           <p className="text-xs font-medium text-primary">
-                            Add Activity
+                           {t('activity.addActivity')}
                           </p>
                         </>
                       )}
