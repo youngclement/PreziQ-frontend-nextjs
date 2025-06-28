@@ -238,10 +238,30 @@ export function MatchingPairPreview({
     async (type: 'left' | 'right', itemId: string) => {
       if (previewMode || !editMode) return;
 
-      if (selectedLeft && selectedRight) {
-        // Kiểm tra nếu đã có connection giữa hai item này
-        const leftItemId = type === 'left' ? itemId : selectedLeft;
-        const rightItemId = type === 'right' ? itemId : selectedRight;
+      // Nếu đã chọn item cùng loại, thay thế selection
+      if (type === 'left' && selectedLeft) {
+        setSelectedLeft(itemId);
+        return;
+      }
+      if (type === 'right' && selectedRight) {
+        setSelectedRight(itemId);
+        return;
+      }
+
+      // Nếu chưa có item nào được chọn, chọn item này
+      if (!selectedLeft && !selectedRight) {
+        if (type === 'left') setSelectedLeft(itemId);
+        else setSelectedRight(itemId);
+        return;
+      }
+
+      // Nếu đã có một item được chọn và click item khác loại
+      if (
+        (selectedLeft && type === 'right') ||
+        (selectedRight && type === 'left')
+      ) {
+        const leftItemId = type === 'left' ? itemId : selectedLeft!;
+        const rightItemId = type === 'right' ? itemId : selectedRight!;
 
         const existingConnection = connections.find(
           (c) =>
@@ -308,12 +328,10 @@ export function MatchingPairPreview({
             console.error('Failed to create connection:', error);
           }
         }
+
+        // Reset selection sau khi tạo/xóa connection
         setSelectedLeft(null);
         setSelectedRight(null);
-      } else {
-        // No item selected - select this one
-        if (type === 'left') setSelectedLeft(itemId);
-        else setSelectedRight(itemId);
       }
     },
     [
@@ -342,17 +360,26 @@ export function MatchingPairPreview({
       const leftRect = leftElement.getBoundingClientRect();
       const rightRect = rightElement.getBoundingClientRect();
 
+      // Tính toán điểm bắt đầu và kết thúc từ 1/2 chiều cao của mỗi item
       const startX = leftRect.right - svgRect.left;
-      const startY = leftRect.top + leftRect.height / 2 - svgRect.top;
       const endX = rightRect.left - svgRect.left;
+
+      // Sử dụng 1/2 chiều cao của từng item làm điểm tham chiếu
+      const startY = leftRect.top + leftRect.height / 2 - svgRect.top;
       const endY = rightRect.top + rightRect.height / 2 - svgRect.top;
 
-      // Calculate control points for smooth curve
-      const controlY = startY + (endY - startY) / 2;
-      const controlX1 = startX + (endX - startX) * 0.25;
-      const controlX2 = startX + (endX - startX) * 0.75;
+      // Tính toán khoảng cách giữa hai cột để điều chỉnh độ cong
+      const distance = endX - startX;
+      const curveOffset = Math.min(distance * 0.3, 100); // Giới hạn độ cong tối đa
 
-      return `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
+      // Tính toán control points cho đường cong mượt mà
+      const controlX1 = startX + curveOffset;
+      const controlX2 = endX - curveOffset;
+      const controlY1 = startY;
+      const controlY2 = endY;
+
+      // Tạo đường cong Bezier với 4 control points để tạo đường cong mượt mà hơn
+      return `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
     },
     []
   );
