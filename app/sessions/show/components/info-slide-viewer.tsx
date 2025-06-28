@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as fabric from 'fabric';
@@ -51,14 +52,12 @@ interface SlideShowProps {
   activity: Activity;
   width?: number;
   height?: number;
-  isFullscreenMode?: boolean;
 }
 
 const InfoSlideViewer: React.FC<SlideShowProps> = ({
   activity,
   width = 900,
   height = 510,
-  isFullscreenMode = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -75,32 +74,7 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
 
   // Tính toán kích thước canvas responsive
   const getCanvasDimensions = () => {
-    if (isFullscreenMode) {
-      // Trong chế độ fullscreen, sử dụng tối đa không gian có thể
-      const windowWidth = window.innerWidth;
-      const windowHeight = window.innerHeight;
-
-      // Tính toán kích thước dựa trên tỷ lệ khung hình gốc
-      const aspectRatio = width / height;
-
-      // Sử dụng 90% không gian màn hình để có padding
-      const maxWidth = windowWidth * 0.9;
-      const maxHeight = windowHeight * 0.8; // Để lại không gian cho UI controls
-
-      let canvasWidth, canvasHeight;
-
-      if (maxWidth / aspectRatio <= maxHeight) {
-        // Giới hạn bởi chiều rộng
-        canvasWidth = maxWidth;
-        canvasHeight = maxWidth / aspectRatio;
-      } else {
-        // Giới hạn bởi chiều cao
-        canvasHeight = maxHeight;
-        canvasWidth = maxHeight * aspectRatio;
-      }
-
-      return { canvasWidth, canvasHeight };
-    } else if (isMobile) {
+    if (isMobile) {
       const windowWidth = window.innerWidth;
       const canvasWidth = Math.min(windowWidth * 0.95, 360);
       const canvasHeight = canvasWidth * (height / width);
@@ -504,22 +478,10 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     }
   };
 
-  // Handle mouse click to advance displayOrder
-  const handleCanvasClick = () => {
-    console.log('Canvas clicked, currentDisplayOrder:', currentDisplayOrder);
-    console.log(
-      'Max display order:',
-      getMaxDisplayOrder(activity.slide.slideElements)
-    );
-    const maxDisplayOrder = getMaxDisplayOrder(activity.slide.slideElements);
-    if (currentDisplayOrder < maxDisplayOrder) {
-      console.log('đk ok');
-      setCurrentDisplayOrder((prev) => prev + 1);
-      console.log(currentDisplayOrder);
-    }
-    // Stop at maxDisplayOrder + 1 (no further clicks needed)
-  };
+  /* Removed click-based advance logic; using timed display order updates instead */
+
   // 1) Khi slide thay đổi, reset và init canvas
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (
       !canvasRef.current ||
@@ -536,13 +498,23 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       activity.backgroundColor || '#fff',
       activity.backgroundImage
     );
-    canvas.on('mouse:down', handleCanvasClick);
     // Vẽ các phần tử đầu tiên (displayOrder = 0) khi slide mới
     renderSlide(
       activity.slide.slideElements,
       getMaxDisplayOrder(activity.slide.slideElements),
       0
     );
+
+    // Auto-schedule displayOrder updates based on delay per order
+    const maxOrder = getMaxDisplayOrder(activity.slide.slideElements);
+    const ORDER_DELAY_MS = 700; // delay per displayOrder step
+    const timers: NodeJS.Timeout[] = [];
+    for (let order = 1; order <= maxOrder; order++) {
+      const timer = setTimeout(() => {
+        setCurrentDisplayOrder(order);
+      }, order * ORDER_DELAY_MS);
+      timers.push(timer);
+    }
 
     // Resize handler chỉ thay đổi size
     const handleResize = () => {
@@ -552,12 +524,15 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
+      // clear scheduled timers
+      timers.forEach(clearTimeout);
       canvas.dispose();
     };
   }, [activity.slide.slideId]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // 2) Render slide mỗi khi currentDisplayOrder thay đổi
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (
       !fabricCanvas.current ||
@@ -573,39 +548,9 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
   }, [currentDisplayOrder]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
 
-  // 3) Cập nhật kích thước canvas khi chuyển đổi fullscreen mode
-  useEffect(() => {
-    if (!fabricCanvas.current) return;
-
-    const { canvasWidth, canvasHeight } = getCanvasDimensions();
-    fabricCanvas.current.setDimensions({
-      width: canvasWidth,
-      height: canvasHeight,
-    });
-
-    // Cập nhật background image nếu có
-    if (backgroundImage && fabricCanvas.current.backgroundImage) {
-      const bgImg = fabricCanvas.current.backgroundImage as fabric.Image;
-      bgImg.set({
-        scaleX: canvasWidth / bgImg.width!,
-        scaleY: canvasHeight / bgImg.height!,
-      });
-    }
-
-    // Re-render slide với kích thước mới
-    renderSlide(
-      activity.slide.slideElements,
-      getMaxDisplayOrder(activity.slide.slideElements),
-      currentDisplayOrder
-    );
-  }, [isFullscreenMode]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-
   return (
     <div
-      className={`flex items-center justify-center mx-auto ${
-        isFullscreenMode ? 'h-full' : ''
-      }`}
+      className="flex items-center justify-center mx-auto"
       style={{
         position: 'relative',
         width: `${canvasWidth}px`,
@@ -618,12 +563,8 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       {!activity ||
       activity.activityType !== 'INFO_SLIDE' ||
       !activity.slide ? (
-        <div
-          className={`flex items-center justify-center ${
-            isFullscreenMode ? 'h-full' : 'h-[400px]'
-          } bg-gray-100 rounded-lg`}
-        >
-          <p className='text-gray-500'>Không có slide nào để hiển thị</p>
+        <div className="flex items-center justify-center h-[400px] bg-gray-100 rounded-lg">
+          <p className="text-gray-500">Không có slide nào để hiển thị</p>
         </div>
       ) : (
         <canvas ref={canvasRef} />

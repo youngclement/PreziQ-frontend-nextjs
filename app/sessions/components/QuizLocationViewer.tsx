@@ -540,10 +540,12 @@ export default function QuizLocationViewer({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Helper function để tính số lượng đáp án đúng
+  // Helper function để tính số lượng vùng đáp án được cover (sửa lại logic)
   const getCorrectAnswersCount = useCallback(() => {
-    return userSelectedLocations.filter((userLocation) =>
-      correctAnswers.some((correctAnswer) => {
+    // Thay đổi logic: Đếm số vùng correct answer được cover bởi ít nhất 1 user location
+    // thay vì đếm số user location nằm trong correct answer
+    return correctAnswers.filter((correctAnswer) =>
+      userSelectedLocations.some((userLocation) => {
         const distance = getDistanceFromLatLonInKm(
           userLocation.lat,
           userLocation.lng,
@@ -561,14 +563,14 @@ export default function QuizLocationViewer({
     const correctMatches = getCorrectAnswersCount();
     const totalCorrectAnswers = correctAnswers.length;
 
-    // Tính điểm: (số đáp án đúng / tổng số đáp án) * 100
+    // Tính điểm: (số vùng được cover / tổng số vùng) * 100
     const score = Math.round((correctMatches / totalCorrectAnswers) * 100);
 
-    console.log('[QuizLocation] Tính điểm multiple selection:', {
+    console.log('[QuizLocation] Tính điểm theo vùng được cover:', {
       userLocations: userSelectedLocations,
       correctAnswers,
-      correctMatches,
-      totalCorrectAnswers,
+      correctRegionsCovered: correctMatches,
+      totalRegions: totalCorrectAnswers,
       score,
     });
 
@@ -991,7 +993,7 @@ export default function QuizLocationViewer({
                               <p className='text-2xl font-bold text-[#aef359]'>
                                 {getCorrectAnswersCount()}
                               </p>
-                              <p className='text-xs text-white/60'>Đúng</p>
+                              <p className='text-xs text-white/60'>Vùng đúng</p>
                             </div>
                             <div>
                               <p className='text-2xl font-bold text-white/90'>
@@ -1003,7 +1005,7 @@ export default function QuizLocationViewer({
                               <p className='text-2xl font-bold text-white/90'>
                                 {correctAnswers.length}
                               </p>
-                              <p className='text-xs text-white/60'>Tổng số</p>
+                              <p className='text-xs text-white/60'>Tổng vùng</p>
                             </div>
                           </div>
                         </div>
@@ -1011,16 +1013,16 @@ export default function QuizLocationViewer({
                         <div>
                           <p className='text-white/70 mb-2'>
                             {calculateScore() === 0
-                              ? 'Chưa có vị trí nào đúng.'
+                              ? 'Chưa có vùng nào đúng.'
                               : calculateScore() < 50
                               ? `Bạn đã đúng ${getCorrectAnswersCount()}/${
                                   correctAnswers.length
-                                } vị trí. Cần cải thiện thêm!`
+                                } vùng. Cần cải thiện thêm!`
                               : calculateScore() < 100
                               ? `Khá tốt! Bạn đã đúng ${getCorrectAnswersCount()}/${
                                   correctAnswers.length
-                                } vị trí.`
-                              : `Xuất sắc! Bạn đã đúng tất cả ${correctAnswers.length} vị trí!`}
+                                } vùng.`
+                              : `Xuất sắc! Bạn đã đúng tất cả ${correctAnswers.length} vùng!`}
                           </p>
                           <div className='flex items-center justify-between'>
                             <p className='font-medium text-white/90'>

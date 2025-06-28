@@ -789,7 +789,6 @@ export default function HostActivities({
         return (
           <InfoSlideViewer
             activity={currentActivity}
-            isFullscreenMode={isFullscreenMode}
           />
         );
       case 'QUIZ_BUTTONS':
