@@ -228,7 +228,8 @@ export function LocationQuestionEditor({
             ...loc,
             longitude: 105.804817,
             latitude: 21.028511,
-            radius: loc.radius || 10,
+            // Preserve existing radius, only use 10 if it was never set
+            radius: (typeof loc.radius === 'number' && loc.radius > 0) ? loc.radius : 10,
           };
         }
         return loc;
@@ -574,7 +575,7 @@ export function LocationQuestionEditor({
         const newLocation: LocationAnswer = {
           longitude: event.detail.longitude,
           latitude: event.detail.latitude,
-          radius: event.detail.radius || 10,
+          radius: (typeof event.detail.radius === 'number' && event.detail.radius > 0) ? event.detail.radius : 10,
         };
 
         const updatedData = [...currentLocationAnswersRef.current, newLocation];
@@ -609,11 +610,18 @@ export function LocationQuestionEditor({
           marker.setLngLat([longitude, latitude]);
 
           // Update circle with new radius if provided
+          const existingRadius = currentLocationAnswersRef.current[index]?.radius;
+          const finalRadius = (typeof radius === 'number' && radius > 0)
+            ? radius
+            : (typeof existingRadius === 'number' && existingRadius > 0)
+              ? existingRadius
+              : 10;
+
           updateCircle(
             index,
             latitude,
             longitude,
-            radius || currentLocationAnswersRef.current[index]?.radius || 10
+            finalRadius
           );
 
           // Skip the next refresh cycle to prevent jitter
@@ -641,6 +649,12 @@ export function LocationQuestionEditor({
             radius: radius,
           };
           currentLocationAnswersRef.current = updatedLocations;
+
+          // IMPORTANT: Update the parent component with the new radius
+          setLocationData(updatedLocations);
+
+          // Call the parent's onChange handler to update API
+          onLocationChange(questionIndex, updatedLocations);
         }
 
         // Get the current marker position
@@ -657,7 +671,7 @@ export function LocationQuestionEditor({
           // Set flag to ignore the next render cycle
           ignoreNextUpdateRef.current = true;
 
-          console.log(`Updated radius for location ${index} to ${radius}km`);
+          console.log(`🔧 [LocationEditor] Updated radius for location ${index} to ${radius}km and called parent onChange`);
         }
       }
     };
@@ -854,7 +868,7 @@ export function LocationQuestionEditor({
         /* setMarkers(event.detail.locationAnswers.map((location: any) => ({
           longitude: location.longitude,
           latitude: location.latitude,
-          radius: location.radius || 10,
+          radius: (typeof location.radius === 'number' && location.radius > 0) ? location.radius : 10,
           quizLocationAnswerId: location.quizLocationAnswerId || ""
         }))); */
 
@@ -1232,9 +1246,9 @@ export function LocationQuestionEditor({
         });
 
         // Update the circle in real-time while dragging
-        const currentRadius =
-          currentLocationAnswersRef.current[index]?.radius || 10;
-        updateCircle(index, newLngLat.lat, newLngLat.lng, currentRadius);
+        const currentRadius = currentLocationAnswersRef.current[index]?.radius;
+        const finalRadius = (typeof currentRadius === 'number' && currentRadius > 0) ? currentRadius : 10;
+        updateCircle(index, newLngLat.lat, newLngLat.lng, finalRadius);
 
         // **NEW**: Update drag operation with new position
         if (dragOperationRef.current) {
@@ -1263,12 +1277,17 @@ export function LocationQuestionEditor({
         // Update local state with final position
         const updatedLocations = [...currentLocationAnswersRef.current];
         if (updatedLocations[index]) {
+          // Preserve the existing radius value - only use 10 as fallback if radius was never set
+          const existingRadius = updatedLocations[index].radius;
+          const finalRadius = (typeof existingRadius === 'number' && existingRadius > 0) ? existingRadius : 10;
+
+          console.log(`🔧 [LocationEditor] Drag end - preserving radius ${existingRadius} -> ${finalRadius} for marker ${index + 1}`);
+
           updatedLocations[index] = {
             ...updatedLocations[index],
             longitude: newLngLat.lng,
             latitude: newLngLat.lat,
-            // Preserve the existing radius value
-            radius: updatedLocations[index].radius || 10,
+            radius: finalRadius,
           };
 
           // Update refs immediately before any async operations
@@ -1464,7 +1483,8 @@ export function LocationQuestionEditor({
       }
 
       // Update the circle for this location
-      updateCircle(index, finalLat, finalLng, location.radius || 10);
+      const radius = (typeof location.radius === 'number' && location.radius > 0) ? location.radius : 10;
+      updateCircle(index, finalLat, finalLng, radius);
     });
 
     // If we have at least one location, fit the map to show all markers
@@ -1856,7 +1876,7 @@ export function LocationQuestionEditor({
     const newMarkers = locationData.map((location) => ({
       longitude: location.longitude,
       latitude: location.latitude,
-      radius: location.radius || 10,
+      radius: (typeof location.radius === 'number' && location.radius > 0) ? location.radius : 10,
       quizLocationAnswerId: location.quizLocationAnswerId || '',
     }));
 

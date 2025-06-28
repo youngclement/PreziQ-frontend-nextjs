@@ -204,24 +204,82 @@ export function useQuestionOperations(
           clearTimeout(window.updateQuestionTimer);
         }
         window.updateQuestionTimer = setTimeout(() => {
-          // Use the fresh locationData directly instead of relying on existing question state
+          // Preserve existing radius from the question's current location data during drag and drop
           const locationAnswers = Array.isArray(locationData)
             ? locationData.map((location, index) => {
                 console.log(
                   `🔧 [useQuestionOps] Processing location ${index}:`,
                   location
                 );
+
+                // Debug existing question data
+                const existingLocation =
+                  existingQuestion.location_data?.quizLocationAnswers?.[index];
+                console.log(
+                  `🔧 [useQuestionOps] Existing location ${index}:`,
+                  existingLocation
+                );
+                console.log(
+                  `🔧 [useQuestionOps] All existing locations:`,
+                  existingQuestion.location_data?.quizLocationAnswers
+                );
+
+                // Use the radius from locationData if it exists, otherwise fallback to existing data
+                let finalRadius = 10; // default fallback
+
+                if (
+                  typeof location.radius === "number" &&
+                  location.radius > 0
+                ) {
+                  // Use the radius from the incoming location data
+                  finalRadius = location.radius;
+                  console.log(
+                    `🔧 [useQuestionOps] Using incoming radius: ${finalRadius}`
+                  );
+                } else {
+                  // Try to preserve from existing question state
+                  if (
+                    existingLocation &&
+                    typeof existingLocation.radius === "number" &&
+                    existingLocation.radius > 0
+                  ) {
+                    finalRadius = existingLocation.radius;
+                    console.log(
+                      `🔧 [useQuestionOps] Preserving existing radius: ${finalRadius}`
+                    );
+                  } else {
+                    console.log(
+                      `🔧 [useQuestionOps] No existing radius found, using default: ${finalRadius}`
+                    );
+                  }
+                }
+
+                console.log(
+                  `🔧 [useQuestionOps] Location ${index} radius: ${location.radius} -> ${finalRadius}`
+                );
+
                 return {
                   longitude: location.longitude,
                   latitude: location.latitude,
-                  radius: location.radius || 10, // Use the radius from fresh locationData
+                  radius: finalRadius,
                 };
               })
             : [
                 {
                   longitude: locationData.lng || locationData.longitude || 0,
                   latitude: locationData.lat || locationData.latitude || 0,
-                  radius: locationData.radius || 10,
+                  radius:
+                    locationData.radius !== undefined
+                      ? locationData.radius
+                      : (function () {
+                          const existingRadius =
+                            existingQuestion.location_data
+                              ?.quizLocationAnswers?.[0]?.radius;
+                          return typeof existingRadius === "number" &&
+                            existingRadius > 0
+                            ? existingRadius
+                            : 10;
+                        })(),
                 },
               ];
 

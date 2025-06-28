@@ -753,7 +753,7 @@ export function QuestionSettings({
               const correctLocationAnswers = activeQuestion.location_data.quizLocationAnswers.map((answer: any) => ({
                 longitude: answer.longitude,
                 latitude: answer.latitude,
-                radius: answer.radius || 10,
+                radius: (typeof answer.radius === 'number' && answer.radius > 0) ? answer.radius : 10,
                 quizLocationAnswerId: answer.quizLocationAnswerId,
               }));
 
@@ -903,7 +903,7 @@ export function QuestionSettings({
                     const mappedAnswer = {
                       longitude: answer.longitude,
                       latitude: answer.latitude,
-                      radius: answer.radius || 10,
+                      radius: (typeof answer.radius === 'number' && answer.radius > 0) ? answer.radius : 10,
                       quizLocationAnswerId: answer.quizLocationAnswerId,
                     };
 
@@ -929,7 +929,7 @@ export function QuestionSettings({
                   const answer = {
                     longitude: activeQuestion.location_data.lng,
                     latitude: activeQuestion.location_data.lat,
-                    radius: activeQuestion.location_data.radius || 10,
+                    radius: (typeof activeQuestion.location_data.radius === 'number' && activeQuestion.location_data.radius > 0) ? activeQuestion.location_data.radius : 10,
                     quizLocationAnswerId: 'direct-location-data', // Generate ID since it doesn't exist
                   };
                   console.log("✅ [TimeLimit] Mapped answer from direct location_data:", answer);
@@ -946,7 +946,7 @@ export function QuestionSettings({
                   const answers = activity.quiz.quizLocationAnswers.map((answer: any) => ({
                     longitude: answer.longitude,
                     latitude: answer.latitude,
-                    radius: answer.radius || 10,
+                    radius: (typeof answer.radius === 'number' && answer.radius > 0) ? answer.radius : 10,
                     quizLocationAnswerId: answer.quizLocationAnswerId,
                   }));
                   console.log("✅ [TimeLimit] Mapped answers from activity.quiz:", answers);
@@ -962,7 +962,7 @@ export function QuestionSettings({
                   const answers = activeQuestion.location_data.map((answer: any) => ({
                     longitude: answer.longitude,
                     latitude: answer.latitude,
-                    radius: answer.radius || 10,
+                    radius: (typeof answer.radius === 'number' && answer.radius > 0) ? answer.radius : 10,
                     quizLocationAnswerId: answer.quizLocationAnswerId,
                   }));
                   console.log("✅ [TimeLimit] Mapped answers from direct array:", answers);
@@ -979,7 +979,7 @@ export function QuestionSettings({
                   const answers = locationDataRef.current.map((answer: any) => ({
                     longitude: answer.longitude,
                     latitude: answer.latitude,
-                    radius: answer.radius || 10,
+                    radius: (typeof answer.radius === 'number' && answer.radius > 0) ? answer.radius : 10,
                     quizLocationAnswerId: answer.quizLocationAnswerId,
                   }));
                   console.log("✅ [TimeLimit] Mapped answers from locationDataRef:", answers);
@@ -994,7 +994,7 @@ export function QuestionSettings({
                     const answers = locationData.map((answer: any) => ({
                       longitude: answer.longitude,
                       latitude: answer.latitude,
-                      radius: answer.radius || 10,
+                      radius: (typeof answer.radius === 'number' && answer.radius > 0) ? answer.radius : 10,
                       quizLocationAnswerId: answer.quizLocationAnswerId,
                     }));
                     console.log("✅ [TimeLimit] Mapped answers from locationData:", answers);
@@ -1772,7 +1772,7 @@ export function QuestionSettings({
                   const mappedAnswer = {
                     longitude: answer.longitude,
                     latitude: answer.latitude,
-                    radius: answer.radius || 10,
+                    radius: (typeof answer.radius === 'number' && answer.radius > 0) ? answer.radius : 10,
                     quizLocationAnswerId: answer.quizLocationAnswerId,
                   };
 
@@ -1794,7 +1794,7 @@ export function QuestionSettings({
                 const answers = activity.quiz.quizLocationAnswers.map((answer: any) => ({
                   longitude: answer.longitude,
                   latitude: answer.latitude,
-                  radius: answer.radius || 10,
+                  radius: (typeof answer.radius === 'number' && answer.radius > 0) ? answer.radius : 10,
                   quizLocationAnswerId: answer.quizLocationAnswerId,
                 }));
                 console.log("✅ [PointType] Mapped answers from activity.quiz:", answers);

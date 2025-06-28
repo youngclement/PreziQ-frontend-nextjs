@@ -2781,36 +2781,85 @@ export function QuestionPreview({
 
       if (Array.isArray(locationData)) {
         console.log('🔧 [QuestionPreview] Detected array format for location data');
-        // Use locationData directly instead of preserving old radius values
+        // Get existing location data to preserve radius values during drag and drop
+        const existingLocationAnswers = getLocationAnswers(question, activity);
+
         locationAnswers = locationData.map((loc: LocationAnswer, index: number) => {
           console.log(`🔧 [QuestionPreview] Processing location ${index}:`, loc);
+          // Preserve existing radius if not provided in the update (drag and drop case)
+          const existingRadius = existingLocationAnswers[index]?.radius;
+
+          let finalRadius = 10; // default fallback
+
+          if (typeof loc.radius === 'number' && loc.radius > 0) {
+            // Use the radius from the incoming location data
+            finalRadius = loc.radius;
+          } else if (typeof existingRadius === 'number' && existingRadius > 0) {
+            // Preserve existing radius
+            finalRadius = existingRadius;
+          }
+
+          console.log(`🔧 [QuestionPreview] Location ${index} radius: ${loc.radius} -> ${finalRadius}`);
+
           return {
             longitude: loc.longitude || loc.lng,
             latitude: loc.latitude || loc.lat,
-            radius: loc.radius || 10, // Use the radius from the fresh data
+            radius: finalRadius,
           };
         });
       } else if (locationData && locationData.quizLocationAnswers) {
         console.log('🔧 [QuestionPreview] Detected object with quizLocationAnswers property');
-        // Use locationData directly for consistency
+        // Get existing location data to preserve radius values during drag and drop
+        const existingLocationAnswers = getLocationAnswers(question, activity);
+
         locationAnswers = locationData.quizLocationAnswers.map(
           (loc: LocationAnswer, index: number) => {
             console.log(`🔧 [QuestionPreview] Processing quizLocationAnswer ${index}:`, loc);
+            // Preserve existing radius if not provided in the update (drag and drop case)
+            const existingRadius = existingLocationAnswers[index]?.radius;
+
+            let finalRadius = 10; // default fallback
+
+            if (typeof loc.radius === 'number' && loc.radius > 0) {
+              // Use the radius from the incoming location data
+              finalRadius = loc.radius;
+            } else if (typeof existingRadius === 'number' && existingRadius > 0) {
+              // Preserve existing radius
+              finalRadius = existingRadius;
+            }
+
+            console.log(`🔧 [QuestionPreview] QuizLocationAnswer ${index} radius: ${loc.radius} -> ${finalRadius}`);
+
             return {
               longitude: loc.longitude || loc.lng,
               latitude: loc.latitude || loc.lat,
-              radius: loc.radius || 10, // Use the radius from the fresh data
+              radius: finalRadius,
             };
           }
         );
       } else if (locationData && (locationData.longitude || locationData.lat)) {
         console.log('🔧 [QuestionPreview] Detected legacy format with direct coordinates');
-        // Use locationData directly for consistency
+        // Get existing location data to preserve radius values during drag and drop
+        const existingLocationAnswers = getLocationAnswers(question, activity);
+        const existingRadius = existingLocationAnswers[0]?.radius;
+
+        let finalRadius = 10; // default fallback
+
+        if (typeof locationData.radius === 'number' && locationData.radius > 0) {
+          // Use the radius from the incoming location data
+          finalRadius = locationData.radius;
+        } else if (typeof existingRadius === 'number' && existingRadius > 0) {
+          // Preserve existing radius
+          finalRadius = existingRadius;
+        }
+
+        console.log(`🔧 [QuestionPreview] Legacy format radius: ${locationData.radius} -> ${finalRadius}`);
+
         locationAnswers = [
           {
             longitude: locationData.longitude || locationData.lng,
             latitude: locationData.latitude || locationData.lat,
-            radius: locationData.radius || 10, // Use the radius from the fresh data
+            radius: finalRadius,
           },
         ];
       } else {
@@ -2819,7 +2868,7 @@ export function QuestionPreview({
         locationAnswers = existingData.map((loc: LocationAnswer) => ({
           longitude: loc.longitude,
           latitude: loc.latitude,
-          radius: loc.radius || 10,
+          radius: (typeof loc.radius === 'number' && loc.radius > 0) ? loc.radius : 10,
         }));
       }
 
@@ -3282,7 +3331,7 @@ function getLocationAnswers(question: any, activity: any) {
       {
         longitude: locationData.lng,
         latitude: locationData.lat,
-        radius: locationData.radius || 10,
+        radius: (typeof locationData.radius === 'number' && locationData.radius > 0) ? locationData.radius : 10,
       },
     ];
   }
@@ -3293,7 +3342,7 @@ function getLocationAnswers(question: any, activity: any) {
       {
         longitude: question.location_data.lng || 0,
         latitude: question.location_data.lat || 0,
-        radius: question.location_data.radius || 10,
+        radius: (typeof question.location_data.radius === 'number' && question.location_data.radius > 0) ? question.location_data.radius : 10,
       },
     ];
   }
