@@ -42,6 +42,22 @@ const testimonials = [
         contentKey: "testimonialText3",
         rating: 4,
         company: "Global Solutions"
+    },
+    {
+        nameKey: "testimonialAuthor4",
+        roleKey: "testimonialRole4",
+        image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+        contentKey: "testimonialText4",
+        rating: 5,
+        company: "Innovate Labs"
+    },
+    {
+        nameKey: "testimonialAuthor5",
+        roleKey: "testimonialRole5",
+        image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+        contentKey: "testimonialText5",
+        rating: 4,
+        company: "Global Solutions"
     }
 ];
 

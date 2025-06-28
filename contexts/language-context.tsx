@@ -87,18 +87,28 @@ i18next
           // Testimonials Section
           testimonialsTitle: 'What Our Users Say',
           testimonialDesc: 'Thousands of teams and individuals trust PreziQ',
-          testimonialAuthor1: 'Quach Phu Thuan',
+          testimonialAuthor1: 'Quách Phú Thuận',
           testimonialRole1: 'Marketing Director',
           testimonialText1:
             'PreziQ transformed our marketing presentations. The AI features saved us countless hours and the interactive elements keep our audience engaged.',
-          testimonialAuthor2: 'Dui Le',
+          testimonialAuthor2: 'Lê Trần Hoàng Kiên',
           testimonialRole2: 'University Professor',
           testimonialText2:
             'The game-based learning features have completely changed how I teach. My students are more engaged and retain information better.',
-          testimonialAuthor3: 'QuanC3',
+          testimonialAuthor3: 'Lê Phạm Thanh Duy',
           testimonialRole3: 'Sales Executive',
           testimonialText3:
             'Our conversion rates have increased by 40% since we started using PreziQ for sales presentations. The interactive features make all the difference.',
+
+          testimonialAuthor4: 'Trần Nguyễn Minh Quân',
+          testimonialRole4: 'Marketing Director',
+          testimonialText4:
+            'PreziQ transformed our marketing presentations. The AI features saved us countless hours and the interactive elements keep our audience engaged.',
+          testimonialAuthor5: 'Cao Bảo Gia Luật',
+          testimonialRole5: 'University Professor',
+          testimonialText5:
+            'The game-based learning features have completely changed how I teach. My students are more engaged and retain information better.',
+
 
           // Text Marquee Section
           trustedBy: 'Trusted by innovative companies worldwide',
@@ -1218,15 +1228,15 @@ i18next
           // Testimonials Section
           testimonialsTitle: 'Người dùng nói gì về chúng tôi',
           testimonialDesc: 'Hàng ngàn đội nhóm và cá nhân tin tưởng PreziQ',
-          testimonialAuthor1: 'Sarah Johnson',
+          testimonialAuthor1: 'Quách Phú Thuận',
           testimonialRole1: 'Giám đốc Marketing',
           testimonialText1:
             'PreziQ đã cải thiện hoàn toàn bài thuyết trình marketing của chúng tôi. Các tính năng AI tiết kiệm rất nhiều thời gian và các yếu tố tương tác giúp khán giả tập trung hơn.',
-          testimonialAuthor2: 'Michael Chen',
+          testimonialAuthor2: 'Lê Phạm Thanh Duy',
           testimonialRole2: 'Giáo sư Đại học',
           testimonialText2:
             'Các tính năng học tập dựa trên trò chơi đã thay đổi hoàn toàn cách tôi giảng dạy. Sinh viên của tôi hứng thú hơn và ghi nhớ thông tin tốt hơn.',
-          testimonialAuthor3: 'Emily Rodriguez',
+          testimonialAuthor3: 'Lê Trần Hoàng Kiên',
           testimonialRole3: 'Giám đốc Bán hàng',
           testimonialText3:
             'Tỷ lệ chuyển đổi của chúng tôi đã tăng 40% kể từ khi bắt đầu sử dụng PreziQ cho các bài thuyết trình bán hàng. Các tính năng tương tác tạo nên sự khác biệt.',
