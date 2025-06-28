@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Plus, GripVertical, Trash2, MoveVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSortable } from '@dnd-kit/sortable';
-
+import { useLanguage } from '@/contexts/language-context';
 
 import { CSS } from '@dnd-kit/utilities';
 
@@ -92,8 +92,8 @@ function SortableItem({
             ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
             : 'border-gray-300 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-700'
         )}
-      >
-        <Input
+      >        
+      <Input
           value={option.option_text}
           onChange={(e) => {
             onOptionChange(index, 'option_text', e.target.value, true);
@@ -136,6 +136,8 @@ export function ReorderOptions({
   onAddOption,
   onReorder,
 }: ReorderOptionsProps) {
+  const { t } = useLanguage();
+  
   const handleDragEnd = (result: DropResult) => {
     if (
       !result.destination ||
@@ -156,10 +158,10 @@ export function ReorderOptions({
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-center mb-2">        
         <Label className="flex items-center text-sm font-medium">
           <MoveVertical className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
-          Arrange Steps
+          {t('activity.arrangeSteps')}
         </Label>
         <Button
           size="sm"
@@ -167,7 +169,7 @@ export function ReorderOptions({
           onClick={onAddOption}
           className="h-7 px-2 text-xs font-medium text-primary hover:text-primary/90 hover:bg-primary/5"
         >
-          <Plus className="h-3 w-3 mr-1" /> Add Step
+          <Plus className="h-3 w-3 mr-1" /> {t('activity.addStep')}
         </Button>
       </div>
 
@@ -188,10 +190,8 @@ export function ReorderOptions({
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="8" x2="12" y2="12"></line>
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-          <span>
-            Define steps in the correct order. Students will need to arrange
-            these steps in the same sequence.
+          </svg>          <span>
+            {t('activity.defineStepsDescription')}
           </span>
         </div>
       </div>
@@ -247,7 +247,7 @@ export function ReorderOptions({
                           onChange={(e) => onOptionChange(index, 'option_text', e.target.value, true)}
 
                           className="flex-1 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent p-0 text-sm"
-                          placeholder={`Step ${index + 1}`}
+                          placeholder={t('activity.step') + ` ${index + 1}`}
                           onBlur={(e) => onOptionChange(index, 'option_text', e.target.value, false)}
                         />
                         <div className="flex items-center gap-1">
@@ -273,12 +273,10 @@ export function ReorderOptions({
             </div>
           )}
         </Droppable>
-      </DragDropContext>
-
-      {sortedOptions.length === 0 && (
+      </DragDropContext>      {sortedOptions.length === 0 && (
         <div className="flex flex-col items-center justify-center py-4 px-3 border border-dashed rounded-md bg-white dark:bg-black border-gray-300 dark:border-gray-800">
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-            No steps added yet
+            {t('activity.noStepsAdded')}
           </p>
           <Button
             onClick={onAddOption}
@@ -286,7 +284,7 @@ export function ReorderOptions({
             size="sm"
             className="h-7 px-2 text-xs"
           >
-            <Plus className="h-3 w-3 mr-1" /> Add First Step
+            <Plus className="h-3 w-3 mr-1" /> {t('activity.addFirstStep')}
           </Button>
         </div>
       )}

@@ -193,7 +193,7 @@ export function PermissionsFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px] dark:bg-zinc-800">
         <DialogHeader>
           <DialogTitle>
             {currentRow ? t('permissionEditTitle') : t('permissionAddTitle')}

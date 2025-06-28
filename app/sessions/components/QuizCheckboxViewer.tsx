@@ -315,7 +315,7 @@ export default function QuizCheckboxViewer({
             backgroundImage: activity.backgroundImage
               ? `url(${activity.backgroundImage})`
               : undefined,
-            backgroundColor: activity.backgroundColor || '#0e2838',
+            backgroundColor: activity.backgroundColor || '#AFB2AF',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -358,9 +358,10 @@ export default function QuizCheckboxViewer({
                 <motion.div
                   key={`${answeredCount}-${totalParticipants}`}
                   className={`
-                    flex items-center gap-1.5 mr-2 ${answeredCount >= totalParticipants
-                      ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
-                      : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
+                    flex items-center gap-1.5 mr-2 ${
+                      answeredCount >= totalParticipants
+                        ? 'bg-[#0e2838]/80 border-[#aef359]/30 shadow-[#aef359]/10'
+                        : 'bg-[#0e2838]/80 border-amber-500/30 shadow-amber-500/10'
                     } border border-white/10 px-2 py-1 rounded-full text-xs font-medium`}
                   animate={{
                     scale: answeredCount > 0 ? [1, 1.15, 1] : 1,
@@ -401,11 +402,11 @@ export default function QuizCheckboxViewer({
               <h2 className='text-base md:text-xl lg:text-2xl font-bold text-center text-white drop-shadow-lg'>
                 {activity.quiz.questionText}
               </h2>
-              {activity.description && (
+              {/* {activity.description && (
                 <p className='mt-2 text-xs md:text-sm text-white/80 text-center'>
                   {activity.description}
                 </p>
-              )}
+              )} */}
             </motion.div>
           </div>
         </motion.div>
@@ -492,8 +493,9 @@ export default function QuizCheckboxViewer({
                     whileTap={{
                       scale: !isSubmitted && !isQuizEnded ? 0.98 : 1,
                     }}
-                    className={`relative rounded-xl ${isSelected ? 'z-10' : 'z-0'
-                      }`}
+                    className={`relative rounded-xl ${
+                      isSelected ? 'z-10' : 'z-0'
+                    }`}
                     onClick={() =>
                       !isSubmitted &&
                       !isQuizEnded &&
@@ -632,8 +634,8 @@ export default function QuizCheckboxViewer({
           {/* Results */}
           <AnimatePresence>
             {(isSubmitted && isQuizEnded) ||
-              activity.hostShowAnswer ||
-              isQuizEnded ? (
+            activity.hostShowAnswer ||
+            isQuizEnded ? (
               <motion.div
                 className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
                 initial={{ opacity: 0, y: 20 }}

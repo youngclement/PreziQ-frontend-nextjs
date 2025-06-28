@@ -38,6 +38,7 @@ import { AnimationOrderList } from './animation-order-list';
 import { slidesApi } from '@/api-client/slides-api'; // Giả sử bạn có API để cập nhật slide elements
 import type { SlideElementPayload } from '@/types/slideInterface';
 import { animationDefaultDurations } from '../utils/animationMap'; 
+import { useLanguage } from '@/contexts/language-context';
 interface AnimationToolbarProps {
   slideId: string;
   slideElements: SlideElementPayload[];
@@ -54,33 +55,33 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
   const [animationDuration, setAnimationDuration] = useState<number>(1);
   const [animationDelay, setAnimationDelay] = useState<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
-  
+  const { t } = useLanguage();
   const animationOptions = [
     {
-      name: 'Không có',
+      name: t('activity.slide.noAnimation'),
       value: 'none',
       icon: (
         <div className="w-3 h-3 border border-dashed border-gray-400 rounded" />
       ),
-      description: 'Không có hiệu ứng',
+      escription: t('activity.slide.noAnimationDescription'),
     },
     {
-      name: 'Fade',
+      name: t('activity.slide.fade'),
       value: 'Fade',
       icon: <Sparkles className="w-3 h-3" />,
-      description: 'Hiệu ứng mờ dần',
+      description: t('activity.slide.fadeDescription'),
     },
     {
-      name: 'Slide Left',
+      name: t('activity.slide.slideLeft'),
       value: 'SlideInLeft',
       icon: <ArrowRight className="w-3 h-3" />,
-      description: 'Trượt từ trái',
+      description: t('activity.slide.slideLeftDescription'),
     },
     {
-      name: 'Slide Right',
+      name: t('activity.slide.slideRight'),
       value: 'SlideInRight',
       icon: <ArrowLeft className="w-3 h-3" />,
-      description: 'Trượt từ phải',
+      description: t('activity.slide.slideRightDescription'),
     },
     // {
     //   name: 'Scale In',
@@ -89,10 +90,10 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
     //   description: 'Phóng to',
     // },
     {
-      name: 'Rotate In',
+      name: t('activity.slide.rotateIn'),
       value: 'RotateIn',
       icon: <RotateCcw className="w-3 h-3" />,
-      description: 'Xoay vào',
+      description: t('activity.slide.rotateInDescription'),
     },
     // {
     //   name: 'Typewriter',
@@ -112,6 +113,7 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
     //   icon: <ZoomIn className="w-3 h-3" />,
     //   description: 'Phóng to (Image)',
     // },
+    
     // {
     //   name: 'Flip In',
     //   value: 'FlipIn',
@@ -119,10 +121,10 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
     //   description: 'Lật vào (Image)',
     // },
     {
-      name: 'Bounce',
+      name: t('activity.slide.bounce'),
       value: 'Bounce',
       icon: <Zap className="w-3 h-3" />,
-      description: 'Hiệu ứng nảy',
+      description: t('activity.slide.bounceDescription'),
     },
   ];
 
@@ -493,10 +495,10 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
     <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg border border-blue-200 dark:border-blue-800 shadow-sm">
       <div className="mb-3">
         <Label className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1 block">
-          Element Animations
+          {t('activity.slide.animation')}
         </Label>
         <p className="text-xs text-blue-600 dark:text-blue-300">
-          Chọn hiệu ứng cho phần tử
+          {t('activity.slide.selectAnimation')}
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2 mb-3">
@@ -558,12 +560,12 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
         ))}
       </div>{' '}
       {selectedAnimation !== 'none' && (
-        <div className="space-y-3">
+        <div className="space-y-3 mb-3">
           <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-700">
             <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center">
               <Sparkles className="w-3 h-3 mr-1 flex-shrink-0" />
               <span className="truncate">
-                Đã chọn:{' '}
+                {t('activity.slide.selectedAnimation')}:{' '}
                 <span className="font-medium">
                   {
                     animationOptions.find(
@@ -573,13 +575,14 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
                 </span>
               </span>
             </p>
-          </div>          {/* Animation Duration Slider */}
+          </div>{' '}
+          {/* Animation Duration Slider */}
           {currentObjectId && (
             <div className="p-3 bg-white dark:bg-blue-950/30 rounded-md border border-blue-200 dark:border-blue-700">
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-xs font-medium text-blue-800 dark:text-blue-200 flex items-center">
                   <Clock className="w-3 h-3 mr-1" />
-                  Thời gian hiệu ứng
+                  {t('activity.slide.animationDuration')}
                 </Label>
                 <span className="text-xs text-blue-600 dark:text-blue-300 font-mono">
                   {animationDuration.toFixed(1)}s
@@ -600,14 +603,13 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
               </div>
             </div>
           )}
-
           {/* Animation Delay Slider */}
           {currentObjectId && (
             <div className="p-3 bg-white dark:bg-red-950/30 rounded-md border border-red-200 dark:border-red-700">
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-xs font-medium text-red-800 dark:text-red-200 flex items-center">
                   <Clock className="w-3 h-3 mr-1" />
-                  Độ trễ hiệu ứng
+                  {t('activity.slide.animationDelay')}
                 </Label>
                 <span className="text-xs text-red-600 dark:text-red-300 font-mono">
                   {animationDelay.toFixed(1)}s
@@ -621,11 +623,13 @@ const AnimationToolbar: React.FC<AnimationToolbarProps> = ({
                 max={5}
                 step={0.1}
                 className="w-full [&_.lucide-clock]:text-red-500 [&>[role=slider]]:bg-red-500 [&>[role=slider]]:border-red-500 [&_.lucide-clock]:dark:text-red-400"
-                style={{
-                  '--slider-track': 'rgb(239 68 68)',
-                  '--slider-range': 'rgb(239 68 68)',
-                  '--slider-thumb': 'rgb(239 68 68)',
-                } as React.CSSProperties}
+                style={
+                  {
+                    '--slider-track': 'rgb(239 68 68)',
+                    '--slider-range': 'rgb(239 68 68)',
+                    '--slider-thumb': 'rgb(239 68 68)',
+                  } as React.CSSProperties
+                }
               />
               <div className="flex justify-between text-xs text-red-500 dark:text-red-400 mt-1">
                 <span>0.0s</span>

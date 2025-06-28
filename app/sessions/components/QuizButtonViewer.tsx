@@ -401,7 +401,7 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
             backgroundImage: activity.backgroundImage
               ? `url(${activity.backgroundImage})`
               : undefined,
-            backgroundColor: activity.backgroundColor || '#0e2838',
+            backgroundColor: activity.backgroundColor || '#AFB2AF',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -425,9 +425,10 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                 <motion.div
                   key={`${responseRatio.count}-${responseRatio.total}`}
                   className={`
-                    flex items-center gap-1.5 mr-2 ${responseRatio.percentage >= 100
-                      ? 'bg-black bg-opacity-30 border-white/20'
-                      : 'bg-black bg-opacity-30 border-white/20'
+                    flex items-center gap-1.5 mr-2 ${
+                      responseRatio.percentage >= 100
+                        ? 'bg-black bg-opacity-30 border-white/20'
+                        : 'bg-black bg-opacity-30 border-white/20'
                     } border px-2 py-1 rounded-full text-xs font-medium`}
                   animate={{
                     scale: hasRecentUpdate ? [1, 1.15, 1] : 1,
@@ -459,10 +460,10 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                   backgroundColor:
                     timeLeft < 10
                       ? [
-                        'rgba(0, 0, 0, 0.3)',
-                        'rgba(255, 198, 121, 0.3)',
-                        'rgba(0, 0, 0, 0.3)',
-                      ]
+                          'rgba(0, 0, 0, 0.3)',
+                          'rgba(255, 198, 121, 0.3)',
+                          'rgba(0, 0, 0, 0.3)',
+                        ]
                       : undefined,
                 }}
                 transition={{
@@ -472,11 +473,16 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                 }}
               >
                 <Clock
-                  className={`h-3.5 w-3.5 ${timeLeft < 10 ? 'text-[rgb(255,198,121)]' : 'text-[rgb(198,234,132)]'
-                    }`}
+                  className={`h-3.5 w-3.5 ${
+                    timeLeft < 10
+                      ? 'text-[rgb(255,198,121)]'
+                      : 'text-[rgb(198,234,132)]'
+                  }`}
                 />
                 <span
-                  className={timeLeft < 10 ? 'text-[rgb(255,198,121)]' : 'text-white/90'}
+                  className={
+                    timeLeft < 10 ? 'text-[rgb(255,198,121)]' : 'text-white/90'
+                  }
                 >
                   {formatTime(timeLeft)}
                 </span>
@@ -539,8 +545,9 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                     whileTap={{
                       scale: !isSubmitted && !isQuizEnded ? 0.98 : 1,
                     }}
-                    className={`relative rounded-xl ${isSelected ? 'z-10' : 'z-0'
-                      }`}
+                    className={`relative rounded-xl ${
+                      isSelected ? 'z-10' : 'z-0'
+                    }`}
                     onClick={() =>
                       !isSubmitted &&
                       !isQuizEnded &&
@@ -762,14 +769,14 @@ const QuizButtonViewer: React.FC<QuizActivityProps> = ({
                     {activity.quiz.quizAnswers.filter(
                       (answer) => answer.isCorrect
                     )[0]?.explanation && (
-                        <p className='text-white/70 mt-2 pt-2 border-t border-white/10'>
-                          {
-                            activity.quiz.quizAnswers.filter(
-                              (answer) => answer.isCorrect
-                            )[0].explanation
-                          }
-                        </p>
-                      )}
+                      <p className='text-white/70 mt-2 pt-2 border-t border-white/10'>
+                        {
+                          activity.quiz.quizAnswers.filter(
+                            (answer) => answer.isCorrect
+                          )[0].explanation
+                        }
+                      </p>
+                    )}
                   </div>
                 ) : isQuizEnded && isSubmitted ? (
                   <p className='text-white/70'>

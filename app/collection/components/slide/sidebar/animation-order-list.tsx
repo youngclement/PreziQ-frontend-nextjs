@@ -19,6 +19,8 @@ import {
 import { AnimationOrderItem } from './animation-order-item';
 import type { SlideElementPayload } from '@/types/slideInterface';
 import { Layers, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { useLanguage } from '@/contexts/language-context';
+import { useTheme } from 'next-themes';
 // Define interface for custom events
 export interface SlideElementEvent extends CustomEvent {
   detail: {
@@ -53,6 +55,8 @@ export const AnimationOrderList = ({
     null
   );
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { t } = useLanguage();
+  const { theme } = useTheme();
 
   const updateItemsWithAnimation = useCallback(
     (objectId: string, animationName: string) => {
@@ -351,20 +355,20 @@ export const AnimationOrderList = ({
   };
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
               <Layers className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Animation Timeline
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {t('activity.slide.animationTimeline')}
               </h3>
-              <p className="text-sm text-gray-500">
-                {items.length} elements
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {items.length} {t('activity.slide.elementsCount')}
               </p>
             </div>
           </div>
@@ -372,7 +376,7 @@ export const AnimationOrderList = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               {isCollapsed ? (
                 <ChevronDown className="w-4 h-4" />
@@ -387,15 +391,14 @@ export const AnimationOrderList = ({
       {/* Help Text */}
       {!isCollapsed && items.length === 0 && (
         <div className="p-8 text-center">
-          <div className="flex items-center justify-center w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4">
-            <Info className="w-8 h-8 text-gray-400" />
+          <div className="flex items-center justify-center w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4">
+            <Info className="w-8 h-8 text-gray-400 dark:text-gray-500" />
           </div>
-          <h4 className="text-lg font-medium text-gray-900 mb-2">
-            No elements yet
+          <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            {t('activity.slide.noElementsYet')}
           </h4>
-          <p className="text-gray-500 max-w-sm mx-auto">
-            Add elements to your slide to see them appear here. You can then
-            drag to reorder and adjust animation timing.
+          <p className="text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+            {t('activity.slide.noElementsDescription')}
           </p>
         </div>
       )}
@@ -403,15 +406,17 @@ export const AnimationOrderList = ({
       {/* Content */}
       {!isCollapsed && items.length > 0 && (
         <div className="p-4">
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-xl">
             <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-800">
-                <p className="font-medium mb-1">Drag & Drop Tips:</p>
-                <ul className="text-xs space-y-1 text-blue-700">
-                  <li>• Drag vertically to reorder elements</li>
-                  <li>• Drag horizontally to change hierarchy levels</li>
-                  <li>• Elements with the same level will animate together</li>
+              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-800 dark:text-blue-200">
+                <p className="font-medium mb-1">
+                  {t('activity.slide.dragDropTips')}
+                </p>
+                <ul className="text-xs space-y-1 text-blue-700 dark:text-blue-300">
+                  <li>{t('activity.slide.dragVertically')}</li>
+                  <li>{t('activity.slide.dragHorizontally')}</li>
+                  <li>{t('activity.slide.sameLevelAnimation')}</li>
                 </ul>
               </div>
             </div>
@@ -444,4 +449,4 @@ export const AnimationOrderList = ({
       )}
     </div>
   );
-}
+};

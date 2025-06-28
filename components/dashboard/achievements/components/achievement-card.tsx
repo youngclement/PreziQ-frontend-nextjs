@@ -133,7 +133,7 @@ export function AchievementCard({
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="min-h-[60px] text-sm text-slate-600">
+          <div className="min-h-[60px] text-sm text-slate-600 dark:text-slate-200">
             {achievement.description || (
               <span className="text-slate-400 italic">
                 {t('achievementDescriptionPlaceholder')}
@@ -163,7 +163,7 @@ export function AchievementCard({
             variant="ghost"
             size="sm"
             onClick={handleEdit}
-            className="text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:bg-zinc-600 dark:text-slate-200 dark:hover:bg-slate-900"
           >
             <Edit className="h-4 w-4 mr-1" />
             {t('achievementEdit')}

@@ -335,7 +335,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
     >
       <DialogContent
         ref={dialogRef}
-        className="max-w-2xl h-[90vh] p-0 flex flex-col"
+        className="max-w-2xl h-[90vh] p-0 flex flex-col bg-white dark:bg-zinc-800 rounded-lg shadow-lg"
         onPointerDownOutside={(e) => {
           e.preventDefault();
         }}
@@ -349,11 +349,11 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
           e.preventDefault();
         }}
       >
-        <DialogHeader className="px-6 py-4 border-b bg-slate-50 flex-none">
-          <DialogTitle className="text-xl font-semibold text-slate-900">
+        <DialogHeader className="px-6 py-4 border-b bg-slate-50 dark:bg-zinc-700 flex-none">
+          <DialogTitle className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             {isEdit ? t('editRole') : t('addNewRole')}
           </DialogTitle>
-          <DialogDescription className="text-sm text-slate-500">
+          <DialogDescription className="text-sm text-slate-500 dark:text-slate-100">
             {isEdit ? t('editRoleDesc') : t('addNewRoleDesc')}
           </DialogDescription>
         </DialogHeader>
@@ -363,8 +363,8 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="px-6 py-4 space-y-6">
                 {/* Basic Info Section */}
-                <div className="space-y-4 p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
-                  <h3 className="text-sm font-medium text-slate-900 mb-3">
+                <div className="space-y-4 p-4 bg-white dark:text-slate-100 dark:bg-zinc-800 dark:border-slate-600  rounded-lg border border-slate-200 shadow-sm">
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-slate-300 mb-3">
                     {t('basicInfo')}
                   </h3>
 
@@ -373,13 +373,13 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-slate-700">
+                        <FormLabel className="text-sm font-medium text-slate-700 dark:text-slate-100">
                           {t('roleName')}
                         </FormLabel>
                         <FormControl>
                           <Input
                             placeholder={t('enterRoleName')}
-                            className="bg-white border-slate-200 focus:border-slate-300 focus:ring-slate-300"
+                            className="bg-white dark:text-slate-100 dark:bg-zinc-800 dark:border-slate-600 border-slate-200 focus:border-slate-300 focus:ring-slate-300"
                             {...field}
                           />
                         </FormControl>
@@ -393,13 +393,13 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-slate-700">
+                        <FormLabel className="text-sm font-medium text-slate-700 dark:text-slate-100">
                           {t('description')}
                         </FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder={t('enterRoleDescription')}
-                            className="bg-white resize-none min-h-[100px] border-slate-200 focus:border-slate-300 focus:ring-slate-300"
+                            className="bg-white dark:text-slate-100 dark:bg-zinc-800 dark:border-slate-600 resize-none min-h-[100px] border-slate-200 focus:border-slate-300 focus:ring-slate-300"
                             {...field}
                           />
                         </FormControl>
@@ -412,12 +412,12 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                     control={form.control}
                     name="active"
                     render={({ field }) => (
-                      <FormItem className="flex items-center justify-between rounded-lg bg-slate-50 p-4 border border-slate-200">
+                      <FormItem className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-zinc-700 dark:border-slate-700 p-4 border border-slate-200">
                         <div className="space-y-1">
-                          <FormLabel className="text-sm font-medium text-slate-700">
+                          <FormLabel className="text-sm font-medium text-slate-700 dark:text-slate-100">
                             {t('status')}
                           </FormLabel>
-                          <div className="text-sm text-slate-900">
+                          <div className="text-sm text-slate-900 dark:text-slate-200">
                             {t('role')}{' '}
                             {field.value ? t('active') : t('inactive')}
                           </div>
@@ -441,7 +441,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                   render={({ field }) => (
                     <FormItem className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <FormLabel className="text-base font-semibold text-slate-900">
+                        <FormLabel className="text-base font-semibold text-slate-900 dark:text-slate-300">
                           {t('permissions')}
                         </FormLabel>
                       </div>
@@ -459,16 +459,16 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                                   open={openModules[module]}
                                   onOpenChange={() => toggleModule(module)}
                                 >
-                                  <div className="w-full rounded-t-lg border bg-white hover:bg-slate-50 transition-colors px-4 py-3">
+                                  <div className="w-full rounded-t-lg border bg-white dark:text-slate-100 dark:bg-zinc-800 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors px-4 py-3">
                                     <div className="flex items-center justify-between w-full">
                                       <CollapseTrigger className="flex items-center gap-3">
                                         <IconChevronRight
                                           className={cn(
-                                            'h-4 w-4 shrink-0 transition-transform duration-200 text-slate-900',
+                                            'h-4 w-4 shrink-0 transition-transform duration-200 text-slate-900 dark:text-slate-300',
                                             openModules[module] && 'rotate-90'
                                           )}
                                         />
-                                        <span className="text-sm font-medium text-slate-900 border-b-slate-900">
+                                        <span className="text-sm font-medium text-slate-900 dark:text-slate-300 border-b-slate-900">
                                           {module}
                                         </span>
                                       </CollapseTrigger>
@@ -486,17 +486,17 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                                       />
                                     </div>
                                   </div>
-                                  <CollapseContent className="divide-y divide-slate-100 border-x border-b rounded-b-lg bg-white">
+                                  <CollapseContent className="divide-y divide-slate-100 border-x border-b rounded-b-lg bg-white dark:text-slate-100 dark:bg-zinc-800 dark:border-slate-600">
                                     {modulePermissions.map((permission) => (
                                       <div
                                         key={permission.permissionId}
-                                        className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 transition-colors"
+                                        className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 dark:hover:bg-slate-600  transition-colors"
                                       >
                                         <div className="flex flex-col gap-1">
-                                          <span className="text-sm font-medium text-slate-700">
+                                          <span className="text-sm font-medium text-slate-700 dark:text-slate-100">
                                             {permission.name}
                                           </span>
-                                          <span className="text-xs text-slate-900">
+                                          <span className="text-xs text-slate-900 dark:text-slate-300">
                                             {permission.apiPath} (
                                             {permission.httpMethod})
                                           </span>
@@ -530,18 +530,18 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
               </div>
 
               {/* Footer */}
-              <div className="flex justify-end gap-4 px-6 py-4 border-t bg-slate-50 sticky bottom-0">
+              <div className="flex justify-end gap-4 px-6 py-4 border-t dark:bg-zinc-700 bg-slate-50 sticky bottom-0">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleClose}
-                  className="border-slate-200 hover:bg-slate-100"
+                  className="border-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 "
                 >
                   {t('cancel')}
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-slate-900 hover:bg-slate-600 text-white"
+                  className="bg-slate-900 hover:bg-slate-600 dark:hover:bg-slate-600  text-white "
                 >
                   {isEdit ? t('update') : t('add')}
                 </Button>

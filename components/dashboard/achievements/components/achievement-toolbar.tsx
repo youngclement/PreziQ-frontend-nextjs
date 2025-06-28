@@ -30,7 +30,7 @@ export function AchievementToolbar<TData>({
             onChange={(event) =>
               table.getColumn('name')?.setFilterValue(event.target.value)
             }
-            className="w-full pl-8 bg-white"
+            className="w-full pl-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800"
           />
           {(table.getColumn('name')?.getFilterValue() as string) && (
             <Button

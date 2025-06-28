@@ -17,6 +17,7 @@ import {
   Award,
   ChevronUp,
   ChevronDown,
+  ArrowRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -24,6 +25,7 @@ interface HostRankingChangeProps {
   sessionWebSocket: SessionWebSocket;
   currentActivityId: string;
   onClose: () => void;
+  onNextActivity?: () => void;
   isFullscreenMode?: boolean;
 }
 
@@ -31,6 +33,7 @@ export default function HostRankingChange({
   sessionWebSocket,
   currentActivityId,
   onClose,
+  onNextActivity,
   isFullscreenMode = false,
 }: HostRankingChangeProps) {
   const [rankingData, setRankingData] = useState<RankingChangeData | null>(
@@ -415,7 +418,7 @@ export default function HostRankingChange({
           <h2 className='text-xl md:text-2xl font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] text-transparent bg-clip-text'>
             Bảng xếp hạng {hasPreviousData ? 'sau hoạt động' : 'hiện tại'}
           </h2>
-          <div className='flex items-center gap-2'>         
+          <div className='flex items-center gap-2'>
             <Button
               onClick={onClose}
               variant='ghost'
@@ -765,16 +768,33 @@ export default function HostRankingChange({
 
       {/* Nút đóng ở dưới - hiển thị với kiểu dáng khác nếu ở chế độ toàn màn hình */}
       <div className='p-4 flex justify-center'>
-        <Button
-          onClick={onClose}
-          className={`${
-            isFullscreenMode
-              ? 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium border border-[#aef359]/10'
-              : 'bg-[#0e2838] hover:bg-[#0e2838]/80 text-white border border-white/10'
-          }`}
-        >
-          {isFullscreenMode ? 'Tiếp tục' : 'Quay lại'}
-        </Button>
+        <div className='flex items-center gap-3'>
+          <Button
+            onClick={onClose}
+            className={`${
+              isFullscreenMode
+                ? 'bg-[#0e2838] hover:bg-[#0e2838]/80 text-white border border-white/10'
+                : 'bg-[#0e2838] hover:bg-[#0e2838]/80 text-white border border-white/10'
+            }`}
+          >
+            {isFullscreenMode ? 'Quay lại' : 'Quay lại'}
+          </Button>
+
+          {/* Nút hoạt động tiếp theo */}
+          {onNextActivity && (
+            <Button
+              onClick={onNextActivity}
+              className={`${
+                isFullscreenMode
+                  ? 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium border border-[#aef359]/10'
+                  : 'bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 font-medium border border-[#aef359]/10'
+              } flex items-center gap-2`}
+            >
+              <span>Hoạt động tiếp theo</span>
+              <ArrowRight className='h-4 w-4' />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Add custom scrollbar style */}
