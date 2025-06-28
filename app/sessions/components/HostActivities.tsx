@@ -213,6 +213,19 @@ export default function HostActivities({
     };
   }, []);
 
+  // Thêm useEffect để dispatch event khi sidebar state thay đổi
+  useEffect(() => {
+    // Dispatch event để thông báo sidebar state đã thay đổi
+    const event = new CustomEvent('sidebarLayoutChange', {
+      detail: {
+        collapsed: isSidebarCollapsed,
+        timestamp: Date.now(),
+        isFullscreen: isFullscreenMode,
+      },
+    });
+    window.dispatchEvent(event);
+  }, [isSidebarCollapsed, isFullscreenMode]);
+
   useEffect(() => {
     isMounted.current = true;
 
@@ -848,6 +861,7 @@ export default function HostActivities({
             sessionCode={sessionCode}
             sessionId={sessionId}
             isParticipating={isParticipating}
+            isFullscreenMode={isFullscreenMode}
           />
         );
       default:

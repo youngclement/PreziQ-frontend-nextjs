@@ -123,6 +123,7 @@ interface QuizMatchingPairViewerProps {
   sessionCode: string;
   sessionId?: string;
   isParticipating?: boolean;
+  isFullscreenMode?: boolean;
 }
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -156,6 +157,7 @@ export function QuizMatchingPairViewer({
   sessionCode,
   sessionId,
   isParticipating = true,
+  isFullscreenMode = false,
 }: QuizMatchingPairViewerProps) {
   const { t } = useTranslation();
   const [userConnections, setUserConnections] = useState<UserConnection[]>([]);
@@ -198,6 +200,9 @@ export function QuizMatchingPairViewer({
     MatchingPairItem[]
   >([]);
 
+  // Thêm state để theo dõi khi cần redraw connections
+  const [shouldRedrawConnections, setShouldRedrawConnections] = useState(false);
+
   useEffect(() => {
     const leftItems = items.filter((item) => item.isLeftColumn);
     const rightItems = items.filter((item) => !item.isLeftColumn);
@@ -219,6 +224,119 @@ export function QuizMatchingPairViewer({
     }
     return () => resizeObserver.disconnect();
   }, []);
+
+  // Thêm useEffect để theo dõi thay đổi fullscreen mode
+  useEffect(() => {
+    // Delay một chút để đảm bảo layout đã hoàn thành
+    const timer = setTimeout(() => {
+      setForceUpdate((prev) => prev + 1);
+      setShouldRedrawConnections(true);
+    }, 300); // Tăng delay để đợi animation hoàn thành
+
+    return () => clearTimeout(timer);
+  }, [isFullscreenMode]);
+
+  // Thêm useEffect để theo dõi thay đổi kích thước window (bao gồm sidebar)
+  useEffect(() => {
+    const handleResize = () => {
+      // Delay để đảm bảo layout đã hoàn thành
+      setTimeout(() => {
+        setForceUpdate((prev) => prev + 1);
+        setShouldRedrawConnections(true);
+      }, 400); // Tăng delay để đợi animation hoàn thành
+    };
+
+    // Lắng nghe event từ leaderboard để biết khi nào sidebar thay đổi
+    const handleLeaderboardChange = (event: CustomEvent) => {
+      console.log(
+        '[QuizMatchingPair] Leaderboard layout changed:',
+        event.detail
+      );
+      setTimeout(() => {
+        setForceUpdate((prev) => prev + 1);
+        setShouldRedrawConnections(true);
+      }, 500); // Tăng delay để đảm bảo animation hoàn thành
+    };
+
+    // Lắng nghe event từ sidebar toggle
+    const handleSidebarChange = (event: CustomEvent) => {
+      console.log('[QuizMatchingPair] Sidebar layout changed:', event.detail);
+      setTimeout(() => {
+        setForceUpdate((prev) => prev + 1);
+        setShouldRedrawConnections(true);
+      }, 600); // Tăng delay để đảm bảo sidebar animation hoàn thành
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener(
+      'leaderboardLayoutChange',
+      handleLeaderboardChange as EventListener
+    );
+    window.addEventListener(
+      'sidebarLayoutChange',
+      handleSidebarChange as EventListener
+    );
+
+    // Theo dõi thay đổi DOM để phát hiện sidebar toggle
+    const observer = new MutationObserver(() => {
+      setTimeout(() => {
+        setShouldRedrawConnections(true);
+      }, 300); // Tăng delay để đợi animation
+    });
+
+    // Observe changes to the body class (có thể có class cho sidebar state)
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+      subtree: true,
+    });
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener(
+        'leaderboardLayoutChange',
+        handleLeaderboardChange as EventListener
+      );
+      window.removeEventListener(
+        'sidebarLayoutChange',
+        handleSidebarChange as EventListener
+      );
+      observer.disconnect();
+    };
+  }, []);
+
+  // Thêm useEffect để redraw connections khi cần thiết
+  useEffect(() => {
+    if (shouldRedrawConnections) {
+      const timer = setTimeout(() => {
+        setForceUpdate((prev) => prev + 1);
+        setShouldRedrawConnections(false);
+      }, 150); // Tăng delay để đợi animation hoàn thành
+
+      return () => clearTimeout(timer);
+    }
+  }, [shouldRedrawConnections]);
+
+  // Đảm bảo user connections luôn sync với correct connections khi show answer và layout thay đổi
+  useEffect(() => {
+    if (
+      showCorrectAnswer &&
+      correctConnections.length > 0 &&
+      animationPhase === 'completed'
+    ) {
+      setUserConnections([...correctConnections]);
+    }
+  }, [forceUpdate, showCorrectAnswer, correctConnections, animationPhase]);
+
+  // Thêm logic để force redraw khi layout thay đổi trong khi hiển thị đáp án
+  useEffect(() => {
+    if (showCorrectAnswer && shouldRedrawConnections) {
+      // Trigger thêm một lần force update để đảm bảo paths được redraw
+      setTimeout(() => {
+        setForceUpdate((prev) => prev + 1);
+      }, 200); // Tăng delay để đợi animation hoàn thành
+    }
+  }, [showCorrectAnswer, shouldRedrawConnections]);
 
   // Create color map for pairs based on connection IDs
   const pairColorMap = useMemo(() => {
@@ -396,16 +514,52 @@ export function QuizMatchingPairViewer({
     const bElement = document.getElementById(`item-${bId}`);
     const svgElement = svgRef.current;
 
-    if (!aElement || !bElement || !svgElement) return '';
+    if (!aElement || !bElement || !svgElement) {
+      // Nếu elements chưa sẵn sàng, trigger redraw sau một chút với retry logic
+      const retryCount = (window as any).pathRetryCount || 0;
+      if (retryCount < 5) {
+        // Giới hạn số lần retry
+        (window as any).pathRetryCount = retryCount + 1;
+        setTimeout(() => {
+          setShouldRedrawConnections(true);
+          if (retryCount >= 4) {
+            (window as any).pathRetryCount = 0; // Reset counter sau khi retry
+          }
+        }, 200 * (retryCount + 1)); // Tăng delay theo số lần retry để đợi animation
+      }
+      return '';
+    }
+
+    // Reset retry counter khi thành công
+    (window as any).pathRetryCount = 0;
 
     const svgRect = svgElement.getBoundingClientRect();
     const aRect = aElement.getBoundingClientRect();
     const bRect = bElement.getBoundingClientRect();
 
+    // Đảm bảo tính toán chính xác với scroll offset
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft =
+      window.pageXOffset || document.documentElement.scrollLeft;
+
     const startX = aRect.right - svgRect.left;
     const startY = aRect.top + aRect.height / 2 - svgRect.top;
     const endX = bRect.left - svgRect.left;
     const endY = bRect.top + bRect.height / 2 - svgRect.top;
+
+    // Validate coordinates để đảm bảo không có NaN hoặc Infinity
+    if (
+      !isFinite(startX) ||
+      !isFinite(startY) ||
+      !isFinite(endX) ||
+      !isFinite(endY)
+    ) {
+      console.warn(
+        '[QuizMatchingPair] Invalid coordinates detected, retrying...'
+      );
+      setTimeout(() => setShouldRedrawConnections(true), 300); // Tăng delay để đợi animation
+      return '';
+    }
 
     // Calculate control points for smooth curve
     const controlY = startY + (endY - startY) / 2;
@@ -815,31 +969,31 @@ export function QuizMatchingPairViewer({
                 </div>
               </div>
 
-              {/* Connection lines với animation cải tiến */}
+              {/* Connection lines*/}
               <svg
                 ref={svgRef}
                 className='absolute top-0 left-0 w-full h-full pointer-events-none'
                 style={{ zIndex: 1 }}
-                key={forceUpdate}
+                key={`svg-${forceUpdate}`}
               >
                 <defs>
                   {PAIR_COLORS.map((color) => (
                     <marker
                       key={color}
                       id={`marker-${color.replace('#', '')}`}
-                      markerWidth='12'
-                      markerHeight='12'
-                      refX='6'
-                      refY='6'
+                      markerWidth='8'
+                      markerHeight='8'
+                      refX='4'
+                      refY='4'
                       orient='auto'
                     >
                       <circle
-                        cx='6'
-                        cy='6'
-                        r='5'
+                        cx='4'
+                        cy='4'
+                        r='3'
                         fill='white'
                         stroke={color}
-                        strokeWidth='2'
+                        strokeWidth='1.5'
                       />
                     </marker>
                   ))}
@@ -865,10 +1019,16 @@ export function QuizMatchingPairViewer({
 
                       if (!shouldShow) return null;
 
+                      // Re-calculate path để đảm bảo vị trí chính xác
+                      const pathData = getConnectionPath(
+                        conn.leftId,
+                        conn.rightId
+                      );
+
                       return (
                         <motion.path
-                          key={`${conn.leftId}-${conn.rightId}`}
-                          d={getConnectionPath(conn.leftId, conn.rightId)}
+                          key={`${conn.leftId}-${conn.rightId}-${forceUpdate}`}
+                          d={pathData}
                           stroke={
                             showCorrectAnswer && isCorrectConnection
                               ? '#10b981'
