@@ -429,7 +429,7 @@ export function QuizMatchingPairViewer({
             backgroundImage: activity.backgroundImage
               ? `url(${activity.backgroundImage})`
               : undefined,
-            backgroundColor: activity.backgroundColor || '#0e2838',
+            backgroundColor: activity.backgroundColor || '#AFB2AF',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -517,11 +517,11 @@ export function QuizMatchingPairViewer({
                   activity.title ||
                   'Matching Pairs Question'}
               </h2>
-              {activity.description && (
+              {/* {activity.description && (
                 <p className='mt-2 text-xs md:text-sm text-white/80 text-center'>
                   {activity.description}
                 </p>
-              )}
+              )} */}
             </motion.div>
           </div>
         </motion.div>
