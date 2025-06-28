@@ -773,7 +773,12 @@ export default function HostActivities({
     switch (currentActivity.activityType) {
       case 'INFO_SLIDE':
         console.log(`[SLIDE] Render slide: ${currentActivity.activityId}`);
-        return <InfoSlideViewer activity={currentActivity} />;
+        return (
+          <InfoSlideViewer
+            activity={currentActivity}
+            isFullscreenMode={isFullscreenMode}
+          />
+        );
       case 'QUIZ_BUTTONS':
         return (
           <QuizButtonViewer
@@ -831,6 +836,7 @@ export default function HostActivities({
             sessionId={sessionId}
             sessionWebSocket={sessionWs}
             isParticipating={isParticipating}
+            isFullscreenMode={isFullscreenMode}
           />
         );
       case 'QUIZ_MATCHING_PAIRS':
@@ -1394,7 +1400,9 @@ export default function HostActivities({
               <div
                 className={`${
                   isFullscreenMode
-                    ? 'h-[100dvh] flex items-center justify-center'
+                    ? currentActivity?.activityType === 'QUIZ_LOCATION'
+                      ? 'h-[100dvh] overflow-y-auto flex flex-col'
+                      : 'h-[100dvh] flex items-center justify-center'
                     : 'p-6'
                 }`}
               >
@@ -1433,7 +1441,13 @@ export default function HostActivities({
                   )}
 
                 {noMoreActivities ? (
-                  <div className='text-center py-8 bg-[#0e2838]/30 rounded-lg border border-yellow-500/20'>
+                  <div
+                    className={`text-center ${
+                      isFullscreenMode
+                        ? 'flex-1 flex items-center justify-center'
+                        : 'py-8'
+                    } bg-[#0e2838]/30 rounded-lg border border-yellow-500/20`}
+                  >
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -1453,7 +1467,9 @@ export default function HostActivities({
                     className={`
                     ${
                       isFullscreenMode
-                        ? 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
+                        ? currentActivity?.activityType === 'QUIZ_LOCATION'
+                          ? 'flex-1 p-4 min-h-0'
+                          : 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
                         : ''
                     }
                   `}

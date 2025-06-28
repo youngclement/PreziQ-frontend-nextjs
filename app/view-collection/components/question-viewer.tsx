@@ -89,7 +89,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
-import InfoSlideViewer from '@/app/sessions/show/components/info-slide-viewer';
+import InfoSlideViewer from './info-slide-viewer';
 
 // Declare Google Maps types
 declare global {

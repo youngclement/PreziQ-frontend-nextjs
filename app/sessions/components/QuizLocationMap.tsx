@@ -33,6 +33,7 @@ interface LocationQuestionPlayerProps {
   disabled?: boolean;
   userSelectedLocations?: { lat: number; lng: number; radius: number }[];
   correctAnswers?: { lat: number; lng: number; radius: number }[];
+  isFullscreenMode?: boolean;
 }
 
 export function LocationQuestionPlayer({
@@ -46,6 +47,7 @@ export function LocationQuestionPlayer({
   disabled = false,
   userSelectedLocations = [],
   correctAnswers = [],
+  isFullscreenMode = false,
 }: LocationQuestionPlayerProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -685,8 +687,14 @@ export function LocationQuestionPlayer({
   }, [userSelectedLocations, showCorrectLocation]);
 
   return (
-    <Card className='w-full'>
-      <CardContent className='pt-6 space-y-4'>
+    <Card
+      className={`w-full ${isFullscreenMode ? 'h-full flex flex-col' : ''}`}
+    >
+      <CardContent
+        className={`pt-6 space-y-4 ${
+          isFullscreenMode ? 'flex-1 flex flex-col h-full' : ''
+        }`}
+      >
         <h3 className='text-lg font-medium text-center mb-2'>
           {questionText || 'Chọn vị trí trên bản đồ'}
         </h3>
@@ -778,10 +786,18 @@ export function LocationQuestionPlayer({
         )}
 
         {/* Map container */}
-        <div className='relative'>
+        <div
+          className={`relative ${
+            isFullscreenMode ? 'flex-1 flex flex-col' : ''
+          }`}
+        >
           <div
             ref={mapContainerRef}
-            className='w-full h-[300px] sm:h-[400px] bg-slate-100 dark:bg-slate-800 rounded-lg'
+            className={`w-full ${
+              isFullscreenMode
+                ? 'flex-1 min-h-[300px]'
+                : 'h-[300px] sm:h-[400px]'
+            } bg-slate-100 dark:bg-slate-800 rounded-lg`}
           />
         </div>
 

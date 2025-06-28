@@ -51,14 +51,14 @@ interface SlideShowProps {
   activity: Activity;
   width?: number;
   height?: number;
-  isFullscreenMode?: boolean;
+  showAllElements?: boolean;
 }
 
 const InfoSlideViewer: React.FC<SlideShowProps> = ({
   activity,
   width = 900,
   height = 510,
-  isFullscreenMode = false,
+  showAllElements = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -75,32 +75,7 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
 
   // Tính toán kích thước canvas responsive
   const getCanvasDimensions = () => {
-    if (isFullscreenMode) {
-      // Trong chế độ fullscreen, sử dụng tối đa không gian có thể
-      const windowWidth = window.innerWidth;
-      const windowHeight = window.innerHeight;
-
-      // Tính toán kích thước dựa trên tỷ lệ khung hình gốc
-      const aspectRatio = width / height;
-
-      // Sử dụng 90% không gian màn hình để có padding
-      const maxWidth = windowWidth * 0.9;
-      const maxHeight = windowHeight * 0.8; // Để lại không gian cho UI controls
-
-      let canvasWidth, canvasHeight;
-
-      if (maxWidth / aspectRatio <= maxHeight) {
-        // Giới hạn bởi chiều rộng
-        canvasWidth = maxWidth;
-        canvasHeight = maxWidth / aspectRatio;
-      } else {
-        // Giới hạn bởi chiều cao
-        canvasHeight = maxHeight;
-        canvasWidth = maxHeight * aspectRatio;
-      }
-
-      return { canvasWidth, canvasHeight };
-    } else if (isMobile) {
+    if (isMobile) {
       const windowWidth = window.innerWidth;
       const canvasWidth = Math.min(windowWidth * 0.95, 360);
       const canvasHeight = canvasWidth * (height / width);
@@ -431,8 +406,8 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     const canvas = fabricCanvas.current;
     if (!canvas) return;
 
-    // Khi currentOrder = 0, khởi tạo lần đầu
-    if (currentOrder === 0) {
+    // Khi currentOrder = 0 hoặc showAllElements = true, khởi tạo lần đầu
+    if (currentOrder === 0 || showAllElements || currentOrder === -1) {
       canvas.clear();
       canvas.backgroundImage = undefined;
       canvas.backgroundColor = backgroundColor || '#fff';
@@ -461,10 +436,19 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     const sortedElements = [...elements].sort(
       (a, b) => a.layerOrder - b.layerOrder
     );
-    const groups = groupElementsByDisplayOrder(sortedElements);
 
-    // Chỉ load ảnh cho displayOrder hiện tại
-    const toLoad = groups[currentOrder] || [];
+    let toLoad: SlideElement[] = [];
+
+    if (showAllElements) {
+      // Hiển thị tất cả elements cùng lúc
+      toLoad = sortedElements;
+    } else {
+      // Hiển thị theo displayOrder như cũ
+      const groups = groupElementsByDisplayOrder(sortedElements);
+      toLoad = groups[currentOrder] || [];
+    }
+
+    // Load tất cả ảnh cần thiết
     const imagePromises = toLoad
       .filter((el) => el.slideElementType === 'IMAGE' && el.sourceUrl)
       .map(
@@ -483,7 +467,8 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     try {
       const loadedImages = await Promise.all(imagePromises);
 
-      // Nếu currentOrder > 0, không xóa đối tượng cũ, chỉ thêm mới
+      // Nếu showAllElements = false và currentOrder > 0, không xóa đối tượng cũ, chỉ thêm mới
+      // Nếu showAllElements = true, đã clear canvas ở trên rồi
       toLoad.forEach((element) => {
         const fabricObj = slideElementToFabric(
           element,
@@ -494,7 +479,10 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
         );
         if (fabricObj) {
           canvas.add(fabricObj);
-          applyEntryAnimation(fabricObj, element, scaleX, scaleY);
+          // Chỉ apply animation nếu không hiển thị tất cả elements
+          if (!showAllElements) {
+            applyEntryAnimation(fabricObj, element, scaleX, scaleY);
+          }
         }
       });
 
@@ -506,6 +494,9 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
 
   // Handle mouse click to advance displayOrder
   const handleCanvasClick = () => {
+    // Chỉ xử lý click nếu không hiển thị tất cả elements
+    if (showAllElements) return;
+
     console.log('Canvas clicked, currentDisplayOrder:', currentDisplayOrder);
     console.log(
       'Max display order:',
@@ -536,12 +527,18 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       activity.backgroundColor || '#fff',
       activity.backgroundImage
     );
-    canvas.on('mouse:down', handleCanvasClick);
+
+    // Chỉ thêm click handler nếu không hiển thị tất cả elements
+    if (!showAllElements) {
+      canvas.on('mouse:down', handleCanvasClick);
+    }
+
     // Vẽ các phần tử đầu tiên (displayOrder = 0) khi slide mới
+    // Hoặc tất cả elements nếu showAllElements = true
     renderSlide(
       activity.slide.slideElements,
       getMaxDisplayOrder(activity.slide.slideElements),
-      0
+      showAllElements ? -1 : 0 // -1 để trigger hiển thị tất cả
     );
 
     // Resize handler chỉ thay đổi size
@@ -554,15 +551,16 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       window.removeEventListener('resize', handleResize);
       canvas.dispose();
     };
-  }, [activity.slide.slideId]);
+  }, [activity.slide.slideId, showAllElements]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
 
-  // 2) Render slide mỗi khi currentDisplayOrder thay đổi
+  // 2) Render slide mỗi khi currentDisplayOrder thay đổi (chỉ khi không hiển thị tất cả)
   useEffect(() => {
     if (
       !fabricCanvas.current ||
       activity.activityType !== 'INFO_SLIDE' ||
-      !activity.slide
+      !activity.slide ||
+      showAllElements // Không cần re-render khi showAllElements = true
     )
       return;
     renderSlide(
@@ -570,42 +568,12 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       getMaxDisplayOrder(activity.slide.slideElements),
       currentDisplayOrder
     );
-  }, [currentDisplayOrder]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-
-  // 3) Cập nhật kích thước canvas khi chuyển đổi fullscreen mode
-  useEffect(() => {
-    if (!fabricCanvas.current) return;
-
-    const { canvasWidth, canvasHeight } = getCanvasDimensions();
-    fabricCanvas.current.setDimensions({
-      width: canvasWidth,
-      height: canvasHeight,
-    });
-
-    // Cập nhật background image nếu có
-    if (backgroundImage && fabricCanvas.current.backgroundImage) {
-      const bgImg = fabricCanvas.current.backgroundImage as fabric.Image;
-      bgImg.set({
-        scaleX: canvasWidth / bgImg.width!,
-        scaleY: canvasHeight / bgImg.height!,
-      });
-    }
-
-    // Re-render slide với kích thước mới
-    renderSlide(
-      activity.slide.slideElements,
-      getMaxDisplayOrder(activity.slide.slideElements),
-      currentDisplayOrder
-    );
-  }, [isFullscreenMode]);
+  }, [currentDisplayOrder, showAllElements]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
 
   return (
     <div
-      className={`flex items-center justify-center mx-auto ${
-        isFullscreenMode ? 'h-full' : ''
-      }`}
+      className='flex items-center justify-center mx-auto'
       style={{
         position: 'relative',
         width: `${canvasWidth}px`,
@@ -618,11 +586,7 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       {!activity ||
       activity.activityType !== 'INFO_SLIDE' ||
       !activity.slide ? (
-        <div
-          className={`flex items-center justify-center ${
-            isFullscreenMode ? 'h-full' : 'h-[400px]'
-          } bg-gray-100 rounded-lg`}
-        >
+        <div className='flex items-center justify-center h-[400px] bg-gray-100 rounded-lg'>
           <p className='text-gray-500'>Không có slide nào để hiển thị</p>
         </div>
       ) : (

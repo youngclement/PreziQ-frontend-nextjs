@@ -79,6 +79,7 @@ interface QuizActivityProps {
   onAnswerSubmit?: (locationData: LocationData) => void;
   sessionWebSocket?: SessionWebSocket;
   isParticipating?: boolean;
+  isFullscreenMode?: boolean;
 }
 
 export default function QuizLocationViewer({
@@ -88,6 +89,7 @@ export default function QuizLocationViewer({
   onAnswerSubmit,
   sessionWebSocket,
   isParticipating = true,
+  isFullscreenMode = false,
 }: QuizActivityProps) {
   // State cho nhiều vị trí user chọn (thay đổi từ single location thành array)
   const [userSelectedLocations, setUserSelectedLocations] = useState<
@@ -599,10 +601,16 @@ export default function QuizLocationViewer({
 
   return (
     <div
-      className='min-h-full bg-transparent'
+      className={`min-h-full bg-transparent ${
+        isFullscreenMode ? 'h-full flex flex-col' : ''
+      }`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <Card className='bg-black bg-opacity-30 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden'>
+      <Card
+        className={`bg-black bg-opacity-30 backdrop-blur-md shadow-xl border border-white/5 text-white overflow-hidden ${
+          isFullscreenMode ? 'flex-1 flex flex-col h-full' : ''
+        }`}
+      >
         {/* Header với thời gian và tiến trình */}
         <motion.div
           className='rounded-t-xl flex flex-col shadow-md relative overflow-hidden'
@@ -740,7 +748,11 @@ export default function QuizLocationViewer({
         </div>
 
         {/* Map */}
-        <div className='p-3 sm:p-6 bg-black bg-opacity-20'>
+        <div
+          className={`${
+            isFullscreenMode ? 'flex-1 flex flex-col p-2 sm:p-4' : 'p-3 sm:p-6'
+          } bg-black bg-opacity-20`}
+        >
           <AnimatePresence>
             {error && (
               <motion.div
@@ -760,7 +772,9 @@ export default function QuizLocationViewer({
           {/* Selected Locations Display */}
           {userSelectedLocations.length > 0 && (
             <motion.div
-              className='mt-4 p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30'
+              className={`${
+                isFullscreenMode ? 'mb-2' : 'mt-4'
+              } p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -814,7 +828,9 @@ export default function QuizLocationViewer({
 
           {/* Map */}
           <motion.div
-            className='rounded-xl overflow-hidden shadow-xl border border-white/10'
+            className={`rounded-xl overflow-hidden shadow-xl border border-white/10 ${
+              isFullscreenMode ? 'flex-1 min-h-0' : ''
+            }`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -844,6 +860,7 @@ export default function QuizLocationViewer({
               disabled={isSubmitted || isQuizEnded}
               userSelectedLocations={userSelectedLocations}
               correctAnswers={correctAnswers}
+              isFullscreenMode={isFullscreenMode}
             />
           </motion.div>
 
@@ -853,13 +870,17 @@ export default function QuizLocationViewer({
             isParticipating &&
             userSelectedLocations.length > 0 && (
               <motion.div
-                className='mt-6 w-full'
+                className={`${isFullscreenMode ? 'mt-2' : 'mt-6'} w-full`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
               >
                 <Button
-                  className='w-full px-8 py-6 text-lg font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2'
+                  className={`w-full ${
+                    isFullscreenMode
+                      ? 'px-6 py-4 text-base'
+                      : 'px-8 py-6 text-lg'
+                  } font-bold bg-gradient-to-r from-[#aef359] to-[#e4f88d] hover:from-[#9ee348] hover:to-[#d3e87c] text-slate-900 shadow-lg flex items-center justify-center gap-2`}
                   disabled={isSubmitting || timeLeft <= 0}
                   onClick={handleSubmit}
                 >
@@ -890,7 +911,9 @@ export default function QuizLocationViewer({
           {/* Thông báo đã gửi câu trả lời khi submit nhưng chưa kết thúc quiz */}
           {isSubmitted && !showResults && !isQuizEnded && (
             <motion.div
-              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30 text-white/90'
+              className={`${
+                isFullscreenMode ? 'mt-2' : 'mt-6'
+              } p-4 rounded-xl bg-[#0e2838]/50 border border-[#aef359]/30 text-white/90`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -906,32 +929,15 @@ export default function QuizLocationViewer({
             </motion.div>
           )}
 
-          {/* Show Time Expired Message when quiz has ended but not submitted
-          {isQuizEnded && !isSubmitted && (
-            <motion.div
-              className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-amber-500/30 text-white/90'
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className='flex items-center gap-2 mb-2 text-amber-400'>
-                <Clock className='h-5 w-5' />
-                <span className='font-semibold'>Hết thời gian!</span>
-              </div>
-              <p className='text-white/70'>
-                Thời gian trả lời đã hết hoặc tất cả người tham gia đã trả lời.
-                Bạn không thể nộp câu trả lời nữa.
-              </p>
-            </motion.div>
-          )} */}
-
           {/* Results */}
           <AnimatePresence>
             {(isSubmitted && isQuizEnded) ||
             activity.hostShowAnswer ||
             isQuizEnded ? (
               <motion.div
-                className='mt-6 p-4 rounded-xl bg-[#0e2838]/50 border border-white/10'
+                className={`${
+                  isFullscreenMode ? 'mt-2 mb-2' : 'mt-6'
+                } p-4 rounded-xl bg-[#0e2838]/50 border border-white/10`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
