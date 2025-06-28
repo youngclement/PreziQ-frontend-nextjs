@@ -108,7 +108,7 @@ export default function PublishedCollectionsPage() {
   };
 
   // Fetch collections grouped by topic
-  const fetchGroupedCollections = async (page = 1, size = 10) => {
+  const fetchGroupedCollections = async (page = 1, size = 100) => {
     setIsLoading(true);
     setError(null);
 
@@ -160,6 +160,7 @@ export default function PublishedCollectionsPage() {
     // Nếu collection có sẵn số lượng hoạt động
     const collection = collections.find((c) => c.collectionId === collectionId);
     if (collection?.totalActivities !== undefined) {
+      console.log('collection.totalActivities:', collection);
       return collection.totalActivities;
     }
 
@@ -458,8 +459,7 @@ export default function PublishedCollectionsPage() {
                       {topicCollections.map((collection) => (
                         <CollectionGridItem
                           key={collection.collectionId}
-                          collection={collection}
-                          activities={getActivityCount(collection.collectionId)}
+                          collection={collection}                        
                           onView={() =>
                             handleViewActivities(collection.collectionId)
                           }
@@ -479,7 +479,6 @@ export default function PublishedCollectionsPage() {
                         <CollectionListItem
                           key={collection.collectionId}
                           collection={collection}
-                          activities={getActivityCount(collection.collectionId)}
                           onView={() =>
                             handleViewActivities(collection.collectionId)
                           }

@@ -38,7 +38,6 @@ interface CollectionListItemProps {
 
 export function CollectionListItem({
   collection,
-  activities,
   onEdit,
   onView,
   onViewCollection,
@@ -113,8 +112,6 @@ export function CollectionListItem({
     }
   };
 
-  console.log('collectionnnn', collection);
-
   return (
     <>
       <div
@@ -158,7 +155,7 @@ export function CollectionListItem({
                 <div className="flex items-center gap-1">
                   <BookOpen className="h-3.5 w-3.5" />
                   <span>
-                    {activities || 0}{' '}
+                    {collection?.totalActivities || 0}{' '}
                     activities
                   </span>
                 </div>

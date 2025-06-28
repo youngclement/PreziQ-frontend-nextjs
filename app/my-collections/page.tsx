@@ -342,7 +342,6 @@ export default function MyCollectionsPage() {
                       <CollectionGridItem
                         key={collection.collectionId}
                         collection={collection}
-                        activities={[]}
                         onEdit={() =>
                           handleEditCollection(collection.collectionId)
                         }

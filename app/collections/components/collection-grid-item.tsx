@@ -40,7 +40,6 @@ interface CollectionGridItemProps {
 
 export function CollectionGridItem({
   collection,
-  activities,
   onEdit,
   onView,
   onViewCollection,
