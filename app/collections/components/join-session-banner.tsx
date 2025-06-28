@@ -47,10 +47,10 @@ export function JoinSessionBanner() {
         </div>
         <div className='lg:w-7/12 lg:mr-8 lg:py-8 flex flex-col justify-start items-center w-full h-full'>
           <div className='flex flex-col items-center mb-6'>
-            <h2 className='md:text-4xl lg:text-3xl xl:text-4xl 2xl:text-5xl md:pb-0 pb-2 text-3xl font-black leading-none text-center text-white tracking-wide'>
+            <h2 className='md:text-4xl lg:text-3xl xl:text-4xl 2xl:text-5xl md:pb-0 pb-2 text-3xl font-black leading-none text-center text-white tracking-wider'>
               {t('collections.joinSession')}
             </h2>
-            <h3 className='md:text-base lg:text-xl flex flex-col items-center justify-center pb-4 text-sm font-bold leading-none text-center text-white tracking-wide'>
+            <h3 className='md:text-base lg:text-xl flex flex-col items-center justify-center pb-4 text-sm font-bold leading-none text-center text-white tracking-wider'>
               <div>{t('collections.enterPinToParticipate')}</div>
               <div>{t('collections.participateAndAnswer')}</div>
             </h3>
@@ -66,7 +66,7 @@ export function JoinSessionBanner() {
                     setError(null);
                   }}
                   placeholder={t('collections.enterPinCode')}
-                  className='pl-10 h-12 bg-white/10 text-white placeholder:text-white/70 border-white/30 focus:border-white focus:ring-white/30 rounded-xl tracking-wide'
+                  className='pl-10 h-12 bg-white/10 text-white placeholder:text-white/70 border-white/30 focus:border-white focus:ring-white/30 rounded-xl tracking-wider'
                 />
                 <Code className='absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/70' />
               </div>
@@ -86,7 +86,7 @@ export function JoinSessionBanner() {
                 >
                   <button
                     type='submit'
-                    className='relative flex group text-sm leading-6 touch-manipulation cursor-pointer h-12 whitespace-nowrap px-4 font-bold text-white min-w-[6rem] tracking-wide items-center justify-center'
+                    className='relative flex group text-sm leading-6 touch-manipulation cursor-pointer h-12 whitespace-nowrap px-4 font-bold text-white min-w-[6rem] tracking-wider items-center justify-center'
                     style={{ borderRadius: 0 }}
                   >
                     <div
@@ -136,7 +136,7 @@ export function JoinSessionBanner() {
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className='text-sm text-white bg-red-500/30 px-3 py-1 rounded text-center mb-3 tracking-wide'
+                className='text-sm text-white bg-red-500/30 px-3 py-1 rounded text-center mb-3 tracking-wider'
               >
                 {error}
               </motion.p>
@@ -158,10 +158,10 @@ export function JoinSessionBanner() {
         </div>
         <div className='lg:w-7/12 lg:mr-8 lg:py-8 flex flex-col justify-start items-center w-full h-full'>
           <div className='flex flex-col items-center mb-6'>
-            <h2 className='md:text-4xl lg:text-3xl xl:text-4xl 2xl:text-5xl md:pb-0 pb-2 text-3xl font-black leading-none text-center text-white tracking-wide'>
+            <h2 className='md:text-4xl lg:text-3xl xl:text-4xl 2xl:text-5xl md:pb-0 pb-2 text-3xl font-black leading-none text-center text-white tracking-wider'>
               {t('collections.createCollection')}
             </h2>
-            <h3 className='md:text-base lg:text-xl flex flex-col items-center justify-center pb-4 text-sm font-bold leading-none text-center text-white tracking-wide'>
+            <h3 className='md:text-base lg:text-xl flex flex-col items-center justify-center pb-4 text-sm font-bold leading-none text-center text-white tracking-wider'>
               <div>{t('collections.createYourOwn')}</div>
               <div>{t('collections.questionCollection')}</div>
             </h3>
@@ -176,7 +176,7 @@ export function JoinSessionBanner() {
             >
               <button
                 onClick={handleCreateCollection}
-                className='relative flex group text-lg leading-6 py-3 touch-manipulation cursor-pointer md:h-14 whitespace-nowrap md:px-6 md:w-auto md:py-0 px-6 font-bold text-black min-w-[7rem] md:min-w-[12rem] w-full tracking-wide'
+                className='relative flex group text-lg leading-6 py-3 touch-manipulation cursor-pointer md:h-14 whitespace-nowrap md:px-6 md:w-auto md:py-0 px-6 font-bold text-black min-w-[7rem] md:min-w-[12rem] w-full tracking-wider'
                 style={{ borderRadius: 0 }}
               >
                 <div
