@@ -21,6 +21,9 @@ export function useCollectionData(collectionId: string, activityId?: string) {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const [lastMatchingPairRefresh, setLastMatchingPairRefresh] = useState<
+    Record<string, number>
+  >({});
 
   // Fetch collection data and initialize activities and questions
   const fetchCollectionData = async () => {
@@ -173,12 +176,14 @@ export function useCollectionData(collectionId: string, activityId?: string) {
                   question.question_text =
                     act.quiz?.questionText || act.title || 'Match the pairs';
                   question.time_limit_seconds = act.quiz?.timeLimitSeconds;
-                  question.pointType = act.quiz?.pointType;
+                  // Ensure pointType is properly set from API with fallback
+                  question.pointType = act.quiz?.pointType || 'STANDARD';
 
                   // Use the actual matching pair data from API
                   if (act.quiz?.quizMatchingPairAnswer) {
                     const matchingData = act.quiz.quizMatchingPairAnswer;
                     question.matching_data = matchingData;
+                    question.quizMatchingPairAnswer = matchingData;
 
                     // Convert API structure to the expected options format
                     const options: MatchingPairOption[] = [];
@@ -336,8 +341,87 @@ export function useCollectionData(collectionId: string, activityId?: string) {
     }
   };
 
-  // Sync activity state with active question
-  const syncActivityWithActiveQuestion = () => {
+  // Add new function to refresh matching pair data for a specific activity
+  const refreshMatchingPairData = async (activityId: string) => {
+    try {
+      console.log(
+        `🔄 Refreshing matching pair data for activity: ${activityId}`
+      );
+
+      // Get fresh activity data from API
+      const response = await collectionsApi.getCollectionById(collectionId);
+      if (response?.data?.data?.activities) {
+        const targetActivity = response.data.data.activities.find(
+          (act: any) => act.activityId === activityId
+        );
+
+        if (
+          targetActivity?.activityType === 'QUIZ_MATCHING_PAIRS' &&
+          targetActivity.quiz?.quizMatchingPairAnswer
+        ) {
+          const matchingData = targetActivity.quiz.quizMatchingPairAnswer;
+
+          // Update questions state with fresh matching pair data
+          setQuestions((prevQuestions) =>
+            prevQuestions.map((question) => {
+              if (question.activity_id === activityId) {
+                return {
+                  ...question,
+                  matching_data: matchingData,
+                  quizMatchingPairAnswer: matchingData,
+                  pointType:
+                    targetActivity.quiz?.pointType ||
+                    question.pointType ||
+                    'STANDARD',
+                  options:
+                    matchingData.items?.map((item: any) => ({
+                      id: item.quizMatchingPairItemId,
+                      quizMatchingPairItemId: item.quizMatchingPairItemId,
+                      content: item.content,
+                      isLeftColumn: item.isLeftColumn,
+                      display_order: item.displayOrder || 0,
+                    })) || [],
+                };
+              }
+              return question;
+            })
+          );
+
+          // Update activities state as well
+          setActivities((prevActivities) =>
+            prevActivities.map((act) => {
+              if (act.id === activityId) {
+                return {
+                  ...act,
+                  quiz: targetActivity.quiz,
+                };
+              }
+              return act;
+            })
+          );
+
+          // Update current activity if it's the active one
+          if (activity?.id === activityId) {
+            setActivity((prev) =>
+              prev ? { ...prev, quiz: targetActivity.quiz } : null
+            );
+          }
+
+          setLastMatchingPairRefresh((prev) => ({
+            ...prev,
+            [activityId]: Date.now(),
+          }));
+
+          console.log('✅ Matching pair data refreshed successfully');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing matching pair data:', error);
+    }
+  };
+
+  // Enhanced syncActivityWithActiveQuestion with matching pair refresh
+  const syncActivityWithActiveQuestion = async () => {
     const activeQuestionActivityId =
       questions[activeQuestionIndex]?.activity_id;
     if (
@@ -353,6 +437,31 @@ export function useCollectionData(collectionId: string, activityId?: string) {
           correctActivity.id
         );
         setActivity(correctActivity);
+
+        // Check if this is a matching pair activity and needs refresh
+        if (correctActivity.activity_type_id === 'QUIZ_MATCHING_PAIRS') {
+          const lastRefresh = lastMatchingPairRefresh[correctActivity.id] || 0;
+          const timeSinceLastRefresh = Date.now() - lastRefresh;
+
+          // Refresh if it's been more than 5 seconds since last refresh
+          if (timeSinceLastRefresh > 5000) {
+            await refreshMatchingPairData(correctActivity.id);
+          } else {
+            // Even if we don't refresh, ensure pointType is synced
+            setQuestions((prevQuestions) =>
+              prevQuestions.map((question) => {
+                if (question.activity_id === activeQuestionActivityId) {
+                  return {
+                    ...question,
+                    pointType:
+                      correctActivity.quiz?.pointType || question.pointType,
+                  };
+                }
+                return question;
+              })
+            );
+          }
+        }
       }
     }
   };
@@ -362,7 +471,7 @@ export function useCollectionData(collectionId: string, activityId?: string) {
     fetchCollectionData();
   }, [collectionId, activityId]);
 
-  // Sync activity when active question changes
+  // Enhanced useEffect for activeQuestionIndex changes
   useEffect(() => {
     syncActivityWithActiveQuestion();
   }, [activeQuestionIndex]);
@@ -380,5 +489,6 @@ export function useCollectionData(collectionId: string, activityId?: string) {
     activeQuestionIndex,
     setActiveQuestionIndex,
     refreshCollectionData: fetchCollectionData,
+    refreshMatchingPairData,
   };
 }

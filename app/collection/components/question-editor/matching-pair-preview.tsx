@@ -4,7 +4,7 @@ import type React from 'react';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Info } from 'lucide-react';
+import { Info, Eye, Trash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import type { QuizQuestion } from '../types';
@@ -99,10 +99,8 @@ export function MatchingPairPreview({
   const [connections, setConnections] = useState<QuizMatchingPairConnection[]>(
     []
   );
-  const [selectedItem, setSelectedItem] = useState<{
-    id: string;
-    type: 'left' | 'right';
-  } | null>(null);
+  const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
+  const [selectedRight, setSelectedRight] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -116,6 +114,9 @@ export function MatchingPairPreview({
     startItem: null,
     currentMousePos: null,
   });
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState<string>('');
 
   // Get matching data from the question with fallback
   const matchingData = useMemo(() => {
@@ -137,6 +138,33 @@ export function MatchingPairPreview({
     }
     return map;
   }, [matchingData?.connections]);
+
+  const connectionColors = [
+    {
+      light: 'bg-red-100 border-red-400 text-red-700',
+      dark: 'dark:bg-rose-500/40 dark:border-rose-300 dark:text-rose-100',
+    },
+    {
+      light: 'bg-blue-100 border-blue-400 text-blue-700',
+      dark: 'dark:bg-cyan-500/40 dark:border-cyan-300 dark:text-cyan-100',
+    },
+    {
+      light: 'bg-yellow-100 border-yellow-400 text-yellow-700',
+      dark: 'dark:bg-amber-400/30 dark:border-amber-200 dark:text-amber-50',
+    },
+    {
+      light: 'bg-green-100 border-green-400 text-green-700',
+      dark: 'dark:bg-lime-500/30 dark:border-lime-300 dark:text-lime-100',
+    },
+    {
+      light: 'bg-purple-100 border-purple-400 text-purple-700',
+      dark: 'dark:bg-violet-500/30 dark:border-violet-300 dark:text-violet-100',
+    },
+    {
+      light: 'bg-pink-100 border-pink-400 text-pink-700',
+      dark: 'dark:bg-fuchsia-500/30 dark:border-fuchsia-300 dark:text-fuchsia-100',
+    },
+  ];
 
   // State for shuffled columns - only shuffle once per data update
   const [shuffledColumnA, setShuffledColumnA] = useState<
@@ -210,71 +238,94 @@ export function MatchingPairPreview({
     async (type: 'left' | 'right', itemId: string) => {
       if (previewMode || !editMode) return;
 
-      if (selectedItem) {
-        if (selectedItem.type !== type && selectedItem.id !== itemId) {
-          // Different column item clicked - create connection
-          const leftItemId = type === 'left' ? itemId : selectedItem.id;
-          const rightItemId = type === 'right' ? itemId : selectedItem.id;
+      if (selectedLeft && selectedRight) {
+        // Kiểm tra nếu đã có connection giữa hai item này
+        const leftItemId = type === 'left' ? itemId : selectedLeft;
+        const rightItemId = type === 'right' ? itemId : selectedRight;
 
-          // Check if connection already exists
-          const existingConnection = connections.find(
-            (c) =>
-              c.leftItem.quizMatchingPairItemId === leftItemId &&
-              c.rightItem.quizMatchingPairItemId === rightItemId
-          );
+        const existingConnection = connections.find(
+          (c) =>
+            c.leftItem.quizMatchingPairItemId === leftItemId &&
+            c.rightItem.quizMatchingPairItemId === rightItemId
+        );
 
-          if (!existingConnection && question.activity_id) {
+        if (existingConnection && question.activity_id) {
+          // Nếu đã có connection, thì xóa connection này
+          if (existingConnection.quizMatchingPairConnectionId) {
             try {
-              // Call API to create connection
-              const payload: ConnectionItemPayload = {
-                leftItemId,
-                rightItemId,
-              };
-
-              await activitiesApi.addMatchingPairConnection(
+              await activitiesApi.deleteMatchingPairConnection(
                 question.activity_id,
-                payload
+                existingConnection.quizMatchingPairConnectionId
               );
-
-              // Refresh data from server
-              const response = await activitiesApi.getActivityById(
-                question.activity_id
+              setConnections((prev) =>
+                prev.filter(
+                  (c) =>
+                    c.quizMatchingPairConnectionId !==
+                    existingConnection.quizMatchingPairConnectionId
+                )
               );
-              const updatedConnections =
-                response.data.data.quiz.quizMatchingPairAnswer?.connections ??
-                [];
-
-              setConnections(updatedConnections);
-
-              // Update parent component
-              onOptionChange(
-                questionIndex,
-                -1,
-                'update_connections',
-                updatedConnections
-              );
+              if (onDeleteConnection) {
+                const payload: ConnectionItemPayload = {
+                  leftItemId,
+                  rightItemId,
+                };
+                onDeleteConnection(payload);
+              }
             } catch (error) {
-              console.error('Failed to create connection:', error);
+              console.error('Failed to delete connection:', error);
             }
           }
-          setSelectedItem(null);
-        } else {
-          // Same column or same item - change selection
-          setSelectedItem({ id: itemId, type });
+        } else if (!existingConnection && question.activity_id) {
+          // Nếu chưa có connection, thì tạo connection mới
+          try {
+            const payload: ConnectionItemPayload = {
+              leftItemId,
+              rightItemId,
+            };
+
+            await activitiesApi.addMatchingPairConnection(
+              question.activity_id,
+              payload
+            );
+
+            // Refresh data from server
+            const response = await activitiesApi.getActivityById(
+              question.activity_id
+            );
+            const updatedConnections =
+              response.data.data.quiz.quizMatchingPairAnswer?.connections ?? [];
+
+            setConnections(updatedConnections);
+
+            // Update parent component
+            onOptionChange(
+              questionIndex,
+              -1,
+              'update_connections',
+              updatedConnections
+            );
+          } catch (error) {
+            console.error('Failed to create connection:', error);
+          }
         }
+        setSelectedLeft(null);
+        setSelectedRight(null);
       } else {
         // No item selected - select this one
-        setSelectedItem({ id: itemId, type });
+        if (type === 'left') setSelectedLeft(itemId);
+        else setSelectedRight(itemId);
       }
     },
     [
       previewMode,
       editMode,
-      selectedItem,
+      selectedLeft,
+      selectedRight,
       connections,
       question.activity_id,
       questionIndex,
       onOptionChange,
+      onDeleteConnection,
     ]
   );
 
@@ -493,6 +544,120 @@ export function MatchingPairPreview({
     }
   }, [dragState.isDragging, handleMouseMove]);
 
+  const toggleExpand = useCallback((itemId: string) => {
+    setExpandedItems((prev) => {
+      const newSet = new Set(prev);
+      if (prev.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleAddPair = async () => {
+    if (!question.activity_id) return;
+    try {
+      await activitiesApi.addMatchingPair(question.activity_id);
+      // Refresh data
+      const response = await activitiesApi.getActivityById(
+        question.activity_id
+      );
+      const updatedItems =
+        response.data.data.quiz.quizMatchingPairAnswer?.items ?? [];
+      onOptionChange(questionIndex, -1, 'update_items', updatedItems);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!question.activity_id) return;
+    try {
+      await activitiesApi.deleteMatchingPairItem(question.activity_id, itemId);
+      const response = await activitiesApi.getActivityById(
+        question.activity_id
+      );
+      const updatedItems =
+        response.data.data.quiz.quizMatchingPairAnswer?.items ?? [];
+      onOptionChange(questionIndex, -1, 'update_items', updatedItems);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleEditItem = useCallback(
+    async (itemId: string, newContent: string) => {
+      if (!question.activity_id || !matchingData?.items) return;
+      try {
+        const item = matchingData.items.find(
+          (it) => it.quizMatchingPairItemId === itemId
+        );
+        if (!item) return;
+
+        const payload = {
+          content: newContent,
+          isLeftColumn: item.isLeftColumn,
+          displayOrder: item.displayOrder,
+        };
+        await activitiesApi.updateReorderQuizItem(
+          question.activity_id,
+          itemId,
+          payload
+        );
+        // Fetch lại dữ liệu mới
+        const response = await activitiesApi.getActivityById(
+          question.activity_id
+        );
+        const updatedItems =
+          response.data.data.quiz.quizMatchingPairAnswer?.items ?? [];
+        onOptionChange(questionIndex, -1, 'update_items', updatedItems);
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [question.activity_id, matchingData?.items, onOptionChange, questionIndex]
+  );
+
+  const handleInputFocus = (itemId: string, value: string) => {
+    setEditingItemId(itemId);
+    setEditingValue(value);
+  };
+
+  const handleInputBlur = async (itemId: string) => {
+    if (!question.activity_id || !editingItemId) return;
+    if (editingValue.trim() === '') return;
+    try {
+      const item = matchingData?.items?.find(
+        (it) => it.quizMatchingPairItemId === itemId
+      );
+      if (!item) return;
+      const payload = {
+        content: editingValue,
+        isLeftColumn: item.isLeftColumn,
+        displayOrder: item.displayOrder,
+      };
+      await activitiesApi.updateReorderQuizItem(
+        question.activity_id,
+        itemId,
+        payload
+      );
+      // Refresh data
+      const response = await activitiesApi.getActivityById(
+        question.activity_id
+      );
+      const updatedItems =
+        response.data.data.quiz.quizMatchingPairAnswer?.items ?? [];
+      onOptionChange(questionIndex, -1, 'update_items', updatedItems);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setEditingItemId(null);
+      setEditingValue('');
+    }
+  };
+
   // If no matching data, show empty state
   if (!matchingData) {
     return (
@@ -513,15 +678,14 @@ export function MatchingPairPreview({
       )}
       key={`preview-${dataVersion}-${settingsUpdateTrigger}`}
     >
-      <div className="flex justify-between items-start gap-4 md:gap-8">
+      <div className="flex justify-around items-start gap-4 md:gap-8">
         {/* Column A */}
-        <div className="w-1/2 flex flex-col items-center gap-2 md:gap-3">
+        <div className="w-1/3 flex flex-col items-center gap-2 md:gap-3">
           <h3 className="font-bold text-lg text-center text-gray-700 dark:text-gray-300">
             {matchingData.leftColumnName || leftColumnName}
           </h3>
           <div className="w-full space-y-2">
             {shuffledColumnA.map((item, index) => {
-              // Find the connection for this item
               const connection = connections.find(
                 (c) =>
                   c.leftItem.quizMatchingPairItemId ===
@@ -531,21 +695,24 @@ export function MatchingPairPreview({
                 ? pairColorMap.get(connection.quizMatchingPairConnectionId)
                 : undefined;
 
+              const isSelected = selectedLeft === item.quizMatchingPairItemId;
+              const isConnected = connections.some(
+                (conn) =>
+                  conn.leftItem.quizMatchingPairItemId ===
+                    item.quizMatchingPairItemId ||
+                  conn.rightItem.quizMatchingPairItemId ===
+                    item.quizMatchingPairItemId
+              );
+
               return (
                 <motion.div
-                  key={`${
-                    item.quizMatchingPairItemId || `a-${index}`
-                  }-${dataVersion}`}
+                  key={item.quizMatchingPairItemId}
                   id={`item-${item.quizMatchingPairItemId}`}
                   className={cn(
                     'p-2 md:p-3 rounded-lg text-center transition-all duration-200 w-full border-2',
                     !previewMode && editMode && 'cursor-pointer',
-                    selectedItem?.id === item.quizMatchingPairItemId
-                      ? 'ring-2 ring-blue-500'
-                      : '',
-                    dragState.startItem?.id === item.quizMatchingPairItemId
-                      ? 'ring-2 ring-green-500'
-                      : '',
+                    isSelected && 'ring-2 ring-primary',
+                    isConnected && 'bg-green-100',
                     connectionColor
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
@@ -558,25 +725,128 @@ export function MatchingPairPreview({
                         }
                       : {}
                   }
-                  onClick={() =>
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('input')) return;
                     item.quizMatchingPairItemId &&
-                    handleItemClick('left', item.quizMatchingPairItemId)
-                  }
-                  onMouseDown={(e) =>
+                      handleItemClick('left', item.quizMatchingPairItemId);
+                  }}
+                  onMouseDown={(e) => {
+                    if ((e.target as HTMLElement).closest('input')) return;
                     item.quizMatchingPairItemId &&
-                    handleMouseDown('left', item.quizMatchingPairItemId, e)
-                  }
-                  onMouseUp={() =>
+                      handleMouseDown('left', item.quizMatchingPairItemId, e);
+                  }}
+                  onMouseUp={(e) => {
+                    if ((e.target as HTMLElement).closest('input')) return;
                     item.quizMatchingPairItemId &&
-                    handleMouseUp('left', item.quizMatchingPairItemId)
-                  }
-                  whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
+                      handleMouseUp('left', item.quizMatchingPairItemId);
+                  }}
+                  whileHover={{
+                    scale: !previewMode && editMode ? 1.03 : 1,
+                  }}
                   layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
-                  <p className="text-sm md:text-base">{item.content}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    {!previewMode && editMode ? (
+                      editingItemId === item.quizMatchingPairItemId ? (
+                        <input
+                          value={editingValue}
+                          autoFocus
+                          onChange={(e) => setEditingValue(e.target.value)}
+                          onBlur={() =>
+                            handleInputBlur(item.quizMatchingPairItemId!)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              (e.target as HTMLInputElement).blur();
+                            }
+                          }}
+                          className="w-full bg-transparent border-b border-gray-300 focus:outline-none"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <div
+                          className="w-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleInputFocus(
+                              item.quizMatchingPairItemId!,
+                              item.content || ''
+                            );
+                          }}
+                        >
+                          <input
+                            value={item.content}
+                            readOnly
+                            className="w-full bg-transparent border-b border-gray-300 focus:outline-none cursor-pointer"
+                            tabIndex={-1}
+                            style={{ pointerEvents: 'none' }}
+                          />
+                        </div>
+                      )
+                    ) : (
+                      <p
+                        className={cn(
+                          'text-sm md:text-base max-w-full',
+                          expandedItems.has(item.quizMatchingPairItemId ?? '')
+                            ? 'whitespace-pre-line break-words'
+                            : 'truncate'
+                        )}
+                        style={
+                          expandedItems.has(item.quizMatchingPairItemId ?? '')
+                            ? { maxHeight: 300, overflow: 'auto' }
+                            : { maxHeight: 24, overflow: 'hidden' }
+                        }
+                        onClick={() => {
+                          if (item.quizMatchingPairItemId)
+                            toggleExpand(item.quizMatchingPairItemId);
+                        }}
+                        title={
+                          expandedItems.has(item.quizMatchingPairItemId ?? '')
+                            ? ''
+                            : item.content
+                        }
+                      >
+                        {item.content}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      className="ml-1 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (item.quizMatchingPairItemId)
+                          toggleExpand(item.quizMatchingPairItemId);
+                      }}
+                      tabIndex={-1}
+                      aria-label={
+                        expandedItems.has(item.quizMatchingPairItemId ?? '')
+                          ? 'Thu nhỏ'
+                          : 'Xem chi tiết'
+                      }
+                    >
+                      <Eye
+                        size={16}
+                        className={
+                          expandedItems.has(item.quizMatchingPairItemId ?? '')
+                            ? 'text-blue-500'
+                            : ''
+                        }
+                      />
+                    </button>
+                    {!previewMode && editMode && (
+                      <button
+                        className="ml-2 text-red-500 hover:text-red-700"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteItem(item.quizMatchingPairItemId!);
+                        }}
+                      >
+                        <Trash size={16} />
+                      </button>
+                    )}
+                  </div>
                 </motion.div>
               );
             })}
@@ -584,13 +854,12 @@ export function MatchingPairPreview({
         </div>
 
         {/* Column B */}
-        <div className="w-1/2 flex flex-col items-center gap-2 md:gap-3">
+        <div className="w-1/3 flex flex-col items-center gap-2 md:gap-3">
           <h3 className="font-bold text-lg text-center text-gray-700 dark:text-gray-300">
             {matchingData.rightColumnName || rightColumnName}
           </h3>
           <div className="w-full space-y-2">
             {shuffledColumnB.map((item, index) => {
-              // Find the connection for this item
               const connection = connections.find(
                 (c) =>
                   c.rightItem.quizMatchingPairItemId ===
@@ -600,21 +869,24 @@ export function MatchingPairPreview({
                 ? pairColorMap.get(connection.quizMatchingPairConnectionId)
                 : undefined;
 
+              const isSelected = selectedRight === item.quizMatchingPairItemId;
+              const isConnected = connections.some(
+                (conn) =>
+                  conn.leftItem.quizMatchingPairItemId ===
+                    item.quizMatchingPairItemId ||
+                  conn.rightItem.quizMatchingPairItemId ===
+                    item.quizMatchingPairItemId
+              );
+
               return (
                 <motion.div
-                  key={`${
-                    item.quizMatchingPairItemId || `b-${index}`
-                  }-${dataVersion}`}
+                  key={item.quizMatchingPairItemId}
                   id={`item-${item.quizMatchingPairItemId}`}
                   className={cn(
                     'p-2 md:p-3 rounded-lg text-center transition-all duration-200 w-full border-2',
                     !previewMode && editMode && 'cursor-pointer',
-                    selectedItem?.id === item.quizMatchingPairItemId
-                      ? 'ring-2 ring-purple-500'
-                      : '',
-                    dragState.startItem?.id === item.quizMatchingPairItemId
-                      ? 'ring-2 ring-green-500'
-                      : '',
+                    isSelected && 'ring-2 ring-primary',
+                    isConnected && 'bg-green-100',
                     connectionColor
                       ? 'text-white'
                       : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
@@ -627,25 +899,128 @@ export function MatchingPairPreview({
                         }
                       : {}
                   }
-                  onClick={() =>
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('input')) return;
                     item.quizMatchingPairItemId &&
-                    handleItemClick('right', item.quizMatchingPairItemId)
-                  }
-                  onMouseDown={(e) =>
+                      handleItemClick('right', item.quizMatchingPairItemId);
+                  }}
+                  onMouseDown={(e) => {
+                    if ((e.target as HTMLElement).closest('input')) return;
                     item.quizMatchingPairItemId &&
-                    handleMouseDown('right', item.quizMatchingPairItemId, e)
-                  }
-                  onMouseUp={() =>
+                      handleMouseDown('right', item.quizMatchingPairItemId, e);
+                  }}
+                  onMouseUp={(e) => {
+                    if ((e.target as HTMLElement).closest('input')) return;
                     item.quizMatchingPairItemId &&
-                    handleMouseUp('right', item.quizMatchingPairItemId)
-                  }
-                  whileHover={{ scale: !previewMode && editMode ? 1.03 : 1 }}
+                      handleMouseUp('right', item.quizMatchingPairItemId);
+                  }}
+                  whileHover={{
+                    scale: !previewMode && editMode ? 1.03 : 1,
+                  }}
                   layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
-                  <p className="text-sm md:text-base">{item.content}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    {!previewMode && editMode ? (
+                      editingItemId === item.quizMatchingPairItemId ? (
+                        <input
+                          value={editingValue}
+                          autoFocus
+                          onChange={(e) => setEditingValue(e.target.value)}
+                          onBlur={() =>
+                            handleInputBlur(item.quizMatchingPairItemId!)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              (e.target as HTMLInputElement).blur();
+                            }
+                          }}
+                          className="w-full bg-transparent border-b border-gray-300 focus:outline-none"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <div
+                          className="w-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleInputFocus(
+                              item.quizMatchingPairItemId!,
+                              item.content || ''
+                            );
+                          }}
+                        >
+                          <input
+                            value={item.content}
+                            readOnly
+                            className="w-full bg-transparent border-b border-gray-300 focus:outline-none cursor-pointer"
+                            tabIndex={-1}
+                            style={{ pointerEvents: 'none' }}
+                          />
+                        </div>
+                      )
+                    ) : (
+                      <p
+                        className={cn(
+                          'text-sm md:text-base max-w-full',
+                          expandedItems.has(item.quizMatchingPairItemId ?? '')
+                            ? 'whitespace-pre-line break-words'
+                            : 'truncate'
+                        )}
+                        style={
+                          expandedItems.has(item.quizMatchingPairItemId ?? '')
+                            ? { maxHeight: 300, overflow: 'auto' }
+                            : { maxHeight: 24, overflow: 'hidden' }
+                        }
+                        onClick={() => {
+                          if (item.quizMatchingPairItemId)
+                            toggleExpand(item.quizMatchingPairItemId);
+                        }}
+                        title={
+                          expandedItems.has(item.quizMatchingPairItemId ?? '')
+                            ? ''
+                            : item.content
+                        }
+                      >
+                        {item.content}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      className="ml-1 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (item.quizMatchingPairItemId)
+                          toggleExpand(item.quizMatchingPairItemId);
+                      }}
+                      tabIndex={-1}
+                      aria-label={
+                        expandedItems.has(item.quizMatchingPairItemId ?? '')
+                          ? 'Thu nhỏ'
+                          : 'Xem chi tiết'
+                      }
+                    >
+                      <Eye
+                        size={16}
+                        className={
+                          expandedItems.has(item.quizMatchingPairItemId ?? '')
+                            ? 'text-blue-500'
+                            : ''
+                        }
+                      />
+                    </button>
+                    {!previewMode && editMode && (
+                      <button
+                        className="ml-2 text-red-500 hover:text-red-700"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteItem(item.quizMatchingPairItemId!);
+                        }}
+                      >
+                        <Trash size={16} />
+                      </button>
+                    )}
+                  </div>
                 </motion.div>
               );
             })}
@@ -656,7 +1031,7 @@ export function MatchingPairPreview({
       {/* SVG for drawing connection lines */}
       <svg
         ref={svgRef}
-        className="absolute top-0 left-0 w-full h-full"
+        className="absolute top-0 left-0 w-full h-full pointer-events-none"
         style={{ zIndex: 20 }}
         key={`svg-${dataVersion}-${settingsUpdateTrigger}`}
       >
@@ -707,6 +1082,7 @@ export function MatchingPairPreview({
                   onClick={() => {
                     if (!previewMode && editMode) handleConnectionClick(conn);
                   }}
+                  className="pointer-events-auto"
                 />
                 {/* Path chính để hiển thị */}
                 <motion.path
@@ -714,7 +1090,7 @@ export function MatchingPairPreview({
                     conn.leftItem.quizMatchingPairItemId!,
                     conn.rightItem.quizMatchingPairItemId!
                   )}
-                  className="stroke-2 transition-all duration-300"
+                  className="stroke-2 transition-all duration-300 pointer-events-auto"
                   stroke={pathColor}
                   strokeWidth="2.5"
                   fill="none"
@@ -773,6 +1149,17 @@ export function MatchingPairPreview({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+        </div>
+      )}
+
+      {!previewMode && editMode && (
+        <div className="w-full flex justify-center mt-4">
+          <button
+            className="py-2 px-4 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+            onClick={handleAddPair}
+          >
+            + Add Pair
+          </button>
         </div>
       )}
     </div>

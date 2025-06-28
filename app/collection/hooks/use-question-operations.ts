@@ -1,12 +1,15 @@
 /**
  * Custom hook for question operations
  */
-import { useState } from "react";
-import { activitiesApi } from "@/api-client";
-import { Activity, QuizQuestion } from "../components/types";
-import { createEmptyQuestion } from "../utils/question-helpers";
-import { mapQuestionTypeToActivityType } from "../utils/question-type-mapping";
-import { CollectionService } from "../services/collection-service";
+
+import { useState } from 'react';
+import { activitiesApi } from '@/api-client';
+import { Activity, QuizQuestion } from '../components/types';
+import { createEmptyQuestion } from '../utils/question-helpers';
+import { mapQuestionTypeToActivityType } from '../utils/question-type-mapping';
+import { CollectionService } from '../services/collection-service';
+import type { ActivityType } from '@/api-client/activities-api';
+
 
 // Define activity type constants instead of using enum
 export const ACTIVITY_TYPES = {
@@ -30,14 +33,17 @@ export function useQuestionOperations(
   setActiveQuestionIndex: (index: number) => void,
   activity: Activity | null,
   setActivity: (activity: Activity | null) => void,
-  refreshCollectionData: () => Promise<void>
+  refreshCollectionData: () => Promise<void>,
+  refreshMatchingPairData?: (activityId: string) => Promise<void>
 ) {
   const [timeLimit, setTimeLimit] = useState(30); // seconds
 
   /**
    * Add a new question to the collection
    */
-  const handleAddQuestion = async () => {
+  const handleAddQuestion = async (
+    questionType: QuizQuestion['question_type'] = 'multiple_choice'
+  ) => {
     try {
       // Find highest orderIndex to determine new activity's position
       const highestOrderIndex = activities.reduce((max, act) => {
@@ -46,52 +52,95 @@ export function useQuestionOperations(
         return Math.max(max, orderIndex);
       }, -1);
 
-      // Create a new activity in the collection with next orderIndex
+      // Prepare payload
       const payload = {
         collectionId: collectionId,
-        activityType: ACTIVITY_TYPES.QUIZ_BUTTONS,
-        title: "New Question",
-        description: "This is a new question",
+
+        activityType:
+          questionType === 'matching_pair'
+            ? ('QUIZ_MATCHING_PAIRS' as ActivityType)
+            : (ACTIVITY_TYPES.QUIZ_BUTTONS as ActivityType),
+        title: 'New Question',
+        description: 'This is a new question',
+
         isPublished: true,
-        orderIndex: highestOrderIndex + 1, // Add next in sequence
+        orderIndex: highestOrderIndex + 1,
       };
 
-      const response = await activitiesApi.createActivity(payload);
+      let response;
+      if (questionType === 'matching_pair') {
+        response = await CollectionService.createMatchingPairActivity(payload);
+      } else {
+        response = await activitiesApi.createActivity(payload);
+      }
 
       if (response && response.data && response.data.data) {
-        // Get the new activity data
         const newActivityData = response.data.data;
-
+        // Fetch full activity detail for matching pair
+        let activityDetail = newActivityData;
+        if (questionType === 'matching_pair') {
+          const detailRes = await activitiesApi.getActivityById(
+            newActivityData.activityId
+          );
+          if (detailRes && detailRes.data && detailRes.data.data) {
+            activityDetail = detailRes.data.data;
+          }
+        }
         // Add the new activity to our local state
         const newActivity: Activity = {
-          id: newActivityData.activityId,
-          title: newActivityData.title,
+          id: activityDetail.activityId,
+          title: activityDetail.title,
           collection_id: collectionId,
-          description: newActivityData.description,
-          is_published: newActivityData.isPublished,
-          activity_type_id: newActivityData.activityType,
-          orderIndex: newActivityData.orderIndex || highestOrderIndex + 1,
-          createdAt: newActivityData.createdAt,
-          updatedAt: newActivityData.createdAt, // Using createdAt as default for updatedAt
-          createdBy: "", // Adding empty string as default for createdBy
-        };
 
-        // Update activities array
+          description: activityDetail.description,
+          is_published: activityDetail.isPublished,
+          activity_type_id: activityDetail.activityType,
+          orderIndex: activityDetail.orderIndex || highestOrderIndex + 1,
+          createdAt: activityDetail.createdAt,
+          updatedAt: activityDetail.updatedAt,
+          createdBy: activityDetail.createdBy || '',
+          quiz: activityDetail.quiz,
+
+        };
         const updatedActivities = [...activities, newActivity];
         setActivities(updatedActivities);
-
-        // Create a new question for this activity
-        const newQuestion = createEmptyQuestion(newActivityData.activityId);
-
-        // Add the new question at the end of the questions array
-        const updatedQuestions = [...questions, newQuestion];
+        // Map activity to question (follow use-collection-data.ts logic)
+        let newQuestion: QuizQuestion;
+        if (
+          questionType === 'matching_pair' &&
+          activityDetail.quiz?.quizMatchingPairAnswer
+        ) {
+          const matchingData = activityDetail.quiz.quizMatchingPairAnswer;
+          newQuestion = {
+            id: activityDetail.activityId,
+            activity_id: activityDetail.activityId,
+            question_text:
+              activityDetail.quiz.questionText || activityDetail.title || '',
+            question_type: 'matching_pair',
+            correct_answer_text: '',
+            options: (matchingData.items || []).map((item: any) => ({
+              id: item.quizMatchingPairItemId,
+              quizMatchingPairItemId: item.quizMatchingPairItemId,
+              content: item.content,
+              isLeftColumn: item.isLeftColumn,
+              display_order: item.displayOrder || 0,
+            })),
+            matching_data: matchingData,
+            quizMatchingPairAnswer: matchingData,
+            time_limit_seconds: activityDetail.quiz.timeLimitSeconds,
+            pointType: activityDetail.quiz.pointType || 'STANDARD',
+          };
+        } else {
+          newQuestion = createEmptyQuestion(
+            activityDetail.activityId,
+            questionType
+          );
+        }
+        const updatedQuestions: QuizQuestion[] = [...questions, newQuestion];
         setQuestions(updatedQuestions);
-
-        // Set this as current activity
         setActivity(newActivity);
-
-        // Set the active question index to the new question (which is now the last one)
         setActiveQuestionIndex(updatedQuestions.length - 1);
+
 
         // Update API with default quiz data
         await activitiesApi.updateButtonsQuiz(newActivityData.activityId, {
@@ -121,6 +170,7 @@ export function useQuestionOperations(
 
         // Remove the call to refreshCollectionData to prevent page reload
         // This is not needed since we've already updated our local state
+
       }
     } catch (error) {
       console.error("Error adding question:", error);
@@ -326,20 +376,24 @@ export function useQuestionOperations(
    * Handle changing the question type
    */
   const handleQuestionTypeChange = async (
-    value: string,
+    value: QuizQuestion['question_type'],
     questionIndex: number
   ) => {
-    // Get the activity ID directly from the active question
-    const activeQuestionActivityId =
-      questions[activeQuestionIndex]?.activity_id;
-    if (!activeQuestionActivityId) return;
-
-    // Find the correct activity for this question
-    const targetActivity = activities.find(
-      (a) => a.id === activeQuestionActivityId
+    console.log(
+      '🔄 Changing question type to:',
+      value,
+      'for question:',
+      questionIndex
     );
+
+    const targetActivity = activities.find(
+      (act) => act.id === questions[questionIndex].activity_id
+    );
+
     if (!targetActivity) {
-      console.error("Activity not found for the active question");
+
+      console.error('❌ No activity found for question:', questionIndex);
+
       return;
     }
 
@@ -356,32 +410,36 @@ export function useQuestionOperations(
     try {
       // Update the activity type in the API
 
-      // Chỉ gọi API update activity type nếu không phải matching pair
-      // Chỉ gọi API update activity type nếu không phải matching pair
-      if (value === "matching_pair") {
+
+      // Xử lý đặc biệt cho matching pair
+      if (value === 'matching_pair') {
+        console.log('🎯 Converting to matching pair...');
+
+
         // 1. Đảm bảo activity trên BE đã là QUIZ_MATCHING_PAIRS
         await activitiesApi.updateActivity(targetActivity.id, {
           activityType: "QUIZ_MATCHING_PAIRS",
         });
 
-        // 2. Lấy tên cột từ state (nếu có) hoặc dùng default
+        // 2. Lấy tên cột từ state (nếu có) hoặc để BE tự tạo
         const existingMatchingData =
-          questions[activeQuestionIndex].matching_data ||
-          questions[activeQuestionIndex].quizMatchingPairAnswer;
-
+          questions[questionIndex].matching_data ||
+          questions[questionIndex].quizMatchingPairAnswer;
         const leftColumnName =
           existingMatchingData?.leftColumnName || "Left Column";
         const rightColumnName =
           existingMatchingData?.rightColumnName || "Right Column";
 
-        // 3. Gửi quiz data cho matching pair
+        // 3. Gửi quiz data cho matching pair và để BE trả về dữ liệu hoàn chỉnh
         const response = await activitiesApi.updateMatchingPairQuiz(
           targetActivity.id,
           {
             type: "MATCHING_PAIRS",
             questionText:
-              questions[activeQuestionIndex].question_text ||
-              "Default matching pair question",
+
+              questions[questionIndex].question_text ||
+              'Match the items in the left column with the correct items in the right column',
+
             timeLimitSeconds: timeLimit,
             pointType: "STANDARD",
             leftColumnName,
@@ -389,42 +447,100 @@ export function useQuestionOperations(
           }
         );
 
-        // Determine new matching data from API response or create a fallback
+        console.log('✅ Matching pair API response:', response);
+
+        // 4. Sử dụng dữ liệu hoàn chỉnh từ BE thay vì hard code
         let newMatchingData;
         if (response?.data?.quizMatchingPairAnswer) {
           newMatchingData = response.data.quizMatchingPairAnswer;
+          console.log('📊 Using BE data:', newMatchingData);
         } else {
-          // Fallback: build the object if API does not return it
+          // Fallback chỉ khi BE không trả về dữ liệu
+          console.warn(
+            '⚠️ BE did not return matching pair data, using fallback'
+          );
           newMatchingData = {
-            ...existingMatchingData,
-            quizMatchingPairAnswerId:
-              existingMatchingData?.quizMatchingPairAnswerId || "",
+
+            quizMatchingPairAnswerId: '',
+
             leftColumnName,
             rightColumnName,
-            items: existingMatchingData?.items || [],
-            connections: existingMatchingData?.connections || [],
+            items: [],
+            connections: [],
           };
         }
 
-        // Update the question state once
-        const updatedQuestions = [...questions];
-        updatedQuestions[activeQuestionIndex] = {
-          ...updatedQuestions[activeQuestionIndex],
+        // 5. Cập nhật question state với dữ liệu từ BE
+        const updatedQuestions: QuizQuestion[] = [...questions];
+        updatedQuestions[questionIndex] = {
+          ...updatedQuestions[questionIndex],
+          question_type: 'matching_pair',
+          question_text:
+            response?.data?.quizMatchingPairAnswer?.questionText ||
+            questions[questionIndex].question_text ||
+            'Match the items in the left column with the correct items in the right column',
           matching_data: newMatchingData,
+          quizMatchingPairAnswer: newMatchingData,
           options: [], // Matching pairs don't use standard options
         };
         setQuestions(updatedQuestions);
+
+        // 6. Cập nhật activity state
+        setActivity({
+          ...targetActivity,
+          activity_type_id: 'QUIZ_MATCHING_PAIRS',
+        });
+
+        // After updating, fetch the latest activity detail and update state
+        const detailRes = await activitiesApi.getActivityById(
+          targetActivity.id
+        );
+        if (detailRes && detailRes.data && detailRes.data.data) {
+          const activityDetail = detailRes.data.data;
+          const matchingData = activityDetail.quiz?.quizMatchingPairAnswer;
+          const updatedQuestions: QuizQuestion[] = [...questions];
+          updatedQuestions[questionIndex] = {
+            id: activityDetail.activityId,
+            activity_id: activityDetail.activityId,
+            question_text:
+              activityDetail.quiz?.questionText || activityDetail.title || '',
+            question_type: 'matching_pair',
+            correct_answer_text: '',
+            options: (matchingData?.items || []).map((item: any) => ({
+              id: item.quizMatchingPairItemId,
+              quizMatchingPairItemId: item.quizMatchingPairItemId,
+              content: item.content,
+              isLeftColumn: item.isLeftColumn,
+              display_order: item.displayOrder || 0,
+            })),
+            matching_data: matchingData,
+            quizMatchingPairAnswer: matchingData,
+            time_limit_seconds: activityDetail.quiz?.timeLimitSeconds,
+            pointType: activityDetail.quiz?.pointType || 'STANDARD',
+          };
+          setQuestions(updatedQuestions);
+          setActivity({
+            ...targetActivity,
+            activity_type_id: 'QUIZ_MATCHING_PAIRS',
+            quiz: activityDetail.quiz,
+          });
+        }
+
+        console.log('✅ Matching pair conversion completed');
+        return;
       } else {
+        // Xử lý các loại question khác như cũ
         await activitiesApi.updateActivity(targetActivity.id, {
           activityType: activityType as any,
         });
-      }
 
-      // Update our local state
-      setActivity({
-        ...targetActivity,
-        activity_type_id: activityType,
-      });
+
+        // Update our local state
+        setActivity({
+          ...targetActivity,
+          activity_type_id: activityType,
+        });
+
 
       // Update the question in our local state
       const updatedQuestions = [...questions];
@@ -487,21 +603,75 @@ export function useQuestionOperations(
             { option_text: "Option 2", is_correct: false, display_order: 1 },
             { option_text: "Option 3", is_correct: false, display_order: 2 },
             { option_text: "Option 4", is_correct: false, display_order: 3 },
+
           ];
-        } else {
-          let hasCorrect = false;
-          options = options.map((option, idx) => {
-            if (option.is_correct && !hasCorrect) {
-              hasCorrect = true;
-              return option;
-            }
-            return { ...option, is_correct: false };
+          if (!activity) return;
+          await activitiesApi.updateTrueFalseQuiz(activity.id, {
+            type: 'TRUE_FALSE',
+            questionText:
+              updatedQuestions[questionIndex].question_text ||
+              'Default question',
+            timeLimitSeconds: timeLimit,
+            pointType: 'STANDARD',
+            correctAnswer: true,
+          });
+        } else if (value === 'text_answer') {
+          options = [];
+          if (!activity) return;
+          await activitiesApi.updateTypeAnswerQuiz(activity.id, {
+            type: 'TYPE_ANSWER',
+            questionText:
+              updatedQuestions[questionIndex].question_text ||
+              'Default question',
+            timeLimitSeconds: timeLimit,
+            pointType: 'STANDARD',
+            correctAnswer: 'Answer',
           });
 
-          if (!hasCorrect && options.length > 0) {
-            options[0] = { ...options[0], is_correct: true };
+          updatedQuestions[questionIndex].correct_answer_text = 'Answer';
+        } else if (value === 'multiple_choice') {
+          if (currentType === 'true_false') {
+            const hasTrueSelected = options.some(
+              (opt) =>
+                opt.option_text.toLowerCase() === 'true' && opt.is_correct
+            );
+
+            options = [
+              {
+                option_text: 'Option 1',
+                is_correct: hasTrueSelected,
+                display_order: 0,
+              },
+              {
+                option_text: 'Option 2',
+                is_correct: !hasTrueSelected,
+                display_order: 1,
+              },
+              { option_text: 'Option 3', is_correct: false, display_order: 2 },
+              { option_text: 'Option 4', is_correct: false, display_order: 3 },
+            ];
+          } else if (options.length < 2) {
+            options = [
+              { option_text: 'Option 1', is_correct: true, display_order: 0 },
+              { option_text: 'Option 2', is_correct: false, display_order: 1 },
+              { option_text: 'Option 3', is_correct: false, display_order: 2 },
+              { option_text: 'Option 4', is_correct: false, display_order: 3 },
+            ];
+          } else {
+            let hasCorrect = false;
+            options = options.map((option, idx) => {
+              if (option.is_correct && !hasCorrect) {
+                hasCorrect = true;
+                return option;
+              }
+              return { ...option, is_correct: false };
+            });
+
+            if (!hasCorrect && options.length > 0) {
+              options[0] = { ...options[0], is_correct: true };
+            }
           }
-        }
+
 
         if (!activity) return;
 
@@ -524,7 +694,65 @@ export function useQuestionOperations(
             (opt) => opt.option_text.toLowerCase() === "true" && opt.is_correct
           );
 
+          await activitiesApi.updateButtonsQuiz(activity.id, {
+            type: 'CHOICE',
+            questionText:
+              updatedQuestions[questionIndex].question_text ||
+              'Default question',
+            timeLimitSeconds: timeLimit,
+            pointType: 'STANDARD',
+            answers: options.map((opt) => ({
+              answerText: opt.option_text,
+              isCorrect: opt.is_correct,
+              explanation: '',
+            })),
+          });
+        } else if (value === 'multiple_response') {
+          if (currentType === 'true_false') {
+            const hasTrueSelected = options.some(
+              (opt) =>
+                opt.option_text.toLowerCase() === 'true' && opt.is_correct
+            );
+
+            options = [
+              {
+                option_text: 'Option 1',
+                is_correct: hasTrueSelected,
+                display_order: 0,
+              },
+              {
+                option_text: 'Option 2',
+                is_correct: !hasTrueSelected,
+                display_order: 1,
+              },
+              { option_text: 'Option 3', is_correct: false, display_order: 2 },
+              { option_text: 'Option 4', is_correct: false, display_order: 3 },
+            ];
+          } else if (options.length < 2) {
+            options = [
+              { option_text: 'Option 1', is_correct: true, display_order: 0 },
+              { option_text: 'Option 2', is_correct: true, display_order: 1 },
+              { option_text: 'Option 3', is_correct: false, display_order: 2 },
+              { option_text: 'Option 4', is_correct: false, display_order: 3 },
+            ];
+          }
+          if (!activity) return;
+          await activitiesApi.updateCheckboxesQuiz(activity.id, {
+            type: 'CHOICE',
+            questionText:
+              updatedQuestions[questionIndex].question_text ||
+              'Default question',
+            timeLimitSeconds: timeLimit,
+            pointType: 'STANDARD',
+            answers: options.map((opt) => ({
+              answerText: opt.option_text,
+              isCorrect: opt.is_correct,
+              explanation: '',
+            })),
+          });
+        } else if (value === 'reorder') {
           options = [
+
             {
               option_text: "Option 1",
               is_correct: hasTrueSelected,
@@ -592,16 +820,17 @@ export function useQuestionOperations(
           } else {
             // Default content for new slides
             slideContent = "Add your slide content here...";
+
           }
+
+          // Update the API
+          // Note: This would need to be implemented in the API backend
+          if (!activity) return;
+
+          // Add slide-specific update API call here when available
+          // For now, just update the local state
         }
 
-        // Update the API
-        // Note: This would need to be implemented in the API backend
-        if (!activity) return;
-
-        // Add slide-specific update API call here when available
-        // For now, just update the local state
-      }
 
       // Update the question with new type and options
       updatedQuestions[activeQuestionIndex] = {
@@ -620,9 +849,13 @@ export function useQuestionOperations(
         matching_data: newMatchingData,
       };
 
-      setQuestions(updatedQuestions);
+
+        setQuestions(updatedQuestions);
+      }
     } catch (error) {
+
       console.error("Error updating question type:", error);
+
     }
   };
 
@@ -1107,6 +1340,11 @@ export function useQuestionOperations(
         matching_data: updatedMatchingData,
       };
       setQuestions(updatedQuestions);
+
+      // Refresh matching pair data to ensure consistency
+      if (refreshMatchingPairData) {
+        await refreshMatchingPairData(activityId);
+      }
     } catch (error) {
       console.error("Error updating matching pair:", error);
     }

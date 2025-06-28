@@ -194,7 +194,7 @@ export function QuestionPreview({
   timeLimit,
   backgroundImage,
   previewMode = true,
-  onQuestionLocationChange = () => { },
+  onQuestionLocationChange = () => {},
   onQuestionTextChange,
   onOptionChange,
   onChangeQuestion,
@@ -207,8 +207,8 @@ export function QuestionPreview({
   onUpdateActivityBackground,
   onAddQuestion,
   onDeleteActivity,
-  onAddOption = () => { },
-  onDeleteOption = () => { },
+  onAddOption = () => {},
+  onDeleteOption = () => {},
   onReorderOptions,
   leftColumnName,
   rightColumnName,
@@ -274,13 +274,18 @@ export function QuestionPreview({
   // Add state for reorder feedback
   const [isReordering, setIsReordering] = useState(false);
 
+  // Thêm state để lưu trữ question text đang edit
+  const [editingQuestionText, setEditingQuestionText] = useState<
+    Record<number, string>
+  >({});
+
   // Listen for reorder events to show feedback
   useEffect(() => {
     const handleReorderSuccess = (event: CustomEvent) => {
       setIsReordering(false);
       toast({
-        title: "✅ Sắp xếp thành công",
-        description: "Thứ tự các bước đã được cập nhật.",
+        title: '✅ Sắp xếp thành công',
+        description: 'Thứ tự các bước đã được cập nhật.',
         duration: 2000,
       });
     };
@@ -288,12 +293,13 @@ export function QuestionPreview({
     const handleReorderError = (event: CustomEvent) => {
       setIsReordering(false);
       toast({
-        title: "❌ Lỗi sắp xếp",
-        description: "Không thể cập nhật thứ tự. Vui lòng thử lại.",
-        variant: "destructive",
+        title: '❌ Lỗi sắp xếp',
+        description: 'Không thể cập nhật thứ tự. Vui lòng thử lại.',
+        variant: 'destructive',
         duration: 3000,
       });
     };
+
 
     // Remove reorder:success and reorder:error listeners to avoid duplicate setIsReordering(false)
     // if (typeof window !== 'undefined') {
@@ -301,10 +307,17 @@ export function QuestionPreview({
     //   window.addEventListener('reorder:error', handleReorderError as EventListener);
     // }
 
+
     return () => {
       if (typeof window !== 'undefined') {
-        window.removeEventListener('reorder:success', handleReorderSuccess as EventListener);
-        window.removeEventListener('reorder:error', handleReorderError as EventListener);
+        window.removeEventListener(
+          'reorder:success',
+          handleReorderSuccess as EventListener
+        );
+        window.removeEventListener(
+          'reorder:error',
+          handleReorderError as EventListener
+        );
       }
     };
   }, [toast]);
@@ -443,8 +456,8 @@ export function QuestionPreview({
       // Luôn ưu tiên sử dụng màu từ global storage trước
       const savedColor =
         typeof window !== 'undefined' &&
-          window.savedBackgroundColors &&
-          activity.id
+        window.savedBackgroundColors &&
+        activity.id
           ? window.savedBackgroundColors[activity.id]
           : null;
 
@@ -973,13 +986,13 @@ export function QuestionPreview({
                     ? viewMode === 'mobile'
                       ? 300
                       : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                      ? 650
+                      : 812
                     : viewMode === 'mobile'
-                      ? 300
-                      : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                    ? 300
+                    : viewMode === 'tablet'
+                    ? 650
+                    : 812
                 }
                 height={460}
                 zoom={1}
@@ -1104,11 +1117,13 @@ export function QuestionPreview({
                   `}</style>
                 </div>
               ) : (
+
                 <div className="relative w-full max-w-2xl">
                   <h2 className="text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4">
                     {question.question_text || `Location Question ${questionIndex + 1}`}
                   </h2>
                 </div>
+
               )}
             </div>
 
@@ -1232,34 +1247,65 @@ export function QuestionPreview({
               </div>
             </div>
 
-            {/* Question Text */}
+            {/* Question Text - Cập nhật để hỗ trợ chỉnh sửa */}
             <div className="flex-1 flex flex-col items-center justify-center z-10 py-6 px-5">
               {editMode !== null ? (
                 <div className="w-full max-w-2xl">
                   <Textarea
                     value={
-                      question.question_text ||
-                      `Matching Pair Question ${questionIndex + 1}`
+                      // Ưu tiên text đang edit, sau đó mới đến text từ BE
+                      editingQuestionText[questionIndex] !== undefined
+                        ? editingQuestionText[questionIndex]
+                        : question.question_text ||
+                          `Matching Pair Question ${questionIndex + 1}`
                     }
-                    onChange={(e) =>
-                      onQuestionTextChange(e.target.value, questionIndex, true)
-                    }
+                    onChange={(e) => {
+                      // Lưu vào local state ngay lập tức
+                      setEditingQuestionText((prev) => ({
+                        ...prev,
+                        [questionIndex]: e.target.value,
+                      }));
+                      onQuestionTextChange(e.target.value, questionIndex, true);
+                    }}
                     className="resize-none custom-scrollbar text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
-                    onBlur={(e) =>
-                      onQuestionTextChange(e.target.value, questionIndex, false)
-                    }
+                    onBlur={(e) => {
+                      // Xóa khỏi local state khi blur
+                      setEditingQuestionText((prev) => {
+                        const newState = { ...prev };
+                        delete newState[questionIndex];
+                        return newState;
+                      });
+                      onQuestionTextChange(
+                        e.target.value,
+                        questionIndex,
+                        false
+                      );
+                      // Cập nhật activity title khi blur
+                      if (question.activity_id && activity) {
+                        updateActivity(
+                          { title: e.target.value },
+                          question.activity_id
+                        );
+                        // Add this line to update matching pair question text
+                        updateMatchingPairQuestionText(
+                          questionIndex,
+                          e.target.value
+                        );
+                      }
+                    }}
+                    placeholder="Enter your matching pair question..."
                   />
                   <style jsx global>{`
                     .custom-scrollbar::-webkit-scrollbar {
-                      width: 16px; /* Tăng width lên */
+                      width: 16px;
                     }
                     .custom-scrollbar::-webkit-scrollbar-track {
-                      background: transparent; /* Track trong suốt */
+                      background: transparent;
                     }
                     .custom-scrollbar::-webkit-scrollbar-thumb {
                       background: rgba(255, 255, 255, 0.4);
                       border-radius: 8px;
-                      border: 4px solid transparent; /* Tạo viền trong suốt */
+                      border: 4px solid transparent;
                       background-clip: padding-box;
                     }
                     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -1819,10 +1865,12 @@ export function QuestionPreview({
                                       {...provided.draggableProps}
                                       className={cn(
 
+
                                         'flex items-center gap-2 p-1.5 relative mb-2 transition-all duration-300 ease-in-out',
                                         snapshot.isDragging ? 'z-50 scale-105 shadow-2xl ring-2 ring-blue-400/70 bg-blue-50/80 dark:bg-blue-900/40' : 'z-10',
                                         !snapshot.isDragging && 'hover:scale-[1.01] hover:shadow-lg',
                                         snapshot.isDropAnimating && 'transition-transform duration-200'
+
 
                                       )}
                                       style={{
@@ -1833,10 +1881,12 @@ export function QuestionPreview({
                                     >
                                       {/* Step number */}
 
+
                                       <div className={cn(
                                         "flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-600 text-sm font-semibold text-white shadow-lg relative z-10 transition-all duration-300",
                                         snapshot.isDragging && 'scale-110 shadow-2xl ring-2 ring-blue-400'
                                       )}>
+
 
                                         {index + 1}
                                       </div>
@@ -1928,6 +1978,7 @@ export function QuestionPreview({
                         {t('activity.instructions')}
                       </div>
                       <ul className="space-y-1">
+
                         <li>• {t('activity.reorderHelpText2')}</li>
                         <li>
                           • {t('activity.reorderHelpTextEditMode2')}
@@ -1935,6 +1986,7 @@ export function QuestionPreview({
                           {t('activity.toDrag')}
                         </li>
                         <li>• {t('activity.autoSaveOrder')}</li>
+
                       </ul>
                     </div>
                   </div>
@@ -2299,7 +2351,7 @@ export function QuestionPreview({
 
       activitiesApi
         .updateTypeAnswerQuiz(question.activity_id, payload)
-        .then(() => { })
+        .then(() => {})
         .catch((error) => {
           console.error('Error updating correct answer:', error);
         })
@@ -2998,6 +3050,81 @@ export function QuestionPreview({
     };
   }, [debouncedUpdateLocationQuiz]);
 
+  // Enhanced onChangeQuestion with matching pair refresh
+  const handleQuestionChange = async (index: number) => {
+    const currentQuestion = questions[activeQuestionIndex];
+    const newQuestion = questions[index];
+
+    // If switching from a matching pair to another question, trigger refresh
+    if (
+      currentQuestion?.question_type === 'matching_pair' &&
+      newQuestion?.question_type === 'matching_pair' &&
+      currentQuestion.activity_id !== newQuestion.activity_id
+    ) {
+      // Dispatch custom event to trigger refresh
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('matching-pair:refresh-needed', {
+          detail: {
+            activityId: newQuestion.activity_id,
+            questionIndex: index,
+          },
+        });
+        window.dispatchEvent(event);
+      }
+    }
+
+    onChangeQuestion(index);
+  };
+
+  // Add this function after the updateActivity function
+  const updateMatchingPairQuestionText = async (
+    questionIndex: number,
+    newText: string
+  ) => {
+    const question = questions[questionIndex];
+    if (
+      !question ||
+      question.question_type !== 'matching_pair' ||
+      !question.activity_id
+    ) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      // Get the current matching pair data
+      const matchingData =
+        question.quizMatchingPairAnswer || question.matching_data;
+
+      if (matchingData) {
+        await activitiesApi.updateMatchingPairQuiz(question.activity_id, {
+          type: 'MATCHING_PAIRS',
+          questionText: newText,
+          timeLimitSeconds: question.time_limit_seconds || timeLimit,
+          pointType: question.pointType || 'STANDARD',
+          leftColumnName:
+            leftColumnName || matchingData?.leftColumnName || 'Left Item',
+          rightColumnName:
+            rightColumnName || matchingData?.rightColumnName || 'Right Item',
+          quizMatchingPairAnswer: {
+            ...matchingData,
+            leftColumnName:
+              leftColumnName || matchingData?.leftColumnName || 'Left Item',
+            rightColumnName:
+              rightColumnName || matchingData?.rightColumnName || 'Right Item',
+          },
+        });
+
+        console.log('Matching pair question text updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating matching pair question text:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <Card
       className={cn(
@@ -3147,14 +3274,14 @@ interface OptionItemProps {
   option: QuizOption;
   index: number;
   questionType:
-  | 'multiple_choice'
-  | 'multiple_response'
-  | 'true_false'
-  | 'text_answer'
-  | 'slide'
-  | 'info_slide'
-  | 'reorder'
-  | 'location';
+    | 'multiple_choice'
+    | 'multiple_response'
+    | 'true_false'
+    | 'text_answer'
+    | 'slide'
+    | 'info_slide'
+    | 'reorder'
+    | 'location';
   questionIndex: number;
   onOptionEdit?: (
     questionIndex: number,

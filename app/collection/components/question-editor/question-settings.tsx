@@ -380,6 +380,8 @@ export function QuestionSettings({
       setTitle(activity.title || '');
       setDescription(activity.description || '');
       setIsPublished(activity.is_published || false);
+
+      // Update pointType from activity quiz data
       setPointType(activity.quiz?.pointType || 'STANDARD');
 
       // Check if we've switched to a different activity
@@ -432,11 +434,14 @@ export function QuestionSettings({
     if (activeQuestion) {
       //setCorrectAnswerText(activeQuestion.correct_answer_text || '');
       setActiveType(activeQuestion.question_type || 'multiple_choice');
+      // Add this line to update pointType from activeQuestion
+      setPointType(activeQuestion.pointType || 'STANDARD');
     }
   }, [
     activeQuestion,
     activeQuestion.activity_id,
     activeQuestion.correct_answer_text,
+    activeQuestion.pointType, // Add this dependency
   ]);
 
   // // Update text answer when changing
@@ -1192,10 +1197,24 @@ export function QuestionSettings({
                     activity.quiz?.questionText || activeQuestion.question_text,
                   timeLimitSeconds: value,
                   pointType: activity.quiz?.pointType || (pointType as any),
+                  leftColumnName:
+                    leftColumnName ||
+                    matchingData?.leftColumnName ||
+                    'Left Item',
+                  rightColumnName:
+                    rightColumnName ||
+                    matchingData?.rightColumnName ||
+                    'Right Item',
                   quizMatchingPairAnswer: {
                     ...matchingData,
-                    leftColumnName: leftColumnName || 'Left Item',
-                    rightColumnName: rightColumnName || 'Right Item',
+                    leftColumnName:
+                      leftColumnName ||
+                      matchingData?.leftColumnName ||
+                      'Left Item',
+                    rightColumnName:
+                      rightColumnName ||
+                      matchingData?.rightColumnName ||
+                      'Right Item',
                   },
                 });
               }
@@ -1992,6 +2011,41 @@ export function QuestionSettings({
                 });
             }
             break;
+
+          case 'matching_pair':
+            // Get the current matching pair data
+            const matchingData =
+              activeQuestion.quizMatchingPairAnswer ||
+              activeQuestion.matching_data;
+
+            if (matchingData) {
+              activitiesApi.updateMatchingPairQuiz(activity.id, {
+                type: 'MATCHING_PAIRS',
+                questionText:
+                  activity.quiz?.questionText || activeQuestion.question_text,
+                timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
+                pointType: typedPointType,
+                leftColumnName:
+                  leftColumnName || matchingData?.leftColumnName || 'Left Item',
+                rightColumnName:
+                  rightColumnName ||
+                  matchingData?.rightColumnName ||
+                  'Right Item',
+                quizMatchingPairAnswer: {
+                  ...matchingData,
+                  leftColumnName:
+                    leftColumnName ||
+                    matchingData?.leftColumnName ||
+                    'Left Item',
+                  rightColumnName:
+                    rightColumnName ||
+                    matchingData?.rightColumnName ||
+                    'Right Item',
+                },
+              });
+            }
+            break;
+
           default:
             // For other types, just update the activity directly
             debouncedUpdateActivity({ pointType: value });
@@ -2988,6 +3042,7 @@ export function QuestionSettings({
     );
   };
 
+
   // Initialize and maintain location data consistency
   useEffect(() => {
     if (activeQuestion && activeQuestion.question_type === 'location') {
@@ -3108,6 +3163,7 @@ export function QuestionSettings({
 
     return validatedData;
   };
+
 
   return (
     <Card className="border-none overflow-hidden shadow-md h-full w-full">
