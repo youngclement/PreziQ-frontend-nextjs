@@ -112,6 +112,8 @@ import { MatchingPairSettings } from './matching-pair-settings';
 
 import AnimationToolbar from '../slide/sidebar/animation-toolbar';
 import { SlideElementPayload } from '@/types/slideInterface';
+import { useLanguage } from '@/contexts/language-context';
+import { t } from 'i18next';
 /**
  * Component that allows editing settings for a quiz question/activity.
  *
@@ -228,6 +230,8 @@ const TextAnswerForm = ({
   ) => void;
   questionIndex: number;
 }) => {
+  const { t } = useLanguage();
+
   const getCorrectAnswerValue = () => {
     // Ưu tiên lấy từ correct_answer_text
     if (activeQuestion.correct_answer_text) {
@@ -502,17 +506,17 @@ export function QuestionSettings({
     const questionTypes = [
       {
         value: 'multiple_choice',
-        label: 'Single Choice',
+        label: t('activity.types.multiple_choice'),
         icon: <Radio className="h-4 w-4 mr-2 text-purple-600" />,
       },
       {
         value: 'multiple_response',
-        label: 'Multiple Choice',
+        label: t('activity.types.multiple_response'),
         icon: <CheckSquare className="h-4 w-4 mr-2 text-blue-600" />,
       },
       {
         value: 'true_false',
-        label: 'True/False',
+        label: t('activity.types.true_false'),
         icon: (
           <div className="flex mr-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
@@ -522,27 +526,27 @@ export function QuestionSettings({
       },
       {
         value: 'text_answer',
-        label: 'Text Answer',
+        label: t('activity.types.text_answer'),
         icon: <AlignLeft className="h-4 w-4 mr-2 text-pink-600" />,
       },
       {
         value: 'reorder',
-        label: 'Reorder',
+        label: t('activity.types.reorder'),
         icon: <MoveVertical className="h-4 w-4 mr-2 text-orange-600" />,
       },
       {
         value: 'location',
-        label: 'Location',
+        label: t('activity.types.location'),
         icon: <MapPin className="h-4 w-4 mr-2 text-cyan-600" />,
       },
       {
         value: 'slide',
-        label: 'Information Slide',
+        label: t('activity.types.slide'),
         icon: <FileText className="h-4 w-4 mr-2 text-yellow-600" />,
       },
       {
         value: 'matching_pair',
-        label: 'Matching Pairs',
+        label: t('activity.types.matching_pair'),
         icon: <Link className="h-4 w-4 mr-2 text-indigo-600" />,
       },
     ];
@@ -928,7 +932,7 @@ export function QuestionSettings({
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label htmlFor="time-limit">Time Limit</Label>
+          <Label htmlFor="time-limit">{t('activity.timeLimit')}</Label>
           <Badge variant="outline" className="px-2 py-1 font-mono">
             {currentTimeLimit}s
           </Badge>
@@ -1598,15 +1602,15 @@ export function QuestionSettings({
   }) => {
     return (
       <div className="space-y-2">
-        <Label htmlFor="point-type">Point Type</Label>
+        <Label htmlFor="point-type">{t('activity.pointType')}</Label>
         <Select value={value} onValueChange={onChange}>
           <SelectTrigger id="point-type" className="w-full">
             <SelectValue placeholder="Select point type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="STANDARD">Standard Points</SelectItem>
-            <SelectItem value="NO_POINTS">No Points</SelectItem>
-            <SelectItem value="DOUBLE_POINTS">Double Points</SelectItem>
+            <SelectItem value="STANDARD">{t('activity.pointTypes.standard')}</SelectItem>
+            <SelectItem value="NO_POINTS">{t('activity.pointTypes.noPoints')}</SelectItem>
+            <SelectItem value="DOUBLE_POINTS">{t('activity.pointTypes.doublePoints')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -1651,18 +1655,18 @@ export function QuestionSettings({
               checked={isPublished}
               onCheckedChange={handleIsPublishedChange}
             />
-            <Label htmlFor="is-published">Published</Label>
+            <Label htmlFor="is-published">{t('activity.published')}</Label>
           </div>
           <div>
             {isPublished ? (
               <Badge className="bg-green-500">
                 <Eye className="h-3 w-3 mr-1" />
-                Visible
+                {t('activity.visible')}
               </Badge>
             ) : (
               <Badge variant="outline" className="text-gray-500">
                 <EyeOff className="h-3 w-3 mr-1" />
-                Draft
+                {t('activity.draft')}
               </Badge>
             )}
           </div>
@@ -1779,7 +1783,7 @@ export function QuestionSettings({
         // Upload file
         const response = (await storageApi.uploadSingleFile(
           file,
-          'uploads'
+          'activities'
         )) as FileUploadResponse;
 
         clearInterval(progressInterval);
@@ -1817,7 +1821,9 @@ export function QuestionSettings({
     return (
       <div className="space-y-5" key={colorRenderKey}>
         <div className="space-y-3">
-          <Label htmlFor="background-color">Background Color</Label>
+          <Label htmlFor="background-color">
+            {t('activity.backgroundColor')}
+          </Label>
           <div className="flex gap-3">
             <div
               className="h-10 w-10 rounded-md border overflow-hidden"
@@ -1836,7 +1842,7 @@ export function QuestionSettings({
           <div className="mt-3">
             <div className="text-xs text-gray-500 mb-2 flex items-center">
               <div className="w-3 h-3 bg-gradient-to-r from-pink-200 to-blue-200 rounded-full mr-1.5"></div>
-              Pastel Colors
+              {t('activity.pastelColors')}
             </div>
             <div className="grid grid-cols-4 gap-2">
               {pastelColors.map((pastel) => (
@@ -1870,7 +1876,7 @@ export function QuestionSettings({
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label htmlFor="background-image">Background Image</Label>
+            <Label htmlFor="background-image">{t('activity.backgroundImage')}</Label>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1891,7 +1897,7 @@ export function QuestionSettings({
             <div className="relative">
               <Input
                 id="background-image"
-                placeholder="Background image URL"
+                placeholder= {t('activity.backgroundImageUrl')}
                 value={backgroundImage}
                 onChange={(e) => handleBackgroundImageChange(e.target.value)}
                 className="pr-20"
@@ -1916,7 +1922,7 @@ export function QuestionSettings({
                 className="w-full"
               >
                 <Upload className="h-4 w-4 mr-2" />
-                Upload Image
+                {t('activity.uploadImage')}
               </Button>
               <input
                 type="file"
@@ -1930,7 +1936,7 @@ export function QuestionSettings({
             {isUploading && (
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span>Uploading...</span>
+                  <span>{t('activity.uploading')}</span>
                   <span>{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
@@ -2164,7 +2170,7 @@ export function QuestionSettings({
         <div>
           <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
             <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-            Question Type
+            {t('activity.questionType')}
           </h3>
           <QuestionTypeSelector />
         </div>
@@ -2387,7 +2393,7 @@ export function QuestionSettings({
     <Card className="border-none overflow-hidden shadow-md h-full w-full">
       <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
         <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Settings
+          {t('activity.settings')}
         </CardTitle>
         <div className="flex items-center gap-1">
           <Settings className="h-4 w-4 text-gray-400" />
@@ -2401,11 +2407,11 @@ export function QuestionSettings({
           <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="content" className="text-xs">
               <Zap className="h-3.5 w-3.5 mr-1.5" />
-              Content
+              {t('activity.content')}
             </TabsTrigger>
             <TabsTrigger value="design" className="text-xs">
               <Palette className="h-3.5 w-3.5 mr-1.5" />
-              Design
+              {t('activity.design')}
             </TabsTrigger>
             <TabsTrigger value="meta" className="text-xs">
               {activeQuestion.question_type === 'slide' ||
@@ -2416,8 +2422,8 @@ export function QuestionSettings({
               )}
               {activeQuestion.question_type === 'slide' ||
               activeQuestion.question_type === 'info_slide'
-                ? 'Animation'
-                : 'Metadata'}
+                ? t('activity.animation')
+                : t('activity.metadata')}
             </TabsTrigger>
           </TabsList>
 
@@ -2428,7 +2434,7 @@ export function QuestionSettings({
               <div>
                 <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                  Question Type
+                  {t('activity.questionType')}
                 </h3>
                 <QuestionTypeSelector />
               </div>
@@ -2439,8 +2445,8 @@ export function QuestionSettings({
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
                   {activeQuestion.question_type === 'slide' ||
                   activeQuestion.question_type === 'info_slide'
-                    ? 'Slide Content'
-                    : 'Answer Options'}
+                    ? t('activity.slideContent')
+                    : t('activity.answerOptions')}
                 </h3>
 
                 {/* Display different content based on question type */}
@@ -2632,7 +2638,7 @@ export function QuestionSettings({
                   <div>
                     <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                       <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                      Time
+                      {t('activity.timeSettings')}
                     </h3>
                     <TimeSettings />
                   </div>
@@ -2641,7 +2647,7 @@ export function QuestionSettings({
                   <div>
                     <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                       <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                      Points
+                      {t('activity.pointSettings')}
                     </h3>
                     <PointTypeSelector
                       value={pointType}
@@ -2653,7 +2659,7 @@ export function QuestionSettings({
                   <div>
                     <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                       <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
-                      More Settings
+                     {t('activity.advancedSettings')}
                     </h3>
                     <AdvancedSettings />
                   </div>

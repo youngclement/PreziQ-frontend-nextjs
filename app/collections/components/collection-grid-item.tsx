@@ -30,7 +30,7 @@ import {
 
 interface CollectionGridItemProps {
   collection: Collection;
-  activities: Activity[];
+  activities?: number;
   onEdit?: (id: string) => void;
   onView: (id: string) => void;
   onViewCollection?: (id: string) => void;
@@ -40,7 +40,6 @@ interface CollectionGridItemProps {
 
 export function CollectionGridItem({
   collection,
-  activities,
   onEdit,
   onView,
   onViewCollection,
@@ -316,8 +315,10 @@ export function CollectionGridItem({
             </AlertDialogTitle>
             <AlertDialogDescription className='text-gray-600 dark:text-gray-300'>
               Bạn có chắc chắn muốn xoá{' '}
-              <span className='font-medium text-gray-900 dark:text-white'>
-                "{collection.title}"
+
+              <span className="font-medium text-gray-900 dark:text-white">
+                &quot;{collection.title}&quot;
+
               </span>{' '}
               không? Hành động này không thể hoàn tác.
             </AlertDialogDescription>

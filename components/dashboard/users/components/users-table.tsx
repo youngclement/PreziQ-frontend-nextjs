@@ -122,23 +122,23 @@ export function UsersTable({ data }: { data: User[] }) {
   return (
     <div className="space-y-4">
       <DataTableToolbar table={table} />
-      <div className="rounded-md border border-slate-300 shadow-sm overflow-hidden">
+      <div className="rounded-md border border-slate-300 dark:border-slate-600 shadow-sm overflow-hidden dark:bg-zinc-800">
         {(() => {
           try {
             console.log('Table rows length:', table.getRowModel().rows?.length);
             return (
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-slate-50 dark:bg-zinc-800">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow
                       key={headerGroup.id}
-                      className="border-b border-slate-300"
+                      className="border-b border-slate-300 dark:border-slate-600"
                     >
                       {headerGroup.headers.map((header) => (
                         <TableHead
                           key={header.id}
                           colSpan={header.colSpan}
-                          className="font-semibold text-slate-700 truncate"
+                          className="font-semibold text-slate-700 dark:text-slate-200 truncate"
                         >
                           {header.isPlaceholder
                             ? null
@@ -157,14 +157,14 @@ export function UsersTable({ data }: { data: User[] }) {
                       <TableRow
                         key={row.id}
                         data-state={row.getIsSelected() && 'selected'}
-                        className="border-b border-slate-200 hover:bg-slate-50 transition-colors cursor-default"
+                        className="border-b border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-default"
                       >
                         {row.getVisibleCells().map((cell) => (
                           <TableCell
                             key={cell.id}
                             className={cn(
                               cell.column.id === 'avatar' && 'text-center',
-                              'py-3 break-words',
+                              'py-3 break-words dark:text-slate-200',
                               cell.column.id === 'email' &&
                                 'max-w-[200px] truncate',
                               cell.column.id === 'firstName' &&
@@ -190,7 +190,7 @@ export function UsersTable({ data }: { data: User[] }) {
                     <TableRow>
                       <TableCell
                         colSpan={columns.length}
-                        className="h-24 text-center text-slate-500"
+                        className="h-24 text-center text-slate-500 dark:text-slate-400"
                       >
                         Không tìm thấy kết quả
                       </TableCell>

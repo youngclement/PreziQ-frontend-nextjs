@@ -5,7 +5,7 @@ import TextEditorToolbar from './text-editor-toolbar';
 import PexelsPanel from './pexels-panel';
 import AnimationToolbar from './animation-toolbar';
 import type { SlideElementPayload } from '@/types/slideInterface';
-
+import { useLanguage } from '@/contexts/language-context';
 interface SlideToolbarProps {
   slideId: string;
   slideElements: SlideElementPayload[];
@@ -14,6 +14,7 @@ interface SlideToolbarProps {
 
 const SlideToolbar = React.memo(
   ({ slideId, slideElements, onSlideElementsUpdate }: SlideToolbarProps) => {
+    const { t } = useLanguage();
     return (
       <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-100 dark:border-yellow-800">
         <div className="mb-4">
@@ -24,7 +25,7 @@ const SlideToolbar = React.memo(
             htmlFor="slide-image-url"
             className="text-yellow-800 dark:text-yellow-300"
           >
-            Slide Image URL
+           {t('activity.image')}
           </Label>
           <PexelsPanel slideId={slideId} />
         </div>

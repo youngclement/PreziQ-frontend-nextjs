@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { storageApi } from '@/api-client/storage-api';
 import { activitiesApi } from '@/api-client/activities-api';
 import { useToast } from '@/hooks/use-toast';
-
+import { useLanguage } from '@/contexts/language-context';
 // Common background colors for slides
 const backgroundColors = [
   '#FFFFFF',
@@ -64,6 +64,7 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
   const [customColor, setCustomColor] = useState(backgroundColor || '#FFFFFF');
   const { toast } = useToast();
   const [currentBackgroundImage, setCurrentBackgroundImage] = useState(backgroundImage);
+  const { t } = useLanguage();
   // useEffect(() => {
   //   setCustomColor(backgroundColor || '#FFFFFF');
 
@@ -192,6 +193,15 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
       });
     }
 
+    try {
+      await activitiesApi.updateActivity(slideId, {
+        backgroundColor: '',
+        backgroundImage: url,
+      });
+    } catch (err) {
+      console.error('Error saving background color:', err);
+    }
+
     // // Clear savedBackgroundColors cho slide này
     // if (typeof window !== 'undefined' && window.savedBackgroundColors) {
     //   window.savedBackgroundColors[slideId] = '';
@@ -251,7 +261,7 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
               className="flex-1"
             >
               <Palette className="h-4 w-4 mr-2" />
-              Color
+              {t('activity.slide.colorTab')}
             </Button>
             <Button
               variant={backgroundTab === 'image' ? 'default' : 'outline'}
@@ -260,7 +270,7 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
               className="flex-1"
             >
               <ImageIcon className="h-4 w-4 mr-2" />
-              Image
+              {t('activity.slide.imageTab')}
             </Button>
           </div>
 
@@ -271,7 +281,7 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
                   htmlFor="custom-color"
                   className="text-sm font-medium mb-2 block"
                 >
-                  Custom Color
+                  {t('activity.slide.customColorLabel')}
                 </Label>
                 <div className="flex items-center gap-2">
                   <div
@@ -290,7 +300,7 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
 
               <div>
                 <Label className="text-sm font-medium mb-2 block">
-                  Color Presets
+                  {t('activity.slide.colorPresetsLabel')}
                 </Label>
                 <div className="grid grid-cols-6 gap-2">
                   {backgroundColors.map((color, index) => (
@@ -315,12 +325,12 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
             <div className="space-y-4">
               <div>
                 <Label className="text-sm font-medium mb-2 block">
-                  Upload Image
+                  {t('activity.slide.uploadImageLabel')}
                 </Label>
                 <div className="border border-dashed rounded-lg p-4 text-center">
                   <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground mb-2">
-                    Drag and drop or click to upload
+                    {t('activity.slide.dragAndDropUpload')}
                   </p>
                   <input
                     type="file"
@@ -336,7 +346,7 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
                     }
                     className="w-full"
                   >
-                    Select from computer
+                    {t('activity.slide.selectFromComputer')}
                   </Button>
                 </div>
               </div>
@@ -348,7 +358,7 @@ export const SlideSettings: React.FC<SlideSettingsProps> = ({
                   onClick={() => onBackgroundImageChange('')}
                   className="w-full"
                 >
-                  Remove Background Image
+                  {t('activity.slide.removeBackgroundImage')}
                 </Button>
               </div>
             </div>

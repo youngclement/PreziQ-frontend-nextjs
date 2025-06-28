@@ -223,7 +223,7 @@ export const ToolbarHandlers = (
         rotation: textbox.angle || 0,
         layerOrder: canvas.getObjects().indexOf(textbox),
         slideElementType: 'TEXT',
-        displayOrder: maxDisplayOrder + 1,
+        displayOrder: 0,
         content: JSON.stringify({
           ...textbox.toJSON(),
           fontSize: defaultFontSizePercent,
@@ -236,7 +236,7 @@ export const ToolbarHandlers = (
       // Update textbox với ID từ server
       textbox.set('isNew', false);
       textbox.set('slideElementId', response.data.data.slideElementId);
-      textbox.set('displayOrder', maxDisplayOrder + 1);
+      textbox.set('displayOrder', 0);
 
       // Tạo element mới với đầy đủ thông tin
       const newElement = {
@@ -317,7 +317,7 @@ export const ToolbarHandlers = (
           layerOrder: canvas.getObjects().indexOf(img),
           slideElementType: 'IMAGE',
           sourceUrl: url,
-          displayOrder: 0, // Mặc định là 0, có thể cập nhật sau
+          displayOrder: 0, 
         };
 
         slidesApi

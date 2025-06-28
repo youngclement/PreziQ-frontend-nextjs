@@ -156,9 +156,6 @@ export default function MyCollectionsPage() {
   };
 
   const handleDeleteCollection = async (id: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa bộ sưu tập này?')) {
-      return;
-    }
 
     try {
       setIsLoading(true);
@@ -345,7 +342,6 @@ export default function MyCollectionsPage() {
                       <CollectionGridItem
                         key={collection.collectionId}
                         collection={collection}
-                        activities={[]}
                         onEdit={() =>
                           handleEditCollection(collection.collectionId)
                         }
