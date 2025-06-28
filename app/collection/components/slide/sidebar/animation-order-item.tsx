@@ -52,7 +52,7 @@ export const AnimationOrderItem = ({
       ref={setNodeRef}
       style={style}
       className={`
-        flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border
+        flex items-center gap-3 p-3 rounded-lg border
         ${
           isDragging
             ? 'border-blue-500 dark:border-blue-400 shadow-md z-10'
@@ -60,7 +60,7 @@ export const AnimationOrderItem = ({
         }
         ${
           isSelected
-            ? 'border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-950/50'
+            ? 'border-blue-600 dark:border-blue-400 bg-blue-100 dark:bg-blue-950/50'
             : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
         }
         hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-md hover:scale-[1.02]

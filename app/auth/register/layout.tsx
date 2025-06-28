@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import BgDark from '../image/bg-dark3.png';
+import BgDark from '../image/bg-dark2.jpg';
 import BgLight from '../image/bg-light2.jpeg';
 import { useRouter, usePathname } from 'next/navigation';
 
