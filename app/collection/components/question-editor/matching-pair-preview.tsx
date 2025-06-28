@@ -203,10 +203,23 @@ export function MatchingPairPreview({
     setDataVersion((prev) => prev + 1);
   }, [matchingData?.items, previewMode, settingsUpdateTrigger]);
 
+  // Add a state to track when connections should be redrawn
+  const [connectionUpdateTrigger, setConnectionUpdateTrigger] = useState(0);
+
+  // Update connection trigger when data changes
+  useEffect(() => {
+    setConnectionUpdateTrigger((prev) => prev + 1);
+  }, [matchingData?.items, connections, settingsUpdateTrigger]);
+
   // Update connections when matching data changes
   useEffect(() => {
     if (matchingData?.connections) {
       setConnections(matchingData.connections);
+      // Force redraw after a short delay to ensure DOM is updated
+      const timer = setTimeout(() => {
+        forceConnectionRedraw();
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [matchingData?.connections, settingsUpdateTrigger]);
 
@@ -216,13 +229,17 @@ export function MatchingPairPreview({
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
         setContainerSize({ width, height });
+        // Force connection redraw when container size changes
+        forceConnectionRedraw();
       }
     };
 
     updateSize();
     window.addEventListener('resize', updateSize);
 
-    const resizeObserver = new ResizeObserver(updateSize);
+    const resizeObserver = new ResizeObserver(() => {
+      updateSize();
+    });
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
@@ -347,30 +364,46 @@ export function MatchingPairPreview({
     ]
   );
 
-  // Calculate connection path for SVG
+  // Enhanced getConnectionPath with precise positioning
   const getConnectionPath = useCallback(
     (leftItemId: string, rightItemId: string) => {
       const leftElement = document.getElementById(`item-${leftItemId}`);
       const rightElement = document.getElementById(`item-${rightItemId}`);
       const svgElement = svgRef.current;
 
-      if (!leftElement || !rightElement || !svgElement) return '';
+      if (!leftElement || !rightElement || !svgElement) {
+        return '';
+      }
 
       const svgRect = svgElement.getBoundingClientRect();
       const leftRect = leftElement.getBoundingClientRect();
       const rightRect = rightElement.getBoundingClientRect();
 
-      // Tính toán điểm bắt đầu và kết thúc từ 1/2 chiều cao của mỗi item
-      const startX = leftRect.right - svgRect.left;
-      const endX = rightRect.left - svgRect.left;
+      // Validate that elements are actually visible and positioned
+      if (
+        leftRect.width === 0 ||
+        rightRect.width === 0 ||
+        svgRect.width === 0
+      ) {
+        return '';
+      }
 
-      // Sử dụng 1/2 chiều cao của từng item làm điểm tham chiếu
+      // Tính toán điểm bắt đầu từ giữa cạnh phải của item bên trái
+      const startX = leftRect.right - svgRect.left;
       const startY = leftRect.top + leftRect.height / 2 - svgRect.top;
+
+      // Tính toán điểm kết thúc từ giữa cạnh trái của item bên phải
+      const endX = rightRect.left - svgRect.left;
       const endY = rightRect.top + rightRect.height / 2 - svgRect.top;
+
+      // Validate coordinates
+      if (isNaN(startX) || isNaN(startY) || isNaN(endX) || isNaN(endY)) {
+        return '';
+      }
 
       // Tính toán khoảng cách giữa hai cột để điều chỉnh độ cong
       const distance = endX - startX;
-      const curveOffset = Math.min(distance * 0.3, 100); // Giới hạn độ cong tối đa
+      const curveOffset = Math.min(distance * 0.25, 80); // Giảm độ cong để ổn định hơn
 
       // Tính toán control points cho đường cong mượt mà
       const controlX1 = startX + curveOffset;
@@ -378,11 +411,109 @@ export function MatchingPairPreview({
       const controlY1 = startY;
       const controlY2 = endY;
 
-      // Tạo đường cong Bezier với 4 control points để tạo đường cong mượt mà hơn
+      // Tạo đường cong Bezier với 4 control points
       return `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
     },
-    []
+    [connectionUpdateTrigger]
   );
+
+  // Add a more robust connection update mechanism
+  const updateConnectionsWithRetry = useCallback(() => {
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    const attemptUpdate = () => {
+      if (retryCount >= maxRetries) {
+        console.warn('Failed to update connections after maximum retries');
+        return;
+      }
+
+      // Check if all elements are properly rendered
+      const allElementsExist = validConnections.every((conn) => {
+        const leftElement = document.getElementById(
+          `item-${conn.leftItem.quizMatchingPairItemId}`
+        );
+        const rightElement = document.getElementById(
+          `item-${conn.rightItem.quizMatchingPairItemId}`
+        );
+        return (
+          leftElement &&
+          rightElement &&
+          leftElement.getBoundingClientRect().width > 0 &&
+          rightElement.getBoundingClientRect().width > 0
+        );
+      });
+
+      if (allElementsExist) {
+        setConnectionUpdateTrigger((prev) => prev + 1);
+      } else {
+        retryCount++;
+        setTimeout(attemptUpdate, 50 * retryCount); // Exponential backoff
+      }
+    };
+
+    attemptUpdate();
+  }, []);
+
+  // Update connections when matching data changes with retry mechanism
+  useEffect(() => {
+    if (matchingData?.connections) {
+      setConnections(matchingData.connections);
+      // Use retry mechanism for more reliable updates
+      setTimeout(() => {
+        updateConnectionsWithRetry();
+      }, 50);
+    }
+  }, [
+    matchingData?.connections,
+    settingsUpdateTrigger,
+    updateConnectionsWithRetry,
+  ]);
+
+  // Update container size and handle resize with connection updates
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setContainerSize({ width, height });
+        // Update connections after size change
+        setTimeout(() => {
+          updateConnectionsWithRetry();
+        }, 50);
+      }
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateSize();
+    });
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateSize);
+      resizeObserver.disconnect();
+    };
+  }, [updateConnectionsWithRetry]);
+
+  // Add effect to handle DOM updates and ensure connections are drawn correctly
+  useEffect(() => {
+    if (validConnections.length > 0) {
+      // Wait for DOM to be fully updated
+      const timer = setTimeout(() => {
+        updateConnectionsWithRetry();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [updateConnectionsWithRetry]);
+
+  // Add a function to force connection redraw
+  const forceConnectionRedraw = useCallback(() => {
+    setConnectionUpdateTrigger((prev) => prev + 1);
+  }, []);
 
   // Get connections for a specific item
   const getItemConnections = useCallback(
@@ -685,6 +816,23 @@ export function MatchingPairPreview({
     }
   };
 
+  // Filter valid connections - only show connections between existing items
+  const validConnections = useMemo(() => {
+    if (!matchingData?.items || !connections) return [];
+
+    const existingItemIds = new Set(
+      matchingData.items.map((item) => item.quizMatchingPairItemId)
+    );
+
+    return connections.filter(
+      (conn) =>
+        conn.leftItem?.quizMatchingPairItemId &&
+        conn.rightItem?.quizMatchingPairItemId &&
+        existingItemIds.has(conn.leftItem.quizMatchingPairItemId) &&
+        existingItemIds.has(conn.rightItem.quizMatchingPairItemId)
+    );
+  }, [matchingData?.items, connections]);
+
   // If no matching data, show empty state
   if (!matchingData) {
     return (
@@ -703,7 +851,7 @@ export function MatchingPairPreview({
         viewMode === 'tablet' && 'p-6',
         viewMode === 'mobile' && 'p-4'
       )}
-      key={`preview-${dataVersion}-${settingsUpdateTrigger}`}
+      key={`preview-${dataVersion}-${settingsUpdateTrigger}-${connectionUpdateTrigger}`}
     >
       <div className="flex justify-around items-start gap-4 md:gap-8">
         {/* Column A */}
@@ -1060,7 +1208,7 @@ export function MatchingPairPreview({
         ref={svgRef}
         className="absolute top-0 left-0 w-full h-full pointer-events-none"
         style={{ zIndex: 20 }}
-        key={`svg-${dataVersion}-${settingsUpdateTrigger}`}
+        key={`svg-${dataVersion}-${settingsUpdateTrigger}-${connectionUpdateTrigger}`}
       >
         <defs>
           {PAIR_COLORS.map((color) => (
@@ -1084,21 +1232,26 @@ export function MatchingPairPreview({
           ))}
         </defs>
         <g>
-          {connections.map((conn, index) => {
+          {validConnections.map((conn, index) => {
             const pathColor = conn.quizMatchingPairConnectionId
               ? pairColorMap.get(conn.quizMatchingPairConnectionId)
               : '#3b82f6';
 
+            const pathData = getConnectionPath(
+              conn.leftItem.quizMatchingPairItemId!,
+              conn.rightItem.quizMatchingPairItemId!
+            );
+
+            // Only render if path data is valid
+            if (!pathData) return null;
+
             return (
               <g
-                key={`${conn.leftItem.quizMatchingPairItemId}-${conn.rightItem.quizMatchingPairItemId}-${index}-${dataVersion}`}
+                key={`${conn.leftItem.quizMatchingPairItemId}-${conn.rightItem.quizMatchingPairItemId}-${index}-${dataVersion}-${connectionUpdateTrigger}`}
               >
                 {/* Path phụ để bắt sự kiện click, stroke trong suốt, strokeWidth lớn */}
                 <path
-                  d={getConnectionPath(
-                    conn.leftItem.quizMatchingPairItemId!,
-                    conn.rightItem.quizMatchingPairItemId!
-                  )}
+                  d={pathData}
                   stroke="transparent"
                   strokeWidth="16"
                   fill="none"
@@ -1113,17 +1266,14 @@ export function MatchingPairPreview({
                 />
                 {/* Path chính để hiển thị */}
                 <motion.path
-                  d={getConnectionPath(
-                    conn.leftItem.quizMatchingPairItemId!,
-                    conn.rightItem.quizMatchingPairItemId!
-                  )}
+                  d={pathData}
                   className="stroke-2 transition-all duration-300 pointer-events-auto"
                   stroke={pathColor}
                   strokeWidth="2.5"
                   fill="none"
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
                   markerStart={
                     pathColor
                       ? `url(#marker-${pathColor.replace('#', '')})`
