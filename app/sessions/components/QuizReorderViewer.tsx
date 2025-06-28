@@ -556,7 +556,7 @@ export const QuizReorderViewer = ({
                 <ArrowUpDown className='h-3 w-3 md:h-4 md:w-4 text-black' />
               </div>
               <div className='text-xs capitalize font-medium text-white/80'>
-                Reorder Quiz
+                Reorder
               </div>
             </div>
             <div className='flex items-center gap-1 md:gap-2'>

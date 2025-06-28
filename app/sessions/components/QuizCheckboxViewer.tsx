@@ -330,7 +330,7 @@ export default function QuizCheckboxViewer({
                 <CheckSquare className='h-4 w-4 text-black' />
               </div>
               <div className='text-xs capitalize font-medium text-white/80'>
-                Multiple Response
+                Multiple Choice
               </div>
             </div>
             <div className='flex items-center gap-2'>

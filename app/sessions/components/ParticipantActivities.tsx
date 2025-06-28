@@ -21,6 +21,7 @@ import { QuizReorderViewer } from './QuizReorderViewer';
 import QuizTrueOrFalseViewer from './QuizTrueOrFalseViewer';
 import QuizLocationViewer from './QuizLocationViewer';
 import CountdownOverlay from './CountdownOverlay';
+import PointTypeOverlay from './PointTypeOverlay';
 import RealtimeLeaderboard from './RealtimeLeaderboard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QuizMatchingPairViewer } from './QuizMatchingPairViewer';
@@ -61,11 +62,34 @@ export default function ParticipantActivities({
   const [isFullscreenMode, setIsFullscreenMode] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
 
+  // Thêm state để quản lý PointTypeOverlay
+  const [showPointTypeOverlay, setShowPointTypeOverlay] = useState(false);
+  const [currentPointType, setCurrentPointType] = useState<
+    'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS'
+  >('STANDARD');
+
   const quizContainerRef = useRef<HTMLDivElement>(null);
 
   // Hàm kiểm tra loại activity là info slide hay không
   const isInfoSlideActivity = (activityType?: string): boolean => {
     return activityType === 'INFO_SLIDE';
+  };
+
+  // Thêm hàm để lấy pointType từ activity
+  const getActivityPointType = (
+    activity: any
+  ): 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS' => {
+    // Kiểm tra trong quiz data
+    if (activity?.quiz?.pointType) {
+      return activity.quiz.pointType;
+    }
+
+    // Fallback kiểm tra trong activity data trực tiếp
+    if (activity?.pointType) {
+      return activity.pointType;
+    }
+
+    return 'STANDARD';
   };
 
   const toggleFullscreen = () => {
@@ -249,6 +273,9 @@ export default function ParticipantActivities({
           // Trước khi gọi getParticipantsEventCount(), hãy reset giá trị đếm để đảm bảo nó bắt đầu từ 0
           sessionWs.resetParticipantsEventCount();
 
+          // Reset PointTypeOverlay state
+          setShowPointTypeOverlay(false);
+
           // Sau đó đọc giá trị - điều này đảm bảo trang hiển thị giá trị 0/x khi bắt đầu
           const participantsCount = sessionWs.getParticipantsEventCount();
           console.log(
@@ -366,7 +393,44 @@ export default function ParticipantActivities({
   };
 
   const handleCountdownComplete = () => {
+    console.log(
+      `[ParticipantActivities] Countdown hoàn thành, ẩn countdown và kiểm tra pointType`
+    );
     setShowCountdown(false);
+
+    // Kiểm tra pointType của activity hiện tại (chỉ cho quiz activities)
+    if (currentActivity && !isInfoSlideActivity(currentActivity.activityType)) {
+      const pointType = getActivityPointType(currentActivity);
+      console.log(
+        `[ParticipantActivities] PointType của activity hiện tại: ${pointType}`
+      );
+
+      if (pointType === 'DOUBLE_POINTS' || pointType === 'NO_POINTS') {
+        console.log(
+          `[ParticipantActivities] Hiển thị PointTypeOverlay cho pointType: ${pointType}`
+        );
+        setCurrentPointType(pointType);
+        setShowPointTypeOverlay(true);
+      } else {
+        console.log(
+          `[ParticipantActivities] PointType là STANDARD, không hiển thị overlay`
+        );
+        setIsLoading(false);
+      }
+    } else {
+      console.log(
+        `[ParticipantActivities] Activity là slide hoặc không có activity, không kiểm tra pointType`
+      );
+      setIsLoading(false);
+    }
+  };
+
+  // Thêm hàm để xử lý khi PointTypeOverlay hoàn thành
+  const handlePointTypeOverlayComplete = () => {
+    console.log(
+      `[ParticipantActivities] PointTypeOverlay hoàn thành, đặt isLoading = false`
+    );
+    setShowPointTypeOverlay(false);
     setIsLoading(false);
   };
 
@@ -492,13 +556,14 @@ export default function ParticipantActivities({
                   sessionWebSocket={sessionWs}
                 />
               );
-            case 'QUIZ_MATCHING_PAIR':
+            case 'QUIZ_MATCHING_PAIRS':
               return (
                 <QuizMatchingPairViewer
                   key={currentActivity.activityId}
                   activity={currentActivity}
                   sessionWebSocket={sessionWs}
                   sessionCode={sessionCode}
+                  sessionId={sessionCode}
                   isParticipating={true}
                 />
               );
@@ -534,6 +599,17 @@ export default function ParticipantActivities({
       {showCountdown && !isFullscreenMode && (
         <div className='fixed inset-0 z-[9999]'>
           <CountdownOverlay onComplete={handleCountdownComplete} />
+        </div>
+      )}
+
+      {/* Hiển thị PointTypeOverlay với z-index cao hơn cả CountdownOverlay */}
+      {showPointTypeOverlay && (
+        <div className='fixed inset-0 z-[10001]'>
+          <PointTypeOverlay
+            pointType={currentPointType}
+            onComplete={handlePointTypeOverlayComplete}
+            duration={3000}
+          />
         </div>
       )}
 
@@ -837,6 +913,17 @@ export default function ParticipantActivities({
                 {showCountdown && isFullscreenMode && (
                   <div className='absolute inset-0 z-50'>
                     <CountdownOverlay onComplete={handleCountdownComplete} />
+                  </div>
+                )}
+
+                {/* Hiển thị PointTypeOverlay trong phần nội dung khi ở chế độ toàn màn hình */}
+                {showPointTypeOverlay && isFullscreenMode && (
+                  <div className='absolute inset-0 z-[51]'>
+                    <PointTypeOverlay
+                      pointType={currentPointType}
+                      onComplete={handlePointTypeOverlayComplete}
+                      duration={3000}
+                    />
                   </div>
                 )}
 
