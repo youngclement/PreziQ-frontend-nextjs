@@ -786,11 +786,7 @@ export default function HostActivities({
     switch (currentActivity.activityType) {
       case 'INFO_SLIDE':
         console.log(`[SLIDE] Render slide: ${currentActivity.activityId}`);
-        return (
-          <InfoSlideViewer
-            activity={currentActivity}
-          />
-        );
+        return <InfoSlideViewer activity={currentActivity} />;
       case 'QUIZ_BUTTONS':
         return (
           <QuizButtonViewer

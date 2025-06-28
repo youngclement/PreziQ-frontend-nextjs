@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -188,6 +188,11 @@ export function QuizMatchingPairViewer({
   >('completed');
   const [forceUpdate, setForceUpdate] = useState(0);
 
+  // Thêm state để hiển thị đáp án mà không thay đổi lựa chọn của user
+  const [displayConnections, setDisplayConnections] = useState<
+    UserConnection[]
+  >([]);
+
   const { quiz, backgroundImage } = activity;
   const { quizMatchingPairAnswer } = quiz;
   const { leftColumnName, rightColumnName, items, connections } =
@@ -264,7 +269,7 @@ export function QuizMatchingPairViewer({
       setTimeout(() => {
         setForceUpdate((prev) => prev + 1);
         setShouldRedrawConnections(true);
-      }, 600); // Tăng delay để đảm bảo sidebar animation hoàn thành
+      }, 600); // Tăng delay để đợi animation hoàn thành
     };
 
     window.addEventListener('resize', handleResize);
@@ -317,17 +322,6 @@ export function QuizMatchingPairViewer({
     }
   }, [shouldRedrawConnections]);
 
-  // Đảm bảo user connections luôn sync với correct connections khi show answer và layout thay đổi
-  useEffect(() => {
-    if (
-      showCorrectAnswer &&
-      correctConnections.length > 0 &&
-      animationPhase === 'completed'
-    ) {
-      setUserConnections([...correctConnections]);
-    }
-  }, [forceUpdate, showCorrectAnswer, correctConnections, animationPhase]);
-
   // Thêm logic để force redraw khi layout thay đổi trong khi hiển thị đáp án
   useEffect(() => {
     if (showCorrectAnswer && shouldRedrawConnections) {
@@ -338,10 +332,22 @@ export function QuizMatchingPairViewer({
     }
   }, [showCorrectAnswer, shouldRedrawConnections]);
 
+  // Khởi tạo displayConnections với userConnections
+  useEffect(() => {
+    if (!showCorrectAnswer) {
+      setDisplayConnections(userConnections);
+    }
+  }, [userConnections, showCorrectAnswer]);
+
+  // Tạo color map dựa trên connections hiện tại được hiển thị
+  const connectionsToDisplay = showCorrectAnswer
+    ? displayConnections
+    : userConnections;
+
   // Create color map for pairs based on connection IDs
   const pairColorMap = useMemo(() => {
     const map = new Map<string, string>();
-    userConnections.forEach((connection, index) => {
+    connectionsToDisplay.forEach((connection, index) => {
       if (connection.leftId && connection.rightId) {
         const color = PAIR_COLORS[index % PAIR_COLORS.length];
         map.set(connection.leftId, color);
@@ -349,7 +355,7 @@ export function QuizMatchingPairViewer({
       }
     });
     return map;
-  }, [userConnections]);
+  }, [connectionsToDisplay]);
 
   const handleItemClick = (type: 'left' | 'right', itemId: string) => {
     if (isSubmitting || !isParticipating) return;
@@ -381,13 +387,76 @@ export function QuizMatchingPairViewer({
     }
   };
 
+  // Thêm formatTime function
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  // Thêm handleSubmit function
+  const handleSubmit = useCallback(async () => {
+    if (isSubmitting || isSubmitted || !isParticipating) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const answerArray = userConnections.flatMap((conn) => [
+        conn.leftId,
+        conn.rightId,
+      ]);
+      const answerContent = answerArray.join(',');
+      await sessionWebSocket.submitActivity({
+        sessionId,
+        activityId: activity.activityId,
+        answerContent,
+      });
+      setIsSubmitted(true);
+    } catch (err) {
+      setSubmitError('Không thể gửi câu trả lời. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    isSubmitting,
+    isSubmitted,
+    isParticipating,
+    userConnections,
+    sessionWebSocket,
+    sessionId,
+    activity.activityId,
+  ]);
+
   // Thêm useEffect để đếm ngược thời gian
   useEffect(() => {
     if (timeLeft > 0 && !isSubmitted) {
       const timer = setInterval(() => setTimeLeft((t) => t - 1), 1000);
       return () => clearInterval(timer);
     }
-  }, [timeLeft, isSubmitted]);
+
+    // Tự động submit khi hết thời gian CHỈ KHI người dùng đã có lựa chọn
+    if (
+      timeLeft <= 0 &&
+      !isSubmitted &&
+      !isSubmitting &&
+      userConnections.length > 0
+    ) {
+      console.log('[QuizMatchingPair] Tự động gửi đáp án khi hết thời gian', {
+        userConnections: userConnections.length,
+        status: 'Có lựa chọn - tự động submit',
+      });
+      handleSubmit();
+    } else if (timeLeft <= 0 && !isSubmitted && userConnections.length === 0) {
+      console.log(
+        '[QuizMatchingPair] Hết thời gian nhưng không tự submit vì người dùng chưa chọn gì'
+      );
+    }
+  }, [
+    timeLeft,
+    isSubmitted,
+    isSubmitting,
+    userConnections.length,
+    handleSubmit,
+  ]);
 
   // Thêm useEffect để kiểm tra khi nào quiz kết thúc
   useEffect(() => {
@@ -459,9 +528,9 @@ export function QuizMatchingPairViewer({
         setAnimationPhase('hiding_wrong');
 
         setTimeout(() => {
-          // Phase 2: Hiển thị kết nối đúng
+          // Phase 2: Hiển thị kết nối đúng (sử dụng displayConnections thay vì userConnections)
           setAnimationPhase('showing_correct');
-          setUserConnections(correctConns);
+          setDisplayConnections(correctConns);
 
           setTimeout(() => {
             // Phase 3: Hoàn thành
@@ -479,35 +548,6 @@ export function QuizMatchingPairViewer({
     showCorrectAnswer,
     userConnections,
   ]);
-
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m}:${sec.toString().padStart(2, '0')}`;
-  };
-
-  const handleSubmit = async () => {
-    if (isSubmitting || isSubmitted || !isParticipating) return;
-    setIsSubmitting(true);
-    setSubmitError(null);
-    try {
-      const answerArray = userConnections.flatMap((conn) => [
-        conn.leftId,
-        conn.rightId,
-      ]);
-      const answerContent = answerArray.join(',');
-      await sessionWebSocket.submitActivity({
-        sessionId,
-        activityId: activity.activityId,
-        answerContent,
-      });
-      setIsSubmitted(true);
-    } catch (err) {
-      setSubmitError('Không thể gửi câu trả lời. Vui lòng thử lại.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const getConnectionPath = (aId: string, bId: string) => {
     const aElement = document.getElementById(`item-${aId}`);
@@ -598,7 +638,7 @@ export function QuizMatchingPairViewer({
                 <Link2 className='h-4 w-4 text-black' />
               </div>
               <div className='text-xs capitalize font-medium text-white/80'>
-                Ghép cặp
+                Matching Pairs
               </div>
             </div>
             <div className='flex items-center gap-2'>
@@ -832,8 +872,9 @@ export function QuizMatchingPairViewer({
               <div className='flex flex-row justify-between items-start gap-4 sm:gap-6 md:gap-10 lg:gap-12 max-w-6xl mx-auto'>
                 {/* Column A */}
                 <div className='w-[42%] sm:w-[44%] md:w-[45%] lg:w-1/2 flex flex-col items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6'>
-                  <div className='w-full bg-gradient-to-r from-blue-500 to-purple-600 p-2 sm:p-3 md:p-4 rounded-xl shadow-lg'>
-                    <h3 className='font-bold text-xs sm:text-base md:text-lg lg:text-xl text-center text-white drop-shadow-sm break-words'>
+                  {/* Column Header - Thiết kế cân bằng */}
+                  <div className='w-full bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-800/30 border-2 border-blue-200/60 dark:border-blue-600/40 rounded-xl shadow-md backdrop-blur-sm'>
+                    <h3 className='font-semibold text-sm sm:text-base md:text-lg text-center text-blue-700 dark:text-blue-200 py-3 sm:py-4 px-3 tracking-wide'>
                       {leftColumnName}
                     </h3>
                   </div>
@@ -899,8 +940,9 @@ export function QuizMatchingPairViewer({
 
                 {/* Column B */}
                 <div className='w-[42%] sm:w-[44%] md:w-[45%] lg:w-1/2 flex flex-col items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6'>
-                  <div className='w-full bg-gradient-to-r from-purple-600 to-pink-500 p-2 sm:p-3 md:p-4 rounded-xl shadow-lg'>
-                    <h3 className='font-bold text-xs sm:text-base md:text-lg lg:text-xl text-center text-white drop-shadow-sm break-words'>
+                  {/* Column Header - Thiết kế cân bằng */}
+                  <div className='w-full bg-gradient-to-r from-purple-50 to-pink-100 dark:from-purple-900/30 dark:to-pink-800/30 border-2 border-purple-200/60 dark:border-purple-600/40 rounded-xl shadow-md backdrop-blur-sm'>
+                    <h3 className='font-semibold text-sm sm:text-base md:text-lg text-center text-purple-700 dark:text-purple-200 py-3 sm:py-4 px-3 tracking-wide'>
                       {rightColumnName}
                     </h3>
                   </div>
@@ -1000,7 +1042,7 @@ export function QuizMatchingPairViewer({
                 </defs>
                 <g>
                   <AnimatePresence>
-                    {userConnections.map((conn, index) => {
+                    {displayConnections.map((conn, index) => {
                       const pathColor =
                         pairColorMap.get(conn.leftId) || PAIR_COLORS[0];
                       const isCorrectConnection = correctConnections.some(

@@ -25,7 +25,8 @@ export function useOptionOperations(
         question: QuizQuestion
       ) => {
         try {
-          const options = question.options;
+          // Add proper type checking for options
+          const options = question.options || [];
 
           switch (activityTypeId) {
             case 'QUIZ_BUTTONS':
@@ -100,8 +101,15 @@ export function useOptionOperations(
     if (!activity) return;
 
     // Tạo bản sao sâu để tránh vấn đề tham chiếu
-    const updatedQuestions = JSON.parse(JSON.stringify(questions));
+    const updatedQuestions = JSON.parse(
+      JSON.stringify(questions)
+    ) as QuizQuestion[];
     const activeQuestion = updatedQuestions[questionIndex];
+
+    if (!activeQuestion) {
+      console.error('Active question not found at index:', questionIndex);
+      return;
+    }
 
     // Bỏ qua cập nhật cho loại INFO_SLIDE vì chúng không có tùy chọn
     if (activity.activity_type_id === 'INFO_SLIDE') {
@@ -233,9 +241,6 @@ export function useOptionOperations(
       });
       // Sau đó chỉ đặt tùy chọn được chọn là chính xác
       activeQuestion.options[optionIndex][field] = value;
-    } else {
-      // Đối với các loại câu hỏi hoặc trường khác, chỉ cập nhật bình thường
-      activeQuestion.options[optionIndex][field] = value;
     }
 
     // Cập nhật trạng thái cục bộ
@@ -248,7 +253,7 @@ export function useOptionOperations(
     if (!isTyping) {
       // Đối với các loại câu hỏi khác, tiếp tục với các API call ngay lập tức
       try {
-        const options = activeQuestion.options;
+        const options = activeQuestion.options || [];
 
         // Xử lý cập nhật API dựa trên loại câu hỏi
         switch (activity.activity_type_id) {
@@ -297,7 +302,7 @@ export function useOptionOperations(
           case 'QUIZ_TYPE_ANSWER':
             // For text answer questions, use option_text as the correctAnswer
             const answerText =
-              activeQuestion.options[0]?.option_text || 'Answer';
+              activeQuestion.options?.[0]?.option_text || 'Answer';
             await activitiesApi.updateTypeAnswerQuiz(activity.id, {
               type: 'TYPE_ANSWER',
               questionText: activeQuestion.question_text,
@@ -369,6 +374,11 @@ export function useOptionOperations(
     const updatedQuestions = [...questions];
     const activeQuestion = updatedQuestions[activeQuestionIndex];
 
+    if (!activeQuestion || !activeQuestion.options) {
+      console.error('Active question or options not found');
+      return;
+    }
+
     // Use the reorderOptions utility to get the updated options
     const reorderedOptions = reorderOptions(
       activeQuestion.options,
@@ -406,10 +416,8 @@ export function useOptionOperations(
       });
       if (onDone) onDone();
     } catch (error) {
-
-      console.error("🔄 REORDER: Error updating reorder steps:", error);
+      console.error('🔄 REORDER: Error updating reorder steps:', error);
       if (onDone) onDone();
-
     }
   };
 
@@ -421,6 +429,11 @@ export function useOptionOperations(
 
     const updatedQuestions = [...questions];
     const activeQuestion = updatedQuestions[activeQuestionIndex];
+
+    if (!activeQuestion) {
+      console.error('Active question not found');
+      return;
+    }
 
     // Handle matching pairs differently
     if (activity.activity_type_id === 'QUIZ_MATCHING_PAIRS') {
@@ -449,6 +462,11 @@ export function useOptionOperations(
         console.error('Error adding matching pair:', error);
       }
       return;
+    }
+
+    // Ensure options array exists
+    if (!activeQuestion.options) {
+      activeQuestion.options = [];
     }
 
     // Don't allow more than 8 options for traditional quizzes
@@ -529,6 +547,11 @@ export function useOptionOperations(
     const updatedQuestions = [...questions];
     const activeQuestion = updatedQuestions[activeQuestionIndex];
 
+    if (!activeQuestion) {
+      console.error('Active question not found');
+      return;
+    }
+
     // Handle matching pairs differently
     if (activity.activity_type_id === 'QUIZ_MATCHING_PAIRS') {
       // For matching pairs, we need the item ID to delete
@@ -561,6 +584,12 @@ export function useOptionOperations(
       } catch (error) {
         console.error('Error deleting matching pair item:', error);
       }
+      return;
+    }
+
+    // Ensure options array exists
+    if (!activeQuestion.options) {
+      console.error('No options array found');
       return;
     }
 
@@ -652,10 +681,14 @@ export function useOptionOperations(
     if (!activity) return;
 
     // Create a deep copy of the questions array
-    const updatedQuestions = JSON.parse(JSON.stringify(questions));
+    const updatedQuestions = JSON.parse(
+      JSON.stringify(questions)
+    ) as QuizQuestion[];
 
     // Update the correct_answer_text for the active question
-    updatedQuestions[activeQuestionIndex].correct_answer_text = value;
+    if (updatedQuestions[activeQuestionIndex]) {
+      updatedQuestions[activeQuestionIndex].correct_answer_text = value;
+    }
 
     // Update the local state immediately
     setQuestions(updatedQuestions);
@@ -665,7 +698,8 @@ export function useOptionOperations(
       if (activity.activity_type_id === 'QUIZ_TYPE_ANSWER') {
         const response = await activitiesApi.updateTypeAnswerQuiz(activity.id, {
           type: 'TYPE_ANSWER',
-          questionText: updatedQuestions[activeQuestionIndex].question_text,
+          questionText:
+            updatedQuestions[activeQuestionIndex]?.question_text || '',
           timeLimitSeconds: timeLimit,
           pointType: 'STANDARD',
           correctAnswer: value,
@@ -687,15 +721,20 @@ export function useOptionOperations(
   ) => {
     if (!activity || activity.activity_type_id !== 'QUIZ_REORDER') return;
 
-    // First update local state
     const updatedQuestions = [...questions];
+    const activeQuestion = updatedQuestions[questionIndex];
+
+    if (!activeQuestion || !activeQuestion.options) {
+      console.error('Active question or options not found');
+      return;
+    }
+
+    // First update local state
     updatedQuestions[questionIndex].options[optionIndex].option_text = value;
     setQuestions(updatedQuestions);
 
     if (!isTyping) {
       try {
-        const activeQuestion = updatedQuestions[questionIndex];
-
         await activitiesApi.updateReorderQuiz(activity.id, {
           type: 'REORDER',
           questionText: activeQuestion.question_text,
