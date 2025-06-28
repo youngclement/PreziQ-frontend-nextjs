@@ -143,10 +143,22 @@ export default function RealtimeLeaderboard({
       setParticipants(propParticipants as RankedParticipant[]);
     }
 
+    // Dispatch event để thông báo leaderboard đã mount/update
+    const event = new CustomEvent('leaderboardLayoutChange', {
+      detail: { visible: true, timestamp: Date.now() },
+    });
+    window.dispatchEvent(event);
+
     // Cleanup subscription khi component unmount
     return () => {
       console.log('[RealtimeLeaderboard] Hủy đăng ký với LeaderboardManager');
       unsubscribe();
+
+      // Dispatch event để thông báo leaderboard đã unmount
+      const event = new CustomEvent('leaderboardLayoutChange', {
+        detail: { visible: false, timestamp: Date.now() },
+      });
+      window.dispatchEvent(event);
     };
   }, [
     currentUserName,
@@ -252,10 +264,11 @@ export default function RealtimeLeaderboard({
                         damping: 30,
                         mass: 1,
                       }}
-                      className={`flex items-center p-2 rounded-lg mb-2 backdrop-blur-sm ${isCurrentUser
+                      className={`flex items-center p-2 rounded-lg mb-2 backdrop-blur-sm ${
+                        isCurrentUser
                           ? 'bg-[rgb(198,234,132)]/10 border border-[rgb(198,234,132)]/30'
                           : 'bg-black bg-opacity-30 border border-white/5 hover:bg-black hover:bg-opacity-40'
-                        }`}
+                      }`}
                     >
                       {/* Thứ hạng */}
                       <div className='w-6 text-center font-bold'>
@@ -274,12 +287,13 @@ export default function RealtimeLeaderboard({
                         >
                           {participant.realtimeRanking <= 3 && (
                             <motion.div
-                              className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border ${participant.realtimeRanking === 1
+                              className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border ${
+                                participant.realtimeRanking === 1
                                   ? 'bg-yellow-500 border-yellow-300'
                                   : participant.realtimeRanking === 2
-                                    ? 'bg-gray-400 border-gray-300'
-                                    : 'bg-amber-600 border-amber-500'
-                                }`}
+                                  ? 'bg-gray-400 border-gray-300'
+                                  : 'bg-amber-600 border-amber-500'
+                              }`}
                               animate={{
                                 scale: [1, 1.2, 1],
                                 opacity: [0.7, 1, 0.7],

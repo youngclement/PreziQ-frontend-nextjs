@@ -1,13 +1,19 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { CheckIcon, RefreshCcw, Info } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useState, useEffect } from 'react';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { CheckIcon, RefreshCcw, Info } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useLanguage } from '@/contexts/language-context';
 
 interface TextAnswerFormProps {
   correctAnswerText: string;
@@ -18,11 +24,12 @@ interface TextAnswerFormProps {
 export function TextAnswerForm({
   correctAnswerText,
   onTextAnswerChange,
-  onTextAnswerBlur
+  onTextAnswerBlur,
 }: TextAnswerFormProps) {
+  const { t } = useLanguage();
   const [editValue, setEditValue] = useState(correctAnswerText);
   const [isEditing, setIsEditing] = useState(false);
-  
+
   // Sync with external props
   useEffect(() => {
     setEditValue(correctAnswerText);
@@ -44,11 +51,14 @@ export function TextAnswerForm({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Label htmlFor="correct-answer" className="text-base font-medium flex items-center">
+        {' '}
+        <Label
+          htmlFor="correct-answer"
+          className="text-base font-medium flex items-center"
+        >
           <CheckIcon className="h-4 w-4 mr-2 text-green-500" />
-          Correct Answer
+          {t('activity.correctAnswer')}
         </Label>
-        
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -60,52 +70,53 @@ export function TextAnswerForm({
               >
                 <Info className="h-4 w-4 text-muted-foreground" />
               </Button>
-            </TooltipTrigger>
+            </TooltipTrigger>{' '}
             <TooltipContent>
               <p className="w-[220px] text-xs">
-                Students must type this exact answer to be marked as correct. The answer is case-sensitive.
+                {t('activity.studentsTypeExactTooltip')}
               </p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
-
-      <div className={cn(
-        "p-4 rounded-lg border transition-all",
-        isEditing 
-          ? "bg-white dark:bg-gray-800 border-primary" 
-          : "bg-muted/30 hover:bg-muted/50 cursor-pointer"
-      )}>
+      <div
+        className={cn(
+          'p-4 rounded-lg border transition-all',
+          isEditing
+            ? 'bg-white dark:bg-gray-800 border-primary'
+            : 'bg-muted/30 hover:bg-muted/50 cursor-pointer'
+        )}
+      >
         {isEditing ? (
           <div className="space-y-3">
+            {' '}
             <Textarea
               id="correct-answer"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              placeholder="Enter the correct answer"
+              placeholder={t('activity.enterCorrectAnswerPlaceholder')}
               className="w-full border-gray-200 focus:ring-primary"
               onKeyDown={handleKeyDown}
               autoFocus
             />
-            
             <div className="flex justify-end gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              {' '}
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   setEditValue(correctAnswerText);
                   setIsEditing(false);
                 }}
               >
-                Cancel
+                {t('activity.cancel')}
               </Button>
-              
-              <Button 
+              <Button
                 size="sm"
                 onClick={handleSaveAnswer}
                 className="bg-primary hover:bg-primary/90"
               >
-                Save Answer
+                {t('activity.saveAnswer')}
               </Button>
             </div>
           </div>
@@ -117,15 +128,14 @@ export function TextAnswerForm({
               </div>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground py-4">
-                <span>Click to add correct answer</span>
+                <span>{t('activity.clickToAddCorrectAnswer')}</span>
               </div>
             )}
           </div>
         )}
-      </div>
-
+      </div>{' '}
       <p className="text-xs text-muted-foreground">
-        Students must type this exact answer to be marked correct
+        {t('activity.studentsTypeExactNote')}
       </p>
     </div>
   );

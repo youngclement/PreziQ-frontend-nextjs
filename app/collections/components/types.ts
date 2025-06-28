@@ -16,7 +16,8 @@ export interface Collection {
   views?: number;
   likes?: number;
   participants?: number;
-  activities?: Activity[]; // Danh sách activities của collection
+  activities?: Activity[];
+  totalActivities?: number;
 }
 
 export interface Category {
@@ -34,7 +35,8 @@ export interface Activity {
   is_published: boolean;
   created_at?: string;
   updated_at?: string;
-  duration?: number; // in minutes
+  duration?: number; 
+  // in minutes
   activity_type?:
     | 'Quiz'
     | 'Poll'

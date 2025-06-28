@@ -80,6 +80,7 @@ export default function QuestionsPageContent() {
     activeQuestionIndex,
     setActiveQuestionIndex,
     refreshCollectionData,
+    refreshMatchingPairData,
   } = useCollectionData(collectionId, activityId);
 
   // State for UI
@@ -100,7 +101,7 @@ export default function QuestionsPageContent() {
   >({});
   const [correctAnswerText, setCorrectAnswerText] = useState('');
 
-  // Use question operations hook
+  // Use question operations hook with refresh function
   const {
     timeLimit,
     setTimeLimit,
@@ -123,7 +124,8 @@ export default function QuestionsPageContent() {
     setActiveQuestionIndex,
     activity,
     setActivity,
-    refreshCollectionData
+    refreshCollectionData,
+    refreshMatchingPairData
   );
 
   // Use option operations hook
@@ -243,8 +245,8 @@ export default function QuestionsPageContent() {
     };
   }, [activity, activities, setActivity, setActivities, setTimeLimit]);
 
-  // Handle selecting a question from the list
-  const handleQuestionSelect = (index: number) => {
+  // Enhanced handleQuestionSelect with matching pair refresh
+  const handleQuestionSelect = async (index: number) => {
     // Set the active question index
     setActiveQuestionIndex(index);
 
@@ -256,6 +258,14 @@ export default function QuestionsPageContent() {
       if (selectedActivity) {
         // Update the activity state
         setActivity(selectedActivity);
+
+        // If this is a matching pair activity, refresh the data
+        if (
+          selectedActivity.activity_type_id === 'QUIZ_MATCHING_PAIRS' &&
+          refreshMatchingPairData
+        ) {
+          await refreshMatchingPairData(activityId);
+        }
       }
     }
   };
@@ -266,7 +276,11 @@ export default function QuestionsPageContent() {
     questionIndex: number,
     isTyping: boolean = false
   ) => {
-    if (activity && activity.activity_type_id === 'INFO_SLIDE') {
+    if (
+      activity &&
+      activity.activity_type_id === 'INFO_SLIDE' ||
+      activity?.activity_type_id === 'SLIDE'
+    ) {
       return;
     }
     // Update question text in local state
