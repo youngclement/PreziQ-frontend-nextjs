@@ -293,10 +293,11 @@ export function QuestionPreview({
       });
     };
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('reorder:success', handleReorderSuccess as EventListener);
-      window.addEventListener('reorder:error', handleReorderError as EventListener);
-    }
+    // Remove reorder:success and reorder:error listeners to avoid duplicate setIsReordering(false)
+    // if (typeof window !== 'undefined') {
+    //   window.addEventListener('reorder:success', handleReorderSuccess as EventListener);
+    //   window.addEventListener('reorder:error', handleReorderError as EventListener);
+    // }
 
     return () => {
       if (typeof window !== 'undefined') {
@@ -1695,14 +1696,7 @@ export function QuestionPreview({
                 {/* Enhanced drag and drop for reorder questions */}
                 {editMode !== null ? (
                   <div className="relative">
-                    {isReordering && (
-                      <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
-                        <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                          <span className="text-sm font-medium">Đang cập nhật...</span>
-                        </div>
-                      </div>
-                    )}
+
 
                     <DragDropContext
                       onDragStart={() => {
@@ -1734,10 +1728,16 @@ export function QuestionPreview({
                         setIsReordering(true);
 
                         if (onReorderOptions) {
-                          onReorderOptions(
+                          // Patch: fallback for 2-arg signature
+                          const maybePromise = onReorderOptions(
                             result.source.index,
                             result.destination.index
                           );
+                          if (maybePromise && typeof maybePromise.finally === 'function') {
+                            maybePromise.finally(() => setIsReordering(false));
+                          } else {
+                            setIsReordering(false);
+                          }
                         }
                       }}
                     >
@@ -1752,9 +1752,7 @@ export function QuestionPreview({
                             )}
                           >
                             {/* Connecting line for visual guidance */}
-                            {question.options.length > 1 && (
-                              <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gradient-to-b from-gray-300 via-gray-400 to-gray-300 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 z-0"></div>
-                            )}
+                            {/* Removed vertical gradient line for REORDER preview drag mode */}
 
                             {[...question.options]
                               .sort((a, b) => a.display_order - b.display_order)
@@ -1773,17 +1771,21 @@ export function QuestionPreview({
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
                                       className={cn(
-                                        'flex items-center gap-2 p-1.5 relative mb-2 transition-all duration-300',
-                                        snapshot.isDragging ? 'z-50 scale-105' : 'z-10'
+                                        'flex items-center gap-2 p-1.5 relative mb-2 transition-all duration-300 ease-in-out',
+                                        snapshot.isDragging ? 'z-50 scale-105 shadow-2xl ring-2 ring-blue-400/70 bg-blue-50/80 dark:bg-blue-900/40' : 'z-10',
+                                        !snapshot.isDragging && 'hover:scale-[1.01] hover:shadow-lg',
+                                        snapshot.isDropAnimating && 'transition-transform duration-200'
                                       )}
                                       style={{
                                         ...provided.draggableProps.style,
+                                        opacity: snapshot.isDragging ? 1 : 0.97,
+                                        transition: snapshot.isDragging ? 'box-shadow 0.2s, transform 0.2s' : 'box-shadow 0.3s, transform 0.3s',
                                       }}
                                     >
                                       {/* Step number */}
                                       <div className={cn(
                                         "flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-600 text-sm font-semibold text-white shadow-lg relative z-10 transition-all duration-300",
-                                        snapshot.isDragging && 'scale-110 shadow-xl ring-2 ring-blue-400'
+                                        snapshot.isDragging && 'scale-110 shadow-2xl ring-2 ring-blue-400'
                                       )}>
                                         {index + 1}
                                       </div>
@@ -1793,8 +1795,9 @@ export function QuestionPreview({
                                         className={cn(
                                           'flex-1 bg-white dark:bg-gray-800 rounded-lg p-3 border flex items-center gap-2 transition-all duration-300',
                                           snapshot.isDragging
-                                            ? 'border-blue-400 ring-2 ring-blue-400/30 bg-blue-50/50 dark:bg-blue-900/20 shadow-xl scale-[1.02]'
-                                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md'
+                                            ? 'border-blue-400 ring-2 ring-blue-400/30 bg-blue-50/70 dark:bg-blue-900/30 shadow-xl scale-[1.03]'
+                                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md',
+                                          !snapshot.isDragging && 'opacity-95'
                                         )}
                                       >
                                         <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -1825,9 +1828,7 @@ export function QuestionPreview({
                 ) : (
                   <div className="space-y-2">
                     {/* Static view when edit mode is off */}
-                    {question.options.length > 1 && (
-                      <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gray-300 dark:bg-gray-600 z-0"></div>
-                    )}
+                    {/* Removed vertical line for REORDER preview static view */}
 
                     {[...question.options]
                       .sort((a, b) => a.display_order - b.display_order)
