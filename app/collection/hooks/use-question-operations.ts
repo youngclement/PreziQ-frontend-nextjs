@@ -204,12 +204,19 @@ export function useQuestionOperations(
           clearTimeout(window.updateQuestionTimer);
         }
         window.updateQuestionTimer = setTimeout(() => {
+          // Use the fresh locationData directly instead of relying on existing question state
           const locationAnswers = Array.isArray(locationData)
-            ? locationData.map((location) => ({
-                longitude: location.longitude,
-                latitude: location.latitude,
-                radius: location.radius || 10,
-              }))
+            ? locationData.map((location, index) => {
+                console.log(
+                  `🔧 [useQuestionOps] Processing location ${index}:`,
+                  location
+                );
+                return {
+                  longitude: location.longitude,
+                  latitude: location.latitude,
+                  radius: location.radius || 10, // Use the radius from fresh locationData
+                };
+              })
             : [
                 {
                   longitude: locationData.lng || locationData.longitude || 0,
@@ -217,6 +224,8 @@ export function useQuestionOperations(
                   radius: locationData.radius || 10,
                 },
               ];
+
+          console.log(`🔧 [useQuestionOps] Sending to API:`, locationAnswers);
 
           activitiesApi
             .updateLocationQuiz(questionActivityId, {

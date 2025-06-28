@@ -1267,6 +1267,8 @@ export function LocationQuestionEditor({
             ...updatedLocations[index],
             longitude: newLngLat.lng,
             latitude: newLngLat.lat,
+            // Preserve the existing radius value
+            radius: updatedLocations[index].radius || 10,
           };
 
           // Update refs immediately before any async operations

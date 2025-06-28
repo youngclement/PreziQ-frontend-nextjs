@@ -194,6 +194,7 @@ interface QuestionSettingsProps {
   onSlideImageChange?: (value: string, index: number) => void;
   onReorderOptions?: (sourceIndex: number, destinationIndex: number) => void;
   onQuestionLocationChange?: (questionIndex: number, locationData: any) => void;
+  onQuestionTextChange?: (questionIndex: number, text: string) => void;
   onMatchingPairOptionsChange?: (
     questionIndex: number,
     newOptions: MatchingPairOption[]
@@ -309,6 +310,7 @@ export function QuestionSettings({
   onSlideImageChange,
   onReorderOptions,
   onQuestionLocationChange,
+  onQuestionTextChange,
   onMatchingPairOptionsChange,
   onMatchingPairConnectionsChange,
   activity,
@@ -2407,6 +2409,9 @@ export function QuestionSettings({
 
   // Location settings component
   const LocationSettings = () => {
+    // Local state để lưu trữ giá trị đang edit
+    const [editingValues, setEditingValues] = useState<{ [key: string]: string }>({});
+
     // Handle adding a new location point
     const handleAddLocation = () => {
       const currentLocations = activeQuestion.location_data?.quizLocationAnswers;
@@ -2459,11 +2464,24 @@ export function QuestionSettings({
       onQuestionLocationChange?.(activeQuestionIndex, validatedUpdatedLocations);
     };
 
-    // Handle updating a specific field of a location
-    const handleUpdateLocation = (
+    // Handle input change - chỉ update local state
+    const handleInputChange = (
       indexToUpdate: number,
       property: 'longitude' | 'latitude' | 'radius' | 'hint',
-      value: string | number
+      value: string
+    ) => {
+      const key = `${indexToUpdate}-${property}`;
+      setEditingValues(prev => ({
+        ...prev,
+        [key]: value
+      }));
+    };
+
+    // Handle blur - update actual data khi user rời khỏi input
+    const handleInputBlur = (
+      indexToUpdate: number,
+      property: 'longitude' | 'latitude' | 'radius' | 'hint',
+      value: string
     ) => {
       const currentLocations = activeQuestion.location_data?.quizLocationAnswers;
       if (!currentLocations || !Array.isArray(currentLocations)) {
@@ -2471,15 +2489,42 @@ export function QuestionSettings({
         return;
       }
 
+      // Remove từ editing values
+      const key = `${indexToUpdate}-${property}`;
+      setEditingValues(prev => {
+        const newValues = { ...prev };
+        delete newValues[key];
+        return newValues;
+      });
+
+      // Update actual data with the new value immediately
       const updatedLocations = currentLocations.map((loc, index) => {
         if (index === indexToUpdate) {
-          const numericValue =
-            property === 'hint' ? value : parseFloat(value as string);
-          return { ...loc, [property]: numericValue };
+          const processedValue = property === 'hint' ? value : parseFloat(value as string);
+          // Validate numeric values
+          if (property !== 'hint' && (typeof processedValue === 'number' && (isNaN(processedValue) || processedValue === null || processedValue === undefined))) {
+            console.warn(`❌ [LocationSettings] Invalid ${property} value: ${value}, keeping original value`);
+            return loc; // Keep original value if invalid
+          }
+
+          console.log(`🔧 [LocationSettings] Updating ${property} for location ${index} from ${(loc as any)[property]} to ${processedValue}`);
+          return { ...loc, [property]: processedValue };
         }
         return loc;
       });
-      onQuestionLocationChange?.(activeQuestionIndex, updatedLocations);
+
+      // Validate và update immediately with the fresh data
+      const validatedUpdatedLocations = validateLocationData(updatedLocations);
+      console.log(`🔧 [LocationSettings] Calling onQuestionLocationChange with fresh data:`, validatedUpdatedLocations);
+
+      // Call immediately without any delay to ensure the API gets the latest data
+      onQuestionLocationChange?.(activeQuestionIndex, validatedUpdatedLocations);
+    };
+
+    // Get value - ưu tiên editing value, sau đó mới là actual value
+    const getValue = (index: number, property: string, actualValue: any) => {
+      const key = `${index}-${property}`;
+      return editingValues[key] !== undefined ? editingValues[key] : (actualValue || '').toString();
     };
 
     if (!activeQuestion) return null;
@@ -2525,98 +2570,158 @@ export function QuestionSettings({
               Add Point
             </Button>
           </div>
+          <p className="text-xs text-gray-500 mt-2">
+            💡 Type values and press Enter or click outside to save changes
+          </p>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {locationAnswers.map((location, index) => (
-              <Card key={index} className="p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <Label className="text-sm font-medium">
-                    Point {index + 1}
-                  </Label>
-                  {locationAnswers.length > 1 && (
-                    <Button
-                      onClick={() => handleDeleteLocation(index)}
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-500 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                  <div>
-                    <Label
-                      htmlFor={`lat-${index}`}
-                      className="text-xs text-gray-600"
-                    >
-                      Latitude
-                    </Label>
-                    <Input
-                      id={`lat-${index}`}
-                      type="number"
-                      value={location.latitude}
-                      onChange={(e) =>
-                        handleUpdateLocation(index, 'latitude', e.target.value)
-                      }
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label
-                      htmlFor={`lng-${index}`}
-                      className="text-xs text-gray-600"
-                    >
-                      Longitude
-                    </Label>
-                    <Input
-                      id={`lng-${index}`}
-                      type="number"
-                      value={location.longitude}
-                      onChange={(e) =>
-                        handleUpdateLocation(index, 'longitude', e.target.value)
-                      }
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
+            {locationAnswers.map((location, index) => {
+              const isEditing = Object.keys(editingValues).some(key => key.startsWith(`${index}-`));
 
-                <div className="mt-3">
-                  <Label
-                    htmlFor={`radius-${index}`}
-                    className="text-xs text-gray-600"
-                  >
-                    Radius (km)
-                  </Label>
-                  <Input
-                    id={`radius-${index}`}
-                    type="number"
-                    value={location.radius}
-                    onChange={(e) =>
-                      handleUpdateLocation(index, 'radius', e.target.value)
-                    }
-                    className="h-8 text-sm"
-                  />
-                </div>
-                <div className="mt-3">
-                  <Label
-                    htmlFor={`hint-${index}`}
-                    className="text-xs text-gray-600"
-                  >
-                    Hint
-                  </Label>
-                  <Input
-                    id={`hint-${index}`}
-                    value={(location as any).hint || ''}
-                    onChange={(e) =>
-                      handleUpdateLocation(index, 'hint', e.target.value)
-                    }
-                    className="h-8 text-sm"
-                  />
-                </div>
-              </Card>
-            ))}
+              return (
+                <Card key={index} className={`p-3 transition-all duration-200 ${isEditing ? 'ring-2 ring-blue-500/20 border-blue-200' : ''}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-blue-500" />
+                      Point {index + 1}
+                      {isEditing && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                          Editing
+                        </span>
+                      )}
+                    </Label>
+                    {locationAnswers.length > 1 && (
+                      <Button
+                        onClick={() => handleDeleteLocation(index)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                    <div>
+                      <Label
+                        htmlFor={`lat-${index}`}
+                        className="text-xs text-gray-600"
+                      >
+                        Latitude
+                      </Label>
+                      <Input
+                        id={`lat-${index}`}
+                        type="number"
+                        step="any"
+                        value={getValue(index, 'latitude', location.latitude)}
+                        onChange={(e) =>
+                          handleInputChange(index, 'latitude', e.target.value)
+                        }
+                        onBlur={(e) =>
+                          handleInputBlur(index, 'latitude', e.target.value)
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        className="h-8 text-sm"
+                        placeholder="Enter latitude"
+                      />
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor={`lng-${index}`}
+                        className="text-xs text-gray-600"
+                      >
+                        Longitude
+                      </Label>
+                      <Input
+                        id={`lng-${index}`}
+                        type="number"
+                        step="any"
+                        value={getValue(index, 'longitude', location.longitude)}
+                        onChange={(e) =>
+                          handleInputChange(index, 'longitude', e.target.value)
+                        }
+                        onBlur={(e) =>
+                          handleInputBlur(index, 'longitude', e.target.value)
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        className="h-8 text-sm"
+                        placeholder="Enter longitude"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <Label
+                      htmlFor={`radius-${index}`}
+                      className="text-xs text-gray-600"
+                    >
+                      Radius (km)
+                    </Label>
+                    <Input
+                      id={`radius-${index}`}
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      value={getValue(index, 'radius', location.radius)}
+                      onChange={(e) =>
+                        handleInputChange(index, 'radius', e.target.value)
+                      }
+                      onBlur={(e) =>
+                        handleInputBlur(index, 'radius', e.target.value)
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      className="h-8 text-sm"
+                      placeholder="Enter radius in km"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <Label
+                      htmlFor={`hint-${index}`}
+                      className="text-xs text-gray-600"
+                    >
+                      Hint (Optional)
+                    </Label>
+                    <Input
+                      id={`hint-${index}`}
+                      value={getValue(index, 'hint', (location as any).hint)}
+                      onChange={(e) =>
+                        handleInputChange(index, 'hint', e.target.value)
+                      }
+                      onBlur={(e) =>
+                        handleInputBlur(index, 'hint', e.target.value)
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      className="h-8 text-sm"
+                      placeholder="Enter optional hint"
+                    />
+                  </div>
+
+                  {/* Show coordinates preview */}
+                  <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs text-gray-600">
+                    <div className="font-medium mb-1">Current coordinates:</div>
+                    <div>Lat: {location.latitude?.toFixed(6) || 'N/A'}, Lng: {location.longitude?.toFixed(6) || 'N/A'}</div>
+                    <div>Radius: {location.radius || 'N/A'} km</div>
+                  </div>
+                </Card>
+              );
+            })}
 
             {locationAnswers.length === 0 && (
               <div className="text-center py-6 text-gray-500">

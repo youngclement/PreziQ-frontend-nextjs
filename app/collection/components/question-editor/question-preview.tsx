@@ -2767,7 +2767,7 @@ export function QuestionPreview({
     questionIndex: number,
     locationData: any
   ) => {
-    console.log('Handling location change:', questionIndex, locationData);
+    console.log('🔧 [QuestionPreview] Handling location change:', questionIndex, locationData);
 
     const question = questions[questionIndex];
 
@@ -2780,32 +2780,41 @@ export function QuestionPreview({
       let locationAnswers;
 
       if (Array.isArray(locationData)) {
-        console.log('Detected array format for location data');
-        locationAnswers = locationData.map((loc: LocationAnswer) => ({
-          longitude: loc.longitude || loc.lng,
-          latitude: loc.latitude || loc.lat,
-          radius: loc.radius || 10,
-        }));
-      } else if (locationData && locationData.quizLocationAnswers) {
-        console.log('Detected object with quizLocationAnswers property');
-        locationAnswers = locationData.quizLocationAnswers.map(
-          (loc: LocationAnswer) => ({
+        console.log('🔧 [QuestionPreview] Detected array format for location data');
+        // Use locationData directly instead of preserving old radius values
+        locationAnswers = locationData.map((loc: LocationAnswer, index: number) => {
+          console.log(`🔧 [QuestionPreview] Processing location ${index}:`, loc);
+          return {
             longitude: loc.longitude || loc.lng,
             latitude: loc.latitude || loc.lat,
-            radius: loc.radius || 10,
-          })
+            radius: loc.radius || 10, // Use the radius from the fresh data
+          };
+        });
+      } else if (locationData && locationData.quizLocationAnswers) {
+        console.log('🔧 [QuestionPreview] Detected object with quizLocationAnswers property');
+        // Use locationData directly for consistency
+        locationAnswers = locationData.quizLocationAnswers.map(
+          (loc: LocationAnswer, index: number) => {
+            console.log(`🔧 [QuestionPreview] Processing quizLocationAnswer ${index}:`, loc);
+            return {
+              longitude: loc.longitude || loc.lng,
+              latitude: loc.latitude || loc.lat,
+              radius: loc.radius || 10, // Use the radius from the fresh data
+            };
+          }
         );
       } else if (locationData && (locationData.longitude || locationData.lat)) {
-        console.log('Detected legacy format with direct coordinates');
+        console.log('🔧 [QuestionPreview] Detected legacy format with direct coordinates');
+        // Use locationData directly for consistency
         locationAnswers = [
           {
             longitude: locationData.longitude || locationData.lng,
             latitude: locationData.latitude || locationData.lat,
-            radius: locationData.radius || 10,
+            radius: locationData.radius || 10, // Use the radius from the fresh data
           },
         ];
       } else {
-        console.log('Using existing location data from question');
+        console.log('🔧 [QuestionPreview] Using existing location data from question');
         const existingData = getLocationAnswers(question, activity);
         locationAnswers = existingData.map((loc: LocationAnswer) => ({
           longitude: loc.longitude,
