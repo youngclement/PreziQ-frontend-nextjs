@@ -13,6 +13,7 @@ import Newsletter from "@/components/sections/newsletter-section";
 import { TestimonialsSection } from "@/components/sections/testimonials-section";
 import TextMarqueeSection from "@/components/sections/text-marquee-section";
 import { DemoUISection } from "@/components/sections/demo-ui-section";
+import { QuizDemoSection } from "@/components/sections/quiz-demo-section";
 import HomeLayout from './home-layout';
 
 export default function HomePage() {
@@ -67,10 +68,11 @@ export default function HomePage() {
         <HeroSection />
         <WobbleCardSection />
         {/* <BentoGrid /> */}
+        <QuizDemoSection />
         <TestimonialsSection />
         <TextMarqueeSection />
-        <Newsletter />
-        <DemoUISection />
+        {/* <Newsletter /> */}
+        {/* <DemoUISection /> */}
         <Faq02 />
         <Footer />
       </main>

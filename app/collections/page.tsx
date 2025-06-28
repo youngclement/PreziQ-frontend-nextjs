@@ -21,6 +21,7 @@ import { CollectionGridItem } from './components/collection-grid-item';
 import { CollectionListItem } from './components/collection-list-item';
 import { JoinSessionBanner } from './components/join-session-banner';
 import { Button } from '@/components/ui/button';
+import SplashCursor from '@/components/clement-kit-ui/splash-cursor';
 
 export default function PublishedCollectionsPage() {
   const router = useRouter();
@@ -231,13 +232,13 @@ export default function PublishedCollectionsPage() {
   // Filter collections by search query
   const filteredCollections = searchQuery
     ? collections.filter(
-        (collection) =>
-          collection.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (collection.description &&
-            collection.description
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()))
-      )
+      (collection) =>
+        collection.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (collection.description &&
+          collection.description
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()))
+    )
     : collections;
 
   // Handle topic change
@@ -265,7 +266,24 @@ export default function PublishedCollectionsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl">
+
+    <div className='container mx-auto px-4 py-6 max-w-7xl'>
+      {/* <SplashCursor
+        SIM_RESOLUTION={128}
+        DYE_RESOLUTION={512}
+        DENSITY_DISSIPATION={9}
+        VELOCITY_DISSIPATION={5}
+        PRESSURE={0.25}
+        PRESSURE_ITERATIONS={15}
+        CURL={8}
+        SPLAT_RADIUS={0.1}
+        SPLAT_FORCE={2500}
+        SHADING={true}
+        COLOR_UPDATE_SPEED={6}
+        BACK_COLOR={{ r: 0, g: 0, b: 0 }}
+        TRANSPARENT={true}
+      /> */}
+
       {/* Search and View Mode Controls */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
@@ -299,11 +317,10 @@ export default function PublishedCollectionsPage() {
 
           <div className="flex items-center space-x-2 border rounded-lg overflow-hidden">
             <button
-              className={`flex items-center justify-center w-10 h-10 ${
-                viewMode === 'grid'
-                  ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
+              className={`flex items-center justify-center w-10 h-10 ${viewMode === 'grid'
+                ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
+                : 'text-gray-600 dark:text-gray-400'
+                }`}
               onClick={() => setViewMode('grid')}
             >
               <svg
@@ -322,11 +339,10 @@ export default function PublishedCollectionsPage() {
               </svg>
             </button>
             <button
-              className={`flex items-center justify-center w-10 h-10 ${
-                viewMode === 'list'
-                  ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
+              className={`flex items-center justify-center w-10 h-10 ${viewMode === 'list'
+                ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400'
+                : 'text-gray-600 dark:text-gray-400'
+                }`}
               onClick={() => setViewMode('list')}
             >
               <svg
@@ -469,7 +485,7 @@ export default function PublishedCollectionsPage() {
                           onViewCollection={() =>
                             handleViewCollection(collection.collectionId)
                           }
-                          // onDelete={handleDeleteCollection}
+                        // onDelete={handleDeleteCollection}
                         />
                       ))}
                     </div>
@@ -488,7 +504,7 @@ export default function PublishedCollectionsPage() {
                           onViewCollection={() =>
                             handleViewCollection(collection.collectionId)
                           }
-                          // onDelete={handleDeleteCollection}
+                        // onDelete={handleDeleteCollection}
                         />
                       ))}
                     </div>

@@ -39,7 +39,7 @@ export default function AuthLayout({
       router.push('/');
     }
   }, [pathname, router]);
-  
+
   return (
     <div className="min-h-screen bg-background">
       <section className="bg-card">
@@ -55,11 +55,10 @@ export default function AuthLayout({
 
               {/* Optional overlay to adjust image brightness based on theme */}
               <div
-                className={`absolute inset-0 ${
-                  resolvedTheme === 'dark'
+                className={`absolute inset-0 ${resolvedTheme === 'dark'
                     ? 'bg-black/20' // Slightly darken image in dark mode
                     : 'bg-white/10' // Slightly brighten in light mode
-                }`}
+                  }`}
               />
             </div>
 

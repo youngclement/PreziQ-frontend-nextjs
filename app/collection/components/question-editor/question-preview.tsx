@@ -295,10 +295,11 @@ export function QuestionPreview({
       });
     };
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('reorder:success', handleReorderSuccess as EventListener);
-      window.addEventListener('reorder:error', handleReorderError as EventListener);
-    }
+    // Remove reorder:success and reorder:error listeners to avoid duplicate setIsReordering(false)
+    // if (typeof window !== 'undefined') {
+    //   window.addEventListener('reorder:success', handleReorderSuccess as EventListener);
+    //   window.addEventListener('reorder:error', handleReorderError as EventListener);
+    // }
 
     return () => {
       if (typeof window !== 'undefined') {
@@ -997,41 +998,168 @@ export function QuestionPreview({
       );
     }
 
-    // Simplified location question type
+    // Location question type with header
     if (question.question_type === 'location') {
       const locationAnswers = getLocationAnswers(question, activity);
+
       return (
-        <div className="p-4">
-          {locationAnswers && locationAnswers.length > 0 ? (
-            <div className="w-full mt-2">
-              {!previewMode ? (
-                <DynamicLocationQuestionEditor
-                  key={question.location_data?.quizLocationAnswers?.length || 0}
-                  questionText={question.question_text}
-                  locationAnswers={question.location_data?.quizLocationAnswers}
-                  onLocationChange={(index, data) =>
-                    onQuestionLocationChange?.(questionIndex, data)
-                  }
-                  questionIndex={questionIndex}
-                />
+        <Card
+          className={cn(
+            'border-none rounded-xl shadow-lg overflow-hidden transition-all duration-300 mx-auto',
+            isActive
+              ? 'ring-2 ring-primary/20 scale-100'
+              : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
+            viewMode === 'desktop' && 'max-w-5xl',
+            viewMode === 'tablet' && 'max-w-2xl',
+            viewMode === 'mobile' && 'max-w-sm'
+          )}
+          key={`question-card-location-${questionIndex}-${renderKey}`}
+        >
+          <motion.div
+            className={cn(
+              'aspect-[16/5] rounded-t-xl flex flex-col shadow-md relative overflow-hidden',
+              hasBackgroundImage && 'bg-cover bg-center'
+            )}
+            style={{
+              backgroundImage: hasBackgroundImage
+                ? `url(${actualBackgroundImage})`
+                : undefined,
+              backgroundColor: actualBackgroundColor,
+            }}
+            initial={{ opacity: 0.8 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            key={`question-bg-${questionIndex}-${renderKey}-${actualBackgroundColor}`}
+          >
+            {/* Light overlay */}
+            <div className="absolute inset-0 bg-black/30" />
+
+            {/* Status Bar */}
+            <div className="absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10">
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    'h-7 w-7 rounded-full flex items-center justify-center shadow-sm',
+                    getQuestionTypeColor(question.question_type)
+                  )}
+                >
+                  {getQuestionTypeIcon(question.question_type)}
+                </div>
+                <div>
+                  <div className="text-xs capitalize font-medium">
+                    {question.question_type.replace(/_/g, ' ')}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full text-xs font-medium">
+                  Q{questionIndex + 1}
+                </div>
+                <div className="flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="time-limit-display">
+                    {(activity && activity.quiz?.timeLimitSeconds) ||
+                      question.time_limit_seconds ||
+                      30}
+                    s
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Question Text */}
+            <div className="flex-1 flex flex-col items-center justify-center z-10 py-6 px-5">
+              {editMode !== null ? (
+                <div className="w-full max-w-2xl">
+                  <Textarea
+                    value={question.question_text || `Location Question ${questionIndex + 1}`}
+                    onChange={(e) =>
+                      onQuestionTextChange(e.target.value, questionIndex, true)
+                    }
+                    className="resize-none custom-scrollbar text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
+                    onBlur={(e) => {
+                      onQuestionTextChange(e.target.value, questionIndex, false);
+                      // Save location question text with locationAnswers
+                      saveLocationQuestionText(e.target.value, questionIndex, question, activity, locationAnswers);
+                    }}
+                  />
+                  <style jsx global>{`
+                    .custom-scrollbar::-webkit-scrollbar {
+                      width: 16px;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-track {
+                      background: transparent;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb {
+                      background: rgba(255, 255, 255, 0.4);
+                      border-radius: 8px;
+                      border: 4px solid transparent;
+                      background-clip: padding-box;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                      background: rgba(255, 255, 255, 0.6);
+                      border: 4px solid transparent;
+                      background-clip: padding-box;
+                    }
+                  `}</style>
+                </div>
               ) : (
-                <DynamicLocationQuestionEditor
-                  questionText={question.question_text}
-                  locationAnswers={getLocationAnswers(question, activity)}
-                  onLocationChange={() => { }} // Read-only, so no-op
-                  questionIndex={questionIndex}
-                  readonly={true}
-                />
+                <div className="relative w-full max-w-2xl">
+                  <h2 className="text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4">
+                    {question.question_text || `Location Question ${questionIndex + 1}`}
+                  </h2>
+                </div>
               )}
             </div>
-          ) : (
-            <div className="text-center p-8 bg-gray-50 rounded-lg">
-              <p className="text-muted-foreground">
-                No location data for this question yet.
-              </p>
-            </div>
-          )}
-        </div>
+
+            {/* Image Attribution */}
+            {hasBackgroundImage && (
+              <div className="absolute bottom-2 right-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 py-1 text-[10px] text-white/80 hover:text-white bg-black/20 hover:bg-black/40 border-none"
+                  onClick={() => window.open('https://unsplash.com', '_blank')}
+                >
+                  Image from Unsplash
+                </Button>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Question Content */}
+          <CardContent className="p-4">
+            {locationAnswers && locationAnswers.length > 0 ? (
+              <div className="w-full mt-2">
+                {!previewMode ? (
+                  <DynamicLocationQuestionEditor
+                    key={question.location_data?.quizLocationAnswers?.length || 0}
+                    questionText={question.question_text}
+                    locationAnswers={question.location_data?.quizLocationAnswers}
+                    onLocationChange={(index, data) =>
+                      onQuestionLocationChange?.(questionIndex, data)
+                    }
+                    questionIndex={questionIndex}
+                  />
+                ) : (
+                  <DynamicLocationQuestionEditor
+                    questionText={question.question_text}
+                    locationAnswers={getLocationAnswers(question, activity)}
+                    onLocationChange={() => { }} // Read-only, so no-op
+                    questionIndex={questionIndex}
+                    readonly={true}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="text-center p-8 bg-gray-50 rounded-lg">
+                <p className="text-muted-foreground">
+                  No location data for this question yet.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       );
     }
 
@@ -1179,9 +1307,9 @@ export function QuestionPreview({
                     question.quizMatchingPairAnswer?.connections?.find(
                       (c) =>
                         c.leftItem.quizMatchingPairItemId ===
-                          payload.leftItemId &&
+                        payload.leftItemId &&
                         c.rightItem.quizMatchingPairItemId ===
-                          payload.rightItemId
+                        payload.rightItemId
                     );
                   // Ưu tiên lấy activityId từ prop activity
                   const activityId = activity?.id || question.activity_id;
@@ -1579,6 +1707,7 @@ export function QuestionPreview({
                 {/* Enhanced drag and drop for reorder questions */}
                 {editMode !== null ? (
                   <div className="relative">
+
                     {isReordering && (
                       <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
                         <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border">
@@ -1628,10 +1757,29 @@ export function QuestionPreview({
                         setIsReordering(true);
 
                         if (onReorderOptions) {
-                          onReorderOptions(
-                            result.source.index,
-                            result.destination.index
-                          );
+                          // Cập nhật local state (nếu có callback), sau đó gọi API updateReorderQuiz
+                          const updatedOptions = [...activeQuestion.options];
+                          const [removed] = updatedOptions.splice(result.source.index, 1);
+                          updatedOptions.splice(result.destination.index, 0, removed);
+                          // Gọi callback cập nhật state nếu có
+                          if (typeof onReorderOptions === 'function') {
+                            onReorderOptions(result.source.index, result.destination.index);
+                          }
+                          // Gọi API cập nhật thứ tự mới
+                          if (activity && activity.id) {
+                            const correctOrder = updatedOptions.map(opt => opt.option_text);
+                            activitiesApi.updateReorderQuiz(activity.id, {
+                              type: 'REORDER',
+                              questionText: activeQuestion.question_text,
+                              timeLimitSeconds: timeLimit,
+                              pointType: 'STANDARD',
+                              correctOrder: correctOrder,
+                            } as import('@/api-client/activities-api').ReorderQuizPayload)
+                              .then(() => setIsReordering(false))
+                              .catch(() => setIsReordering(false));
+                          } else {
+                            setIsReordering(false);
+                          }
                         }
                       }}
                     >
@@ -1649,9 +1797,7 @@ export function QuestionPreview({
                             )}
                           >
                             {/* Connecting line for visual guidance */}
-                            {question.options.length > 1 && (
-                              <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gradient-to-b from-gray-300 via-gray-400 to-gray-300 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 z-0"></div>
-                            )}
+                            {/* Removed vertical gradient line for REORDER preview drag mode */}
 
                             {[...question.options]
                               .sort((a, b) => a.display_order - b.display_order)
@@ -1672,23 +1818,26 @@ export function QuestionPreview({
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
                                       className={cn(
-                                        'flex items-center gap-2 p-1.5 relative mb-2 transition-all duration-300',
-                                        snapshot.isDragging
-                                          ? 'z-50 scale-105'
-                                          : 'z-10'
+
+                                        'flex items-center gap-2 p-1.5 relative mb-2 transition-all duration-300 ease-in-out',
+                                        snapshot.isDragging ? 'z-50 scale-105 shadow-2xl ring-2 ring-blue-400/70 bg-blue-50/80 dark:bg-blue-900/40' : 'z-10',
+                                        !snapshot.isDragging && 'hover:scale-[1.01] hover:shadow-lg',
+                                        snapshot.isDropAnimating && 'transition-transform duration-200'
+
                                       )}
                                       style={{
                                         ...provided.draggableProps.style,
+                                        opacity: snapshot.isDragging ? 1 : 0.97,
+                                        transition: snapshot.isDragging ? 'box-shadow 0.2s, transform 0.2s' : 'box-shadow 0.3s, transform 0.3s',
                                       }}
                                     >
                                       {/* Step number */}
-                                      <div
-                                        className={cn(
-                                          'flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-600 text-sm font-semibold text-white shadow-lg relative z-10 transition-all duration-300',
-                                          snapshot.isDragging &&
-                                            'scale-110 shadow-xl ring-2 ring-blue-400'
-                                        )}
-                                      >
+
+                                      <div className={cn(
+                                        "flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-600 text-sm font-semibold text-white shadow-lg relative z-10 transition-all duration-300",
+                                        snapshot.isDragging && 'scale-110 shadow-2xl ring-2 ring-blue-400'
+                                      )}>
+
                                         {index + 1}
                                       </div>
 
@@ -1697,8 +1846,9 @@ export function QuestionPreview({
                                         className={cn(
                                           'flex-1 bg-white dark:bg-gray-800 rounded-lg p-3 border flex items-center gap-2 transition-all duration-300',
                                           snapshot.isDragging
-                                            ? 'border-blue-400 ring-2 ring-blue-400/30 bg-blue-50/50 dark:bg-blue-900/20 shadow-xl scale-[1.02]'
-                                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md'
+                                            ? 'border-blue-400 ring-2 ring-blue-400/30 bg-blue-50/70 dark:bg-blue-900/30 shadow-xl scale-[1.03]'
+                                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md',
+                                          !snapshot.isDragging && 'opacity-95'
                                         )}
                                       >
                                         <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -1730,9 +1880,7 @@ export function QuestionPreview({
                 ) : (
                   <div className="space-y-2">
                     {/* Static view when edit mode is off */}
-                    {question.options.length > 1 && (
-                      <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gray-300 dark:bg-gray-600 z-0"></div>
-                    )}
+                    {/* Removed vertical line for REORDER preview static view */}
 
                     {[...question.options]
                       .sort((a, b) => a.display_order - b.display_order)
@@ -2678,7 +2826,7 @@ export function QuestionPreview({
     questionIndex: number,
     locationData: any
   ) => {
-    console.log('Handling location change:', questionIndex, locationData);
+    console.log('🔧 [QuestionPreview] Handling location change:', questionIndex, locationData);
 
     const question = questions[questionIndex];
 
@@ -2691,37 +2839,95 @@ export function QuestionPreview({
       let locationAnswers;
 
       if (Array.isArray(locationData)) {
-        console.log('Detected array format for location data');
-        locationAnswers = locationData.map((loc: LocationAnswer) => ({
-          longitude: loc.longitude || loc.lng,
-          latitude: loc.latitude || loc.lat,
-          radius: loc.radius || 10,
-        }));
-      } else if (locationData && locationData.quizLocationAnswers) {
-        console.log('Detected object with quizLocationAnswers property');
-        locationAnswers = locationData.quizLocationAnswers.map(
-          (loc: LocationAnswer) => ({
+        console.log('🔧 [QuestionPreview] Detected array format for location data');
+        // Get existing location data to preserve radius values during drag and drop
+        const existingLocationAnswers = getLocationAnswers(question, activity);
+
+        locationAnswers = locationData.map((loc: LocationAnswer, index: number) => {
+          console.log(`🔧 [QuestionPreview] Processing location ${index}:`, loc);
+          // Preserve existing radius if not provided in the update (drag and drop case)
+          const existingRadius = existingLocationAnswers[index]?.radius;
+
+          let finalRadius = 10; // default fallback
+
+          if (typeof loc.radius === 'number' && loc.radius > 0) {
+            // Use the radius from the incoming location data
+            finalRadius = loc.radius;
+          } else if (typeof existingRadius === 'number' && existingRadius > 0) {
+            // Preserve existing radius
+            finalRadius = existingRadius;
+          }
+
+          console.log(`🔧 [QuestionPreview] Location ${index} radius: ${loc.radius} -> ${finalRadius}`);
+
+          return {
             longitude: loc.longitude || loc.lng,
             latitude: loc.latitude || loc.lat,
-            radius: loc.radius || 10,
-          })
+            radius: finalRadius,
+          };
+        });
+      } else if (locationData && locationData.quizLocationAnswers) {
+        console.log('🔧 [QuestionPreview] Detected object with quizLocationAnswers property');
+        // Get existing location data to preserve radius values during drag and drop
+        const existingLocationAnswers = getLocationAnswers(question, activity);
+
+        locationAnswers = locationData.quizLocationAnswers.map(
+          (loc: LocationAnswer, index: number) => {
+            console.log(`🔧 [QuestionPreview] Processing quizLocationAnswer ${index}:`, loc);
+            // Preserve existing radius if not provided in the update (drag and drop case)
+            const existingRadius = existingLocationAnswers[index]?.radius;
+
+            let finalRadius = 10; // default fallback
+
+            if (typeof loc.radius === 'number' && loc.radius > 0) {
+              // Use the radius from the incoming location data
+              finalRadius = loc.radius;
+            } else if (typeof existingRadius === 'number' && existingRadius > 0) {
+              // Preserve existing radius
+              finalRadius = existingRadius;
+            }
+
+            console.log(`🔧 [QuestionPreview] QuizLocationAnswer ${index} radius: ${loc.radius} -> ${finalRadius}`);
+
+            return {
+              longitude: loc.longitude || loc.lng,
+              latitude: loc.latitude || loc.lat,
+              radius: finalRadius,
+            };
+          }
         );
       } else if (locationData && (locationData.longitude || locationData.lat)) {
-        console.log('Detected legacy format with direct coordinates');
+        console.log('🔧 [QuestionPreview] Detected legacy format with direct coordinates');
+        // Get existing location data to preserve radius values during drag and drop
+        const existingLocationAnswers = getLocationAnswers(question, activity);
+        const existingRadius = existingLocationAnswers[0]?.radius;
+
+        let finalRadius = 10; // default fallback
+
+        if (typeof locationData.radius === 'number' && locationData.radius > 0) {
+          // Use the radius from the incoming location data
+          finalRadius = locationData.radius;
+        } else if (typeof existingRadius === 'number' && existingRadius > 0) {
+          // Preserve existing radius
+          finalRadius = existingRadius;
+        }
+
+        console.log(`🔧 [QuestionPreview] Legacy format radius: ${locationData.radius} -> ${finalRadius}`);
+
         locationAnswers = [
           {
             longitude: locationData.longitude || locationData.lng,
             latitude: locationData.latitude || locationData.lat,
-            radius: locationData.radius || 10,
+            radius: finalRadius,
           },
         ];
       } else {
-        console.log('Using existing location data from question');
+        console.log('🔧 [QuestionPreview] Using existing location data from question');
         const existingData = getLocationAnswers(question, activity);
         locationAnswers = existingData.map((loc: LocationAnswer) => ({
           longitude: loc.longitude,
           latitude: loc.latitude,
-          radius: loc.radius || 10,
+          radius: (typeof loc.radius === 'number' && loc.radius > 0) ? loc.radius : 10,
         }));
       }
 
@@ -3183,7 +3389,7 @@ function getLocationAnswers(question: any, activity: any) {
       {
         longitude: locationData.lng,
         latitude: locationData.lat,
-        radius: locationData.radius || 10,
+        radius: (typeof locationData.radius === 'number' && locationData.radius > 0) ? locationData.radius : 10,
       },
     ];
   }
@@ -3194,7 +3400,7 @@ function getLocationAnswers(question: any, activity: any) {
       {
         longitude: question.location_data.lng || 0,
         latitude: question.location_data.lat || 0,
-        radius: question.location_data.radius || 10,
+        radius: (typeof question.location_data.radius === 'number' && question.location_data.radius > 0) ? question.location_data.radius : 10,
       },
     ];
   }
@@ -3208,6 +3414,72 @@ function getLocationAnswers(question: any, activity: any) {
       radius: 10,
     },
   ];
+}
+
+// Helper function to save location question text and locationAnswers
+async function saveLocationQuestionText(
+  questionText: string,
+  questionIndex: number,
+  question: any,
+  activity: any,
+  locationAnswers: any[]
+) {
+  console.log('saveLocationQuestionText called with:', {
+    questionText,
+    questionIndex,
+    activityId: activity?.id,
+    locationAnswers
+  });
+
+  if (!activity?.id || !locationAnswers || locationAnswers.length === 0) {
+    console.warn('Missing activity ID or location answers, skipping save');
+    return;
+  }
+
+  try {
+    // Gather all current locationAnswers from the question/activity
+    const currentLocationAnswers = getLocationAnswers(question, activity);
+    console.log('Current location answers:', currentLocationAnswers);
+
+    // Build the payload for the location quiz API
+    const payload = {
+      type: 'LOCATION' as const,
+      questionText: questionText,
+      timeLimitSeconds: activity.quiz?.timeLimitSeconds || question.time_limit_seconds || 30,
+      pointType: (activity.quiz?.pointType || 'STANDARD') as 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS',
+      locationAnswers: currentLocationAnswers.map((answer: any) => ({
+        quizLocationAnswerId: answer.quizLocationAnswerId,
+        longitude: answer.longitude,
+        latitude: answer.latitude,
+        radius: answer.radius,
+      })),
+    };
+
+    console.log('Location quiz API payload:', payload);
+
+    // Call the location quiz update API
+    await activitiesApi.updateLocationQuiz(activity.id, payload);
+    console.log('Location quiz updated successfully');
+
+    // Also update the activity title if needed
+    if (activity.title !== questionText) {
+      await activitiesApi.updateActivity(activity.id, {
+        title: questionText,
+      });
+      console.log('Activity title updated');
+    }
+
+    // Dispatch events to update other components if needed
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('activityUpdated', {
+          detail: { activityId: activity.id, questionText },
+        })
+      );
+    }
+  } catch (error) {
+    console.error('Error saving location question text:', error);
+  }
 }
 
 // Helper function to get location data for the map component
