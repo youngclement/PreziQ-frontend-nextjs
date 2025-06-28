@@ -213,6 +213,19 @@ export default function HostActivities({
     };
   }, []);
 
+  // Thêm useEffect để dispatch event khi sidebar state thay đổi
+  useEffect(() => {
+    // Dispatch event để thông báo sidebar state đã thay đổi
+    const event = new CustomEvent('sidebarLayoutChange', {
+      detail: {
+        collapsed: isSidebarCollapsed,
+        timestamp: Date.now(),
+        isFullscreen: isFullscreenMode,
+      },
+    });
+    window.dispatchEvent(event);
+  }, [isSidebarCollapsed, isFullscreenMode]);
+
   useEffect(() => {
     isMounted.current = true;
 
@@ -773,7 +786,11 @@ export default function HostActivities({
     switch (currentActivity.activityType) {
       case 'INFO_SLIDE':
         console.log(`[SLIDE] Render slide: ${currentActivity.activityId}`);
-        return <InfoSlideViewer activity={currentActivity} />;
+        return (
+          <InfoSlideViewer
+            activity={currentActivity}
+          />
+        );
       case 'QUIZ_BUTTONS':
         return (
           <QuizButtonViewer
@@ -831,6 +848,7 @@ export default function HostActivities({
             sessionId={sessionId}
             sessionWebSocket={sessionWs}
             isParticipating={isParticipating}
+            isFullscreenMode={isFullscreenMode}
           />
         );
       case 'QUIZ_MATCHING_PAIRS':
@@ -842,6 +860,7 @@ export default function HostActivities({
             sessionCode={sessionCode}
             sessionId={sessionId}
             isParticipating={isParticipating}
+            isFullscreenMode={isFullscreenMode}
           />
         );
       default:
@@ -960,6 +979,7 @@ export default function HostActivities({
             sessionWebSocket={sessionWs}
             currentActivityId={currentRankingActivityId}
             onClose={handleCloseRankingChange}
+            onNextActivity={handleNextActivity}
             isFullscreenMode={false}
           />
         )}
@@ -1056,39 +1076,60 @@ export default function HostActivities({
               </motion.div>
 
               {/* Thêm nút hiển thị bảng xếp hạng (chỉ hiển thị khi canShowRanking = true) */}
-              {canShowRanking && (
+              {canShowRanking &&
+                activityTransitionState === 'showing_current' && (
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className='ml-2'
+                  >
+                    <Button
+                      onClick={() => {
+                        if (currentActivity && currentActivity.activityId) {
+                          sessionWs.requestRankingUpdate(
+                            currentActivity.activityId
+                          );
+                          setCurrentRankingActivityId(
+                            currentActivity.activityId
+                          );
+                          setShowRankingChange(true);
+                          setActivityTransitionState('showing_ranking');
+                        }
+                      }}
+                      className='bg-[rgb(213,189,255)] hover:bg-[rgb(213,189,255)]/90 text-black border border-white/20 flex items-center gap-2'
+                    >
+                      <BarChart className='h-4 w-4' />
+                      <span>Xem bảng xếp hạng</span>
+                    </Button>
+                  </motion.div>
+                )}
+
+              {/* Nút tiếp theo cho mobile - hiển thị khi không có bảng xếp hạng hoặc đang ở trạng thái showing_ranking */}
+              {((!canShowRanking &&
+                activityTransitionState === 'showing_current') ||
+                activityTransitionState === 'showing_ranking') && (
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
                   className='ml-2'
                 >
                   <Button
                     onClick={handleNextActivity}
-                    className='bg-[rgb(213,189,255)] hover:bg-[rgb(213,189,255)]/90 text-black border border-white/20 flex items-center gap-2'
+                    disabled={!isConnected || noMoreActivities}
+                    className='bg-[rgb(198,234,132)] hover:bg-[rgb(198,234,132)]/90 text-black font-medium disabled:opacity-50 flex items-center gap-2'
                   >
-                    <BarChart className='h-4 w-4' />
-                    <span>Xếp hạng</span>
+                    {activityTransitionState === 'showing_ranking'
+                      ? 'Tiếp tục'
+                      : 'Hoạt động tiếp theo'}
+                    <ArrowRight className='h-4 w-4' />
                   </Button>
                 </motion.div>
               )}
             </div>
 
             <div className='flex space-x-3'>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button
-                  onClick={handleNextActivity}
-                  disabled={!isConnected || noMoreActivities}
-                  className='bg-[rgb(198,234,132)] hover:bg-[rgb(198,234,132)]/90 text-black font-medium disabled:opacity-50 flex items-center gap-2'
-                >
-                  Hoạt động tiếp theo
-                  <ArrowRight className='h-4 w-4' />
-                </Button>
-              </motion.div>
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -1372,7 +1413,9 @@ export default function HostActivities({
               <div
                 className={`${
                   isFullscreenMode
-                    ? 'h-[100dvh] flex items-center justify-center'
+                    ? currentActivity?.activityType === 'QUIZ_LOCATION'
+                      ? 'h-[100dvh] overflow-y-auto flex flex-col'
+                      : 'h-[100dvh] flex items-center justify-center'
                     : 'p-6'
                 }`}
               >
@@ -1404,13 +1447,20 @@ export default function HostActivities({
                         sessionWebSocket={sessionWs}
                         currentActivityId={currentRankingActivityId}
                         onClose={handleCloseRankingChange}
+                        onNextActivity={handleNextActivity}
                         isFullscreenMode={true}
                       />
                     </div>
                   )}
 
                 {noMoreActivities ? (
-                  <div className='text-center py-8 bg-[#0e2838]/30 rounded-lg border border-yellow-500/20'>
+                  <div
+                    className={`text-center ${
+                      isFullscreenMode
+                        ? 'flex-1 flex items-center justify-center'
+                        : 'py-8'
+                    } bg-[#0e2838]/30 rounded-lg border border-yellow-500/20`}
+                  >
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -1430,7 +1480,9 @@ export default function HostActivities({
                     className={`
                     ${
                       isFullscreenMode
-                        ? 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
+                        ? currentActivity?.activityType === 'QUIZ_LOCATION'
+                          ? 'flex-1 p-4 min-h-0'
+                          : 'max-w-[90%] w-full transition-all duration-300 transform scale-110'
                         : ''
                     }
                   `}
