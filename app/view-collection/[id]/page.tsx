@@ -161,12 +161,6 @@ export default function ViewCollectionPage({
       setError(null);
 
       try {
-        // Show loading toast for better UX
-        const loadingToast = toast({
-          title: 'Đang tải...',
-          description: 'Đang tải nội dung collection',
-        });
-
         // Fetch collection details
         const response = await collectionsApi.getCollectionById(collectionId);
 
@@ -198,22 +192,22 @@ export default function ViewCollectionPage({
           }
 
           // Dismiss loading toast
-          toast({
-            title: 'Thành công',
-            description: 'Đã tải collection thành công',
-          });
+          // toast({
+          //   title: 'Thành công',
+          //   description: 'Đã tải collection thành công',
+          // });
         } else {
           throw new Error('Collection data structure is invalid');
         }
       } catch (err) {
         console.error('Error fetching collection:', err);
         setError('Could not load collection details. Please try again later.');
-        toast({
-          title: 'Lỗi',
-          description:
-            'Không thể tải thông tin collection. Vui lòng thử lại sau.',
-          variant: 'destructive',
-        });
+        // toast({
+        //   title: 'Lỗi',
+        //   description:
+        //     'Không thể tải thông tin collection. Vui lòng thử lại sau.',
+        //   variant: 'destructive',
+        // });
       } finally {
         setIsLoading(false);
       }

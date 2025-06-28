@@ -221,11 +221,11 @@ export default function PublishedCollectionsPage() {
   };
 
   const handleViewCollection = (id: string) => {
-    router.push(`/collection?collectionId=${id}`);
+    router.push(`/view-collection/${id}`);
   };
 
   const handleViewActivities = (id: string) => {
-    router.push(`/collection?collectionId=${id}`);
+    router.push(`/view-collection/${id}`);
   };
 
   const handleDeleteCollection = async (id: string) => {

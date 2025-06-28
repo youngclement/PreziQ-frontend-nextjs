@@ -133,9 +133,7 @@ export function CollectionGridItem({
       });
 
       // Redirect đến collection mới
-      router.push(
-        `/collection?collectionId=${response.data.data.collectionId}`
-      );
+      router.push(`/view-collection/${response.data.data.collectionId}`);
 
       if (onCopy) {
         onCopy(collection.collectionId);
