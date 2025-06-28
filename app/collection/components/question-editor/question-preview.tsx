@@ -894,7 +894,7 @@ export function QuestionPreview({
       return (
         <div
           className={cn(
-            'border-none rounded-xl shadow-lg pb-5 overflow-hidden transition-all duration-300 mx-auto',
+            'border-none rounded-xl pb-5 overflow-hidden transition-all duration-300 mx-auto',
            
             viewMode === 'desktop' && 'max-w-full w-full',
             viewMode === 'tablet' && 'max-w-4xl w-full',
@@ -910,7 +910,7 @@ export function QuestionPreview({
               <div className="flex items-center px-4 gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
                 {/* {isSaving && <span className="text-blue-500">(Saving...)</span>} */}
               </div>
-              <motion.div
+              {/* <motion.div
                 className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-400 px-4 py-2 rounded-full shadow-md"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -919,7 +919,7 @@ export function QuestionPreview({
                 <span className="text-sm font-medium text-white">
                   {slideTypeText} {questionIndex + 1}
                 </span>
-              </motion.div>
+              </motion.div> */}
             </div>
 
             <div className="flex-1 w-full">

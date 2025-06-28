@@ -30,7 +30,7 @@ import {
 
 interface CollectionGridItemProps {
   collection: Collection;
-  activities: Activity[];
+  activities?: number;
   onEdit?: (id: string) => void;
   onView: (id: string) => void;
   onViewCollection?: (id: string) => void;

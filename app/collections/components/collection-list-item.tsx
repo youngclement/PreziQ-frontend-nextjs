@@ -27,7 +27,7 @@ import {
 
 interface CollectionListItemProps {
   collection: Collection;
-  activities?: Activity[];
+  activities?: number;
   onEdit?: () => void;
   onView?: (id: string) => void;
   onViewCollection?: () => void;
@@ -113,6 +113,8 @@ export function CollectionListItem({
     }
   };
 
+  console.log('collectionnnn', collection);
+
   return (
     <>
       <div
@@ -156,7 +158,7 @@ export function CollectionListItem({
                 <div className="flex items-center gap-1">
                   <BookOpen className="h-3.5 w-3.5" />
                   <span>
-                    {collection?.activities?.length || activities?.length || 0}{' '}
+                    {activities || 0}{' '}
                     activities
                   </span>
                 </div>

@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as fabric from 'fabric';
@@ -477,22 +478,10 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     }
   };
 
-  // Handle mouse click to advance displayOrder
-  const handleCanvasClick = () => {
-    console.log('Canvas clicked, currentDisplayOrder:', currentDisplayOrder);
-    console.log(
-      'Max display order:',
-      getMaxDisplayOrder(activity.slide.slideElements)
-    );
-    const maxDisplayOrder = getMaxDisplayOrder(activity.slide.slideElements);
-    if (currentDisplayOrder < maxDisplayOrder) {
-      console.log('đk ok');
-      setCurrentDisplayOrder((prev) => prev + 1);
-      console.log(currentDisplayOrder);
-    }
-    // Stop at maxDisplayOrder + 1 (no further clicks needed)
-  };
+  /* Removed click-based advance logic; using timed display order updates instead */
+
   // 1) Khi slide thay đổi, reset và init canvas
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (
       !canvasRef.current ||
@@ -509,13 +498,23 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       activity.backgroundColor || '#fff',
       activity.backgroundImage
     );
-    canvas.on('mouse:down', handleCanvasClick);
     // Vẽ các phần tử đầu tiên (displayOrder = 0) khi slide mới
     renderSlide(
       activity.slide.slideElements,
       getMaxDisplayOrder(activity.slide.slideElements),
       0
     );
+
+    // Auto-schedule displayOrder updates based on delay per order
+    const maxOrder = getMaxDisplayOrder(activity.slide.slideElements);
+    const ORDER_DELAY_MS = 700; // delay per displayOrder step
+    const timers: NodeJS.Timeout[] = [];
+    for (let order = 1; order <= maxOrder; order++) {
+      const timer = setTimeout(() => {
+        setCurrentDisplayOrder(order);
+      }, order * ORDER_DELAY_MS);
+      timers.push(timer);
+    }
 
     // Resize handler chỉ thay đổi size
     const handleResize = () => {
@@ -525,12 +524,15 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
+      // clear scheduled timers
+      timers.forEach(clearTimeout);
       canvas.dispose();
     };
   }, [activity.slide.slideId]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // 2) Render slide mỗi khi currentDisplayOrder thay đổi
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (
       !fabricCanvas.current ||
