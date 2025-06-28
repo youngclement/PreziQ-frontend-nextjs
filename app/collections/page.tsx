@@ -286,7 +286,7 @@ export default function PublishedCollectionsPage() {
 
       {/* Search and View Mode Controls */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+        <h1 className="text-3xl sm:text-4xl pb-8 font-bold tracking-tight bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
           {t('collections.title')}
         </h1>
 

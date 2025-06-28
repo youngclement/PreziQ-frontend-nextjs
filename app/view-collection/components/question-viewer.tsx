@@ -90,6 +90,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import InfoSlideViewer from './info-slide-viewer';
+import { useLanguage } from '@/contexts/language-context';
 
 // Declare Google Maps types
 declare global {
@@ -211,6 +212,7 @@ export function QuestionViewerComponent({
   activities,
   collectionTitle,
 }: QuestionViewerProps) {
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'mobile' | 'tablet' | 'desktop'>(
     'desktop'
@@ -324,20 +326,23 @@ export function QuestionViewerComponent({
     return iconMap[questionType] || <Circle className='w-5 h-5' />;
   }, []);
 
-  const getQuestionTypeDisplayName = useCallback((questionType: string) => {
-    const nameMap: Record<string, string> = {
-      multiple_choice: 'Trắc nghiệm',
-      multiple_response: 'Nhiều lựa chọn',
-      true_false: 'Đúng/Sai',
-      text_answer: 'Điền từ',
-      reorder: 'Sắp xếp',
-      location: 'Địa điểm',
-      matching_pair: 'Ghép cặp',
-      slide: 'Slide',
-      info_slide: 'Slide thông tin',
-    };
-    return nameMap[questionType] || 'Câu hỏi';
-  }, []);
+  const getQuestionTypeDisplayName = useCallback(
+    (questionType: string) => {
+      const nameMap: Record<string, string> = {
+        multiple_choice: t('quiz.type.quiz_buttons'),
+        multiple_response: t('quiz.type.quiz_checkboxes'),
+        true_false: t('quiz.type.quiz_true_or_false'),
+        text_answer: t('quiz.type.quiz_type_answer'),
+        reorder: t('quiz.type.quiz_reorder'),
+        location: t('quiz.type.quiz_location'),
+        matching_pair: t('quiz.type.quiz_matching_pairs'),
+        slide: t('questionViewer.slide'),
+        info_slide: t('quiz.type.info_slide'),
+      };
+      return nameMap[questionType] || t('quiz.type.quiz_buttons');
+    },
+    [t]
+  );
 
   const formatTime = useCallback((seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -520,28 +525,36 @@ export function QuestionViewerComponent({
             setMapLoaded(true);
 
             locationAnswers.forEach((location, index) => {
-              const markerElement = document.createElement('div');
-              markerElement.className =
-                'w-8 h-8 bg-red-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white font-bold text-sm';
-              markerElement.textContent = (index + 1).toString();
-
-              const marker = new mapboxgl.Marker(markerElement)
+              const marker = new mapboxgl.Marker({
+                color: '#ef4444',
+                scale: 0.9,
+              })
                 .setLngLat([location.longitude, location.latitude])
                 .addTo(map);
 
+              const correctLocationText = t('questionViewer.correctLocation');
+              const latitudeText = t('questionViewer.latitude');
+              const longitudeText = t('questionViewer.longitude');
+              const radiusText = t('questionViewer.radius');
+
               const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-                <div class="p-3">
-                  <div class="font-semibold text-gray-900 mb-2">Điểm ${
-                    index + 1
-                  }</div>
-                  <div class="text-sm text-gray-600 space-y-1">
-                    <div><strong>Vĩ độ:</strong> ${location.latitude.toFixed(
-                      6
-                    )}</div>
-                    <div><strong>Kinh độ:</strong> ${location.longitude.toFixed(
-                      6
-                    )}</div>
-                    <div><strong>Bán kính:</strong> ${location.radius}km</div>
+                <div class="p-3 min-w-48">
+                  <div class="flex items-center gap-2 mb-2">
+                    <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <span class="font-bold text-sm">${correctLocationText} ${
+                index + 1
+              }</span>
+                  </div>
+                  <div class="text-sm space-y-1">
+                    <div><strong>${latitudeText}:</strong> ${location.latitude.toFixed(
+                6
+              )}</div>
+                    <div><strong>${longitudeText}:</strong> ${location.longitude.toFixed(
+                6
+              )}</div>
+                    <div><strong>${radiusText}:</strong> ${
+                location.radius
+              }km</div>
                   </div>
                 </div>
               `);
@@ -683,9 +696,7 @@ export function QuestionViewerComponent({
 
           map.on('error', (e) => {
             console.error('Map error:', e);
-            setMapError(
-              'Không thể tải bản đồ. Vui lòng kiểm tra kết nối internet.'
-            );
+            setMapError(t('questionViewer.mapLoadingError'));
           });
 
           return () => {
@@ -695,30 +706,30 @@ export function QuestionViewerComponent({
           };
         } catch (error) {
           console.error('Map initialization error:', error);
-          setMapError('Lỗi khởi tạo bản đồ');
+          setMapError(t('questionViewer.mapInitError'));
         }
-      }, [isBrowser, activity.quiz?.quizLocationAnswers]);
+      }, [isBrowser, activity.quiz?.quizLocationAnswers, t]);
 
       if (mapError) {
         return (
-          <div className='w-full h-64 sm:h-80 lg:h-96 bg-gray-100 rounded-lg overflow-hidden relative'>
-            <div className='text-center'>
+          <div className='w-full h-64 sm:h-80 lg:h-96 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden relative'>
+            <div className='text-center flex flex-col items-center justify-center h-full'>
               <MapPin className='w-12 h-12 text-gray-400 mx-auto mb-2' />
-              <p className='text-gray-600'>{mapError}</p>
+              <p className='text-gray-600 dark:text-gray-300'>{mapError}</p>
             </div>
           </div>
         );
       }
 
       return (
-        <div className='w-full h-64 sm:h-80 lg:h-96 bg-gray-100 rounded-lg overflow-hidden relative'>
+        <div className='w-full h-64 sm:h-80 lg:h-96 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden relative'>
           <div ref={mapContainerRef} className='w-full h-full' />
           {!mapLoaded && (
-            <div className='absolute inset-0 flex items-center justify-center bg-gray-100'>
+            <div className='absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800'>
               <div className='animate-pulse flex flex-col items-center'>
-                <div className='w-8 sm:w-12 h-8 sm:h-12 bg-gray-300 rounded-full mb-2'></div>
-                <div className='text-sm sm:text-base text-gray-500'>
-                  Đang tải bản đồ...
+                <div className='w-8 sm:w-12 h-8 sm:h-12 bg-gray-300 dark:bg-gray-600 rounded-full mb-2'></div>
+                <div className='text-sm sm:text-base text-gray-500 dark:text-gray-400'>
+                  {t('questionViewer.loadingMap')}
                 </div>
               </div>
             </div>
@@ -726,23 +737,26 @@ export function QuestionViewerComponent({
 
           {/* Legend hiển thị thông tin radius */}
           {mapLoaded && activity.quiz?.quizLocationAnswers && (
-            <div className='absolute bottom-2 sm:bottom-4 left-2 sm:left-4 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-2 sm:p-3 max-w-xs text-xs sm:text-sm'>
-              <div className='font-semibold text-gray-800 mb-1 sm:mb-2'>
-                Chú thích:
+            <div className='absolute bottom-2 sm:bottom-4 left-2 sm:left-4 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-lg shadow-lg p-2 sm:p-3 max-w-xs text-xs sm:text-sm'>
+              <div className='font-semibold text-gray-800 dark:text-gray-200 mb-1 sm:mb-2'>
+                {t('questionViewer.legend')}
               </div>
-              <div className='space-y-1 text-gray-600'>
+              <div className='space-y-1 text-gray-600 dark:text-gray-300'>
                 <div className='flex items-center gap-2'>
                   <div className='w-2.5 sm:w-3 h-2.5 sm:h-3 bg-red-500 rounded-full border border-white'></div>
-                  <span>Vị trí chính xác</span>
+                  <span>{t('questionViewer.exactLocation')}</span>
                 </div>
                 <div className='flex items-center gap-2'>
                   <div className='w-2.5 sm:w-3 h-2.5 sm:h-3 border-2 border-blue-600 rounded-full bg-blue-100'></div>
-                  <span>Vùng chấp nhận (bán kính)</span>
+                  <span>{t('questionViewer.acceptableArea')}</span>
                 </div>
                 {activity.quiz.quizLocationAnswers.length > 1 && (
-                  <div className='mt-1 sm:mt-2 pt-1 sm:pt-2 border-t border-gray-200'>
-                    <div className='text-xs text-gray-500'>
-                      {activity.quiz.quizLocationAnswers.length} điểm cần tìm
+                  <div className='mt-1 sm:mt-2 pt-1 sm:pt-2 border-t border-gray-200 dark:border-gray-600'>
+                    <div className='text-xs text-gray-500 dark:text-gray-400'>
+                      {t('questionViewer.pointsToFind', {
+                        count:
+                          activity.quiz.quizLocationAnswers.length.toString(),
+                      })}
                     </div>
                   </div>
                 )}
@@ -764,8 +778,8 @@ export function QuestionViewerComponent({
 
     if (!activity.quiz?.quizMatchingPairAnswer) {
       return (
-        <div className='text-center text-gray-500 p-8'>
-          Không có dữ liệu matching pairs
+        <div className='text-center text-gray-500 dark:text-gray-400 p-8'>
+          {t('questionViewer.noMatchingPairsData')}
         </div>
       );
     }
@@ -1006,7 +1020,9 @@ export function QuestionViewerComponent({
   // Render slide content
   const renderSlideContent = (activity: Activity) => {
     const slideTypeText =
-      activity.activityType === 'INFO_SLIDE' ? 'Info Slide' : 'Slide';
+      activity.activityType === 'INFO_SLIDE'
+        ? t('questionViewer.infoSlide')
+        : t('questionViewer.slide');
     const slideIndex =
       sortedActivities.findIndex((a) => a.activityId === activity.activityId) +
       1;
@@ -1180,17 +1196,19 @@ export function QuestionViewerComponent({
           {/* Text input field placeholder */}
           <div className='bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-3 sm:p-4 mb-3'>
             <div className='h-8 sm:h-9 border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 px-3 flex items-center text-gray-500 dark:text-gray-400 text-sm'>
-              Type your answer here...
+              {t('questionViewer.typeAnswerHere')}
             </div>
           </div>
 
           {/* Correct answer display */}
           <div className='mt-2 text-sm text-gray-600 dark:text-white italic relative group'>
             <div className='flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0'>
-              <span className='font-medium'>Correct answer:</span>{' '}
+              <span className='font-medium'>
+                {t('questionViewer.correctAnswer')}:
+              </span>{' '}
               <span className='sm:ml-1 font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800 break-words'>
                 {options.find((opt) => opt.isCorrect)?.answerText ||
-                  'Not specified'}
+                  t('questionViewer.notSpecified')}
               </span>
             </div>
           </div>
@@ -1199,9 +1217,7 @@ export function QuestionViewerComponent({
           <div className='mt-3 text-xs text-gray-500 dark:text-gray-400'>
             <p className='flex items-start sm:items-center gap-1.5'>
               <Info className='h-3.5 w-3.5 mt-0.5 sm:mt-0 text-blue-500 flex-shrink-0' />
-              <span>
-                This is a read-only preview of the text answer question
-              </span>
+              <span>{t('questionViewer.readOnlyPreview')}</span>
             </p>
           </div>
         </div>
@@ -1215,7 +1231,7 @@ export function QuestionViewerComponent({
           <div className='text-xs text-gray-500 dark:text-gray-400 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1'>
             <div className='flex items-center'>
               <MoveVertical className='h-3.5 w-3.5 mr-1.5' />
-              <span>Thứ tự các bước - Bật chế độ chỉnh sửa để sắp xếp lại</span>
+              <span>{t('questionViewer.reorderSteps')}</span>
             </div>
           </div>
 
@@ -1344,7 +1360,9 @@ export function QuestionViewerComponent({
 
     if (isSlideType) {
       const slideTypeText =
-        questionType === 'info_slide' ? 'Info Slide' : 'Slide';
+        questionType === 'info_slide'
+          ? t('questionViewer.infoSlide')
+          : t('questionViewer.slide');
 
       return (
         <Card
@@ -1457,7 +1475,7 @@ export function QuestionViewerComponent({
             <div className='flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full text-xs font-medium'>
               Q{questionIndex + 1}
             </div>
-            <div className='flex items-center gap-1 sm:gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium'>
+            <div className='flex items-center gap-1 sm:gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-black/60'>
               <Clock className='h-3 w-3 sm:h-3.5 sm:w-3.5' />
               <span>{activity.quiz?.timeLimitSeconds || 30}s</span>
             </div>
@@ -1567,10 +1585,10 @@ export function QuestionViewerComponent({
               <BookOpen className='w-8 h-8 text-gray-400' />
             </div>
             <h3 className='text-lg font-semibold text-gray-700'>
-              Không có hoạt động nào
+              {t('questionViewer.noActivities')}
             </h3>
             <p className='text-gray-500'>
-              Collection này chưa có hoạt động nào được thêm vào.
+              {t('questionViewer.noActivitiesDescription')}
             </p>
           </motion.div>
         </CardContent>
@@ -1604,7 +1622,7 @@ export function QuestionViewerComponent({
                       onClick={() =>
                         setIsQuestionListCollapsed(!isQuestionListCollapsed)
                       }
-                      className='h-8 w-8 p-0 flex-shrink-0'
+                      className='h-8 w-8 p-0 flex-shrink-0 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:text-blue-700 dark:hover:text-blue-300 text-gray-600 dark:text-gray-400'
                     >
                       {isQuestionListCollapsed ? (
                         <List className='h-4 w-4' />
@@ -1615,8 +1633,8 @@ export function QuestionViewerComponent({
                   </TooltipTrigger>
                   <TooltipContent>
                     {isQuestionListCollapsed
-                      ? 'Hiện danh sách'
-                      : 'Ẩn danh sách'}
+                      ? t('questionViewer.showList')
+                      : t('questionViewer.hideList')}
                   </TooltipContent>
                 </Tooltip>
 
@@ -1655,22 +1673,22 @@ export function QuestionViewerComponent({
                     onValueChange={(value: any) => setViewMode(value)}
                     className='h-8'
                   >
-                    <TabsList className='h-8 py-1 bg-gray-100 dark:bg-gray-800'>
+                    <TabsList className='h-8 py-1 bg-gray-100/80 dark:bg-gray-700/80 border border-gray-200 dark:border-gray-600'>
                       <TabsTrigger
                         value='mobile'
-                        className='h-6 w-8 px-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700'
+                        className='h-6 w-8 px-1.5 data-[state=active]:bg-blue-500 data-[state=active]:text-white dark:data-[state=active]:bg-blue-600 data-[state=inactive]:text-gray-600 dark:data-[state=inactive]:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       >
                         <Smartphone className='h-3 w-3' />
                       </TabsTrigger>
                       <TabsTrigger
                         value='tablet'
-                        className='h-6 w-8 px-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700'
+                        className='h-6 w-8 px-1.5 data-[state=active]:bg-blue-500 data-[state=active]:text-white dark:data-[state=active]:bg-blue-600 data-[state=inactive]:text-gray-600 dark:data-[state=inactive]:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       >
                         <Tablet className='h-3 w-3' />
                       </TabsTrigger>
                       <TabsTrigger
                         value='desktop'
-                        className='h-6 w-8 px-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700'
+                        className='h-6 w-8 px-1.5 data-[state=active]:bg-blue-500 data-[state=active]:text-white dark:data-[state=active]:bg-blue-600 data-[state=inactive]:text-gray-600 dark:data-[state=inactive]:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       >
                         <Monitor className='h-3 w-3' />
                       </TabsTrigger>
@@ -1683,21 +1701,29 @@ export function QuestionViewerComponent({
                 {/* Additional Controls */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant='ghost' size='sm' className='h-8 w-8 p-0'>
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      className='h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 text-gray-600 dark:text-gray-400'
+                    >
                       <Settings className='h-4 w-4' />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align='end' className='w-56'>
                     <div className='p-2'>
                       <div className='flex items-center justify-between mb-2'>
-                        <span className='text-sm font-medium'>Hiện đáp án</span>
+                        <span className='text-sm font-medium'>
+                          {t('questionViewer.showAnswers')}
+                        </span>
                         <Switch
                           checked={showAnswers}
                           onCheckedChange={setShowAnswers}
                         />
                       </div>
                       <div className='flex items-center justify-between mb-2'>
-                        <span className='text-sm font-medium'>Âm thanh</span>
+                        <span className='text-sm font-medium'>
+                          {t('questionViewer.sound')}
+                        </span>
                         <Switch
                           checked={soundEnabled}
                           onCheckedChange={setSoundEnabled}
@@ -1706,19 +1732,23 @@ export function QuestionViewerComponent({
                       {/* Show view mode options on mobile */}
                       <div className='lg:hidden border-t pt-2 mt-2'>
                         <div className='text-sm font-medium mb-2'>
-                          Chế độ xem
+                          {t('questionViewer.viewMode')}
                         </div>
                         <div className='space-y-1'>
                           {[
                             {
                               value: 'mobile',
-                              label: 'Mobile',
+                              label: t('questionViewer.mobile'),
                               icon: Smartphone,
                             },
-                            { value: 'tablet', label: 'Tablet', icon: Tablet },
+                            {
+                              value: 'tablet',
+                              label: t('questionViewer.tablet'),
+                              icon: Tablet,
+                            },
                             {
                               value: 'desktop',
-                              label: 'Desktop',
+                              label: t('questionViewer.desktop'),
                               icon: Monitor,
                             },
                           ].map(({ value, label, icon: Icon }) => (
@@ -1728,8 +1758,8 @@ export function QuestionViewerComponent({
                               className={cn(
                                 'w-full flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors',
                                 viewMode === value
-                                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                                  : 'hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
                               )}
                             >
                               <Icon className='h-4 w-4' />
@@ -1748,12 +1778,15 @@ export function QuestionViewerComponent({
                       variant='ghost'
                       size='sm'
                       onClick={toggleFullscreen}
-                      className='h-8 w-8 p-0'
+                      className='h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 text-gray-600 dark:text-gray-400'
                     >
                       <Fullscreen className='h-4 w-4' />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Toàn màn hình (F)</TooltipContent>
+                  <TooltipContent>
+                    {t('questionViewer.fullscreen')}{' '}
+                    {t('questionViewer.fullscreenShortcut')}
+                  </TooltipContent>
                 </Tooltip>
               </div>
             </div>
@@ -1792,10 +1825,12 @@ export function QuestionViewerComponent({
                   <div className='p-3 sm:p-4'>
                     <div className='mb-4'>
                       <h2 className='text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1'>
-                        Danh sách câu hỏi
+                        {t('questionViewer.questionList')}
                       </h2>
                       <div className='flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400'>
-                        <span>{totalQuestions} hoạt động</span>
+                        <span>
+                          {totalQuestions} {t('questionViewer.activities')}
+                        </span>
                         <span>•</span>
                         <span>~{formatTime(estimatedTimeRemaining)}</span>
                       </div>
@@ -1858,7 +1893,7 @@ export function QuestionViewerComponent({
                                     <div className='flex items-center gap-1'>
                                       <div className='w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-pulse' />
                                       <span className='text-xs text-blue-600 dark:text-blue-400 font-medium'>
-                                        Đang xem
+                                        {t('questionViewer.currentlyViewing')}
                                       </span>
                                     </div>
                                   )}
@@ -1873,7 +1908,9 @@ export function QuestionViewerComponent({
                                 >
                                   {activity.quiz?.questionText ||
                                     activity.title ||
-                                    `Hoạt động ${index + 1}`}
+                                    `${t('questionViewer.activity')} ${
+                                      index + 1
+                                    }`}
                                 </p>
                                 {activity.quiz?.timeLimitSeconds && (
                                   <div className='flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400'>

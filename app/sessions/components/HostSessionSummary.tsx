@@ -158,7 +158,7 @@ export default function HostSessionSummary({
           </Button>
 
           <Button variant='outline' asChild>
-            <Link href={`/sessions/host/${sessionId}/analytics`}>
+            <Link href={`/session-history/${sessionId}`}>
               <Users className='mr-2 h-4 w-4' /> Phân tích chi tiết
             </Link>
           </Button>

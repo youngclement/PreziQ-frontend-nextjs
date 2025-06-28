@@ -132,7 +132,9 @@ export function CollectionGridItem({
       });
 
       // Redirect đến collection mới
-      router.push(`/collection?collectionId=${response.data.data.collectionId}`);
+      router.push(
+        `/collection?collectionId=${response.data.data.collectionId}`
+      );
 
       if (onCopy) {
         onCopy(collection.collectionId);
@@ -315,10 +317,8 @@ export function CollectionGridItem({
             </AlertDialogTitle>
             <AlertDialogDescription className='text-gray-600 dark:text-gray-300'>
               Bạn có chắc chắn muốn xoá{' '}
-
-              <span className="font-medium text-gray-900 dark:text-white">
+              <span className='font-medium text-gray-900 dark:text-white'>
                 &quot;{collection.title}&quot;
-
               </span>{' '}
               không? Hành động này không thể hoàn tác.
             </AlertDialogDescription>
@@ -526,17 +526,19 @@ function DeleteButton({
         className='absolute inset-x-0 top-0 bottom-0 transform button-group-active:translate-y-0.5 button-group-active:bottom-0.5 z-1 bg-black'
         style={{ borderRadius: '3.125rem', padding: '0.25rem' }}
       >
-        <div
-          className='top-1 absolute inset-x-0 bottom-0 overflow-hidden'
-          style={{ backgroundColor: '#F87171', borderRadius: '2.8125rem' }}
-        >
-          <div className='bg-opacity-30 absolute inset-0 bg-black'></div>
-        </div>
-        <div
-          className='bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5'
-          style={{ backgroundColor: '#F87171', borderRadius: '2.8125rem' }}
-        >
-          <div className='button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0'></div>
+        <div className='relative w-full h-full'>
+          <div
+            className='top-1 absolute inset-x-0 bottom-0 overflow-hidden'
+            style={{ backgroundColor: '#F87171', borderRadius: '2.8125rem' }}
+          >
+            <div className='bg-opacity-30 absolute inset-0 bg-black'></div>
+          </div>
+          <div
+            className='bottom-1 absolute inset-x-0 top-0 overflow-hidden button-group-active:bottom-0.5'
+            style={{ backgroundColor: '#F87171', borderRadius: '2.8125rem' }}
+          >
+            <div className='button-group-hover:bg-opacity-20 bg-fff absolute inset-0 bg-opacity-0'></div>
+          </div>
         </div>
       </div>
       <div
