@@ -1475,7 +1475,7 @@ export function QuestionViewerComponent({
             <div className='flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full text-xs font-medium'>
               Q{questionIndex + 1}
             </div>
-            <div className='flex items-center gap-1 sm:gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium text-white'>
+            <div className='flex items-center gap-1 sm:gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-black/60'>
               <Clock className='h-3 w-3 sm:h-3.5 sm:w-3.5' />
               <span>{activity.quiz?.timeLimitSeconds || 30}s</span>
             </div>

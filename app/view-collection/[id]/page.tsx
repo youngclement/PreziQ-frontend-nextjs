@@ -238,7 +238,11 @@ export default function ViewCollectionPage({
   const formatDateToLocale = (dateString?: string) => {
     if (!dateString) return t('common.unknownDate') || 'Ngày không xác định';
     try {
-      const date = new Date(dateString);
+      // Xử lý format đặc biệt từ API: "2025-06-28 16:34:01 PM"
+      // Loại bỏ PM/AM vì đã dùng 24h format
+      let cleanedDateString = dateString.replace(/\s+(AM|PM)$/i, '');
+
+      const date = new Date(cleanedDateString);
       if (isNaN(date.getTime()))
         return t('common.invalidDate') || 'Ngày không hợp lệ';
       return date.toLocaleDateString('vi-VN', {
