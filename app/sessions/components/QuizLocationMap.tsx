@@ -33,6 +33,7 @@ interface LocationQuestionPlayerProps {
   disabled?: boolean;
   userSelectedLocations?: { lat: number; lng: number; radius: number }[];
   correctAnswers?: { lat: number; lng: number; radius: number }[];
+  isFullscreenMode?: boolean;
 }
 
 export function LocationQuestionPlayer({
@@ -46,6 +47,7 @@ export function LocationQuestionPlayer({
   disabled = false,
   userSelectedLocations = [],
   correctAnswers = [],
+  isFullscreenMode = false,
 }: LocationQuestionPlayerProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -163,9 +165,9 @@ export function LocationQuestionPlayer({
               disabled,
             });
 
-            // Kiểm tra khoảng cách với các vị trí đã chọn (validation 1km)
+            // Validation: Kiểm tra khoảng cách với các vị trí đã chọn (validation 100m)
             if (userSelectedLocations && userSelectedLocations.length > 0) {
-              const threshold = 0.01; // 1km threshold
+              const threshold = 0.001; // Giảm threshold xuống 100m để chính xác hơn
               const isTooClose = userSelectedLocations.some(
                 (existing) =>
                   Math.abs(existing.lat - lat) < threshold &&
@@ -177,6 +179,30 @@ export function LocationQuestionPlayer({
                   '[LocationQuestionPlayer] Vị trí quá gần với vị trí đã chọn, bỏ qua'
                 );
                 return; // Không tạo marker nếu quá gần
+              }
+            }
+
+            // Logic thay thế marker khi vượt quá giới hạn
+            const maxAllowed = correctAnswers.length || 1; // Mặc định là 1 nếu không có correctAnswers
+
+            // Nếu đã đạt giới hạn tối đa, xóa marker đầu tiên
+            if (
+              userSelectedLocations &&
+              userSelectedLocations.length >= maxAllowed
+            ) {
+              console.log(
+                `[LocationQuestionPlayer] Đã đạt giới hạn tối đa: ${userSelectedLocations.length}/${maxAllowed}, xóa marker đầu tiên`
+              );
+
+              // Xóa marker đầu tiên từ map
+              if (userMarkersRef.current.length > 0) {
+                const firstMarker = userMarkersRef.current.shift(); // Lấy và xóa marker đầu tiên
+                if (firstMarker) {
+                  firstMarker.remove();
+                  console.log(
+                    '[LocationQuestionPlayer] Đã xóa marker đầu tiên'
+                  );
+                }
               }
             }
 
@@ -221,10 +247,6 @@ export function LocationQuestionPlayer({
 
       return () => {
         if (mapRef.current) {
-          // Reset flag khi component unmount
-          if (mapRef.current.getContainer()) {
-            delete mapRef.current.getContainer().dataset.hasFlownToCorrect;
-          }
           mapRef.current.remove();
           mapRef.current = null;
         }
@@ -312,63 +334,106 @@ export function LocationQuestionPlayer({
         const outlineId = `radius-circle-outline-${index}`;
 
         // Xóa circle cũ nếu có
-        if (mapRef.current!.getSource(circleId)) {
-          mapRef.current!.removeLayer(outlineId);
-          mapRef.current!.removeLayer(circleId);
-          mapRef.current!.removeSource(circleId);
+        try {
+          if (mapRef.current!.getSource(circleId)) {
+            mapRef.current!.removeLayer(outlineId);
+            mapRef.current!.removeLayer(circleId);
+            mapRef.current!.removeSource(circleId);
+          }
+        } catch (error) {
+          console.log(`Không thể xóa circle cũ ${circleId}:`, error);
         }
 
-        // Tạo circle data
+        // Tạo circle data với radius chính xác
         const center = [answer.lng, answer.lat];
         const radiusInKm = answer.radius;
         const points = 64;
-        const coordinates = [];
+        const coordinates: [number, number][] = [];
+
+        console.log(
+          `[LocationQuestionPlayer] Tạo radius circle ${index + 1}:`,
+          {
+            center,
+            radiusInKm,
+            answer,
+          }
+        );
 
         for (let i = 0; i < points; i++) {
           const angle = (i / points) * 2 * Math.PI;
           const dx = radiusInKm * Math.cos(angle);
           const dy = radiusInKm * Math.sin(angle);
 
-          // Convert km to degrees (approximate)
+          // Convert km to degrees (chính xác hơn)
           const deltaLat = dy / 111.32;
           const deltaLng =
             dx / (111.32 * Math.cos((answer.lat * Math.PI) / 180));
 
-          coordinates.push([center[0] + deltaLng, center[1] + deltaLat]);
+          coordinates.push([center[0] + deltaLng, center[1] + deltaLat] as [
+            number,
+            number
+          ]);
         }
         coordinates.push(coordinates[0]); // Close the circle
 
-        mapRef.current!.addSource(circleId, {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'Polygon',
-              coordinates: [coordinates],
-            },
-          },
-        });
+        // Đảm bảo map đã load xong style trước khi add source và layer
+        const createCircle = () => {
+          try {
+            if (!mapRef.current || !mapRef.current.isStyleLoaded()) {
+              console.log(
+                `Circle ${index + 1}: Map chưa sẵn sàng, thử lại sau...`
+              );
+              setTimeout(createCircle, 100);
+              return;
+            }
 
-        mapRef.current!.addLayer({
-          id: circleId,
-          type: 'fill',
-          source: circleId,
-          paint: {
-            'fill-color': '#00FF00',
-            'fill-opacity': 0.15, // Giảm opacity khi có nhiều circle
-          },
-        });
+            mapRef.current.addSource(circleId, {
+              type: 'geojson',
+              data: {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                  type: 'Polygon',
+                  coordinates: [coordinates],
+                },
+              },
+            });
 
-        mapRef.current!.addLayer({
-          id: outlineId,
-          type: 'line',
-          source: circleId,
-          paint: {
-            'line-color': '#00FF00',
-            'line-width': 2,
-          },
-        });
+            mapRef.current.addLayer({
+              id: circleId,
+              type: 'fill',
+              source: circleId,
+              paint: {
+                'fill-color': '#00FF00',
+                'fill-opacity': 0.2, // Tăng opacity để dễ thấy
+              },
+            });
+
+            mapRef.current.addLayer({
+              id: outlineId,
+              type: 'line',
+              source: circleId,
+              paint: {
+                'line-color': '#00FF00',
+                'line-width': 3, // Tăng line width để dễ thấy
+                'line-opacity': 0.8,
+              },
+            });
+
+            console.log(
+              `[LocationQuestionPlayer] Đã tạo radius circle ${
+                index + 1
+              } thành công`
+            );
+          } catch (error) {
+            console.error(`Lỗi tạo radius circle ${index + 1}:`, error);
+            // Thử lại sau 200ms
+            setTimeout(createCircle, 200);
+          }
+        };
+
+        // Bắt đầu tạo circle
+        createCircle();
 
         console.log(
           `[LocationQuestionPlayer] Hiển thị correct answer ${index + 1}:`,
@@ -376,112 +441,59 @@ export function LocationQuestionPlayer({
         );
       });
 
-      // Chỉ flyTo một lần khi showCorrectLocation được bật lần đầu
-      const hasFlownToCorrectLocation =
-        mapRef.current.getContainer().dataset.hasFlownToCorrect;
-
-      console.log(
-        '[LocationQuestionPlayer] showCorrectLocation:',
-        showCorrectLocation
-      );
-      console.log(
-        '[LocationQuestionPlayer] hasFlownToCorrectLocation:',
-        hasFlownToCorrectLocation
-      );
-      console.log('[LocationQuestionPlayer] answersToShow:', answersToShow);
-      console.log(
-        '[LocationQuestionPlayer] userSelectedLocations:',
-        userSelectedLocations
-      );
-
       // Đảm bảo user markers được hiển thị khi show correct location
       if (userSelectedLocations && userSelectedLocations.length > 0) {
         console.log(
-          '[LocationQuestionPlayer] Ensuring user markers are visible with correct markers'
-        );
-
-        // Xóa user markers cũ nếu có
-        userMarkersRef.current.forEach((marker) => marker.remove());
-        userMarkersRef.current = [];
-
-        // Tạo lại user markers
-        userSelectedLocations.forEach((location, index) => {
-          const userMarker = new mapboxgl.Marker({
-            color: '#FF0000', // Màu đỏ cho user selection
-            draggable: false,
-          })
-            .setLngLat([location.lng, location.lat])
-            .addTo(mapRef.current!);
-
-          userMarkersRef.current.push(userMarker);
-          console.log(
-            `[LocationQuestionPlayer] Tạo user marker ${
-              index + 1
-            } cùng với correct markers:`,
-            location
-          );
-        });
-      }
-
-      // Reset flag nếu userSelectedLocations đã thay đổi để auto zoom lại
-      const shouldResetFlag =
-        userSelectedLocations.length > 0 && hasFlownToCorrectLocation;
-      if (shouldResetFlag) {
-        delete mapRef.current.getContainer().dataset.hasFlownToCorrect;
-        console.log(
-          '[LocationQuestionPlayer] Reset flag để auto zoom lại với user selections'
+          '[LocationQuestionPlayer] User markers sẽ được tạo bởi effect userSelectedLocations'
         );
       }
 
-      if (!mapRef.current.getContainer().dataset.hasFlownToCorrect) {
-        // Đánh dấu đã flyTo để tránh gọi lại
-        mapRef.current.getContainer().dataset.hasFlownToCorrect = 'true';
+      // Luôn zoom vào đáp án khi showCorrectLocation = true
+      console.log('[LocationQuestionPlayer] Flying to show all locations...');
 
-        console.log('[LocationQuestionPlayer] Flying to show all locations...');
+      // Tạo bounds để hiển thị tất cả locations (correct answers + user selections)
+      const bounds = new mapboxgl.LngLatBounds();
 
-        // Tạo bounds để hiển thị tất cả locations (correct answers + user selections)
-        const bounds = new mapboxgl.LngLatBounds();
+      // Thêm tất cả correct answers vào bounds
+      answersToShow.forEach((answer) => {
+        bounds.extend([answer.lng, answer.lat]);
+      });
 
-        // Thêm tất cả correct answers vào bounds
-        answersToShow.forEach((answer) => {
-          bounds.extend([answer.lng, answer.lat]);
+      // Thêm tất cả user selected locations vào bounds (nếu có)
+      if (userSelectedLocations.length > 0) {
+        userSelectedLocations.forEach((location) => {
+          bounds.extend([location.lng, location.lat]);
         });
+      }
 
-        // Thêm tất cả user selected locations vào bounds
-        if (userSelectedLocations.length > 0) {
-          userSelectedLocations.forEach((location) => {
-            bounds.extend([location.lng, location.lat]);
-          });
-        }
+      // Kiểm tra xem bounds có hợp lệ không (có ít nhất 1 điểm)
+      const boundsValid = answersToShow.length > 0;
 
-        // Kiểm tra xem bounds có hợp lệ không (có ít nhất 1 điểm)
-        const boundsValid =
-          answersToShow.length > 0 || userSelectedLocations.length > 0;
+      if (boundsValid) {
+        // Delay ngắn để đảm bảo markers đã được tạo
+        setTimeout(() => {
+          if (mapRef.current) {
+            // Sử dụng fitBounds để hiển thị tất cả markers
+            mapRef.current.fitBounds(bounds, {
+              padding: 100, // Padding tốt
+              duration: 2000, // Animation mượt
+              maxZoom: answersToShow.length === 1 ? 12 : 15, // Zoom phù hợp
+            });
 
-        if (boundsValid) {
-          // Sử dụng fitBounds để hiển thị tất cả markers
-          mapRef.current.fitBounds(bounds, {
-            padding: 100, // Tăng padding để có khoảng trống tốt hơn
-            duration: 2000,
-            maxZoom: 15, // Giới hạn zoom tối đa để không zoom quá gần
-          });
-
-          console.log(
-            '[LocationQuestionPlayer] Fitted bounds to show all locations:',
-            {
-              correctAnswers: answersToShow.length,
-              userSelections: userSelectedLocations.length,
-            }
-          );
-        } else {
-          // Fallback nếu không có location nào
-          console.log(
-            '[LocationQuestionPlayer] No locations to show, using default view'
-          );
-        }
+            console.log(
+              '[LocationQuestionPlayer] Fitted bounds to show all locations:',
+              {
+                correctAnswers: answersToShow.length,
+                userSelections: userSelectedLocations.length,
+                bounds: bounds,
+              }
+            );
+          }
+        }, 100);
       } else {
+        // Fallback nếu không có location nào
         console.log(
-          '[LocationQuestionPlayer] Đã flyTo trước đó, bỏ qua để cho phép zoom tự do'
+          '[LocationQuestionPlayer] No locations to show, using default view'
         );
       }
     } catch (error) {
@@ -549,7 +561,45 @@ export function LocationQuestionPlayer({
 
     const [lng, lat] = result.center;
 
-    // Tạo marker mới thay vì replace existing marker
+    // Validation: Kiểm tra khoảng cách với các vị trí đã chọn
+    if (userSelectedLocations && userSelectedLocations.length > 0) {
+      const threshold = 0.001; // 100m threshold
+      const isTooClose = userSelectedLocations.some(
+        (existing) =>
+          Math.abs(existing.lat - lat) < threshold &&
+          Math.abs(existing.lng - lng) < threshold
+      );
+
+      if (isTooClose) {
+        console.log(
+          '[LocationQuestionPlayer] Search: Vị trí quá gần với vị trí đã chọn, bỏ qua'
+        );
+        return; // Không tạo marker nếu quá gần
+      }
+    }
+
+    // Logic thay thế marker khi vượt quá giới hạn
+    const maxAllowed = correctAnswers.length || 1; // Mặc định là 1 nếu không có correctAnswers
+
+    // Nếu đã đạt giới hạn tối đa, xóa marker đầu tiên
+    if (userSelectedLocations && userSelectedLocations.length >= maxAllowed) {
+      console.log(
+        `[LocationQuestionPlayer] Search: Đã đạt giới hạn tối đa: ${userSelectedLocations.length}/${maxAllowed}, xóa marker đầu tiên`
+      );
+
+      // Xóa marker đầu tiên từ map
+      if (userMarkersRef.current.length > 0) {
+        const firstMarker = userMarkersRef.current.shift(); // Lấy và xóa marker đầu tiên
+        if (firstMarker) {
+          firstMarker.remove();
+          console.log(
+            '[LocationQuestionPlayer] Search: Đã xóa marker đầu tiên'
+          );
+        }
+      }
+    }
+
+    // Tạo marker mới (chỉ khi đã pass validation)
     const newMarker = new mapboxgl.Marker({
       color: '#FF0000',
       draggable: false,
@@ -601,6 +651,8 @@ export function LocationQuestionPlayer({
     console.log('[LocationQuestionPlayer] User selected locations effect:', {
       userSelectedLocations,
       currentMarkersCount: userMarkersRef.current.length,
+      showCorrectLocation,
+      disabled,
     });
 
     // Luôn cập nhật markers để đồng bộ với userSelectedLocations
@@ -613,6 +665,7 @@ export function LocationQuestionPlayer({
     userMarkersRef.current = [];
 
     // Tạo markers mới cho tất cả userSelectedLocations (nếu có)
+    // Quan trọng: Luôn tạo user markers kể cả khi showCorrectLocation = true
     if (userSelectedLocations && userSelectedLocations.length > 0) {
       userSelectedLocations.forEach((location, index) => {
         const userMarker = new mapboxgl.Marker({
@@ -626,15 +679,22 @@ export function LocationQuestionPlayer({
 
         console.log(
           `[LocationQuestionPlayer] Tạo user marker ${index + 1}:`,
-          location
+          location,
+          { showCorrectLocation, disabled }
         );
       });
     }
-  }, [userSelectedLocations]);
+  }, [userSelectedLocations, showCorrectLocation]);
 
   return (
-    <Card className='w-full'>
-      <CardContent className='pt-6 space-y-4'>
+    <Card
+      className={`w-full ${isFullscreenMode ? 'h-full flex flex-col' : ''}`}
+    >
+      <CardContent
+        className={`pt-6 space-y-4 ${
+          isFullscreenMode ? 'flex-1 flex flex-col h-full' : ''
+        }`}
+      >
         <h3 className='text-lg font-medium text-center mb-2'>
           {questionText || 'Chọn vị trí trên bản đồ'}
         </h3>
@@ -702,11 +762,42 @@ export function LocationQuestionPlayer({
           </div>
         )}
 
+        {/* Thông báo số lượng điểm có thể chọn */}
+        {!disabled && (
+          <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3'>
+            <div className='flex items-center gap-2'>
+              <MapPin className='h-4 w-4 text-blue-600 dark:text-blue-400' />
+              <p className='text-sm text-blue-800 dark:text-blue-400'>
+                <span className='font-medium'>
+                  Có thể chọn tối đa {correctAnswers.length || 1} vị trí
+                </span>
+                {(correctAnswers.length || 1) > 1 ? (
+                  <span className='text-blue-600 dark:text-blue-300 ml-1'>
+                    • Chọn vượt quá sẽ thay thế vị trí cũ nhất
+                  </span>
+                ) : (
+                  <span className='text-blue-600 dark:text-blue-300 ml-1'>
+                    • Chọn vị trí mới sẽ thay thế vị trí cũ
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Map container */}
-        <div className='relative'>
+        <div
+          className={`relative ${
+            isFullscreenMode ? 'flex-1 flex flex-col' : ''
+          }`}
+        >
           <div
             ref={mapContainerRef}
-            className='w-full h-[300px] sm:h-[400px] bg-slate-100 dark:bg-slate-800 rounded-lg'
+            className={`w-full ${
+              isFullscreenMode
+                ? 'flex-1 min-h-[300px]'
+                : 'h-[300px] sm:h-[400px]'
+            } bg-slate-100 dark:bg-slate-800 rounded-lg`}
           />
         </div>
 
@@ -717,7 +808,12 @@ export function LocationQuestionPlayer({
             <div className='bg-muted/30 p-3 rounded-md text-sm text-center'>
               <p>Đã chọn {userSelectedLocations.length} vị trí</p>
               <p className='text-muted-foreground text-xs mt-1'>
-                Nhấp vào bản đồ để thêm vị trí mới
+                {userSelectedLocations.length < (correctAnswers.length || 1)
+                  ? `Nhấp vào bản đồ để thêm vị trí mới (còn ${
+                      (correctAnswers.length || 1) -
+                      userSelectedLocations.length
+                    } vị trí)`
+                  : 'Nhấp vào bản đồ để thay thế vị trí cũ nhất'}
               </p>
             </div>
           )}

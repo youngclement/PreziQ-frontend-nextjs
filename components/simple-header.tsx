@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import UserMenu from './user-menu';
 import { useAuth } from '@/contexts/auth-context';
+import LanguageToggle from './language-toggle';
 
 interface SimpleHeaderProps {
     showBackButton?: boolean;
@@ -53,6 +54,7 @@ const SimpleHeader = ({ showBackButton = false, title }: SimpleHeaderProps) => {
                 </div>
 
                 <div className="flex items-center gap-1">
+                    <LanguageToggle className={theme === 'dark' ? 'text-white hover:bg-transparent' : ''} />
                     <Button
                         variant="ghost"
                         size="icon"

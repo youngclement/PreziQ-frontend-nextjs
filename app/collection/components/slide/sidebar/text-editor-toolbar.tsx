@@ -242,7 +242,7 @@ const TextEditorToolbar = React.memo(({ slideId }: { slideId: string }) => {
 
   const textTransforms = [
     { value: 'none', label: 'None' },
-    { value: 'uppercase', label: 'UpperCase' },
+    { value: 'uppercase', label: 'UPPERCASE' },
     { value: 'lowercase', label: 'LowerCase' },
     { value: 'capitalize', label: 'Capitalize' },
   ];
@@ -275,7 +275,7 @@ const TextEditorToolbar = React.memo(({ slideId }: { slideId: string }) => {
                 fontWeight: 'bold',
               }}
             >
-              <span style={{ color: '#000000' }}>A</span>
+              <span>A</span>
               <span
                 style={{
                   width: '20px',
@@ -283,6 +283,7 @@ const TextEditorToolbar = React.memo(({ slideId }: { slideId: string }) => {
                   backgroundColor: formatting.color,
                   borderRadius: '2px',
                 }}
+                className='border border-slate-700 dark:border-slate-300'
               />
             </span>
           </Button>

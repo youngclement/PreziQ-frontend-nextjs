@@ -135,7 +135,7 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-6">
+      <DialogContent className="max-w-md p-6 dark:bg-zinc-800">
         <DialogHeader>
           <DialogTitle>{t('moduleAdd')}</DialogTitle>
           <DialogDescription>{t('moduleAddDesc')}</DialogDescription>

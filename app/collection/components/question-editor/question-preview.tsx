@@ -104,7 +104,7 @@ import { useToast } from '@/hooks/use-toast';
 
 // Add import at the top
 import { MatchingPairPreview } from './matching-pair-preview';
-
+import { useLanguage } from '@/contexts/language-context';
 interface QuestionPreviewProps {
   questions: QuizQuestion[];
   activeQuestionIndex: number;
@@ -194,7 +194,7 @@ export function QuestionPreview({
   timeLimit,
   backgroundImage,
   previewMode = true,
-  onQuestionLocationChange = () => { },
+  onQuestionLocationChange = () => {},
   onQuestionTextChange,
   onOptionChange,
   onChangeQuestion,
@@ -207,8 +207,8 @@ export function QuestionPreview({
   onUpdateActivityBackground,
   onAddQuestion,
   onDeleteActivity,
-  onAddOption = () => { },
-  onDeleteOption = () => { },
+  onAddOption = () => {},
+  onDeleteOption = () => {},
   onReorderOptions,
   leftColumnName,
   rightColumnName,
@@ -263,6 +263,8 @@ export function QuestionPreview({
     >
   >({});
 
+  const { t } = useLanguage();
+
   // Add this state to track when we need to force re-render
   const [renderKey, setRenderKey] = useState(0);
 
@@ -272,13 +274,18 @@ export function QuestionPreview({
   // Add state for reorder feedback
   const [isReordering, setIsReordering] = useState(false);
 
+  // Thêm state để lưu trữ question text đang edit
+  const [editingQuestionText, setEditingQuestionText] = useState<
+    Record<number, string>
+  >({});
+
   // Listen for reorder events to show feedback
   useEffect(() => {
     const handleReorderSuccess = (event: CustomEvent) => {
       setIsReordering(false);
       toast({
-        title: "✅ Sắp xếp thành công",
-        description: "Thứ tự các bước đã được cập nhật.",
+        title: '✅ Sắp xếp thành công',
+        description: 'Thứ tự các bước đã được cập nhật.',
         duration: 2000,
       });
     };
@@ -286,22 +293,31 @@ export function QuestionPreview({
     const handleReorderError = (event: CustomEvent) => {
       setIsReordering(false);
       toast({
-        title: "❌ Lỗi sắp xếp",
-        description: "Không thể cập nhật thứ tự. Vui lòng thử lại.",
-        variant: "destructive",
+        title: '❌ Lỗi sắp xếp',
+        description: 'Không thể cập nhật thứ tự. Vui lòng thử lại.',
+        variant: 'destructive',
         duration: 3000,
       });
     };
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('reorder:success', handleReorderSuccess as EventListener);
-      window.addEventListener('reorder:error', handleReorderError as EventListener);
-    }
+
+    // Remove reorder:success and reorder:error listeners to avoid duplicate setIsReordering(false)
+    // if (typeof window !== 'undefined') {
+    //   window.addEventListener('reorder:success', handleReorderSuccess as EventListener);
+    //   window.addEventListener('reorder:error', handleReorderError as EventListener);
+    // }
+
 
     return () => {
       if (typeof window !== 'undefined') {
-        window.removeEventListener('reorder:success', handleReorderSuccess as EventListener);
-        window.removeEventListener('reorder:error', handleReorderError as EventListener);
+        window.removeEventListener(
+          'reorder:success',
+          handleReorderSuccess as EventListener
+        );
+        window.removeEventListener(
+          'reorder:error',
+          handleReorderError as EventListener
+        );
       }
     };
   }, [toast]);
@@ -440,8 +456,8 @@ export function QuestionPreview({
       // Luôn ưu tiên sử dụng màu từ global storage trước
       const savedColor =
         typeof window !== 'undefined' &&
-          window.savedBackgroundColors &&
-          activity.id
+        window.savedBackgroundColors &&
+        activity.id
           ? window.savedBackgroundColors[activity.id]
           : null;
 
@@ -775,16 +791,15 @@ export function QuestionPreview({
 
   const getQuestionTypeDisplayName = (questionType: string) => {
     const displayNames = {
-      multiple_choice: 'Single Choice',
-      multiple_response: 'Multiple Choice',
-      // Keep others unchanged but formatted nicely
-      true_false: 'True False',
-      text_answer: 'Text Answer',
-      reorder: 'Reorder',
-      location: 'Location',
-      slide: 'Slide',
-      info_slide: 'Info Slide',
-      matching_pair: 'Matching Pair',
+      multiple_choice: t('activity.types.multiple_choice'),
+      multiple_response: t('activity.types.multiple_response'),
+      true_false: t('activity.types.true_false'),
+      text_answer: t('activity.types.text_answer'),
+      reorder: t('activity.types.reorder'),
+      location: t('activity.types.location'),
+      slide: t('activity.types.slide'),
+      info_slide: t('activity..types.info_slide'),
+      matching_pair: t('activity.types.matching_pair'),
     };
 
     return (
@@ -893,10 +908,8 @@ export function QuestionPreview({
       return (
         <div
           className={cn(
-            'border-none rounded-xl shadow-lg overflow-hidden transition-all duration-300 mx-auto',
-            isActive
-              ? 'ring-2 ring-primary/20 scale-100'
-              : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
+            'border-none rounded-xl pb-5 overflow-hidden transition-all duration-300 mx-auto',
+           
             viewMode === 'desktop' && 'max-w-full w-full',
             viewMode === 'tablet' && 'max-w-4xl w-full',
             viewMode === 'mobile' && 'max-w-sm'
@@ -906,12 +919,12 @@ export function QuestionPreview({
             backgroundPosition: 'center',
           }}
         >
-          <div className="flex flex-col items-center gap-3 w-full px-4 pb-8 pt-4 bg-gradient-to-br from-indigo-100/90 via-purple-100/80 to-blue-100/90 dark:from-indigo-900/90 dark:via-purple-900/80 dark:to-blue-900/95 min-h-[400px]">
-            <div className="w-full flex justify-between mb-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
-                {isSaving && <span className="text-blue-500">(Saving...)</span>}
+          <div className="flex flex-col items-center gap-3 w-full  min-h-[400px]">
+            <div className="w-full flex justify-start mb-3">
+              <div className="flex items-center px-4 gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+                {/* {isSaving && <span className="text-blue-500">(Saving...)</span>} */}
               </div>
-              <motion.div
+              {/* <motion.div
                 className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-500 dark:to-blue-400 px-4 py-2 rounded-full shadow-md"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -920,7 +933,7 @@ export function QuestionPreview({
                 <span className="text-sm font-medium text-white">
                   {slideTypeText} {questionIndex + 1}
                 </span>
-              </motion.div>
+              </motion.div> */}
             </div>
 
             <div className="flex-1 w-full">
@@ -973,13 +986,13 @@ export function QuestionPreview({
                     ? viewMode === 'mobile'
                       ? 300
                       : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                      ? 650
+                      : 812
                     : viewMode === 'mobile'
-                      ? 300
-                      : viewMode === 'tablet'
-                        ? 650
-                        : 812
+                    ? 300
+                    : viewMode === 'tablet'
+                    ? 650
+                    : 812
                 }
                 height={460}
                 zoom={1}
@@ -998,41 +1011,170 @@ export function QuestionPreview({
       );
     }
 
-    // Simplified location question type
+    // Location question type with header
     if (question.question_type === 'location') {
       const locationAnswers = getLocationAnswers(question, activity);
+
       return (
-        <div className="p-4">
-          {locationAnswers && locationAnswers.length > 0 ? (
-            <div className="w-full mt-2">
-              {!previewMode ? (
-                <DynamicLocationQuestionEditor
-                  key={question.location_data?.quizLocationAnswers?.length || 0}
-                  questionText={question.question_text}
-                  locationAnswers={question.location_data?.quizLocationAnswers}
-                  onLocationChange={(index, data) =>
-                    onQuestionLocationChange?.(questionIndex, data)
-                  }
-                  questionIndex={questionIndex}
-                />
+        <Card
+          className={cn(
+            'border-none rounded-xl shadow-lg overflow-hidden transition-all duration-300 mx-auto',
+            isActive
+              ? 'ring-2 ring-primary/20 scale-100'
+              : 'scale-[0.98] opacity-90 hover:opacity-100 hover:scale-[0.99]',
+            viewMode === 'desktop' && 'max-w-5xl',
+            viewMode === 'tablet' && 'max-w-2xl',
+            viewMode === 'mobile' && 'max-w-sm'
+          )}
+          key={`question-card-location-${questionIndex}-${renderKey}`}
+        >
+          <motion.div
+            className={cn(
+              'aspect-[16/5] rounded-t-xl flex flex-col shadow-md relative overflow-hidden',
+              hasBackgroundImage && 'bg-cover bg-center'
+            )}
+            style={{
+              backgroundImage: hasBackgroundImage
+                ? `url(${actualBackgroundImage})`
+                : undefined,
+              backgroundColor: actualBackgroundColor,
+            }}
+            initial={{ opacity: 0.8 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            key={`question-bg-${questionIndex}-${renderKey}-${actualBackgroundColor}`}
+          >
+            {/* Light overlay */}
+            <div className="absolute inset-0 bg-black/30" />
+
+            {/* Status Bar */}
+            <div className="absolute top-0 left-0 right-0 h-12 bg-black/40 flex items-center justify-between px-5 text-white z-10">
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    'h-7 w-7 rounded-full flex items-center justify-center shadow-sm',
+                    getQuestionTypeColor(question.question_type)
+                  )}
+                >
+                  {getQuestionTypeIcon(question.question_type)}
+                </div>
+                <div>
+                  <div className="text-xs capitalize font-medium">
+                    {question.question_type.replace(/_/g, ' ')}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full text-xs font-medium">
+                  Q{questionIndex + 1}
+                </div>
+                <div className="flex items-center gap-1.5 bg-primary px-2 py-1 rounded-full text-xs font-medium">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="time-limit-display">
+                    {(activity && activity.quiz?.timeLimitSeconds) ||
+                      question.time_limit_seconds ||
+                      30}
+                    s
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Question Text */}
+            <div className="flex-1 flex flex-col items-center justify-center z-10 py-6 px-5">
+              {editMode !== null ? (
+                <div className="w-full max-w-2xl">
+                  <Textarea
+                    value={question.question_text || `Location Question ${questionIndex + 1}`}
+                    onChange={(e) =>
+                      onQuestionTextChange(e.target.value, questionIndex, true)
+                    }
+                    className="resize-none custom-scrollbar text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
+                    onBlur={(e) => {
+                      onQuestionTextChange(e.target.value, questionIndex, false);
+                      // Save location question text with locationAnswers
+                      saveLocationQuestionText(e.target.value, questionIndex, question, activity, locationAnswers);
+                    }}
+                  />
+                  <style jsx global>{`
+                    .custom-scrollbar::-webkit-scrollbar {
+                      width: 16px;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-track {
+                      background: transparent;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb {
+                      background: rgba(255, 255, 255, 0.4);
+                      border-radius: 8px;
+                      border: 4px solid transparent;
+                      background-clip: padding-box;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                      background: rgba(255, 255, 255, 0.6);
+                      border: 4px solid transparent;
+                      background-clip: padding-box;
+                    }
+                  `}</style>
+                </div>
               ) : (
-                <DynamicLocationQuestionEditor
-                  questionText={question.question_text}
-                  locationAnswers={getLocationAnswers(question, activity)}
-                  onLocationChange={() => { }} // Read-only, so no-op
-                  questionIndex={questionIndex}
-                  readonly={true}
-                />
+
+                <div className="relative w-full max-w-2xl">
+                  <h2 className="text-xl md:text-2xl font-bold text-center max-w-2xl text-white drop-shadow-sm px-4">
+                    {question.question_text || `Location Question ${questionIndex + 1}`}
+                  </h2>
+                </div>
+
               )}
             </div>
-          ) : (
-            <div className="text-center p-8 bg-gray-50 rounded-lg">
-              <p className="text-muted-foreground">
-                No location data for this question yet.
-              </p>
-            </div>
-          )}
-        </div>
+
+            {/* Image Attribution */}
+            {hasBackgroundImage && (
+              <div className="absolute bottom-2 right-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 py-1 text-[10px] text-white/80 hover:text-white bg-black/20 hover:bg-black/40 border-none"
+                  onClick={() => window.open('https://unsplash.com', '_blank')}
+                >
+                  Image from Unsplash
+                </Button>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Question Content */}
+          <CardContent className="p-4">
+            {locationAnswers && locationAnswers.length > 0 ? (
+              <div className="w-full mt-2">
+                {!previewMode ? (
+                  <DynamicLocationQuestionEditor
+                    key={question.location_data?.quizLocationAnswers?.length || 0}
+                    questionText={question.question_text}
+                    locationAnswers={question.location_data?.quizLocationAnswers}
+                    onLocationChange={(index, data) =>
+                      onQuestionLocationChange?.(questionIndex, data)
+                    }
+                    questionIndex={questionIndex}
+                  />
+                ) : (
+                  <DynamicLocationQuestionEditor
+                    questionText={question.question_text}
+                    locationAnswers={getLocationAnswers(question, activity)}
+                    onLocationChange={() => { }} // Read-only, so no-op
+                    questionIndex={questionIndex}
+                    readonly={true}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="text-center p-8 bg-gray-50 rounded-lg">
+                <p className="text-muted-foreground">
+                  No location data for this question yet.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       );
     }
 
@@ -1105,34 +1247,65 @@ export function QuestionPreview({
               </div>
             </div>
 
-            {/* Question Text */}
+            {/* Question Text - Cập nhật để hỗ trợ chỉnh sửa */}
             <div className="flex-1 flex flex-col items-center justify-center z-10 py-6 px-5">
               {editMode !== null ? (
                 <div className="w-full max-w-2xl">
                   <Textarea
                     value={
-                      question.question_text ||
-                      `Matching Pair Question ${questionIndex + 1}`
+                      // Ưu tiên text đang edit, sau đó mới đến text từ BE
+                      editingQuestionText[questionIndex] !== undefined
+                        ? editingQuestionText[questionIndex]
+                        : question.question_text ||
+                          `Matching Pair Question ${questionIndex + 1}`
                     }
-                    onChange={(e) =>
-                      onQuestionTextChange(e.target.value, questionIndex, true)
-                    }
+                    onChange={(e) => {
+                      // Lưu vào local state ngay lập tức
+                      setEditingQuestionText((prev) => ({
+                        ...prev,
+                        [questionIndex]: e.target.value,
+                      }));
+                      onQuestionTextChange(e.target.value, questionIndex, true);
+                    }}
                     className="resize-none custom-scrollbar text-xl md:text-2xl font-bold text-center text-white bg-black/30 border-none focus:ring-white/30"
-                    onBlur={(e) =>
-                      onQuestionTextChange(e.target.value, questionIndex, false)
-                    }
+                    onBlur={(e) => {
+                      // Xóa khỏi local state khi blur
+                      setEditingQuestionText((prev) => {
+                        const newState = { ...prev };
+                        delete newState[questionIndex];
+                        return newState;
+                      });
+                      onQuestionTextChange(
+                        e.target.value,
+                        questionIndex,
+                        false
+                      );
+                      // Cập nhật activity title khi blur
+                      if (question.activity_id && activity) {
+                        updateActivity(
+                          { title: e.target.value },
+                          question.activity_id
+                        );
+                        // Add this line to update matching pair question text
+                        updateMatchingPairQuestionText(
+                          questionIndex,
+                          e.target.value
+                        );
+                      }
+                    }}
+                    placeholder="Enter your matching pair question..."
                   />
                   <style jsx global>{`
                     .custom-scrollbar::-webkit-scrollbar {
-                      width: 16px; /* Tăng width lên */
+                      width: 16px;
                     }
                     .custom-scrollbar::-webkit-scrollbar-track {
-                      background: transparent; /* Track trong suốt */
+                      background: transparent;
                     }
                     .custom-scrollbar::-webkit-scrollbar-thumb {
                       background: rgba(255, 255, 255, 0.4);
                       border-radius: 8px;
-                      border: 4px solid transparent; /* Tạo viền trong suốt */
+                      border: 4px solid transparent;
                       background-clip: padding-box;
                     }
                     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -1180,9 +1353,9 @@ export function QuestionPreview({
                     question.quizMatchingPairAnswer?.connections?.find(
                       (c) =>
                         c.leftItem.quizMatchingPairItemId ===
-                          payload.leftItemId &&
+                        payload.leftItemId &&
                         c.rightItem.quizMatchingPairItemId ===
-                          payload.rightItemId
+                        payload.rightItemId
                     );
                   // Ưu tiên lấy activityId từ prop activity
                   const activityId = activity?.id || question.activity_id;
@@ -1232,7 +1405,7 @@ export function QuestionPreview({
           </CardContent>
         </Card>
       );
-    }
+    } 
 
     // Modified for question cards without slide type
     if (!isSlideType) {
@@ -1374,8 +1547,8 @@ export function QuestionPreview({
                         option.is_correct
                           ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                           : isTrue
-                            ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                            : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                          ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                          : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
                         // Only show pointer cursor when edit mode is enabled
                         editMode !== null
                           ? 'cursor-pointer hover:shadow-md'
@@ -1469,7 +1642,7 @@ export function QuestionPreview({
                   {editMode !== null ? (
                     <div className="flex items-center">
                       <span className="font-medium mr-2 text-gray-700 dark:text-white">
-                        Correct answer:
+                        {t('activity.correctAnswer')}
                       </span>
                       <Input
                         value={
@@ -1511,7 +1684,9 @@ export function QuestionPreview({
                       className="flex items-center cursor-pointer transition-all hover:bg-blue-50 dark:hover:bg-blue-900/30 p-2 rounded-md -mx-2"
                       onClick={() => setEditMode('text_answer_edit')}
                     >
-                      <span className="font-medium">Correct answer:</span>{' '}
+                      <span className="font-medium">
+                        {t('activity.correctAnswer')}:
+                      </span>{' '}
                       <span className="ml-1 font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800">
                         {question.correct_answer_text ||
                           (question.options &&
@@ -1533,12 +1708,12 @@ export function QuestionPreview({
                   {editMode !== null ? (
                     <p className="flex items-center">
                       <Info className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
-                      Click outside or press Enter to save your changes
+                      {t('activity.textAnswerHelpTextEditMode')}
                     </p>
                   ) : (
                     <p className="flex items-center">
                       <Info className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
-                      Click on the answer to edit it when in edit mode
+                      {t('activity.textAnswerHelpText')}
                     </p>
                   )}
                 </div>
@@ -1550,17 +1725,27 @@ export function QuestionPreview({
                     <MoveVertical className="h-3.5 w-3.5 mr-1.5" />
                     <span>
                       {editMode !== null
-                        ? 'Kéo thả để sắp xếp các bước (chế độ chỉnh sửa đã bật)'
-                        : 'Thứ tự các bước - Bật chế độ chỉnh sửa để sắp xếp lại'}
+                        ? `${t('activity.reorderHelpTextEditMode')}`
+                        : `${t('activity.reorderHelpText')}`}
                     </span>
                   </div>
 
                   {editMode !== null && (
                     <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      <svg
+                        className="h-3 w-3"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
                       </svg>
-                      <span className="text-xs">Drag handle để di chuyển</span>
+                      <span className="text-xs">
+                        {t('activity.hintReorder')}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1568,76 +1753,109 @@ export function QuestionPreview({
                 {/* Enhanced drag and drop for reorder questions */}
                 {editMode !== null ? (
                   <div className="relative">
+
                     {isReordering && (
                       <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
                         <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                          <span className="text-sm font-medium">Đang cập nhật...</span>
+                          <span className="text-sm font-medium">
+                            Đang cập nhật...
+                          </span>
                         </div>
                       </div>
                     )}
 
                     <DragDropContext
                       onDragStart={() => {
-                        console.log("🎯 REORDER PREVIEW: Drag started");
+                        console.log('🎯 REORDER PREVIEW: Drag started');
                       }}
                       onDragEnd={(result: DropResult) => {
-                        console.log("🎯 REORDER PREVIEW: Drag operation completed", {
-                          source: result.source,
-                          destination: result.destination,
-                          reason: result.reason,
-                          questionIndex: questionIndex
-                        });
+                        console.log(
+                          '🎯 REORDER PREVIEW: Drag operation completed',
+                          {
+                            source: result.source,
+                            destination: result.destination,
+                            reason: result.reason,
+                            questionIndex: questionIndex,
+                          }
+                        );
 
                         if (
                           !result.destination ||
                           result.destination.index === result.source.index
                         ) {
-                          console.log("🎯 REORDER PREVIEW: No reorder needed (same position or no destination)");
+                          console.log(
+                            '🎯 REORDER PREVIEW: No reorder needed (same position or no destination)'
+                          );
                           return;
                         }
 
-                        console.log("🎯 REORDER PREVIEW: Calling onReorderOptions", {
-                          sourceIndex: result.source.index,
-                          destinationIndex: result.destination.index,
-                          questionIndex: questionIndex
-                        });
+                        console.log(
+                          '🎯 REORDER PREVIEW: Calling onReorderOptions',
+                          {
+                            sourceIndex: result.source.index,
+                            destinationIndex: result.destination.index,
+                            questionIndex: questionIndex,
+                          }
+                        );
 
                         // Set loading state
                         setIsReordering(true);
 
                         if (onReorderOptions) {
-                          onReorderOptions(
-                            result.source.index,
-                            result.destination.index
-                          );
+                          // Cập nhật local state (nếu có callback), sau đó gọi API updateReorderQuiz
+                          const updatedOptions = [...activeQuestion.options];
+                          const [removed] = updatedOptions.splice(result.source.index, 1);
+                          updatedOptions.splice(result.destination.index, 0, removed);
+                          // Gọi callback cập nhật state nếu có
+                          if (typeof onReorderOptions === 'function') {
+                            onReorderOptions(result.source.index, result.destination.index);
+                          }
+                          // Gọi API cập nhật thứ tự mới
+                          if (activity && activity.id) {
+                            const correctOrder = updatedOptions.map(opt => opt.option_text);
+                            activitiesApi.updateReorderQuiz(activity.id, {
+                              type: 'REORDER',
+                              questionText: activeQuestion.question_text,
+                              timeLimitSeconds: timeLimit,
+                              pointType: 'STANDARD',
+                              correctOrder: correctOrder,
+                            } as import('@/api-client/activities-api').ReorderQuizPayload)
+                              .then(() => setIsReordering(false))
+                              .catch(() => setIsReordering(false));
+                          } else {
+                            setIsReordering(false);
+                          }
                         }
                       }}
                     >
-                      <Droppable droppableId={`reorder-preview-droppable-${questionIndex}`}>
+                      <Droppable
+                        droppableId={`reorder-preview-droppable-${questionIndex}`}
+                      >
                         {(provided, snapshot) => (
                           <div
                             {...provided.droppableProps}
                             ref={provided.innerRef}
                             className={cn(
-                              "relative space-y-2",
-                              snapshot.isDraggingOver && "bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-2"
+                              'relative space-y-2',
+                              snapshot.isDraggingOver &&
+                                'bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-2'
                             )}
                           >
                             {/* Connecting line for visual guidance */}
-                            {question.options.length > 1 && (
-                              <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gradient-to-b from-gray-300 via-gray-400 to-gray-300 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 z-0"></div>
-                            )}
+                            {/* Removed vertical gradient line for REORDER preview drag mode */}
 
                             {[...question.options]
                               .sort((a, b) => a.display_order - b.display_order)
                               .map((option, index) => (
                                 <Draggable
                                   key={
-                                    option.id || `option-${option.display_order}-${questionIndex}`
+                                    option.id ||
+                                    `option-${option.display_order}-${questionIndex}`
                                   }
                                   draggableId={
-                                    option.id || `option-${option.display_order}-${questionIndex}`
+                                    option.id ||
+                                    `option-${option.display_order}-${questionIndex}`
                                   }
                                   index={index}
                                 >
@@ -1646,18 +1864,30 @@ export function QuestionPreview({
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
                                       className={cn(
-                                        'flex items-center gap-2 p-1.5 relative mb-2 transition-all duration-300',
-                                        snapshot.isDragging ? 'z-50 scale-105' : 'z-10'
+
+
+                                        'flex items-center gap-2 p-1.5 relative mb-2 transition-all duration-300 ease-in-out',
+                                        snapshot.isDragging ? 'z-50 scale-105 shadow-2xl ring-2 ring-blue-400/70 bg-blue-50/80 dark:bg-blue-900/40' : 'z-10',
+                                        !snapshot.isDragging && 'hover:scale-[1.01] hover:shadow-lg',
+                                        snapshot.isDropAnimating && 'transition-transform duration-200'
+
+
                                       )}
                                       style={{
                                         ...provided.draggableProps.style,
+                                        opacity: snapshot.isDragging ? 1 : 0.97,
+                                        transition: snapshot.isDragging ? 'box-shadow 0.2s, transform 0.2s' : 'box-shadow 0.3s, transform 0.3s',
                                       }}
                                     >
                                       {/* Step number */}
+
+
                                       <div className={cn(
                                         "flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-600 text-sm font-semibold text-white shadow-lg relative z-10 transition-all duration-300",
-                                        snapshot.isDragging && 'scale-110 shadow-xl ring-2 ring-blue-400'
+                                        snapshot.isDragging && 'scale-110 shadow-2xl ring-2 ring-blue-400'
                                       )}>
+
+
                                         {index + 1}
                                       </div>
 
@@ -1666,8 +1896,9 @@ export function QuestionPreview({
                                         className={cn(
                                           'flex-1 bg-white dark:bg-gray-800 rounded-lg p-3 border flex items-center gap-2 transition-all duration-300',
                                           snapshot.isDragging
-                                            ? 'border-blue-400 ring-2 ring-blue-400/30 bg-blue-50/50 dark:bg-blue-900/20 shadow-xl scale-[1.02]'
-                                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md'
+                                            ? 'border-blue-400 ring-2 ring-blue-400/30 bg-blue-50/70 dark:bg-blue-900/30 shadow-xl scale-[1.03]'
+                                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md',
+                                          !snapshot.isDragging && 'opacity-95'
                                         )}
                                       >
                                         <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -1678,8 +1909,9 @@ export function QuestionPreview({
                                         <div
                                           {...provided.dragHandleProps}
                                           className={cn(
-                                            "w-6 h-6 flex-shrink-0 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center cursor-grab text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors",
-                                            snapshot.isDragging && "cursor-grabbing bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-400"
+                                            'w-6 h-6 flex-shrink-0 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center cursor-grab text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors',
+                                            snapshot.isDragging &&
+                                              'cursor-grabbing bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-400'
                                           )}
                                         >
                                           <GripVertical className="h-3 w-3" />
@@ -1698,9 +1930,7 @@ export function QuestionPreview({
                 ) : (
                   <div className="space-y-2">
                     {/* Static view when edit mode is off */}
-                    {question.options.length > 1 && (
-                      <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gray-300 dark:bg-gray-600 z-0"></div>
-                    )}
+                    {/* Removed vertical line for REORDER preview static view */}
 
                     {[...question.options]
                       .sort((a, b) => a.display_order - b.display_order)
@@ -1744,11 +1974,19 @@ export function QuestionPreview({
                       <line x1="12" y1="16" x2="12.01" y2="16"></line>
                     </svg>
                     <div>
-                      <div className="font-medium mb-1">Hướng dẫn sử dụng:</div>
+                      <div className="font-medium mb-1">
+                        {t('activity.instructions')}
+                      </div>
                       <ul className="space-y-1">
-                        <li>• Bật chế độ chỉnh sửa để kéo thả sắp xếp lại</li>
-                        <li>• Giữ vào biểu tượng <GripVertical className="inline h-3 w-3 mx-1" /> để kéo</li>
-                        <li>• Thứ tự sẽ được lưu tự động khi thả</li>
+
+                        <li>• {t('activity.reorderHelpText2')}</li>
+                        <li>
+                          • {t('activity.reorderHelpTextEditMode2')}
+                          <GripVertical className="inline h-3 w-3 mx-1" /> 
+                          {t('activity.toDrag')}
+                        </li>
+                        <li>• {t('activity.autoSaveOrder')}</li>
+
                       </ul>
                     </div>
                   </div>
@@ -1765,12 +2003,12 @@ export function QuestionPreview({
                   question.options.length <= 2
                     ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
                     : question.options.length <= 4
-                      ? 'grid grid-cols-2 gap-3'
-                      : 'grid grid-cols-2 gap-3 md:grid-cols-3',
+                    ? 'grid grid-cols-2 gap-3'
+                    : 'grid grid-cols-2 gap-3 md:grid-cols-3',
                   viewMode === 'mobile' && 'grid-cols-1',
                   viewMode === 'tablet' &&
-                  question.options.length > 4 &&
-                  'grid-cols-2'
+                    question.options.length > 4 &&
+                    'grid-cols-2'
                 )}
               >
                 {/* Direct rendering of choice options */}
@@ -1874,7 +2112,7 @@ export function QuestionPreview({
                   >
                     <Plus className="h-5 w-5 text-blue-500" />
                     <span className="text-sm font-medium text-blue-500">
-                      Add Option
+                      {t('activity.addOption')}
                     </span>
                   </div>
                 )}
@@ -2113,7 +2351,7 @@ export function QuestionPreview({
 
       activitiesApi
         .updateTypeAnswerQuiz(question.activity_id, payload)
-        .then(() => { })
+        .then(() => {})
         .catch((error) => {
           console.error('Error updating correct answer:', error);
         })
@@ -2640,7 +2878,7 @@ export function QuestionPreview({
     questionIndex: number,
     locationData: any
   ) => {
-    console.log('Handling location change:', questionIndex, locationData);
+    console.log('🔧 [QuestionPreview] Handling location change:', questionIndex, locationData);
 
     const question = questions[questionIndex];
 
@@ -2653,37 +2891,95 @@ export function QuestionPreview({
       let locationAnswers;
 
       if (Array.isArray(locationData)) {
-        console.log('Detected array format for location data');
-        locationAnswers = locationData.map((loc: LocationAnswer) => ({
-          longitude: loc.longitude || loc.lng,
-          latitude: loc.latitude || loc.lat,
-          radius: loc.radius || 10,
-        }));
-      } else if (locationData && locationData.quizLocationAnswers) {
-        console.log('Detected object with quizLocationAnswers property');
-        locationAnswers = locationData.quizLocationAnswers.map(
-          (loc: LocationAnswer) => ({
+        console.log('🔧 [QuestionPreview] Detected array format for location data');
+        // Get existing location data to preserve radius values during drag and drop
+        const existingLocationAnswers = getLocationAnswers(question, activity);
+
+        locationAnswers = locationData.map((loc: LocationAnswer, index: number) => {
+          console.log(`🔧 [QuestionPreview] Processing location ${index}:`, loc);
+          // Preserve existing radius if not provided in the update (drag and drop case)
+          const existingRadius = existingLocationAnswers[index]?.radius;
+
+          let finalRadius = 10; // default fallback
+
+          if (typeof loc.radius === 'number' && loc.radius > 0) {
+            // Use the radius from the incoming location data
+            finalRadius = loc.radius;
+          } else if (typeof existingRadius === 'number' && existingRadius > 0) {
+            // Preserve existing radius
+            finalRadius = existingRadius;
+          }
+
+          console.log(`🔧 [QuestionPreview] Location ${index} radius: ${loc.radius} -> ${finalRadius}`);
+
+          return {
             longitude: loc.longitude || loc.lng,
             latitude: loc.latitude || loc.lat,
-            radius: loc.radius || 10,
-          })
+            radius: finalRadius,
+          };
+        });
+      } else if (locationData && locationData.quizLocationAnswers) {
+        console.log('🔧 [QuestionPreview] Detected object with quizLocationAnswers property');
+        // Get existing location data to preserve radius values during drag and drop
+        const existingLocationAnswers = getLocationAnswers(question, activity);
+
+        locationAnswers = locationData.quizLocationAnswers.map(
+          (loc: LocationAnswer, index: number) => {
+            console.log(`🔧 [QuestionPreview] Processing quizLocationAnswer ${index}:`, loc);
+            // Preserve existing radius if not provided in the update (drag and drop case)
+            const existingRadius = existingLocationAnswers[index]?.radius;
+
+            let finalRadius = 10; // default fallback
+
+            if (typeof loc.radius === 'number' && loc.radius > 0) {
+              // Use the radius from the incoming location data
+              finalRadius = loc.radius;
+            } else if (typeof existingRadius === 'number' && existingRadius > 0) {
+              // Preserve existing radius
+              finalRadius = existingRadius;
+            }
+
+            console.log(`🔧 [QuestionPreview] QuizLocationAnswer ${index} radius: ${loc.radius} -> ${finalRadius}`);
+
+            return {
+              longitude: loc.longitude || loc.lng,
+              latitude: loc.latitude || loc.lat,
+              radius: finalRadius,
+            };
+          }
         );
       } else if (locationData && (locationData.longitude || locationData.lat)) {
-        console.log('Detected legacy format with direct coordinates');
+        console.log('🔧 [QuestionPreview] Detected legacy format with direct coordinates');
+        // Get existing location data to preserve radius values during drag and drop
+        const existingLocationAnswers = getLocationAnswers(question, activity);
+        const existingRadius = existingLocationAnswers[0]?.radius;
+
+        let finalRadius = 10; // default fallback
+
+        if (typeof locationData.radius === 'number' && locationData.radius > 0) {
+          // Use the radius from the incoming location data
+          finalRadius = locationData.radius;
+        } else if (typeof existingRadius === 'number' && existingRadius > 0) {
+          // Preserve existing radius
+          finalRadius = existingRadius;
+        }
+
+        console.log(`🔧 [QuestionPreview] Legacy format radius: ${locationData.radius} -> ${finalRadius}`);
+
         locationAnswers = [
           {
             longitude: locationData.longitude || locationData.lng,
             latitude: locationData.latitude || locationData.lat,
-            radius: locationData.radius || 10,
+            radius: finalRadius,
           },
         ];
       } else {
-        console.log('Using existing location data from question');
+        console.log('🔧 [QuestionPreview] Using existing location data from question');
         const existingData = getLocationAnswers(question, activity);
         locationAnswers = existingData.map((loc: LocationAnswer) => ({
           longitude: loc.longitude,
           latitude: loc.latitude,
-          radius: loc.radius || 10,
+          radius: (typeof loc.radius === 'number' && loc.radius > 0) ? loc.radius : 10,
         }));
       }
 
@@ -2754,6 +3050,81 @@ export function QuestionPreview({
     };
   }, [debouncedUpdateLocationQuiz]);
 
+  // Enhanced onChangeQuestion with matching pair refresh
+  const handleQuestionChange = async (index: number) => {
+    const currentQuestion = questions[activeQuestionIndex];
+    const newQuestion = questions[index];
+
+    // If switching from a matching pair to another question, trigger refresh
+    if (
+      currentQuestion?.question_type === 'matching_pair' &&
+      newQuestion?.question_type === 'matching_pair' &&
+      currentQuestion.activity_id !== newQuestion.activity_id
+    ) {
+      // Dispatch custom event to trigger refresh
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('matching-pair:refresh-needed', {
+          detail: {
+            activityId: newQuestion.activity_id,
+            questionIndex: index,
+          },
+        });
+        window.dispatchEvent(event);
+      }
+    }
+
+    onChangeQuestion(index);
+  };
+
+  // Add this function after the updateActivity function
+  const updateMatchingPairQuestionText = async (
+    questionIndex: number,
+    newText: string
+  ) => {
+    const question = questions[questionIndex];
+    if (
+      !question ||
+      question.question_type !== 'matching_pair' ||
+      !question.activity_id
+    ) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      // Get the current matching pair data
+      const matchingData =
+        question.quizMatchingPairAnswer || question.matching_data;
+
+      if (matchingData) {
+        await activitiesApi.updateMatchingPairQuiz(question.activity_id, {
+          type: 'MATCHING_PAIRS',
+          questionText: newText,
+          timeLimitSeconds: question.time_limit_seconds || timeLimit,
+          pointType: question.pointType || 'STANDARD',
+          leftColumnName:
+            leftColumnName || matchingData?.leftColumnName || 'Left Item',
+          rightColumnName:
+            rightColumnName || matchingData?.rightColumnName || 'Right Item',
+          quizMatchingPairAnswer: {
+            ...matchingData,
+            leftColumnName:
+              leftColumnName || matchingData?.leftColumnName || 'Left Item',
+            rightColumnName:
+              rightColumnName || matchingData?.rightColumnName || 'Right Item',
+          },
+        });
+
+        console.log('Matching pair question text updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating matching pair question text:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <Card
       className={cn(
@@ -2765,7 +3136,7 @@ export function QuestionPreview({
       <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
         <div className="flex items-center gap-4">
           <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Preview
+            {t('activity.preview')}
           </CardTitle>
           <div className="flex items-center space-x-2">
             <Switch
@@ -2780,7 +3151,7 @@ export function QuestionPreview({
               }}
             />
             <Label htmlFor="edit-mode" className="text-xs">
-              Edit Mode
+              {t('activity.editMode')}
             </Label>
           </div>
           {isSaving && (
@@ -2788,7 +3159,7 @@ export function QuestionPreview({
               variant="outline"
               className="bg-blue-50 text-blue-700 border-blue-200"
             >
-              Saving...
+             {t('activity.saving')}
             </Badge>
           )}
         </div>
@@ -2842,7 +3213,7 @@ export function QuestionPreview({
                     onClick={() => handleDeleteActivity(question.activity_id)}
                   >
                     <Trash className="h-4 w-4 mr-1" />
-                    Delete
+                    {t('activity.delete')}
                   </Button>
                 )}
               </div>
@@ -2867,7 +3238,7 @@ export function QuestionPreview({
               onClick={() => onAddQuestion()}
             >
               <Plus className="h-4 w-4" />
-              Add Activity
+             {t('activity.addActivity')}
             </Button>
           </div>
         </div>
@@ -2877,10 +3248,9 @@ export function QuestionPreview({
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Activity</DialogTitle>
+            <DialogTitle>{t('activity.deleteActivity')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this activity? This action cannot
-              be undone.
+             {t('activity.confirmDelete')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2 mt-4">
@@ -2904,14 +3274,14 @@ interface OptionItemProps {
   option: QuizOption;
   index: number;
   questionType:
-  | 'multiple_choice'
-  | 'multiple_response'
-  | 'true_false'
-  | 'text_answer'
-  | 'slide'
-  | 'info_slide'
-  | 'reorder'
-  | 'location';
+    | 'multiple_choice'
+    | 'multiple_response'
+    | 'true_false'
+    | 'text_answer'
+    | 'slide'
+    | 'info_slide'
+    | 'reorder'
+    | 'location';
   questionIndex: number;
   onOptionEdit?: (
     questionIndex: number,
@@ -3146,7 +3516,7 @@ function getLocationAnswers(question: any, activity: any) {
       {
         longitude: locationData.lng,
         latitude: locationData.lat,
-        radius: locationData.radius || 10,
+        radius: (typeof locationData.radius === 'number' && locationData.radius > 0) ? locationData.radius : 10,
       },
     ];
   }
@@ -3157,7 +3527,7 @@ function getLocationAnswers(question: any, activity: any) {
       {
         longitude: question.location_data.lng || 0,
         latitude: question.location_data.lat || 0,
-        radius: question.location_data.radius || 10,
+        radius: (typeof question.location_data.radius === 'number' && question.location_data.radius > 0) ? question.location_data.radius : 10,
       },
     ];
   }
@@ -3171,6 +3541,72 @@ function getLocationAnswers(question: any, activity: any) {
       radius: 10,
     },
   ];
+}
+
+// Helper function to save location question text and locationAnswers
+async function saveLocationQuestionText(
+  questionText: string,
+  questionIndex: number,
+  question: any,
+  activity: any,
+  locationAnswers: any[]
+) {
+  console.log('saveLocationQuestionText called with:', {
+    questionText,
+    questionIndex,
+    activityId: activity?.id,
+    locationAnswers
+  });
+
+  if (!activity?.id || !locationAnswers || locationAnswers.length === 0) {
+    console.warn('Missing activity ID or location answers, skipping save');
+    return;
+  }
+
+  try {
+    // Gather all current locationAnswers from the question/activity
+    const currentLocationAnswers = getLocationAnswers(question, activity);
+    console.log('Current location answers:', currentLocationAnswers);
+
+    // Build the payload for the location quiz API
+    const payload = {
+      type: 'LOCATION' as const,
+      questionText: questionText,
+      timeLimitSeconds: activity.quiz?.timeLimitSeconds || question.time_limit_seconds || 30,
+      pointType: (activity.quiz?.pointType || 'STANDARD') as 'STANDARD' | 'NO_POINTS' | 'DOUBLE_POINTS',
+      locationAnswers: currentLocationAnswers.map((answer: any) => ({
+        quizLocationAnswerId: answer.quizLocationAnswerId,
+        longitude: answer.longitude,
+        latitude: answer.latitude,
+        radius: answer.radius,
+      })),
+    };
+
+    console.log('Location quiz API payload:', payload);
+
+    // Call the location quiz update API
+    await activitiesApi.updateLocationQuiz(activity.id, payload);
+    console.log('Location quiz updated successfully');
+
+    // Also update the activity title if needed
+    if (activity.title !== questionText) {
+      await activitiesApi.updateActivity(activity.id, {
+        title: questionText,
+      });
+      console.log('Activity title updated');
+    }
+
+    // Dispatch events to update other components if needed
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('activityUpdated', {
+          detail: { activityId: activity.id, questionText },
+        })
+      );
+    }
+  } catch (error) {
+    console.error('Error saving location question text:', error);
+  }
 }
 
 // Helper function to get location data for the map component

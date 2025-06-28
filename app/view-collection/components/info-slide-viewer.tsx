@@ -1,5 +1,4 @@
 'use client';
-/* eslint-disable react-hooks/exhaustive-deps */
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as fabric from 'fabric';
@@ -52,12 +51,14 @@ interface SlideShowProps {
   activity: Activity;
   width?: number;
   height?: number;
+  showAllElements?: boolean;
 }
 
 const InfoSlideViewer: React.FC<SlideShowProps> = ({
   activity,
   width = 900,
   height = 510,
+  showAllElements = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -405,8 +406,8 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     const canvas = fabricCanvas.current;
     if (!canvas) return;
 
-    // Khi currentOrder = 0, khởi tạo lần đầu
-    if (currentOrder === 0) {
+    // Khi currentOrder = 0 hoặc showAllElements = true, khởi tạo lần đầu
+    if (currentOrder === 0 || showAllElements || currentOrder === -1) {
       canvas.clear();
       canvas.backgroundImage = undefined;
       canvas.backgroundColor = backgroundColor || '#fff';
@@ -435,10 +436,19 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     const sortedElements = [...elements].sort(
       (a, b) => a.layerOrder - b.layerOrder
     );
-    const groups = groupElementsByDisplayOrder(sortedElements);
 
-    // Chỉ load ảnh cho displayOrder hiện tại
-    const toLoad = groups[currentOrder] || [];
+    let toLoad: SlideElement[] = [];
+
+    if (showAllElements) {
+      // Hiển thị tất cả elements cùng lúc
+      toLoad = sortedElements;
+    } else {
+      // Hiển thị theo displayOrder như cũ
+      const groups = groupElementsByDisplayOrder(sortedElements);
+      toLoad = groups[currentOrder] || [];
+    }
+
+    // Load tất cả ảnh cần thiết
     const imagePromises = toLoad
       .filter((el) => el.slideElementType === 'IMAGE' && el.sourceUrl)
       .map(
@@ -457,7 +467,8 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     try {
       const loadedImages = await Promise.all(imagePromises);
 
-      // Nếu currentOrder > 0, không xóa đối tượng cũ, chỉ thêm mới
+      // Nếu showAllElements = false và currentOrder > 0, không xóa đối tượng cũ, chỉ thêm mới
+      // Nếu showAllElements = true, đã clear canvas ở trên rồi
       toLoad.forEach((element) => {
         const fabricObj = slideElementToFabric(
           element,
@@ -468,7 +479,10 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
         );
         if (fabricObj) {
           canvas.add(fabricObj);
-          applyEntryAnimation(fabricObj, element, scaleX, scaleY);
+          // Chỉ apply animation nếu không hiển thị tất cả elements
+          if (!showAllElements) {
+            applyEntryAnimation(fabricObj, element, scaleX, scaleY);
+          }
         }
       });
 
@@ -478,10 +492,25 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     }
   };
 
-  /* Removed click-based advance logic; using timed display order updates instead */
+  // Handle mouse click to advance displayOrder
+  const handleCanvasClick = () => {
+    // Chỉ xử lý click nếu không hiển thị tất cả elements
+    if (showAllElements) return;
 
+    console.log('Canvas clicked, currentDisplayOrder:', currentDisplayOrder);
+    console.log(
+      'Max display order:',
+      getMaxDisplayOrder(activity.slide.slideElements)
+    );
+    const maxDisplayOrder = getMaxDisplayOrder(activity.slide.slideElements);
+    if (currentDisplayOrder < maxDisplayOrder) {
+      console.log('đk ok');
+      setCurrentDisplayOrder((prev) => prev + 1);
+      console.log(currentDisplayOrder);
+    }
+    // Stop at maxDisplayOrder + 1 (no further clicks needed)
+  };
   // 1) Khi slide thay đổi, reset và init canvas
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (
       !canvasRef.current ||
@@ -498,23 +527,19 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       activity.backgroundColor || '#fff',
       activity.backgroundImage
     );
+
+    // Chỉ thêm click handler nếu không hiển thị tất cả elements
+    if (!showAllElements) {
+      canvas.on('mouse:down', handleCanvasClick);
+    }
+
     // Vẽ các phần tử đầu tiên (displayOrder = 0) khi slide mới
+    // Hoặc tất cả elements nếu showAllElements = true
     renderSlide(
       activity.slide.slideElements,
       getMaxDisplayOrder(activity.slide.slideElements),
-      0
+      showAllElements ? -1 : 0 // -1 để trigger hiển thị tất cả
     );
-
-    // Auto-schedule displayOrder updates based on delay per order
-    const maxOrder = getMaxDisplayOrder(activity.slide.slideElements);
-    const ORDER_DELAY_MS = 700; // delay per displayOrder step
-    const timers: NodeJS.Timeout[] = [];
-    for (let order = 1; order <= maxOrder; order++) {
-      const timer = setTimeout(() => {
-        setCurrentDisplayOrder(order);
-      }, order * ORDER_DELAY_MS);
-      timers.push(timer);
-    }
 
     // Resize handler chỉ thay đổi size
     const handleResize = () => {
@@ -524,20 +549,18 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
-      // clear scheduled timers
-      timers.forEach(clearTimeout);
       canvas.dispose();
     };
-  }, [activity.slide.slideId]);
+  }, [activity.slide.slideId, showAllElements]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
 
-  // 2) Render slide mỗi khi currentDisplayOrder thay đổi
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // 2) Render slide mỗi khi currentDisplayOrder thay đổi (chỉ khi không hiển thị tất cả)
   useEffect(() => {
     if (
       !fabricCanvas.current ||
       activity.activityType !== 'INFO_SLIDE' ||
-      !activity.slide
+      !activity.slide ||
+      showAllElements // Không cần re-render khi showAllElements = true
     )
       return;
     renderSlide(
@@ -545,12 +568,12 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       getMaxDisplayOrder(activity.slide.slideElements),
       currentDisplayOrder
     );
-  }, [currentDisplayOrder]);
+  }, [currentDisplayOrder, showAllElements]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
 
   return (
     <div
-      className="flex items-center justify-center mx-auto"
+      className='flex items-center justify-center mx-auto'
       style={{
         position: 'relative',
         width: `${canvasWidth}px`,
@@ -563,8 +586,8 @@ const InfoSlideViewer: React.FC<SlideShowProps> = ({
       {!activity ||
       activity.activityType !== 'INFO_SLIDE' ||
       !activity.slide ? (
-        <div className="flex items-center justify-center h-[400px] bg-gray-100 rounded-lg">
-          <p className="text-gray-500">Không có slide nào để hiển thị</p>
+        <div className='flex items-center justify-center h-[400px] bg-gray-100 rounded-lg'>
+          <p className='text-gray-500'>Không có slide nào để hiển thị</p>
         </div>
       ) : (
         <canvas ref={canvasRef} />

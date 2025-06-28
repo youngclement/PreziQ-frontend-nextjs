@@ -541,7 +541,7 @@ export const QuizReorderViewer = ({
             backgroundImage: activity.backgroundImage
               ? `url(${activity.backgroundImage})`
               : undefined,
-            backgroundColor: activity.backgroundColor || '#0e2838',
+            backgroundColor: activity.backgroundColor || '#AFB2AF',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -629,11 +629,11 @@ export const QuizReorderViewer = ({
               <h2 className='text-sm md:text-lg lg:text-xl font-bold text-center text-white drop-shadow-lg'>
                 {activity.quiz.questionText}
               </h2>
-              {activity.description && (
+              {/* {activity.description && (
                 <p className='mt-1 text-xs md:text-sm text-white/80 text-center'>
                   {activity.description}
                 </p>
-              )}
+              )} */}
             </motion.div>
           </div>
         </motion.div>

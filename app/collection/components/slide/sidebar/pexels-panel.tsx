@@ -7,8 +7,10 @@ import { ImageIcon, X, Upload } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { storageApi } from '@/api-client/storage-api'; // Import storageApi
+import { useLanguage } from '@/contexts/language-context';
 
 const PexelsPanel = React.memo(({ slideId }: { slideId: string }) => {
+  const { t } = useLanguage();
   // Gửi sự kiện để thêm ảnh vào canvas
   const handleAddToCanvas = (url: string) => {
     const event = new CustomEvent('fabric:add-image', {
@@ -42,7 +44,7 @@ const PexelsPanel = React.memo(({ slideId }: { slideId: string }) => {
             Pexels
           </TabsTrigger>
           <TabsTrigger value="upload" className="flex-1 border border-zinc-200">
-            Upload
+            {t('activity.upload')}
           </TabsTrigger>
         </TabsList>
 
@@ -56,7 +58,7 @@ const PexelsPanel = React.memo(({ slideId }: { slideId: string }) => {
           <div className="border border-dashed rounded-lg p-4 text-center">
             <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
             <p className="text-sm text-muted-foreground mb-2">
-              Drag and drop or click to upload
+              {t('activity.slide.dragAndDropUpload')}
             </p>
             <input
               type="file"
@@ -70,7 +72,7 @@ const PexelsPanel = React.memo(({ slideId }: { slideId: string }) => {
               onClick={() => document.getElementById('image-upload')?.click()}
               className="w-full border bg-black text-white"
             >
-              Select from computer
+              {t('activity.slide.selectFromComputer')}
             </Button>
           </div>
         </TabsContent>
