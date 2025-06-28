@@ -563,7 +563,7 @@ export function QuestionSettings({
             className={cn(
               'w-full justify-between px-3 py-5 h-auto border',
               activeQuestion.question_type &&
-                questionTypeColors[activeQuestion.question_type]
+              questionTypeColors[activeQuestion.question_type]
             )}
           >
             <div className="flex items-center gap-2">
@@ -703,6 +703,11 @@ export function QuestionSettings({
       (activity && activity.quiz?.timeLimitSeconds) || timeLimit;
 
     const handleTimeChange = (value: number) => {
+      console.log("🔧 [TimeChange] Called with value:", value);
+      console.log("🔧 [TimeChange] Current time limit:", currentTimeLimit);
+      console.log("🔧 [TimeChange] Activity:", activity?.id);
+      console.log("🔧 [TimeChange] Question type:", activeQuestion.question_type);
+
       // Update local state immediately
       onTimeLimitChange(value);
 
@@ -810,56 +815,234 @@ export function QuestionSettings({
               });
               break;
             case 'location':
-              // Get the current location data and point type
-              const locationData = activeQuestion.location_data || ({} as any);
-              const locationPointType = locationData.pointType || 'STANDARD';
+              // For location quizzes - use helper function to get current location answers
+              const getLocationAnswersForTimeLimit = () => {
+                // 1. Try from activity.quiz (API response data)
+                if (
+                  activity?.quiz?.quizLocationAnswers &&
+                  activity.quiz.quizLocationAnswers.length > 0
+                ) {
+                  console.log("✅ [TimeLimit] Found location answers in activity.quiz");
+                  return activity.quiz.quizLocationAnswers.map((answer: any) => ({
+                    longitude: answer.longitude,
+                    latitude: answer.latitude,
+                    radius: answer.radius,
+                  }));
+                }
 
-              // Use the correct field name for location answers
-              const locationAnswers = activity?.quiz?.quizLocationAnswers ||
-                (locationData as any).quizLocationAnswers ||
-                (locationData as any).locationAnswers || [
-                  {
-                    longitude: (locationData as any).lng || 105.77803333582227,
-                    latitude: (locationData as any).lat || 19.83950812993956,
-                    radius: (locationData as any).radius || 10.0,
-                  },
-                ];
+                // 2. Try from activeQuestion.location_data.quizLocationAnswers
+                const currentLocationData = activeQuestion.location_data;
+                if (
+                  currentLocationData?.quizLocationAnswers &&
+                  Array.isArray(currentLocationData.quizLocationAnswers) &&
+                  currentLocationData.quizLocationAnswers.length > 0
+                ) {
+                  console.log("✅ [TimeLimit] Found location answers in activeQuestion.location_data.quizLocationAnswers");
+                  return currentLocationData.quizLocationAnswers.map((answer: any) => ({
+                    longitude: answer.longitude,
+                    latitude: answer.latitude,
+                    radius: answer.radius,
+                  }));
+                }
+
+                // 3. Try from activeQuestion.location_data as direct array
+                if (
+                  Array.isArray(activeQuestion.location_data) &&
+                  activeQuestion.location_data.length > 0
+                ) {
+                  console.log("✅ [TimeLimit] Found location answers as direct array in activeQuestion.location_data");
+                  return activeQuestion.location_data.map((answer: any) => ({
+                    longitude: answer.longitude,
+                    latitude: answer.latitude,
+                    radius: answer.radius,
+                  }));
+                }
+
+                // 4. Try from locationDataRef (current component state)
+                if (
+                  locationDataRef.current &&
+                  Array.isArray(locationDataRef.current) &&
+                  locationDataRef.current.length > 0
+                ) {
+                  console.log("✅ [TimeLimit] Found location answers in locationDataRef.current");
+                  return locationDataRef.current.map((answer: any) => ({
+                    longitude: answer.longitude,
+                    latitude: answer.latitude,
+                    radius: answer.radius,
+                  }));
+                }
+
+                // 5. Try from local locationData state
+                if (
+                  locationData &&
+                  Array.isArray(locationData) &&
+                  locationData.length > 0
+                ) {
+                  console.log("✅ [TimeLimit] Found location answers in local locationData state");
+                  return locationData.map((answer: any) => ({
+                    longitude: answer.longitude,
+                    latitude: answer.latitude,
+                    radius: answer.radius,
+                  }));
+                }
+
+                // 6. Only use fallback if ALL sources are empty - but don't override existing data
+                console.error("❌ [TimeLimit] No existing location answers found anywhere! This might cause data loss.");
+                console.error("❌ [TimeLimit] Sources checked:", {
+                  activityQuiz: activity?.quiz?.quizLocationAnswers,
+                  questionLocationData: activeQuestion.location_data,
+                  locationDataRef: locationDataRef.current,
+                  localLocationData: locationData,
+                });
+
+                // Return empty array instead of fallback to prevent data loss
+                return [];
+              };
+
+              const locationAnswersForTimeLimit = getLocationAnswersForTimeLimit();
+              console.log("🚀 [TimeLimit] Final location answers for API:", locationAnswersForTimeLimit);
+              console.log("🚀 [TimeLimit] Current time limit:", currentTimeLimit);
+              console.log("🚀 [TimeLimit] New time limit value:", value);
+
+              // Only proceed if we have valid location answers
+              if (locationAnswersForTimeLimit.length === 0) {
+                console.error("❌ [TimeLimit] Cannot update time limit: No location answers found. Skipping API call to prevent data loss.");
+                // Still update the local time limit for UI feedback
+                onTimeLimitChange(value);
+                break;
+              }
 
               // For location quizzes, use the activitiesApi
               if (onQuestionLocationChange) {
-                // Update local state with the new time limit
-                const updatedLocationData = {
-                  ...locationData,
+                // Double-check we have valid location data before proceeding
+                if (locationAnswersForTimeLimit.length === 0) {
+                  console.error("❌ [TimeLimit] Preventing onQuestionLocationChange call: No valid location data");
+                  onTimeLimitChange(value);
+                  break;
+                }
+
+                // Preserve existing location data structure and only update time limit
+                const currentLocationData = activeQuestion.location_data || {};
+
+                // Validate location answers before using them
+                const validatedLocationAnswers = validateLocationData(locationAnswersForTimeLimit);
+                if (validatedLocationAnswers.length === 0) {
+                  console.error("❌ [TimeLimit] All location answers failed validation - aborting");
+                  return;
+                }
+
+                const updatedTimeLimitData = {
+                  ...currentLocationData,
                   timeLimitSeconds: value,
+                  // Use validated location answers
+                  quizLocationAnswers: validatedLocationAnswers,
                 };
+
+                console.log("✅ [TimeLimit] Calling onQuestionLocationChange with valid location data:", updatedTimeLimitData);
 
                 // Call the callback to update parent state
                 onQuestionLocationChange(
                   activeQuestionIndex,
-                  updatedLocationData
+                  updatedTimeLimitData
                 );
+
+                // Add logging to track what data is being passed
+                console.log("🔍 [TimeLimit] Data passed to parent via onQuestionLocationChange:", {
+                  activeQuestionIndex,
+                  updatedTimeLimitData,
+                  quizLocationAnswers: updatedTimeLimitData.quizLocationAnswers
+                });
+
+                // Check if any location answers contain default coordinates
+                if (updatedTimeLimitData.quizLocationAnswers) {
+                  updatedTimeLimitData.quizLocationAnswers.forEach((answer: any, index: number) => {
+                    if (answer.longitude === 105.804817 && answer.latitude === 21.028511) {
+                      console.error(`❌ [TimeLimit] WARNING: Default coordinates detected in answer ${index}:`, answer);
+                    }
+                  });
+                }
+
+                // Prepare API payload
+                const apiPayload = {
+                  type: 'LOCATION' as 'LOCATION',
+                  questionText:
+                    activity.quiz?.questionText ||
+                    activeQuestion.question_text,
+                  timeLimitSeconds: value,
+                  pointType: ((currentLocationData as any).pointType || 'STANDARD') as
+                    | 'STANDARD'
+                    | 'NO_POINTS'
+                    | 'DOUBLE_POINTS',
+                  locationAnswers: locationAnswersForTimeLimit,
+                };
+
+                console.log("🚀 [TimeLimit] API Payload being sent:", apiPayload);
+                console.log("🚀 [TimeLimit] Location answers in payload:", JSON.stringify(apiPayload.locationAnswers));
+
+                // Final safety check - don't send if we somehow have empty or invalid location data
+                if (!apiPayload.locationAnswers || apiPayload.locationAnswers.length === 0) {
+                  console.error("❌ [TimeLimit] ABORT: API payload has empty locationAnswers - preventing API call");
+                  return;
+                }
+
+                // Check if any location answer has default coordinates
+                const hasDefaultCoords = apiPayload.locationAnswers.some((answer: any) =>
+                  answer.longitude === 105.804817 && answer.latitude === 21.028511
+                );
+
+                if (hasDefaultCoords) {
+                  console.error("❌ [TimeLimit] ABORT: API payload contains default coordinates - preventing API call");
+                  console.error("❌ [TimeLimit] Problematic locationAnswers:", apiPayload.locationAnswers);
+                  return;
+                }
 
                 // Update via API
                 activitiesApi
-                  .updateLocationQuiz(activity.id, {
-                    type: 'LOCATION' as 'LOCATION',
-                    questionText:
-                      activity.quiz?.questionText ||
-                      activeQuestion.question_text,
-
-                    timeLimitSeconds: value,
-                    pointType: locationPointType as
-                      | 'STANDARD'
-                      | 'NO_POINTS'
-                      | 'DOUBLE_POINTS',
-                    locationAnswers: locationAnswers.map((answer: any) => ({
-                      longitude: answer.longitude,
-                      latitude: answer.latitude,
-
-                      radius: answer.radius,
-                    })),
-                  })
+                  .updateLocationQuiz(activity.id, apiPayload)
                   .then((response) => {
+                    console.log(
+                      '✅ [TimeLimit] Location quiz API response:',
+                      response.data
+                    );
+                    console.log(
+                      '✅ [TimeLimit] Server returned timeLimitSeconds:',
+                      response.data?.quiz?.timeLimitSeconds || response.data?.timeLimitSeconds
+                    );
+                    console.log(
+                      '✅ [TimeLimit] Expected timeLimitSeconds:',
+                      value
+                    );
+
+                    // Check if server actually updated the time limit
+                    const serverTimeLimit = response.data?.quiz?.timeLimitSeconds || response.data?.timeLimitSeconds;
+                    if (serverTimeLimit !== value) {
+                      console.error(
+                        '❌ [TimeLimit] Server did not update time limit correctly!',
+                        'Expected:', value,
+                        'Got:', serverTimeLimit
+                      );
+                    } else {
+                      console.log('✅ [TimeLimit] Server successfully updated time limit');
+                    }
+
+                    // Update local refs with server response to prevent future data loss
+                    if (response.data?.quiz?.quizLocationAnswers) {
+                      const serverLocationAnswers = response.data.quiz.quizLocationAnswers;
+
+                      // Update location data refs
+                      if (locationDataRef.current) {
+                        locationDataRef.current = [...serverLocationAnswers];
+                      }
+                      if (previousAnswersRef.current) {
+                        previousAnswersRef.current = [...serverLocationAnswers];
+                      }
+
+                      // Update local state
+                      setLocationData([...serverLocationAnswers]);
+
+                      console.log('✅ [TimeLimit] Updated local location data with server response:', serverLocationAnswers);
+                    }
+
                     // **NEW**: Dispatch success event for location editor
                     if (typeof window !== 'undefined') {
                       const successEvent = new CustomEvent(
@@ -880,9 +1063,33 @@ export function QuestionSettings({
                   })
                   .catch((error) => {
                     console.error(
-                      'Error updating location quiz time limit:',
+                      '❌ [TimeLimit] Error updating location quiz time limit:',
                       error
                     );
+                    console.error(
+                      '❌ [TimeLimit] API Payload that failed:',
+                      apiPayload
+                    );
+                    console.error(
+                      '❌ [TimeLimit] Activity ID:',
+                      activity.id
+                    );
+                    console.error(
+                      '❌ [TimeLimit] Location answers that were being sent:',
+                      locationAnswersForTimeLimit
+                    );
+
+                    // Show user-friendly error message
+                    if (typeof window !== 'undefined') {
+                      const errorEvent = new CustomEvent('location:api:error', {
+                        detail: {
+                          source: 'time-limit-update',
+                          error: error,
+                          timestamp: Date.now(),
+                        },
+                      });
+                      window.dispatchEvent(errorEvent);
+                    }
                   });
               }
               break;
@@ -1461,49 +1668,202 @@ export function QuestionSettings({
             });
             break;
           case 'location':
-            // For location quizzes
+            // For location quizzes - use helper function to get current location answers
+            const getLocationAnswersForPointType = () => {
+              // 1. Try from activity.quiz (API response data)
+              if (
+                activity?.quiz?.quizLocationAnswers &&
+                activity.quiz.quizLocationAnswers.length > 0
+              ) {
+                console.log("✅ [PointType] Found location answers in activity.quiz");
+                return activity.quiz.quizLocationAnswers.map((answer: any) => ({
+                  longitude: answer.longitude,
+                  latitude: answer.latitude,
+                  radius: answer.radius,
+                }));
+              }
 
-            const locationData = activeQuestion.location_data || ({} as any);
-            const locationPointType = locationData.pointType || 'STANDARD';
+              // 2. Try from activeQuestion.location_data.quizLocationAnswers
+              const currentLocationData = activeQuestion.location_data;
+              if (
+                currentLocationData?.quizLocationAnswers &&
+                Array.isArray(currentLocationData.quizLocationAnswers) &&
+                currentLocationData.quizLocationAnswers.length > 0
+              ) {
+                console.log("✅ [PointType] Found location answers in activeQuestion.location_data.quizLocationAnswers");
+                return currentLocationData.quizLocationAnswers.map((answer: any) => ({
+                  longitude: answer.longitude,
+                  latitude: answer.latitude,
+                  radius: answer.radius,
+                }));
+              }
 
-            // Use the correct field name for location answers
-            const locationAnswers = activity?.quiz?.quizLocationAnswers ||
-              (locationData as any).quizLocationAnswers ||
-              (locationData as any).locationAnswers || [
-                {
-                  longitude: (locationData as any).lng || 105.77803333582227,
-                  latitude: (locationData as any).lat || 19.83950812993956,
-                  radius: (locationData as any).radius || 10.0,
-                },
-              ];
+              // 3. Try from activeQuestion.location_data as direct array
+              if (
+                Array.isArray(activeQuestion.location_data) &&
+                activeQuestion.location_data.length > 0
+              ) {
+                console.log("✅ [PointType] Found location answers as direct array in activeQuestion.location_data");
+                return activeQuestion.location_data.map((answer: any) => ({
+                  longitude: answer.longitude,
+                  latitude: answer.latitude,
+                  radius: answer.radius,
+                }));
+              }
+
+              // 4. Try from locationDataRef (current component state)
+              if (
+                locationDataRef.current &&
+                Array.isArray(locationDataRef.current) &&
+                locationDataRef.current.length > 0
+              ) {
+                console.log("✅ [PointType] Found location answers in locationDataRef.current");
+                return locationDataRef.current.map((answer: any) => ({
+                  longitude: answer.longitude,
+                  latitude: answer.latitude,
+                  radius: answer.radius,
+                }));
+              }
+
+              // 5. Try from local locationData state
+              if (
+                locationData &&
+                Array.isArray(locationData) &&
+                locationData.length > 0
+              ) {
+                console.log("✅ [PointType] Found location answers in local locationData state");
+                return locationData.map((answer: any) => ({
+                  longitude: answer.longitude,
+                  latitude: answer.latitude,
+                  radius: answer.radius,
+                }));
+              }
+
+              // 6. Only use fallback if ALL sources are empty - but don't override existing data
+              console.error("❌ [PointType] No existing location answers found anywhere! This might cause data loss.");
+              console.error("❌ [PointType] Sources checked:", {
+                activityQuiz: activity?.quiz?.quizLocationAnswers,
+                questionLocationData: activeQuestion.location_data,
+                locationDataRef: locationDataRef.current,
+                localLocationData: locationData,
+              });
+
+              // Return empty array instead of fallback to prevent data loss
+              return [];
+            };
+
+            const locationAnswersForPointType = getLocationAnswersForPointType();
+            console.log("🚀 [PointType] Final location answers for API:", locationAnswersForPointType);
+
+            // Only proceed if we have valid location answers
+            if (locationAnswersForPointType.length === 0) {
+              console.error("❌ [PointType] Cannot update point type: No location answers found. Skipping API call to prevent data loss.");
+              // Still update the local point type for UI feedback
+              setPointType(value);
+              break;
+            }
 
             if (onQuestionLocationChange) {
-              // Update local state
-              const updatedData = {
-                ...locationData,
+              // Double-check we have valid location data before proceeding
+              if (locationAnswersForPointType.length === 0) {
+                console.error("❌ [PointType] Preventing onQuestionLocationChange call: No valid location data");
+                setPointType(value);
+                break;
+              }
+
+              // Preserve existing location data structure and only update point type
+              const currentLocationData = activeQuestion.location_data || {};
+
+              // Validate location answers before using them
+              const validatedLocationAnswers = validateLocationData(locationAnswersForPointType);
+              if (validatedLocationAnswers.length === 0) {
+                console.error("❌ [PointType] All location answers failed validation - aborting");
+                return;
+              }
+
+              const updatedPointTypeData = {
+                ...currentLocationData,
                 pointType: value,
+                // Use validated location answers
+                quizLocationAnswers: validatedLocationAnswers,
               };
 
-              onQuestionLocationChange(activeQuestionIndex, updatedData);
+              console.log("✅ [PointType] Calling onQuestionLocationChange with valid location data:", updatedPointTypeData);
+
+              onQuestionLocationChange(activeQuestionIndex, updatedPointTypeData);
+
+              // Add logging to track what data is being passed
+              console.log("🔍 [PointType] Data passed to parent via onQuestionLocationChange:", {
+                activeQuestionIndex,
+                updatedPointTypeData,
+                quizLocationAnswers: updatedPointTypeData.quizLocationAnswers
+              });
+
+              // Check if any location answers contain default coordinates
+              if (updatedPointTypeData.quizLocationAnswers) {
+                updatedPointTypeData.quizLocationAnswers.forEach((answer: any, index: number) => {
+                  if (answer.longitude === 105.804817 && answer.latitude === 21.028511) {
+                    console.error(`❌ [PointType] WARNING: Default coordinates detected in answer ${index}:`, answer);
+                  }
+                });
+              }
 
               // Update via API
+              const pointTypeApiPayload = {
+                type: 'LOCATION' as 'LOCATION',
+                questionText: activeQuestion.question_text,
+                timeLimitSeconds:
+                  activity.quiz?.timeLimitSeconds || timeLimit,
+                pointType: value as
+                  | 'STANDARD'
+                  | 'NO_POINTS'
+                  | 'DOUBLE_POINTS',
+                locationAnswers: locationAnswersForPointType,
+              };
+
+              console.log("🚀 [PointType] API Payload being sent:", pointTypeApiPayload);
+              console.log("🚀 [PointType] Location answers in payload:", JSON.stringify(pointTypeApiPayload.locationAnswers));
+
+              // Final safety check - don't send if we somehow have empty or invalid location data
+              if (!pointTypeApiPayload.locationAnswers || pointTypeApiPayload.locationAnswers.length === 0) {
+                console.error("❌ [PointType] ABORT: API payload has empty locationAnswers - preventing API call");
+                return;
+              }
+
+              // Check if any location answer has default coordinates
+              const hasDefaultCoords = pointTypeApiPayload.locationAnswers.some((answer: any) =>
+                answer.longitude === 105.804817 && answer.latitude === 21.028511
+              );
+
+              if (hasDefaultCoords) {
+                console.error("❌ [PointType] ABORT: API payload contains default coordinates - preventing API call");
+                console.error("❌ [PointType] Problematic locationAnswers:", pointTypeApiPayload.locationAnswers);
+                return;
+              }
+
               activitiesApi
-                .updateLocationQuiz(activity.id, {
-                  type: 'LOCATION',
-                  questionText: activeQuestion.question_text,
-                  timeLimitSeconds:
-                    activity.quiz?.timeLimitSeconds || timeLimit,
-                  pointType: value as
-                    | 'STANDARD'
-                    | 'NO_POINTS'
-                    | 'DOUBLE_POINTS',
-                  locationAnswers: locationAnswers.map((answer: any) => ({
-                    longitude: answer.longitude,
-                    latitude: answer.latitude,
-                    radius: answer.radius,
-                  })),
-                })
+                .updateLocationQuiz(activity.id, pointTypeApiPayload)
                 .then((response) => {
+                  console.log('✅ [PointType] Location quiz API response:', response.data);
+
+                  // Update local refs with server response to prevent future data loss
+                  if (response.data?.quiz?.quizLocationAnswers) {
+                    const serverLocationAnswers = response.data.quiz.quizLocationAnswers;
+
+                    // Update location data refs
+                    if (locationDataRef.current) {
+                      locationDataRef.current = [...serverLocationAnswers];
+                    }
+                    if (previousAnswersRef.current) {
+                      previousAnswersRef.current = [...serverLocationAnswers];
+                    }
+
+                    // Update local state
+                    setLocationData([...serverLocationAnswers]);
+
+                    console.log('✅ [PointType] Updated local location data with server response:', serverLocationAnswers);
+                  }
+
                   // **NEW**: Dispatch success event for location editor
                   if (typeof window !== 'undefined') {
                     const successEvent = new CustomEvent(
@@ -1522,31 +1882,30 @@ export function QuestionSettings({
                 })
                 .catch((error) => {
                   console.error(
-                    'Error updating location quiz point type:',
+                    '❌ [PointType] Error updating location quiz point type:',
                     error
                   );
-                });
-            }
-            break;
-          case 'matching_pair':
-            // Get the current matching pair data
-            const matchingData =
-              activeQuestion.quizMatchingPairAnswer ||
-              activeQuestion.matching_data;
+                  console.error(
+                    '❌ [PointType] Location answers that were being sent:',
+                    locationAnswersForPointType
+                  );
+                  console.error(
+                    '❌ [PointType] Activity ID:',
+                    activity.id
+                  );
 
-            if (matchingData) {
-              activitiesApi.updateMatchingPairQuiz(activity.id, {
-                type: 'MATCHING_PAIRS',
-                questionText:
-                  activity.quiz?.questionText || activeQuestion.question_text,
-                timeLimitSeconds: activity.quiz?.timeLimitSeconds || timeLimit,
-                pointType: typedPointType,
-                quizMatchingPairAnswer: {
-                  ...matchingData,
-                  leftColumnName: leftColumnName || 'Left Item',
-                  rightColumnName: rightColumnName || 'Right Item',
-                },
-              });
+                  // Show user-friendly error message
+                  if (typeof window !== 'undefined') {
+                    const errorEvent = new CustomEvent('location:api:error', {
+                      detail: {
+                        source: 'point-type-update',
+                        error: error,
+                        timestamp: Date.now(),
+                      },
+                    });
+                    window.dispatchEvent(errorEvent);
+                  }
+                });
             }
             break;
           default:
@@ -1725,9 +2084,9 @@ export function QuestionSettings({
     // Ưu tiên global storage trước, sau đó mới tới state local
     const currentBackgroundColor =
       typeof window !== 'undefined' &&
-      window.savedBackgroundColors &&
-      activity?.id &&
-      window.savedBackgroundColors[activity.id]
+        window.savedBackgroundColors &&
+        activity?.id &&
+        window.savedBackgroundColors[activity.id]
         ? window.savedBackgroundColors[activity.id]
         : backgroundColor;
 
@@ -1858,10 +2217,10 @@ export function QuestionSettings({
                   </div>
                   {currentBackgroundColor.toUpperCase() ===
                     pastel.color.toUpperCase() && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
-                    </div>
-                  )}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-3 h-3 bg-white dark:bg-gray-800 rounded-full"></div>
+                      </div>
+                    )}
                 </button>
               ))}
             </div>
@@ -1972,27 +2331,54 @@ export function QuestionSettings({
   const LocationSettings = () => {
     // Handle adding a new location point
     const handleAddLocation = () => {
-      const currentLocations =
-        activeQuestion.location_data?.quizLocationAnswers || [];
+      const currentLocations = activeQuestion.location_data?.quizLocationAnswers;
+
+      // Only add location if user explicitly requests it and we have existing data to base it on
+      if (!currentLocations || !Array.isArray(currentLocations) || currentLocations.length === 0) {
+        console.warn("❌ [LocationSettings] Cannot add location: No existing location data to base coordinates on");
+        // Don't create default coordinates - require user to set up location data first
+        return;
+      }
+
+      const firstLocation = currentLocations[0];
+      if (!firstLocation || typeof firstLocation.latitude !== 'number' || typeof firstLocation.longitude !== 'number') {
+        console.warn("❌ [LocationSettings] Cannot add location: First location has invalid coordinates");
+        return;
+      }
+
       const newLocation = {
-        latitude: currentLocations[0]?.latitude || 21.028511,
-        longitude: currentLocations[0]?.longitude || 105.804817,
+        latitude: firstLocation.latitude,
+        longitude: firstLocation.longitude,
         radius: 10,
         hint: '',
       };
-      const updatedLocations = [...currentLocations, newLocation];
 
-      onQuestionLocationChange?.(activeQuestionIndex, updatedLocations);
+      // Validate the new location before adding
+      const validatedNewLocations = validateLocationData([...currentLocations, newLocation]);
+      if (validatedNewLocations.length <= currentLocations.length) {
+        console.error("❌ [LocationSettings] New location failed validation - not adding");
+        return;
+      }
+
+      console.log("✅ [LocationSettings] Adding new location based on existing data:", newLocation);
+      onQuestionLocationChange?.(activeQuestionIndex, validatedNewLocations);
     };
 
     // Handle deleting a location point
     const handleDeleteLocation = (indexToDelete: number) => {
-      const currentLocations =
-        activeQuestion.location_data?.quizLocationAnswers || [];
+      const currentLocations = activeQuestion.location_data?.quizLocationAnswers;
+      if (!currentLocations || !Array.isArray(currentLocations)) {
+        console.warn("❌ [LocationSettings] Cannot delete location: No location data found");
+        return;
+      }
+
       const updatedLocations = currentLocations.filter(
         (_, index) => index !== indexToDelete
       );
-      onQuestionLocationChange?.(activeQuestionIndex, updatedLocations);
+
+      // Validate the updated locations
+      const validatedUpdatedLocations = validateLocationData(updatedLocations);
+      onQuestionLocationChange?.(activeQuestionIndex, validatedUpdatedLocations);
     };
 
     // Handle updating a specific field of a location
@@ -2001,8 +2387,12 @@ export function QuestionSettings({
       property: 'longitude' | 'latitude' | 'radius' | 'hint',
       value: string | number
     ) => {
-      const currentLocations =
-        activeQuestion.location_data?.quizLocationAnswers || [];
+      const currentLocations = activeQuestion.location_data?.quizLocationAnswers;
+      if (!currentLocations || !Array.isArray(currentLocations)) {
+        console.warn("❌ [LocationSettings] Cannot update location: No location data found");
+        return;
+      }
+
       const updatedLocations = currentLocations.map((loc, index) => {
         if (index === indexToUpdate) {
           const numericValue =
@@ -2016,8 +2406,26 @@ export function QuestionSettings({
 
     if (!activeQuestion) return null;
 
-    const locationAnswers =
-      activeQuestion.location_data?.quizLocationAnswers || [];
+    const locationAnswers = activeQuestion.location_data?.quizLocationAnswers;
+
+    // Don't render anything if there's no valid location data
+    if (!locationAnswers || !Array.isArray(locationAnswers)) {
+      return (
+        <Card className="border-t-2 border-t-yellow-400 p-0">
+          <CardHeader className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <h3 className="text-sm font-medium">Location Points</h3>
+                <Badge className="bg-yellow-400 text-white">0</Badge>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mt-2">
+              No location data available. Set up location points first.
+            </p>
+          </CardHeader>
+        </Card>
+      );
+    }
 
     return (
       <Card className="border-t-2 border-t-yellow-400 p-0">
@@ -2131,22 +2539,22 @@ export function QuestionSettings({
                 </div>
               </Card>
             ))}
+
+            {locationAnswers.length === 0 && (
+              <div className="text-center py-6 text-gray-500">
+                <p className="text-sm">No location points set</p>
+              </div>
+            )}
+
+            <Button
+              onClick={handleAddLocation}
+              className="w-full mt-4"
+              variant="outline"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Point
+            </Button>
           </div>
-
-          {locationAnswers.length === 0 && (
-            <div className="text-center py-6 text-gray-500">
-              <p className="text-sm">No location points set</p>
-            </div>
-          )}
-
-          <Button
-            onClick={handleAddLocation}
-            className="w-full mt-4"
-            variant="outline"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Point
-          </Button>
         </CardContent>
       </Card>
     );
@@ -2174,14 +2582,14 @@ export function QuestionSettings({
           <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
             <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
             {activeQuestion.question_type === 'slide' ||
-            activeQuestion.question_type === 'info_slide'
+              activeQuestion.question_type === 'info_slide'
               ? 'Slide Content'
               : 'Answer Options'}
           </h3>
 
           {/* Display different content based on question type */}
           {activeQuestion.question_type === 'multiple_choice' ||
-          activeQuestion.question_type === 'multiple_response' ? (
+            activeQuestion.question_type === 'multiple_response' ? (
             <div
               className={cn(
                 'p-3 rounded-md border',
@@ -2229,15 +2637,23 @@ export function QuestionSettings({
             />
           ) : activeQuestion.question_type === 'slide' ||
             activeQuestion.question_type === 'info_slide' ? (
-            <SlideSettings
-              slideId={activity?.id || ''}
-              backgroundColor={backgroundColor}
-              backgroundImage={backgroundImage || ''}
-              questionType={activeQuestion.question_type}
-              activeQuestionIndex={activeQuestionIndex}
-              handleSlideBackgroundChange={handleBackgroundColorChange}
-              handleSlideBackgroundImageChange={handleSlideImageChange}
-            />
+            <>
+              <SlideToolbar
+                slideId={activity.id}
+                slideElements={slideElements[activity?.id] || []}
+                onSlideElementsUpdate={(elements) => {
+                  if (activity?.id) {
+                    onSlideElementsUpdate(activity.id, elements);
+                  }
+                }}
+              />
+              <div>
+                <h3 className="text-sm font-medium mb-2.5 mt-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
+                  {/* <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
+                  Background Settings */}
+                </h3>
+              </div>
+            </>
           ) : activeQuestion.question_type === 'reorder' ? (
             <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
               <ReorderOptions
@@ -2383,6 +2799,92 @@ export function QuestionSettings({
     );
   };
 
+  // Initialize and maintain location data consistency
+  useEffect(() => {
+    if (activeQuestion && activeQuestion.question_type === 'location') {
+      console.log('🔧 [LocationData] Initializing location data for question:', activeQuestion.id);
+
+      // Try to get location data from various sources
+      let locationAnswers = [];
+
+      // Priority 1: From activity.quiz (server response)
+      if (activity?.quiz?.quizLocationAnswers && activity.quiz.quizLocationAnswers.length > 0) {
+        locationAnswers = activity.quiz.quizLocationAnswers;
+        console.log('✅ [LocationData] Using location data from activity.quiz');
+      }
+      // Priority 2: From activeQuestion.location_data.quizLocationAnswers
+      else if (activeQuestion.location_data?.quizLocationAnswers &&
+        Array.isArray(activeQuestion.location_data.quizLocationAnswers) &&
+        activeQuestion.location_data.quizLocationAnswers.length > 0) {
+        locationAnswers = activeQuestion.location_data.quizLocationAnswers;
+        console.log('✅ [LocationData] Using location data from activeQuestion.location_data.quizLocationAnswers');
+      }
+      // Priority 3: From activeQuestion.location_data as direct array
+      else if (Array.isArray(activeQuestion.location_data) && activeQuestion.location_data.length > 0) {
+        locationAnswers = activeQuestion.location_data;
+        console.log('✅ [LocationData] Using location data from activeQuestion.location_data as array');
+      }
+
+      // Update all refs and state to maintain consistency
+      if (locationAnswers.length > 0) {
+        const cleanedLocationAnswers = locationAnswers.map((answer: any) => ({
+          longitude: answer.longitude,
+          latitude: answer.latitude,
+          radius: answer.radius,
+          quizLocationAnswerId: answer.quizLocationAnswerId || answer.id,
+        }));
+
+        // Validate the cleaned location answers
+        const validatedLocationAnswers = validateLocationData(cleanedLocationAnswers);
+
+        if (validatedLocationAnswers.length > 0) {
+          // Update refs
+          locationDataRef.current = [...validatedLocationAnswers];
+          previousAnswersRef.current = [...validatedLocationAnswers];
+
+          // Update local state
+          setLocationData([...validatedLocationAnswers]);
+
+          console.log('✅ [LocationData] Initialized location data:', validatedLocationAnswers);
+        } else {
+          console.warn('⚠️ [LocationData] All location answers failed validation - not updating refs/state');
+        }
+      } else {
+        console.log('⚠️ [LocationData] No location data found for location question');
+      }
+    }
+  }, [activeQuestion, activity?.quiz?.quizLocationAnswers]);
+
+  // Helper function to validate location data and prevent default coordinates
+  const validateLocationData = (locationData: any[]): any[] => {
+    if (!Array.isArray(locationData)) {
+      console.warn("❌ [LocationValidation] Invalid location data - not an array");
+      return [];
+    }
+
+    const validatedData = locationData.filter((location) => {
+      // Check for default coordinates
+      if (location.longitude === 105.804817 && location.latitude === 21.028511) {
+        console.error("❌ [LocationValidation] Rejecting location with default coordinates:", location);
+        return false;
+      }
+
+      // Check for valid numeric coordinates
+      if (typeof location.longitude !== 'number' || typeof location.latitude !== 'number') {
+        console.warn("❌ [LocationValidation] Rejecting location with invalid coordinates:", location);
+        return false;
+      }
+
+      return true;
+    });
+
+    if (validatedData.length !== locationData.length) {
+      console.warn(`⚠️ [LocationValidation] Filtered ${locationData.length - validatedData.length} invalid locations`);
+    }
+
+    return validatedData;
+  };
+
   return (
     <Card className="border-none overflow-hidden shadow-md h-full w-full">
       <CardHeader className="px-4 py-2 flex flex-row items-center justify-between bg-white dark:bg-gray-950 border-b">
@@ -2409,13 +2911,13 @@ export function QuestionSettings({
             </TabsTrigger>
             <TabsTrigger value="meta" className="text-xs">
               {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide' ? (
+                activeQuestion.question_type === 'info_slide' ? (
                 <Layers className="h-3.5 w-3.5 mr-1.5" />
               ) : (
                 <Info className="h-3.5 w-3.5 mr-1.5" />
               )}
               {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide'
+                activeQuestion.question_type === 'info_slide'
                 ? 'Animation'
                 : 'Metadata'}
             </TabsTrigger>
@@ -2438,14 +2940,14 @@ export function QuestionSettings({
                 <h3 className="text-sm font-medium mb-2.5 text-gray-900 dark:text-white flex items-center gap-1.5">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full"></span>
                   {activeQuestion.question_type === 'slide' ||
-                  activeQuestion.question_type === 'info_slide'
+                    activeQuestion.question_type === 'info_slide'
                     ? 'Slide Content'
                     : 'Answer Options'}
                 </h3>
 
                 {/* Display different content based on question type */}
                 {activeQuestion.question_type === 'multiple_choice' ||
-                activeQuestion.question_type === 'multiple_response' ? (
+                  activeQuestion.question_type === 'multiple_response' ? (
                   <div
                     className={cn(
                       'p-3 rounded-md border',
@@ -2542,90 +3044,72 @@ export function QuestionSettings({
                             newOptions
                           );
                         }
+                        // Trigger preview update
+                        triggerPreviewUpdate();
                       }}
                       onAddPair={() => {
-                        if (!onMatchingPairOptionsChange) return;
-                        const pairId = `pair-${Date.now()}`;
-                        const currentOptions = activeQuestion.options || [];
-                        const newPair: QuizOption[] = [
-                          {
-                            id: `left-${pairId}`,
-                            option_text: 'Left item',
-                            type: 'left',
-                            pair_id: pairId,
-                            is_correct: true,
-                            display_order: currentOptions.length,
-                            quiz_question_id: activeQuestion.id,
-                          },
-                          {
-                            id: `right-${pairId}`,
-                            option_text: 'Right item',
-                            type: 'right',
-                            pair_id: pairId,
-                            is_correct: true,
-                            display_order: currentOptions.length + 1,
-                            quiz_question_id: activeQuestion.id,
-                          },
-                        ];
-                        onMatchingPairOptionsChange(activeQuestionIndex, [
-                          ...currentOptions,
-                          ...newPair,
-                        ]);
+                        // This will be handled by the MatchingPairSettings component via API
+                        console.log('Add pair triggered');
+                        // Trigger preview update
+                        triggerPreviewUpdate();
                       }}
                       onDeletePair={(pairId) => {
-                        if (!onMatchingPairOptionsChange) return;
-                        const currentOptions = activeQuestion.options || [];
-                        const newOptions = currentOptions.filter(
-                          (opt) => opt.pair_id !== pairId
-                        );
-                        onMatchingPairOptionsChange(
-                          activeQuestionIndex,
-                          newOptions
-                        );
+                        // This will be handled by the MatchingPairSettings component via API
+                        console.log('Delete pair triggered:', pairId);
+                        // Trigger preview update
+                        triggerPreviewUpdate();
                       }}
                       onReorderPairs={(startIndex, endIndex) => {
-                        if (!onMatchingPairOptionsChange) return;
-
-                        const currentOptions = [
-                          ...(activeQuestion.options || []),
-                        ];
-
-                        const pairs = currentOptions
-                          .filter((o) => o.type === 'left')
-                          .map((left) => {
-                            const right = currentOptions.find(
-                              (r) =>
-                                r.type === 'right' && r.pair_id === left.pair_id
-                            );
-                            return { id: left.pair_id, left, right };
-                          })
-                          .filter((p) => p.right);
-
-                        const [reorderedPair] = pairs.splice(startIndex, 1);
-                        pairs.splice(endIndex, 0, reorderedPair);
-
-                        const newOptions = pairs
-                          .flatMap((p) => [p.left, p.right])
-                          .map((opt, index) => ({
-                            ...opt,
-                            display_order: index,
-                          })) as QuizOption[];
-
-                        onMatchingPairOptionsChange(
-                          activeQuestionIndex,
-                          newOptions
-                        );
+                        // This will be handled by the MatchingPairSettings component via API
+                        console.log('Reorder pairs triggered:', startIndex, endIndex);
+                        // Trigger preview update
+                        triggerPreviewUpdate();
                       }}
-                      leftColumnName={leftColumnName}
-                      rightColumnName={rightColumnName}
-                      onColumnNamesChange={onMatchingPairColumnNamesChange}
+                      leftColumnName={leftColumnName || 'Left Item'}
+                      rightColumnName={rightColumnName || 'Right Item'}
+                      onColumnNamesChange={(left, right) => {
+                        if (onMatchingPairColumnNamesChange) {
+                          onMatchingPairColumnNamesChange(left, right);
+                        }
+                        // Trigger preview update
+                        triggerPreviewUpdate();
+                      }}
+                      onMatchingDataUpdate={(matchingData) => {
+                        // Update the question with new matching data
+                        if (onMatchingPairOptionsChange) {
+                          // Convert matching data back to options format for compatibility
+                          const options: MatchingPairOption[] = [];
+
+                          if (matchingData.items) {
+                            matchingData.items.forEach((item: any) => {
+                              options.push({
+                                id: item.quizMatchingPairItemId,
+                                quizMatchingPairItemId: item.quizMatchingPairItemId,
+                                content: item.content,
+                                option_text: item.content,
+                                isLeftColumn: item.isLeftColumn,
+                                display_order: item.displayOrder,
+                                quiz_question_id: activeQuestion.id,
+                              });
+                            });
+                          }
+
+                          onMatchingPairOptionsChange(activeQuestionIndex, options);
+                        }
+                        // Trigger preview update
+                        triggerPreviewUpdate();
+                      }}
+                      onRefreshActivity={async () => {
+                        // Trigger preview update after refresh
+                        triggerPreviewUpdate();
+                      }}
                     />
                   </div>
                 ) : null}
               </div>
 
               {activeQuestion.question_type === 'slide' ||
-              activeQuestion.question_type === 'info_slide' ? (
+                activeQuestion.question_type === 'info_slide' ? (
                 ''
               ) : (
                 <div>
@@ -2668,7 +3152,7 @@ export function QuestionSettings({
             {/* Design tab: Background, colors, etc */}
 
             {activeQuestion.question_type === 'slide' ||
-            activeQuestion.question_type === 'info_slide' ? (
+              activeQuestion.question_type === 'info_slide' ? (
               <SlideSettings
                 slideId={activity?.id || ''}
                 backgroundColor={backgroundColor}
@@ -2687,7 +3171,7 @@ export function QuestionSettings({
             {/* Metadata tab: title, description, publication status */}
 
             {activeQuestion.question_type === 'slide' ||
-            activeQuestion.question_type === 'info_slide' ? (
+              activeQuestion.question_type === 'info_slide' ? (
               <AnimationToolbar
                 slideId={activity?.id || ''}
                 slideElements={slideElements[activity?.id] || []}
