@@ -104,6 +104,7 @@ export function MatchingPairPreview({
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showDragPreview, setShowDragPreview] = useState(false);
 
   // Refs for DOM manipulation
   const svgRef = useRef<SVGSVGElement>(null);
@@ -120,6 +121,9 @@ export function MatchingPairPreview({
     startItem: null,
     currentMousePos: null,
   });
+
+  // Thêm ref để lưu timer
+  const dragPreviewTimerRef = useRef<NodeJS.Timeout>();
 
   // Get matching data from the question with fallback
   const matchingData = useMemo(() => {
@@ -364,6 +368,17 @@ export function MatchingPairPreview({
       if (previewMode || !editMode || isUpdating) return;
 
       event.preventDefault();
+
+      // Clear timer cũ nếu có
+      if (dragPreviewTimerRef.current) {
+        clearTimeout(dragPreviewTimerRef.current);
+      }
+
+      // Delay hiển thị preview line
+      dragPreviewTimerRef.current = setTimeout(() => {
+        setShowDragPreview(true);
+      }, 150); // Tăng delay lên 150ms
+
       setDragState({
         isDragging: true,
         startItem: { id: itemId, type },
@@ -387,6 +402,13 @@ export function MatchingPairPreview({
 
   const handleMouseUp = useCallback(
     async (type: 'left' | 'right', itemId: string) => {
+      // Clear timer và reset showDragPreview ngay lập tức
+      if (dragPreviewTimerRef.current) {
+        clearTimeout(dragPreviewTimerRef.current);
+        dragPreviewTimerRef.current = undefined;
+      }
+      setShowDragPreview(false);
+
       if (
         !dragState.isDragging ||
         !dragState.startItem ||
@@ -436,6 +458,15 @@ export function MatchingPairPreview({
       handleConnectionOperation,
     ]
   );
+
+  // Thêm cleanup effect
+  useEffect(() => {
+    return () => {
+      if (dragPreviewTimerRef.current) {
+        clearTimeout(dragPreviewTimerRef.current);
+      }
+    };
+  }, []);
 
   // Mouse event listeners
   useEffect(() => {
@@ -1032,10 +1063,12 @@ export function MatchingPairPreview({
             );
           })}
         </g>
-        {/* Drag preview line */}
+        {/* Drag preview line - tạm thời comment out để tránh hiện tượng đường xanh */}
+        {/*
         {dragState.isDragging &&
           dragState.startItem &&
-          dragState.currentMousePos && (
+          dragState.currentMousePos &&
+          showDragPreview && (
             <line
               x1={dragState.startItem.type === 'left' ? '25%' : '75%'}
               y1="50%"
@@ -1047,6 +1080,7 @@ export function MatchingPairPreview({
               opacity="0.7"
             />
           )}
+        */}
       </svg>
 
       {!previewMode && (
