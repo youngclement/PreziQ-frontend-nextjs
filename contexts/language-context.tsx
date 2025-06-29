@@ -67,7 +67,7 @@ i18next
           heroTitle: 'Present Like a',
           presentationTitle: 'Professional',
           heroSubtitle:
-            "Transform presentations into engaging, interactive experiences with PreziQ!'s real-time gamified platform",
+            "Elevate presentations with PreziQ!'s interactive, real-time gamified platform",
           getStarted: 'Get Started',
           learnMore: 'Learn More',
 
@@ -1474,7 +1474,7 @@ i18next
           heroTitle: 'Thuyết trình như một',
           presentationTitle: 'Chuyên gia',
           heroSubtitle:
-            'Biến các bài thuyết trình thành trải nghiệm tương tác hấp dẫn với nền tảng game hóa thời gian thực của PreziQ!',
+            'Nâng tầm thuyết trình với nền tảng tương tác, game hóa thời gian thực của PreziQ!',
           getStarted: 'Bắt đầu ngay',
           learnMore: 'Tìm hiểu thêm',
 
