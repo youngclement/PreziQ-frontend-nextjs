@@ -510,39 +510,56 @@ export function useQuestionOperations(
           break;
 
         case 'matching_pair':
-          // Set up matching pair question
+          // Không tạo dữ liệu mặc định ở client
+          // Chỉ tạo structure cơ bản
           updatedQuestions[questionIndex].quizMatchingPairAnswer = {
             quizMatchingPairAnswerId: '',
-            leftColumnName: 'Column A',
-            rightColumnName: 'Column B',
-            items: [
-              {
-                quizMatchingPairItemId: '',
-                content: 'Item 1',
-                isLeftColumn: true,
-                displayOrder: 0,
-              },
-              {
-                quizMatchingPairItemId: '',
-                content: 'Item 2',
-                isLeftColumn: true,
-                displayOrder: 1,
-              },
-              {
-                quizMatchingPairItemId: '',
-                content: 'Match 1',
-                isLeftColumn: false,
-                displayOrder: 0,
-              },
-              {
-                quizMatchingPairItemId: '',
-                content: 'Match 2',
-                isLeftColumn: false,
-                displayOrder: 1,
-              },
-            ],
+            leftColumnName: 'Countries',
+            rightColumnName: 'Capitals',
+            items: [],
             connections: [],
           };
+
+          // Gọi API để lấy dữ liệu từ server
+          const targetActivity = activities.find(
+            (a) => a.id === updatedQuestions[questionIndex].activity_id
+          );
+          if (targetActivity) {
+            try {
+              // Gọi API để lấy dữ liệu activity từ server
+              const response = await activitiesApi.getActivityById(
+                targetActivity.id
+              );
+
+              if (response?.data?.data?.quiz?.quizMatchingPairAnswer) {
+                const serverData =
+                  response.data.data.quiz.quizMatchingPairAnswer;
+
+                // Cập nhật local state với dữ liệu từ server
+                updatedQuestions[questionIndex].quizMatchingPairAnswer =
+                  serverData;
+
+                console.log(
+                  '✅ Loaded matching pair data from server:',
+                  serverData
+                );
+              } else {
+                console.log(
+                  '⚠️ No matching pair data found on server, using default structure'
+                );
+              }
+
+              // Refresh data để đảm bảo đồng bộ
+              if (refreshMatchingPairData) {
+                await refreshMatchingPairData(targetActivity.id);
+              }
+            } catch (error) {
+              console.error(
+                'Error loading matching pair data from server:',
+                error
+              );
+            }
+          }
           break;
 
         case 'location':
@@ -656,6 +673,13 @@ export function useQuestionOperations(
                 currentQuestion.quizMatchingPairAnswer.rightColumnName,
               quizMatchingPairAnswer: currentQuestion.quizMatchingPairAnswer,
             });
+
+            console.log('✅ Matching pair data updated on server');
+
+            // Refresh data sau khi tạo/cập nhật
+            if (refreshMatchingPairData) {
+              await refreshMatchingPairData(targetActivity.id);
+            }
           }
           break;
 
@@ -1176,6 +1200,39 @@ export function useQuestionOperations(
     }
   };
 
+  /**
+   * Load matching pair data from server by activity ID
+   */
+  const loadMatchingPairDataFromServer = async (activityId: string) => {
+    try {
+      const response = await activitiesApi.getActivityById(activityId);
+
+      if (response?.data?.data?.quiz?.quizMatchingPairAnswer) {
+        const serverData = response.data.data.quiz.quizMatchingPairAnswer;
+
+        // Cập nhật questions state
+        const updatedQuestions = [...questions];
+        const questionIndex = updatedQuestions.findIndex(
+          (q) => q.activity_id === activityId
+        );
+
+        if (questionIndex !== -1) {
+          updatedQuestions[questionIndex] = {
+            ...updatedQuestions[questionIndex],
+            quizMatchingPairAnswer: serverData,
+          };
+          setQuestions(updatedQuestions);
+        }
+
+        console.log('✅ Loaded matching pair data from server:', serverData);
+        return serverData;
+      }
+    } catch (error) {
+      console.error('Error loading matching pair data from server:', error);
+    }
+    return null;
+  };
+
   return {
     timeLimit,
     setTimeLimit,
@@ -1188,5 +1245,6 @@ export function useQuestionOperations(
     handleTimeLimitChange,
     handleAddLocationQuestion,
     handleMatchingPairChange,
+    loadMatchingPairDataFromServer,
   };
 }

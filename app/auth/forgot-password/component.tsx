@@ -67,20 +67,20 @@ export default function ForgotPasswordDialog({
             {t('forgotPasswordDescription')}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleForgotPassword} className='space-y-4'>
-          <div className='space-y-2'>
-            <Label htmlFor='email'>{t('email')}</Label>
+        <form onSubmit={handleForgotPassword} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">{t('email')}</Label>
             <Input
-              id='email'
+              id="email"
               placeholder={t('emailPlaceholderForgot')}
-              type='email'
+              type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className='focus:outline-none'
+              className="focus:outline-none shadow-sm border-gray-500"
             />
           </div>
-          <Button type='submit' className='w-full' disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? t('sending') : t('sendResetLink')}
           </Button>
         </form>
