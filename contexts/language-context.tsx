@@ -67,7 +67,7 @@ i18next
           heroTitle: 'Present Like a',
           presentationTitle: 'Professional',
           heroSubtitle:
-            'Design stunning presentations in minutes with our AI-powered tools',
+            "Transform presentations into engaging, interactive experiences with PreziQ!'s real-time gamified platform",
           getStarted: 'Get Started',
           learnMore: 'Learn More',
 
@@ -1474,7 +1474,7 @@ i18next
           heroTitle: 'Thuyết trình như một',
           presentationTitle: 'Chuyên gia',
           heroSubtitle:
-            'Thiết kế bài thuyết trình tuyệt đẹp trong vài phút với công cụ AI của chúng tôi',
+            'Biến các bài thuyết trình thành trải nghiệm tương tác hấp dẫn với nền tảng game hóa thời gian thực của PreziQ!',
           getStarted: 'Bắt đầu ngay',
           learnMore: 'Tìm hiểu thêm',
 
