@@ -96,15 +96,22 @@ export function MatchingPairPreview({
   onDeleteConnection,
 }: MatchingPairPreviewProps) {
   const { t } = useTranslation();
-  const [connections, setConnections] = useState<QuizMatchingPairConnection[]>(
-    []
-  );
+
+  // Core state management
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
   const [selectedRight, setSelectedRight] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState<string>('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [showDragPreview, setShowDragPreview] = useState(false);
+
+  // Refs for DOM manipulation
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const [dataVersion, setDataVersion] = useState(0);
+  const updateTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Drag state
   const [dragState, setDragState] = useState<{
     isDragging: boolean;
     startItem: { id: string; type: 'left' | 'right' } | null;
@@ -114,16 +121,16 @@ export function MatchingPairPreview({
     startItem: null,
     currentMousePos: null,
   });
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [editingValue, setEditingValue] = useState<string>('');
+
+  // Thêm ref để lưu timer
+  const dragPreviewTimerRef = useRef<NodeJS.Timeout>();
 
   // Get matching data from the question with fallback
   const matchingData = useMemo(() => {
     return question.quizMatchingPairAnswer || question.matching_data;
   }, [question.quizMatchingPairAnswer, question.matching_data]);
 
-  // Create color map for pairs based on connection IDs
+  // Memoized computed values
   const pairColorMap = useMemo(() => {
     const map = new Map<string, string>();
     if (matchingData?.connections) {
@@ -139,47 +146,10 @@ export function MatchingPairPreview({
     return map;
   }, [matchingData?.connections]);
 
-  const connectionColors = [
-    {
-      light: 'bg-red-100 border-red-400 text-red-700',
-      dark: 'dark:bg-rose-500/40 dark:border-rose-300 dark:text-rose-100',
-    },
-    {
-      light: 'bg-blue-100 border-blue-400 text-blue-700',
-      dark: 'dark:bg-cyan-500/40 dark:border-cyan-300 dark:text-cyan-100',
-    },
-    {
-      light: 'bg-yellow-100 border-yellow-400 text-yellow-700',
-      dark: 'dark:bg-amber-400/30 dark:border-amber-200 dark:text-amber-50',
-    },
-    {
-      light: 'bg-green-100 border-green-400 text-green-700',
-      dark: 'dark:bg-lime-500/30 dark:border-lime-300 dark:text-lime-100',
-    },
-    {
-      light: 'bg-purple-100 border-purple-400 text-purple-700',
-      dark: 'dark:bg-violet-500/30 dark:border-violet-300 dark:text-violet-100',
-    },
-    {
-      light: 'bg-pink-100 border-pink-400 text-pink-700',
-      dark: 'dark:bg-fuchsia-500/30 dark:border-fuchsia-300 dark:text-fuchsia-100',
-    },
-  ];
-
-  // State for shuffled columns - only shuffle once per data update
-  const [shuffledColumnA, setShuffledColumnA] = useState<
-    QuizMatchingPairItem[]
-  >([]);
-  const [shuffledColumnB, setShuffledColumnB] = useState<
-    QuizMatchingPairItem[]
-  >([]);
-
-  // Update columns when matching data changes
-  useEffect(() => {
+  // Memoized column data to prevent unnecessary re-renders
+  const { shuffledColumnA, shuffledColumnB } = useMemo(() => {
     if (!matchingData?.items) {
-      setShuffledColumnA([]);
-      setShuffledColumnB([]);
-      return;
+      return { shuffledColumnA: [], shuffledColumnB: [] };
     }
 
     const columnA = matchingData.items
@@ -190,245 +160,232 @@ export function MatchingPairPreview({
       .filter((item) => !item.isLeftColumn)
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
 
-    // Only shuffle if in preview mode
-    if (previewMode) {
-      setShuffledColumnA(shuffleArray(columnA));
-      setShuffledColumnB(shuffleArray(columnB));
-    } else {
-      setShuffledColumnA(columnA);
-      setShuffledColumnB(columnB);
-    }
-
-    // Update data version to trigger re-render
-    setDataVersion((prev) => prev + 1);
+    return {
+      shuffledColumnA: previewMode ? shuffleArray(columnA) : columnA,
+      shuffledColumnB: previewMode ? shuffleArray(columnB) : columnB,
+    };
   }, [matchingData?.items, previewMode, settingsUpdateTrigger]);
 
-  // Update connections when matching data changes
-  useEffect(() => {
-    if (matchingData?.connections) {
-      setConnections(matchingData.connections);
-    }
-  }, [matchingData?.connections, settingsUpdateTrigger]);
+  // Memoized valid connections
+  const validConnections = useMemo(() => {
+    if (!matchingData?.items || !matchingData?.connections) return [];
 
-  // Update container size and handle resize
-  useEffect(() => {
-    const updateSize = () => {
-      if (containerRef.current) {
-        const { width, height } = containerRef.current.getBoundingClientRect();
-        setContainerSize({ width, height });
-      }
-    };
+    const existingItemIds = new Set(
+      matchingData.items.map((item) => item.quizMatchingPairItemId)
+    );
 
-    updateSize();
-    window.addEventListener('resize', updateSize);
+    return matchingData.connections.filter(
+      (conn) =>
+        conn.leftItem?.quizMatchingPairItemId &&
+        conn.rightItem?.quizMatchingPairItemId &&
+        existingItemIds.has(conn.leftItem.quizMatchingPairItemId) &&
+        existingItemIds.has(conn.rightItem.quizMatchingPairItemId)
+    );
+  }, [matchingData?.items, matchingData?.connections]);
 
-    const resizeObserver = new ResizeObserver(updateSize);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateSize);
-      resizeObserver.disconnect();
-    };
-  }, []);
-
-  // Handle item click for edit mode
-  const handleItemClick = useCallback(
-    async (type: 'left' | 'right', itemId: string) => {
-      if (previewMode || !editMode) return;
-
-      if (selectedLeft && selectedRight) {
-        // Kiểm tra nếu đã có connection giữa hai item này
-        const leftItemId = type === 'left' ? itemId : selectedLeft;
-        const rightItemId = type === 'right' ? itemId : selectedRight;
-
-        const existingConnection = connections.find(
-          (c) =>
-            c.leftItem.quizMatchingPairItemId === leftItemId &&
-            c.rightItem.quizMatchingPairItemId === rightItemId
-        );
-
-        if (existingConnection && question.activity_id) {
-          // Nếu đã có connection, thì xóa connection này
-          if (existingConnection.quizMatchingPairConnectionId) {
-            try {
-              await activitiesApi.deleteMatchingPairConnection(
-                question.activity_id,
-                existingConnection.quizMatchingPairConnectionId
-              );
-              setConnections((prev) =>
-                prev.filter(
-                  (c) =>
-                    c.quizMatchingPairConnectionId !==
-                    existingConnection.quizMatchingPairConnectionId
-                )
-              );
-              if (onDeleteConnection) {
-                const payload: ConnectionItemPayload = {
-                  leftItemId,
-                  rightItemId,
-                };
-                onDeleteConnection(payload);
-              }
-            } catch (error) {
-              console.error('Failed to delete connection:', error);
-            }
-          }
-        } else if (!existingConnection && question.activity_id) {
-          // Nếu chưa có connection, thì tạo connection mới
-          try {
-            const payload: ConnectionItemPayload = {
-              leftItemId,
-              rightItemId,
-            };
-
-            await activitiesApi.addMatchingPairConnection(
-              question.activity_id,
-              payload
-            );
-
-            // Refresh data from server
-            const response = await activitiesApi.getActivityById(
-              question.activity_id
-            );
-            const updatedConnections =
-              response.data.data.quiz.quizMatchingPairAnswer?.connections ?? [];
-
-            setConnections(updatedConnections);
-
-            // Update parent component
-            onOptionChange(
-              questionIndex,
-              -1,
-              'update_connections',
-              updatedConnections
-            );
-          } catch (error) {
-            console.error('Failed to create connection:', error);
-          }
-        }
-        setSelectedLeft(null);
-        setSelectedRight(null);
-      } else {
-        // No item selected - select this one
-        if (type === 'left') setSelectedLeft(itemId);
-        else setSelectedRight(itemId);
-      }
-    },
-    [
-      previewMode,
-      editMode,
-      selectedLeft,
-      selectedRight,
-      connections,
-      question.activity_id,
-      questionIndex,
-      onOptionChange,
-      onDeleteConnection,
-    ]
-  );
-
-  // Calculate connection path for SVG
+  // Optimized connection path calculation
   const getConnectionPath = useCallback(
     (leftItemId: string, rightItemId: string) => {
       const leftElement = document.getElementById(`item-${leftItemId}`);
       const rightElement = document.getElementById(`item-${rightItemId}`);
       const svgElement = svgRef.current;
 
-      if (!leftElement || !rightElement || !svgElement) return '';
+      if (!leftElement || !rightElement || !svgElement) {
+        return '';
+      }
 
       const svgRect = svgElement.getBoundingClientRect();
       const leftRect = leftElement.getBoundingClientRect();
       const rightRect = rightElement.getBoundingClientRect();
+
+      if (
+        leftRect.width === 0 ||
+        rightRect.width === 0 ||
+        svgRect.width === 0
+      ) {
+        return '';
+      }
 
       const startX = leftRect.right - svgRect.left;
       const startY = leftRect.top + leftRect.height / 2 - svgRect.top;
       const endX = rightRect.left - svgRect.left;
       const endY = rightRect.top + rightRect.height / 2 - svgRect.top;
 
-      // Calculate control points for smooth curve
-      const controlY = startY + (endY - startY) / 2;
-      const controlX1 = startX + (endX - startX) * 0.25;
-      const controlX2 = startX + (endX - startX) * 0.75;
+      if (isNaN(startX) || isNaN(startY) || isNaN(endX) || isNaN(endY)) {
+        return '';
+      }
 
-      return `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
+      const distance = endX - startX;
+      const curveOffset = Math.min(distance * 0.25, 80);
+
+      const controlX1 = startX + curveOffset;
+      const controlX2 = endX - curveOffset;
+      const controlY1 = startY;
+      const controlY2 = endY;
+
+      return `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
     },
     []
   );
 
-  // Get connections for a specific item
-  const getItemConnections = useCallback(
-    (itemId: string): QuizMatchingPairConnection[] => {
-      return connections.filter(
-        (c) =>
-          c.leftItem.quizMatchingPairItemId === itemId ||
-          c.rightItem.quizMatchingPairItemId === itemId
-      );
-    },
-    [connections]
-  );
+  // Optimized connection management
+  const handleConnectionOperation = useCallback(
+    async (
+      operation: 'add' | 'delete',
+      leftItemId: string,
+      rightItemId: string,
+      connectionId?: string
+    ) => {
+      if (isUpdating) return;
 
-  // Count connections for a specific item
-  const connectionCount = useCallback(
-    (itemId: string): number => {
-      return connections.filter(
-        (c) =>
-          c.leftItem.quizMatchingPairItemId === itemId ||
-          c.rightItem.quizMatchingPairItemId === itemId
-      ).length;
-    },
-    [connections]
-  );
+      setIsUpdating(true);
 
-  const handleConnectionClick = useCallback(
-    async (conn: QuizMatchingPairConnection) => {
-      console.log('Clicked connection:', conn);
-      const connectionId = conn.quizMatchingPairConnectionId;
-      // const activityId = question.activity_id;
-      console.log(activityId);
-
-      if (connectionId && activityId) {
-        try {
-          // Call API to delete connection
+      try {
+        if (operation === 'delete' && connectionId && activityId) {
           await activitiesApi.deleteMatchingPairConnection(
             activityId,
             connectionId
           );
-
-          // Update local state immediately
-          setConnections((prev) =>
-            prev.filter((c) => c.quizMatchingPairConnectionId !== connectionId)
-          );
-
-          // Call the callback to update parent component
-          if (onDeleteConnection) {
-            const payload: ConnectionItemPayload = {
-              leftItemId: conn.leftItem.quizMatchingPairItemId!,
-              rightItemId: conn.rightItem.quizMatchingPairItemId!,
-            };
-            onDeleteConnection(payload);
-          }
-        } catch (error) {
-          console.error('Failed to delete connection:', error);
+        } else if (operation === 'add' && activityId) {
+          await activitiesApi.addMatchingPairConnection(activityId, {
+            leftItemId,
+            rightItemId,
+          });
         }
+
+        // Single API call to get fresh data
+        const response = await activitiesApi.getActivityById(activityId);
+        const updatedConnections =
+          response.data.data.quiz.quizMatchingPairAnswer?.connections ?? [];
+
+        // Update parent component once
+        onOptionChange(
+          questionIndex,
+          -1,
+          'update_connections',
+          updatedConnections
+        );
+
+        // Call callback if provided
+        if (operation === 'delete' && onDeleteConnection) {
+          onDeleteConnection({ leftItemId, rightItemId });
+        }
+      } catch (error) {
+        console.error(`Failed to ${operation} connection:`, error);
+      } finally {
+        setIsUpdating(false);
       }
     },
-    [previewMode, editMode, question.activity_id, onDeleteConnection]
+    [isUpdating, activityId, questionIndex, onOptionChange, onDeleteConnection]
   );
 
+  // Optimized item click handler
+  const handleItemClick = useCallback(
+    async (type: 'left' | 'right', itemId: string) => {
+      if (previewMode || !editMode || isUpdating) return;
+
+      // Handle same type selection
+      if (type === 'left' && selectedLeft) {
+        setSelectedLeft(itemId);
+        return;
+      }
+      if (type === 'right' && selectedRight) {
+        setSelectedRight(itemId);
+        return;
+      }
+
+      // Handle initial selection
+      if (!selectedLeft && !selectedRight) {
+        if (type === 'left') setSelectedLeft(itemId);
+        else setSelectedRight(itemId);
+        return;
+      }
+
+      // Handle cross-column selection
+      if (
+        (selectedLeft && type === 'right') ||
+        (selectedRight && type === 'left')
+      ) {
+        const leftItemId = type === 'left' ? itemId : selectedLeft!;
+        const rightItemId = type === 'right' ? itemId : selectedRight!;
+
+        const existingConnection = validConnections.find(
+          (c) =>
+            c.leftItem.quizMatchingPairItemId === leftItemId &&
+            c.rightItem.quizMatchingPairItemId === rightItemId
+        );
+
+        if (existingConnection) {
+          await handleConnectionOperation(
+            'delete',
+            leftItemId,
+            rightItemId,
+            existingConnection.quizMatchingPairConnectionId
+          );
+        } else {
+          await handleConnectionOperation('add', leftItemId, rightItemId);
+        }
+
+        setSelectedLeft(null);
+        setSelectedRight(null);
+      }
+    },
+    [
+      previewMode,
+      editMode,
+      isUpdating,
+      selectedLeft,
+      selectedRight,
+      validConnections,
+      handleConnectionOperation,
+    ]
+  );
+
+  // Optimized connection click handler
+  const handleConnectionClick = useCallback(
+    async (conn: QuizMatchingPairConnection) => {
+      if (isUpdating) return;
+
+      const connectionId = conn.quizMatchingPairConnectionId;
+      const leftItemId = conn.leftItem.quizMatchingPairItemId!;
+      const rightItemId = conn.rightItem.quizMatchingPairItemId!;
+
+      if (connectionId && activityId) {
+        await handleConnectionOperation(
+          'delete',
+          leftItemId,
+          rightItemId,
+          connectionId
+        );
+      }
+    },
+    [isUpdating, activityId, handleConnectionOperation]
+  );
+
+  // Optimized drag handlers
   const handleMouseDown = useCallback(
     (type: 'left' | 'right', itemId: string, event: React.MouseEvent) => {
-      if (previewMode || !editMode) return;
+      if (previewMode || !editMode || isUpdating) return;
 
       event.preventDefault();
+
+      // Clear timer cũ nếu có
+      if (dragPreviewTimerRef.current) {
+        clearTimeout(dragPreviewTimerRef.current);
+      }
+
+      // Delay hiển thị preview line
+      dragPreviewTimerRef.current = setTimeout(() => {
+        setShowDragPreview(true);
+      }, 150); // Tăng delay lên 150ms
+
       setDragState({
         isDragging: true,
         startItem: { id: itemId, type },
         currentMousePos: { x: event.clientX, y: event.clientY },
       });
     },
-    [previewMode, editMode]
+    [previewMode, editMode, isUpdating]
   );
 
   const handleMouseMove = useCallback(
@@ -445,11 +402,19 @@ export function MatchingPairPreview({
 
   const handleMouseUp = useCallback(
     async (type: 'left' | 'right', itemId: string) => {
+      // Clear timer và reset showDragPreview ngay lập tức
+      if (dragPreviewTimerRef.current) {
+        clearTimeout(dragPreviewTimerRef.current);
+        dragPreviewTimerRef.current = undefined;
+      }
+      setShowDragPreview(false);
+
       if (
         !dragState.isDragging ||
         !dragState.startItem ||
         previewMode ||
-        !editMode
+        !editMode ||
+        isUpdating
       ) {
         setDragState({
           isDragging: false,
@@ -459,7 +424,6 @@ export function MatchingPairPreview({
         return;
       }
 
-      // Only create connection if dragging between different columns
       if (dragState.startItem.type !== type) {
         const leftItemId =
           dragState.startItem.type === 'left' ? dragState.startItem.id : itemId;
@@ -468,38 +432,14 @@ export function MatchingPairPreview({
             ? dragState.startItem.id
             : itemId;
 
-        // Check if connection already exists
-        const existingConnection = connections.find(
+        const existingConnection = validConnections.find(
           (c) =>
             c.leftItem.quizMatchingPairItemId === leftItemId &&
             c.rightItem.quizMatchingPairItemId === rightItemId
         );
 
-        if (!existingConnection && question.activity_id) {
-          try {
-            const payload: ConnectionItemPayload = { leftItemId, rightItemId };
-            await activitiesApi.addMatchingPairConnection(
-              question.activity_id,
-              payload
-            );
-
-            // Refresh data
-            const response = await activitiesApi.getActivityById(
-              question.activity_id
-            );
-            const updatedConnections =
-              response.data.data.quiz.quizMatchingPairAnswer?.connections ?? [];
-
-            setConnections(updatedConnections);
-            onOptionChange(
-              questionIndex,
-              -1,
-              'update_connections',
-              updatedConnections
-            );
-          } catch (error) {
-            console.error('Failed to create connection:', error);
-          }
+        if (!existingConnection) {
+          await handleConnectionOperation('add', leftItemId, rightItemId);
         }
       }
 
@@ -513,13 +453,22 @@ export function MatchingPairPreview({
       dragState,
       previewMode,
       editMode,
-      connections,
-      question.activity_id,
-      questionIndex,
-      onOptionChange,
+      isUpdating,
+      validConnections,
+      handleConnectionOperation,
     ]
   );
 
+  // Thêm cleanup effect
+  useEffect(() => {
+    return () => {
+      if (dragPreviewTimerRef.current) {
+        clearTimeout(dragPreviewTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Mouse event listeners
   useEffect(() => {
     if (dragState.isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
@@ -544,6 +493,107 @@ export function MatchingPairPreview({
     }
   }, [dragState.isDragging, handleMouseMove]);
 
+  // Optimized item operations
+  const handleAddPair = useCallback(async () => {
+    if (!question.activity_id || isUpdating) return;
+
+    setIsUpdating(true);
+    try {
+      await activitiesApi.addMatchingPair(question.activity_id);
+      const response = await activitiesApi.getActivityById(
+        question.activity_id
+      );
+      const updatedItems =
+        response.data.data.quiz.quizMatchingPairAnswer?.items ?? [];
+      onOptionChange(questionIndex, -1, 'update_items', updatedItems);
+    } catch (error) {
+      console.error('Failed to add pair:', error);
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [question.activity_id, isUpdating, questionIndex, onOptionChange]);
+
+  const handleDeleteItem = useCallback(
+    async (itemId: string) => {
+      if (!question.activity_id || isUpdating) return;
+
+      setIsUpdating(true);
+      try {
+        await activitiesApi.deleteMatchingPairItem(
+          question.activity_id,
+          itemId
+        );
+        const response = await activitiesApi.getActivityById(
+          question.activity_id
+        );
+        const updatedItems =
+          response.data.data.quiz.quizMatchingPairAnswer?.items ?? [];
+        onOptionChange(questionIndex, -1, 'update_items', updatedItems);
+      } catch (error) {
+        console.error('Failed to delete item:', error);
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [question.activity_id, isUpdating, questionIndex, onOptionChange]
+  );
+
+  // Optimized item editing
+  const handleInputFocus = useCallback((itemId: string, value: string) => {
+    setEditingItemId(itemId);
+    setEditingValue(value);
+  }, []);
+
+  const handleInputBlur = useCallback(
+    async (itemId: string) => {
+      if (!question.activity_id || !editingItemId || isUpdating) return;
+      if (editingValue.trim() === '') return;
+
+      setIsUpdating(true);
+      try {
+        const item = matchingData?.items?.find(
+          (it) => it.quizMatchingPairItemId === itemId
+        );
+        if (!item) return;
+
+        const payload = {
+          content: editingValue,
+          isLeftColumn: item.isLeftColumn,
+          displayOrder: item.displayOrder,
+        };
+
+        await activitiesApi.updateReorderQuizItem(
+          question.activity_id,
+          itemId,
+          payload
+        );
+
+        const response = await activitiesApi.getActivityById(
+          question.activity_id
+        );
+        const updatedItems =
+          response.data.data.quiz.quizMatchingPairAnswer?.items ?? [];
+        onOptionChange(questionIndex, -1, 'update_items', updatedItems);
+      } catch (error) {
+        console.error('Failed to update item:', error);
+      } finally {
+        setIsUpdating(false);
+        setEditingItemId(null);
+        setEditingValue('');
+      }
+    },
+    [
+      question.activity_id,
+      editingItemId,
+      editingValue,
+      isUpdating,
+      matchingData?.items,
+      questionIndex,
+      onOptionChange,
+    ]
+  );
+
+  // Utility functions
   const toggleExpand = useCallback((itemId: string) => {
     setExpandedItems((prev) => {
       const newSet = new Set(prev);
@@ -555,108 +605,6 @@ export function MatchingPairPreview({
       return newSet;
     });
   }, []);
-
-  const handleAddPair = async () => {
-    if (!question.activity_id) return;
-    try {
-      await activitiesApi.addMatchingPair(question.activity_id);
-      // Refresh data
-      const response = await activitiesApi.getActivityById(
-        question.activity_id
-      );
-      const updatedItems =
-        response.data.data.quiz.quizMatchingPairAnswer?.items ?? [];
-      onOptionChange(questionIndex, -1, 'update_items', updatedItems);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDeleteItem = async (itemId: string) => {
-    if (!question.activity_id) return;
-    try {
-      await activitiesApi.deleteMatchingPairItem(question.activity_id, itemId);
-      const response = await activitiesApi.getActivityById(
-        question.activity_id
-      );
-      const updatedItems =
-        response.data.data.quiz.quizMatchingPairAnswer?.items ?? [];
-      onOptionChange(questionIndex, -1, 'update_items', updatedItems);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleEditItem = useCallback(
-    async (itemId: string, newContent: string) => {
-      if (!question.activity_id || !matchingData?.items) return;
-      try {
-        const item = matchingData.items.find(
-          (it) => it.quizMatchingPairItemId === itemId
-        );
-        if (!item) return;
-
-        const payload = {
-          content: newContent,
-          isLeftColumn: item.isLeftColumn,
-          displayOrder: item.displayOrder,
-        };
-        await activitiesApi.updateReorderQuizItem(
-          question.activity_id,
-          itemId,
-          payload
-        );
-        // Fetch lại dữ liệu mới
-        const response = await activitiesApi.getActivityById(
-          question.activity_id
-        );
-        const updatedItems =
-          response.data.data.quiz.quizMatchingPairAnswer?.items ?? [];
-        onOptionChange(questionIndex, -1, 'update_items', updatedItems);
-      } catch (e) {
-        console.error(e);
-      }
-    },
-    [question.activity_id, matchingData?.items, onOptionChange, questionIndex]
-  );
-
-  const handleInputFocus = (itemId: string, value: string) => {
-    setEditingItemId(itemId);
-    setEditingValue(value);
-  };
-
-  const handleInputBlur = async (itemId: string) => {
-    if (!question.activity_id || !editingItemId) return;
-    if (editingValue.trim() === '') return;
-    try {
-      const item = matchingData?.items?.find(
-        (it) => it.quizMatchingPairItemId === itemId
-      );
-      if (!item) return;
-      const payload = {
-        content: editingValue,
-        isLeftColumn: item.isLeftColumn,
-        displayOrder: item.displayOrder,
-      };
-      await activitiesApi.updateReorderQuizItem(
-        question.activity_id,
-        itemId,
-        payload
-      );
-      // Refresh data
-      const response = await activitiesApi.getActivityById(
-        question.activity_id
-      );
-      const updatedItems =
-        response.data.data.quiz.quizMatchingPairAnswer?.items ?? [];
-      onOptionChange(questionIndex, -1, 'update_items', updatedItems);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setEditingItemId(null);
-      setEditingValue('');
-    }
-  };
 
   // If no matching data, show empty state
   if (!matchingData) {
@@ -676,7 +624,6 @@ export function MatchingPairPreview({
         viewMode === 'tablet' && 'p-6',
         viewMode === 'mobile' && 'p-4'
       )}
-      key={`preview-${dataVersion}-${settingsUpdateTrigger}`}
     >
       <div className="flex justify-around items-start gap-4 md:gap-8">
         {/* Column A */}
@@ -685,8 +632,8 @@ export function MatchingPairPreview({
             {matchingData.leftColumnName || leftColumnName}
           </h3>
           <div className="w-full space-y-2">
-            {shuffledColumnA.map((item, index) => {
-              const connection = connections.find(
+            {shuffledColumnA.map((item) => {
+              const connection = validConnections.find(
                 (c) =>
                   c.leftItem.quizMatchingPairItemId ===
                   item.quizMatchingPairItemId
@@ -696,7 +643,7 @@ export function MatchingPairPreview({
                 : undefined;
 
               const isSelected = selectedLeft === item.quizMatchingPairItemId;
-              const isConnected = connections.some(
+              const isConnected = validConnections.some(
                 (conn) =>
                   conn.leftItem.quizMatchingPairItemId ===
                     item.quizMatchingPairItemId ||
@@ -859,8 +806,8 @@ export function MatchingPairPreview({
             {matchingData.rightColumnName || rightColumnName}
           </h3>
           <div className="w-full space-y-2">
-            {shuffledColumnB.map((item, index) => {
-              const connection = connections.find(
+            {shuffledColumnB.map((item) => {
+              const connection = validConnections.find(
                 (c) =>
                   c.rightItem.quizMatchingPairItemId ===
                   item.quizMatchingPairItemId
@@ -870,7 +817,7 @@ export function MatchingPairPreview({
                 : undefined;
 
               const isSelected = selectedRight === item.quizMatchingPairItemId;
-              const isConnected = connections.some(
+              const isConnected = validConnections.some(
                 (conn) =>
                   conn.leftItem.quizMatchingPairItemId ===
                     item.quizMatchingPairItemId ||
@@ -1033,7 +980,6 @@ export function MatchingPairPreview({
         ref={svgRef}
         className="absolute top-0 left-0 w-full h-full pointer-events-none"
         style={{ zIndex: 20 }}
-        key={`svg-${dataVersion}-${settingsUpdateTrigger}`}
       >
         <defs>
           {PAIR_COLORS.map((color) => (
@@ -1057,21 +1003,25 @@ export function MatchingPairPreview({
           ))}
         </defs>
         <g>
-          {connections.map((conn, index) => {
+          {validConnections.map((conn, index) => {
             const pathColor = conn.quizMatchingPairConnectionId
               ? pairColorMap.get(conn.quizMatchingPairConnectionId)
               : '#3b82f6';
 
+            const pathData = getConnectionPath(
+              conn.leftItem.quizMatchingPairItemId!,
+              conn.rightItem.quizMatchingPairItemId!
+            );
+
+            if (!pathData) return null;
+
             return (
               <g
-                key={`${conn.leftItem.quizMatchingPairItemId}-${conn.rightItem.quizMatchingPairItemId}-${index}-${dataVersion}`}
+                key={`${conn.leftItem.quizMatchingPairItemId}-${conn.rightItem.quizMatchingPairItemId}-${index}`}
               >
-                {/* Path phụ để bắt sự kiện click, stroke trong suốt, strokeWidth lớn */}
+                {/* Invisible path for click detection */}
                 <path
-                  d={getConnectionPath(
-                    conn.leftItem.quizMatchingPairItemId!,
-                    conn.rightItem.quizMatchingPairItemId!
-                  )}
+                  d={pathData}
                   stroke="transparent"
                   strokeWidth="16"
                   fill="none"
@@ -1084,19 +1034,16 @@ export function MatchingPairPreview({
                   }}
                   className="pointer-events-auto"
                 />
-                {/* Path chính để hiển thị */}
+                {/* Visible connection path */}
                 <motion.path
-                  d={getConnectionPath(
-                    conn.leftItem.quizMatchingPairItemId!,
-                    conn.rightItem.quizMatchingPairItemId!
-                  )}
+                  d={pathData}
                   className="stroke-2 transition-all duration-300 pointer-events-auto"
                   stroke={pathColor}
                   strokeWidth="2.5"
                   fill="none"
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
                   markerStart={
                     pathColor
                       ? `url(#marker-${pathColor.replace('#', '')})`
@@ -1116,10 +1063,12 @@ export function MatchingPairPreview({
             );
           })}
         </g>
-        {/* Drag preview line */}
+        {/* Drag preview line - tạm thời comment out để tránh hiện tượng đường xanh */}
+        {/*
         {dragState.isDragging &&
           dragState.startItem &&
-          dragState.currentMousePos && (
+          dragState.currentMousePos &&
+          showDragPreview && (
             <line
               x1={dragState.startItem.type === 'left' ? '25%' : '75%'}
               y1="50%"
@@ -1131,6 +1080,7 @@ export function MatchingPairPreview({
               opacity="0.7"
             />
           )}
+        */}
       </svg>
 
       {!previewMode && (
@@ -1155,8 +1105,9 @@ export function MatchingPairPreview({
       {!previewMode && editMode && (
         <div className="w-full flex justify-center mt-4">
           <button
-            className="py-2 px-4 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+            className="py-2 px-4 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
             onClick={handleAddPair}
+            disabled={isUpdating}
           >
             + Add Pair
           </button>

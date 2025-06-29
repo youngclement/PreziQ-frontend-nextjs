@@ -50,7 +50,6 @@ export default function ResetPasswordPage() {
 
       toast({ title: res.data.message });
       router.push('/auth');
-
     } catch (error: any) {
       const errorMessages = error.response?.data?.errors || [];
       console.log('Error', error.response.data.message);
@@ -83,7 +82,6 @@ export default function ResetPasswordPage() {
     } finally {
       setIsLoading(false);
     }
-
   };
 
   return (
@@ -104,7 +102,7 @@ export default function ResetPasswordPage() {
                 {...register('newPassword', {
                   required: 'New password is required',
                 })}
-                className=""
+                className="shadow-sm border-gray-500"
               />
               {errors.newPassword && (
                 <p className="text-red-500 text-sm">
@@ -121,6 +119,7 @@ export default function ResetPasswordPage() {
                 {...register('confirmPassword', {
                   required: 'Confirm password is required',
                 })}
+                className="shadow-sm border-gray-500"
               />
               {errors.confirmPassword && (
                 <p className="text-red-500 text-sm">
