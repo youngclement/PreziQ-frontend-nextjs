@@ -61,25 +61,58 @@ export default function HostRankingChange({
       const positionData =
         sessionWebSocket.getRankingPositionData(currentActivityId);
 
-      // Với logic mới, dữ liệu previous có thể là null (quiz đầu tiên) hoặc có giá trị (quiz tiếp theo)
-      // Chúng ta không cần gán thủ công current làm previous nữa
-      setPositionMap(positionData);
-
-      // Thêm log để debug vấn đề với positionMap
-      console.log('[DEBUG] Khởi tạo positionMap trong useEffect:', {
+      console.log('[HostRankingChange] Dữ liệu vị trí ban đầu:', {
         positionData,
         currentActivityId,
         hasValidCurrent:
           positionData && Object.keys(positionData.current || {}).length > 0,
         hasPrevious: positionData && positionData.previous !== null,
+        currentDetails: positionData?.current,
+        previousDetails: positionData?.previous,
       });
+
+      // Với logic mới, dữ liệu previous có thể là null (quiz đầu tiên) hoặc có giá trị (quiz tiếp theo)
+      // Chúng ta không cần gán thủ công current làm previous nữa
+      setPositionMap(positionData);
 
       const directData = sessionWebSocket.publishRankingData(currentActivityId);
       setRankingData(directData);
-      console.log('[HostRankingChange] Đã nhận dữ liệu trực tiếp:', directData);
+
+      console.log('[HostRankingChange] Đã nhận dữ liệu trực tiếp:', {
+        directData,
+        participantCount: directData?.participants?.length || 0,
+        changesCount: Object.keys(directData?.changes || {}).length,
+        changes: directData?.changes,
+      });
+
+      // Kiểm tra lại positionMap sau khi publishRankingData
+      const updatedPositionData =
+        sessionWebSocket.getRankingPositionData(currentActivityId);
+      console.log(
+        '[HostRankingChange] Dữ liệu vị trí sau publishRankingData:',
+        {
+          updatedPositionData,
+          hasChanged:
+            JSON.stringify(positionData) !==
+            JSON.stringify(updatedPositionData),
+        }
+      );
+
+      // Cập nhật lại positionMap nếu có thay đổi
+      if (
+        JSON.stringify(positionData) !== JSON.stringify(updatedPositionData)
+      ) {
+        setPositionMap(updatedPositionData);
+        console.log(
+          '[HostRankingChange] Đã cập nhật positionMap với dữ liệu mới'
+        );
+      }
 
       if (debugMode) {
-        console.log('[HostRankingChange] Position data:', positionData);
+        console.log('[HostRankingChange] Position data chi tiết:', {
+          original: positionData,
+          updated: updatedPositionData,
+        });
       }
     } catch (error) {
       console.error(
@@ -189,9 +222,9 @@ export default function HostRankingChange({
     }
 
     // Tính toán khoảng cách di chuyển dựa trên sự thay đổi vị trí
-    // Quan trọng: current/previous đại diện cho 0-based index trong mảng
-    // previousPos < currentPos: người chơi đã xuống hạng (vị trí index tăng)
-    // previousPos > currentPos: người chơi đã lên hạng (vị trí index giảm)
+    // currentPos và previousPos là 0-based index trong mảng đã sắp xếp
+    // previousPos < currentPos: người chơi đã xuống hạng (vị trí index tăng, từ top xuống bottom)
+    // previousPos > currentPos: người chơi đã lên hạng (vị trí index giảm, từ bottom lên top)
     const positionChange = previousPos - currentPos;
 
     // Ước tính khoảng cách di chuyển dựa trên chiều cao mỗi phần tử + padding
@@ -212,11 +245,11 @@ export default function HostRankingChange({
       };
     }
 
-    // Nếu người dùng lên hạng (di chuyển lên, có nghĩa là giảm index)
+    // Nếu người dùng lên hạng (di chuyển lên, có nghĩa là giảm index, positionChange > 0)
     if (positionChange > 0) {
       return {
         initial: {
-          y: distance, // Bắt đầu từ vị trí cũ (ở dưới)
+          y: distance, // Bắt đầu từ vị trí cũ (ở dưới, distance dương)
           opacity: 0.8,
           backgroundColor: 'rgba(34, 197, 94, 0.2)',
           borderColor: 'rgba(34, 197, 94, 0.5)',
@@ -239,11 +272,11 @@ export default function HostRankingChange({
       };
     }
 
-    // Nếu người dùng xuống hạng (di chuyển xuống, có nghĩa là tăng index)
+    // Nếu người dùng xuống hạng (di chuyển xuống, có nghĩa là tăng index, positionChange < 0)
     if (positionChange < 0) {
       return {
         initial: {
-          y: distance, // Bắt đầu từ vị trí cũ (ở trên)
+          y: distance, // Bắt đầu từ vị trí cũ (ở trên, distance âm)
           opacity: 0.8,
           backgroundColor: 'rgba(239, 68, 68, 0.2)',
           borderColor: 'rgba(239, 68, 68, 0.5)',
@@ -740,19 +773,48 @@ export default function HostRankingChange({
                   {rankingData?.participants.length || 0}
                 </span>
               </p>
+              <p className='mb-1'>
+                Has Previous Data:{' '}
+                <span
+                  className={
+                    positionMap.previous ? 'text-green-300' : 'text-red-300'
+                  }
+                >
+                  {positionMap.previous ? 'Có' : 'Không'}
+                </span>
+              </p>
+            </div>
+
+            {/* Hiển thị danh sách participants hiện tại */}
+            <div className='mb-2'>
+              <p className='text-blue-300 mb-1'>Current Participants:</p>
+              <div className='text-xs bg-slate-800/50 p-1 rounded max-h-20 overflow-y-auto'>
+                {rankingData?.participants
+                  .sort((a, b) => a.realtimeRanking - b.realtimeRanking)
+                  .map((p, idx) => (
+                    <div key={p.displayName} className='flex justify-between'>
+                      <span>
+                        {idx + 1}. {p.displayName}
+                      </span>
+                      <span className='text-amber-300'>
+                        {p.realtimeScore}pts
+                      </span>
+                    </div>
+                  ))}
+              </div>
             </div>
 
             <p className='font-mono mb-1'>Position Map:</p>
             <div className='flex space-x-3'>
               <div className='flex-1'>
                 <p className='text-amber-300 mb-1'>Previous:</p>
-                <pre className='overflow-auto bg-slate-800/50 p-1 rounded'>
+                <pre className='overflow-auto bg-slate-800/50 p-1 rounded text-xs max-h-24'>
                   {JSON.stringify(positionMap.previous, null, 2)}
                 </pre>
               </div>
               <div className='flex-1'>
                 <p className='text-green-300 mb-1'>Current:</p>
-                <pre className='overflow-auto bg-slate-800/50 p-1 rounded'>
+                <pre className='overflow-auto bg-slate-800/50 p-1 rounded text-xs max-h-24'>
                   {JSON.stringify(positionMap.current, null, 2)}
                 </pre>
               </div>
