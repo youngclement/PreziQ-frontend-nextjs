@@ -92,8 +92,8 @@ function SortableItem({
             ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
             : 'border-gray-300 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-700'
         )}
-      >        
-      <Input
+      >
+        <Input
           value={option.option_text}
           onChange={(e) => {
             onOptionChange(index, 'option_text', e.target.value, true);
@@ -137,8 +137,8 @@ export function ReorderOptions({
   onReorder,
 }: ReorderOptionsProps) {
   const { t } = useLanguage();
-  
-  const handleDragEnd = (result: DropResult) => {
+
+  const handleDragEnd = async (result: DropResult) => {
     if (
       !result.destination ||
       result.destination.index === result.source.index
@@ -147,7 +147,8 @@ export function ReorderOptions({
     }
 
     if (onReorder) {
-      onReorder(result.source.index, result.destination.index);
+      // Await in case onReorder returns a Promise (for async state update)
+      await Promise.resolve(onReorder(result.source.index, result.destination.index));
     }
   };
 
@@ -158,7 +159,7 @@ export function ReorderOptions({
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-between items-center mb-2">        
+      <div className="flex justify-between items-center mb-2">
         <Label className="flex items-center text-sm font-medium">
           <MoveVertical className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
           {t('activity.arrangeSteps')}
