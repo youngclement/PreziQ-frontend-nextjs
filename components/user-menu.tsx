@@ -14,6 +14,7 @@ import {
   UserCircle,
   Settings,
   ShieldCheck,
+  History,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -130,6 +131,15 @@ export default function UserMenu() {
           <FolderOpen className='h-4 w-4 mr-2 text-gray-500 dark:text-gray-400' />
           <span className='text-gray-700 dark:text-gray-200'>
             My Collections
+          </span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => router.push('/session-history')}
+          className='flex items-center px-2 py-2 text-sm cursor-pointer rounded-md hover:bg-primary/5 focus:bg-primary/5 transition-colors duration-200'
+        >
+          <History className='h-4 w-4 mr-2 text-gray-500 dark:text-gray-400' />
+          <span className='text-gray-700 dark:text-gray-200'>
+            Session History
           </span>
         </DropdownMenuItem>
         <DropdownMenuItem

@@ -358,7 +358,7 @@ export function QuizMatchingPairViewer({
   }, [connectionsToDisplay]);
 
   const handleItemClick = (type: 'left' | 'right', itemId: string) => {
-    if (isSubmitting || !isParticipating) return;
+    if (isSubmitting || !isParticipating || isSubmitted) return;
 
     const existingConnection = userConnections.find(
       (c) => c.leftId === itemId || c.rightId === itemId
@@ -909,6 +909,7 @@ export function QuizMatchingPairViewer({
                           }
                           onClick={() =>
                             !showCorrectAnswer &&
+                            !isSubmitted &&
                             handleItemClick('left', item.quizMatchingPairItemId)
                           }
                           whileHover={{ scale: 1.02 }}
@@ -978,6 +979,7 @@ export function QuizMatchingPairViewer({
                           }
                           onClick={() =>
                             !showCorrectAnswer &&
+                            !isSubmitted &&
                             handleItemClick(
                               'right',
                               item.quizMatchingPairItemId
