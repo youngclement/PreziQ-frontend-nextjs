@@ -202,66 +202,79 @@ export class LeaderboardCalculations {
         previous: hostRankingData.previous,
         current: hostRankingData.current,
         initialized: hostRankingData.initialized,
+        participantCount: participants.length,
       }
+    );
+
+    // Sắp xếp người chơi theo điểm số giảm dần để đảm bảo thứ tự chính xác
+    const sortedParticipants = [...participants].sort(
+      (a, b) => b.realtimeScore - a.realtimeScore
     );
 
     // Kiểm tra dữ liệu hiện tại
     if (!hostRankingData.current) {
       // Nếu chưa có dữ liệu current, coi tất cả là mới
-      participants.forEach((p) => {
+      sortedParticipants.forEach((p, index) => {
         changes[p.displayName] = {
           previous: null,
-          current: p.realtimeRanking,
+          current: index + 1, // Thứ hạng bắt đầu từ 1
           change: 0,
           direction: 'new',
         };
       });
 
       return {
-        participants,
+        participants: sortedParticipants,
         changes,
       };
     }
 
-    // Sắp xếp người chơi theo thứ hạng hiện tại
-    const sortedParticipants = [...participants].sort(
-      (a, b) => a.realtimeRanking - b.realtimeRanking
-    );
-
     // Tính toán thay đổi cho mỗi người chơi
-    sortedParticipants.forEach((p) => {
+    sortedParticipants.forEach((p, currentIndex) => {
       const currentPosition = hostRankingData.current?.[p.displayName];
       const previousPosition = hostRankingData.previous?.[p.displayName];
+
+      // currentIndex là vị trí hiện tại trong mảng đã sắp xếp (0-based)
+      // currentPosition là vị trí được lưu trong hostRankingData (0-based)
 
       if (previousPosition === undefined) {
         // Người chơi mới
         changes[p.displayName] = {
           previous: null,
-          current: p.realtimeRanking,
+          current: currentIndex + 1, // Chuyển đổi sang 1-based ranking
           change: 0,
           direction: 'new',
         };
       } else if (currentPosition !== undefined) {
-        // Tính toán thay đổi thứ hạng (chú ý: thứ hạng nhỏ hơn = xếp hạng cao hơn)
-        // Vì previousPosition và currentPosition là vị trí trong mảng (0-based index)
-        // Nên khi previousPosition > currentPosition có nghĩa là thứ hạng tăng (direction = 'up')
+        // So sánh vị trí trong mảng (0-based)
+        // previousPosition < currentIndex: thứ hạng giảm (từ vị trí cao lên vị trí thấp hơn)
+        // previousPosition > currentIndex: thứ hạng tăng (từ vị trí thấp lên vị trí cao hơn)
         let direction: 'up' | 'down' | 'same';
-        const positionChange = previousPosition - currentPosition;
+        const positionChange = previousPosition - currentIndex;
 
         if (positionChange > 0) {
-          direction = 'up'; // Thứ hạng tăng (vị trí trong mảng giảm)
+          direction = 'up'; // Thứ hạng tăng (vị trí index giảm)
         } else if (positionChange < 0) {
-          direction = 'down'; // Thứ hạng giảm (vị trí trong mảng tăng)
+          direction = 'down'; // Thứ hạng giảm (vị trí index tăng)
         } else {
           direction = 'same'; // Không thay đổi
         }
 
         changes[p.displayName] = {
-          previous: previousPosition + 1, // +1 vì muốn hiển thị thứ hạng từ 1, không phải 0
-          current: currentPosition + 1, // +1 vì lý do tương tự
+          previous: previousPosition + 1, // +1 để hiển thị thứ hạng từ 1
+          current: currentIndex + 1, // +1 để hiển thị thứ hạng từ 1
           change: Math.abs(positionChange),
           direction,
         };
+
+        console.log(`[LeaderboardCalculations] ${p.displayName}:`, {
+          previousPosition,
+          currentIndex,
+          positionChange,
+          direction,
+          previousRank: previousPosition + 1,
+          currentRank: currentIndex + 1,
+        });
       }
     });
 

@@ -105,6 +105,7 @@ import { useToast } from '@/hooks/use-toast';
 // Add import at the top
 import { MatchingPairPreview } from './matching-pair-preview';
 import { useLanguage } from '@/contexts/language-context';
+import { ReorderOptions } from './reorder-options';
 interface QuestionPreviewProps {
   questions: QuizQuestion[];
   activeQuestionIndex: number;
@@ -194,7 +195,7 @@ export function QuestionPreview({
   timeLimit,
   backgroundImage,
   previewMode = true,
-  onQuestionLocationChange = () => {},
+  onQuestionLocationChange = () => { },
   onQuestionTextChange,
   onOptionChange,
   onChangeQuestion,
@@ -207,8 +208,8 @@ export function QuestionPreview({
   onUpdateActivityBackground,
   onAddQuestion,
   onDeleteActivity,
-  onAddOption = () => {},
-  onDeleteOption = () => {},
+  onAddOption = () => { },
+  onDeleteOption = () => { },
   onReorderOptions,
   leftColumnName,
   rightColumnName,
@@ -456,8 +457,8 @@ export function QuestionPreview({
       // Luôn ưu tiên sử dụng màu từ global storage trước
       const savedColor =
         typeof window !== 'undefined' &&
-        window.savedBackgroundColors &&
-        activity.id
+          window.savedBackgroundColors &&
+          activity.id
           ? window.savedBackgroundColors[activity.id]
           : null;
 
@@ -909,7 +910,7 @@ export function QuestionPreview({
         <div
           className={cn(
             'border-none rounded-xl pb-5 overflow-hidden transition-all duration-300 mx-auto',
-           
+
             viewMode === 'desktop' && 'max-w-full w-full',
             viewMode === 'tablet' && 'max-w-4xl w-full',
             viewMode === 'mobile' && 'max-w-sm'
@@ -986,13 +987,13 @@ export function QuestionPreview({
                     ? viewMode === 'mobile'
                       ? 300
                       : viewMode === 'tablet'
-                      ? 650
-                      : 812
+                        ? 650
+                        : 812
                     : viewMode === 'mobile'
-                    ? 300
-                    : viewMode === 'tablet'
-                    ? 650
-                    : 812
+                      ? 300
+                      : viewMode === 'tablet'
+                        ? 650
+                        : 812
                 }
                 height={460}
                 zoom={1}
@@ -1257,7 +1258,7 @@ export function QuestionPreview({
                       editingQuestionText[questionIndex] !== undefined
                         ? editingQuestionText[questionIndex]
                         : question.question_text ||
-                          `Matching Pair Question ${questionIndex + 1}`
+                        `Matching Pair Question ${questionIndex + 1}`
                     }
                     onChange={(e) => {
                       // Lưu vào local state ngay lập tức
@@ -1405,7 +1406,7 @@ export function QuestionPreview({
           </CardContent>
         </Card>
       );
-    } 
+    }
 
     // Modified for question cards without slide type
     if (!isSlideType) {
@@ -1547,8 +1548,8 @@ export function QuestionPreview({
                         option.is_correct
                           ? 'bg-green-50/80 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                           : isTrue
-                          ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                          : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+                            ? 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                            : 'bg-red-50/80 dark:bg-red-900/20 border-red-200 dark:border-red-800',
                         // Only show pointer cursor when edit mode is enabled
                         editMode !== null
                           ? 'cursor-pointer hover:shadow-md'
@@ -1751,188 +1752,31 @@ export function QuestionPreview({
                 </div>
 
                 {/* Enhanced drag and drop for reorder questions */}
-                {editMode !== null ? (
-                  <div className="relative">
-
-                    {isReordering && (
-                      <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
-                        <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                          <span className="text-sm font-medium">
-                            Đang cập nhật...
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    <DragDropContext
-                      onDragStart={() => {
-                        console.log('🎯 REORDER PREVIEW: Drag started');
-                      }}
-                      onDragEnd={(result: DropResult) => {
-                        console.log(
-                          '🎯 REORDER PREVIEW: Drag operation completed',
-                          {
-                            source: result.source,
-                            destination: result.destination,
-                            reason: result.reason,
-                            questionIndex: questionIndex,
-                          }
-                        );
-
-                        if (
-                          !result.destination ||
-                          result.destination.index === result.source.index
-                        ) {
-                          console.log(
-                            '🎯 REORDER PREVIEW: No reorder needed (same position or no destination)'
-                          );
-                          return;
-                        }
-
-                        console.log(
-                          '🎯 REORDER PREVIEW: Calling onReorderOptions',
-                          {
-                            sourceIndex: result.source.index,
-                            destinationIndex: result.destination.index,
-                            questionIndex: questionIndex,
-                          }
-                        );
-
-                        // Set loading state
-                        setIsReordering(true);
-
-                        if (onReorderOptions) {
-                          // Cập nhật local state (nếu có callback), sau đó gọi API updateReorderQuiz
-                          const updatedOptions = [...activeQuestion.options];
-                          const [removed] = updatedOptions.splice(result.source.index, 1);
-                          updatedOptions.splice(result.destination.index, 0, removed);
-                          // Gọi callback cập nhật state nếu có
-                          if (typeof onReorderOptions === 'function') {
-                            onReorderOptions(result.source.index, result.destination.index);
-                          }
-                          // Gọi API cập nhật thứ tự mới
-                          if (activity && activity.id) {
-                            const correctOrder = updatedOptions.map(opt => opt.option_text);
-                            activitiesApi.updateReorderQuiz(activity.id, {
-                              type: 'REORDER',
-                              questionText: activeQuestion.question_text,
-                              timeLimitSeconds: timeLimit,
-                              pointType: 'STANDARD',
-                              correctOrder: correctOrder,
-                            } as import('@/api-client/activities-api').ReorderQuizPayload)
-                              .then(() => setIsReordering(false))
-                              .catch(() => setIsReordering(false));
-                          } else {
-                            setIsReordering(false);
-                          }
-                        }
-                      }}
-                    >
-                      <Droppable
-                        droppableId={`reorder-preview-droppable-${questionIndex}`}
-                      >
-                        {(provided, snapshot) => (
-                          <div
-                            {...provided.droppableProps}
-                            ref={provided.innerRef}
-                            className={cn(
-                              'relative space-y-2',
-                              snapshot.isDraggingOver &&
-                                'bg-blue-50/50 dark:bg-blue-900/10 rounded-lg p-2'
-                            )}
-                          >
-                            {/* Connecting line for visual guidance */}
-                            {/* Removed vertical gradient line for REORDER preview drag mode */}
-
-                            {[...question.options]
-                              .sort((a, b) => a.display_order - b.display_order)
-                              .map((option, index) => (
-                                <Draggable
-                                  key={
-                                    option.id ||
-                                    `option-${option.display_order}-${questionIndex}`
-                                  }
-                                  draggableId={
-                                    option.id ||
-                                    `option-${option.display_order}-${questionIndex}`
-                                  }
-                                  index={index}
-                                >
-                                  {(provided, snapshot) => (
-                                    <div
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      className={cn(
-
-
-                                        'flex items-center gap-2 p-1.5 relative mb-2 transition-all duration-300 ease-in-out',
-                                        snapshot.isDragging ? 'z-50 scale-105 shadow-2xl ring-2 ring-blue-400/70 bg-blue-50/80 dark:bg-blue-900/40' : 'z-10',
-                                        !snapshot.isDragging && 'hover:scale-[1.01] hover:shadow-lg',
-                                        snapshot.isDropAnimating && 'transition-transform duration-200'
-
-
-                                      )}
-                                      style={{
-                                        ...provided.draggableProps.style,
-                                        opacity: snapshot.isDragging ? 1 : 0.97,
-                                        transition: snapshot.isDragging ? 'box-shadow 0.2s, transform 0.2s' : 'box-shadow 0.3s, transform 0.3s',
-                                      }}
-                                    >
-                                      {/* Step number */}
-
-
-                                      <div className={cn(
-                                        "flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-black to-gray-800 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center border border-gray-700 dark:border-gray-600 text-sm font-semibold text-white shadow-lg relative z-10 transition-all duration-300",
-                                        snapshot.isDragging && 'scale-110 shadow-2xl ring-2 ring-blue-400'
-                                      )}>
-
-
-                                        {index + 1}
-                                      </div>
-
-                                      {/* Step content */}
-                                      <div
-                                        className={cn(
-                                          'flex-1 bg-white dark:bg-gray-800 rounded-lg p-3 border flex items-center gap-2 transition-all duration-300',
-                                          snapshot.isDragging
-                                            ? 'border-blue-400 ring-2 ring-blue-400/30 bg-blue-50/70 dark:bg-blue-900/30 shadow-xl scale-[1.03]'
-                                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md',
-                                          !snapshot.isDragging && 'opacity-95'
-                                        )}
-                                      >
-                                        <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">
-                                          {option.option_text}
-                                        </span>
-
-                                        {/* Drag handle */}
-                                        <div
-                                          {...provided.dragHandleProps}
-                                          className={cn(
-                                            'w-6 h-6 flex-shrink-0 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center cursor-grab text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors',
-                                            snapshot.isDragging &&
-                                              'cursor-grabbing bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-400'
-                                          )}
-                                        >
-                                          <GripVertical className="h-3 w-3" />
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </Draggable>
-                              ))}
-                            {provided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
-                    </DragDropContext>
+                {editMode !== null && question.question_type === 'reorder' ? (
+                  <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-md border border-orange-100 dark:border-orange-800">
+                    <ReorderOptions
+                      options={question.options}
+                      onOptionChange={(index, field, value, isTyping = false) =>
+                        onOptionChange(
+                          activeQuestionIndex,
+                          index,
+                          field,
+                          value,
+                          isTyping
+                        )
+                      }
+                      onDeleteOption={onDeleteOption}
+                      onAddOption={onAddOption}
+                      onReorder={onReorderOptions}
+                    />
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {/* Static view when edit mode is off */}
                     {/* Removed vertical line for REORDER preview static view */}
 
-                    {[...question.options]
+                    {question.options
+                      .slice() // only for static view, not for drag
                       .sort((a, b) => a.display_order - b.display_order)
                       .map((option, index) => (
                         <div
@@ -1982,7 +1826,7 @@ export function QuestionPreview({
                         <li>• {t('activity.reorderHelpText2')}</li>
                         <li>
                           • {t('activity.reorderHelpTextEditMode2')}
-                          <GripVertical className="inline h-3 w-3 mx-1" /> 
+                          <GripVertical className="inline h-3 w-3 mx-1" />
                           {t('activity.toDrag')}
                         </li>
                         <li>• {t('activity.autoSaveOrder')}</li>
@@ -2003,12 +1847,12 @@ export function QuestionPreview({
                   question.options.length <= 2
                     ? 'grid grid-cols-1 gap-3 md:grid-cols-2'
                     : question.options.length <= 4
-                    ? 'grid grid-cols-2 gap-3'
-                    : 'grid grid-cols-2 gap-3 md:grid-cols-3',
+                      ? 'grid grid-cols-2 gap-3'
+                      : 'grid grid-cols-2 gap-3 md:grid-cols-3',
                   viewMode === 'mobile' && 'grid-cols-1',
                   viewMode === 'tablet' &&
-                    question.options.length > 4 &&
-                    'grid-cols-2'
+                  question.options.length > 4 &&
+                  'grid-cols-2'
                 )}
               >
                 {/* Direct rendering of choice options */}
@@ -2351,7 +2195,7 @@ export function QuestionPreview({
 
       activitiesApi
         .updateTypeAnswerQuiz(question.activity_id, payload)
-        .then(() => {})
+        .then(() => { })
         .catch((error) => {
           console.error('Error updating correct answer:', error);
         })
@@ -3159,7 +3003,7 @@ export function QuestionPreview({
               variant="outline"
               className="bg-blue-50 text-blue-700 border-blue-200"
             >
-             {t('activity.saving')}
+              {t('activity.saving')}
             </Badge>
           )}
         </div>
@@ -3238,7 +3082,7 @@ export function QuestionPreview({
               onClick={() => onAddQuestion()}
             >
               <Plus className="h-4 w-4" />
-             {t('activity.addActivity')}
+              {t('activity.addActivity')}
             </Button>
           </div>
         </div>
@@ -3250,7 +3094,7 @@ export function QuestionPreview({
           <DialogHeader>
             <DialogTitle>{t('activity.deleteActivity')}</DialogTitle>
             <DialogDescription>
-             {t('activity.confirmDelete')}
+              {t('activity.confirmDelete')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2 mt-4">
@@ -3274,14 +3118,14 @@ interface OptionItemProps {
   option: QuizOption;
   index: number;
   questionType:
-    | 'multiple_choice'
-    | 'multiple_response'
-    | 'true_false'
-    | 'text_answer'
-    | 'slide'
-    | 'info_slide'
-    | 'reorder'
-    | 'location';
+  | 'multiple_choice'
+  | 'multiple_response'
+  | 'true_false'
+  | 'text_answer'
+  | 'slide'
+  | 'info_slide'
+  | 'reorder'
+  | 'location';
   questionIndex: number;
   onOptionEdit?: (
     questionIndex: number,
@@ -3289,6 +3133,7 @@ interface OptionItemProps {
     text: string
   ) => void;
   onToggleCorrect?: (questionIndex: number, optionIndex: number) => void;
+  editMode: string | null;
 }
 
 function OptionItem({
@@ -3298,6 +3143,7 @@ function OptionItem({
   questionIndex,
   onOptionEdit,
   onToggleCorrect,
+  editMode,
 }: OptionItemProps) {
   const optionLetter = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'][index];
   const [isEditing, setIsEditing] = useState(false);
@@ -3306,28 +3152,7 @@ function OptionItem({
   );
 
   // Look for the edit-mode checkbox in the DOM to determine if edit mode is enabled
-  const [isEditMode, setIsEditMode] = useState(false);
 
-  useEffect(() => {
-    // Update the edit mode state based on the checkbox's data-state attribute
-    const updateEditModeState = () => {
-      const editModeSwitch = document.getElementById('edit-mode');
-      setIsEditMode(editModeSwitch?.getAttribute('data-state') === 'checked');
-    };
-
-    // Initial check
-    updateEditModeState();
-
-    // Set up a mutation observer to track changes to the edit-mode switch
-    const observer = new MutationObserver(updateEditModeState);
-    const editModeSwitch = document.getElementById('edit-mode');
-
-    if (editModeSwitch) {
-      observer.observe(editModeSwitch, { attributes: true });
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   const getOptionStyle = () => {
     // Premium gradient combinations
@@ -3382,7 +3207,7 @@ function OptionItem({
 
   const handleToggleCorrect = () => {
     // Only allow toggling correct answer if edit mode is enabled
-    if (isEditMode && onToggleCorrect) {
+    if (editMode !== null && onToggleCorrect) {
       onToggleCorrect(questionIndex, index);
     }
   };
@@ -3391,11 +3216,11 @@ function OptionItem({
   const motionProps = {
     className: cn(
       'group rounded-lg transition-all duration-300 overflow-hidden',
-      isEditMode ? 'cursor-pointer hover:scale-[1.02]' : '',
+      editMode !== null ? 'cursor-pointer hover:scale-[1.02]' : '',
       option.is_correct === true && questionType !== 'reorder' && 'shadow-lg'
     ),
-    whileHover: isEditMode ? { scale: 1.02 } : {},
-    whileTap: isEditMode ? { scale: 0.98 } : {},
+    whileHover: editMode !== null ? { scale: 1.02 } : {},
+    whileTap: editMode !== null ? { scale: 0.98 } : {},
     onClick: handleToggleCorrect,
   };
 
@@ -3406,7 +3231,7 @@ function OptionItem({
           'p-4 h-full rounded-lg border-2 flex items-center gap-4 transition-all duration-300 relative',
           'backdrop-blur-lg shadow-xl',
           option.is_correct === true
-            ? isEditMode
+            ? editMode !== null
               ? 'bg-green-100 dark:bg-green-900/60 border-green-500 dark:border-green-500 ring-2 ring-green-400 dark:ring-green-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
               : 'bg-green-50/80 dark:bg-green-950/40 border-green-300 dark:border-green-800/80 hover:border-green-400 dark:hover:border-green-700'
             : 'bg-white/90 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600',
@@ -3419,7 +3244,7 @@ function OptionItem({
         <div
           className={cn(
             'relative z-10 w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-white font-medium shadow-lg border border-white/30',
-            option.is_correct === true && isEditMode
+            option.is_correct === true && editMode !== null
               ? 'bg-gradient-to-r from-green-600 via-green-500 to-emerald-600 scale-110 transition-transform'
               : optionStyle.bg
           )}
@@ -3448,7 +3273,7 @@ function OptionItem({
               <span
                 className={cn(
                   'text-base',
-                  option.is_correct === true && isEditMode
+                  option.is_correct === true && editMode !== null
                     ? 'text-green-800 dark:text-green-300 font-medium'
                     : 'text-gray-800 dark:text-gray-100'
                 )}
@@ -3470,7 +3295,7 @@ function OptionItem({
             <div
               className={cn(
                 'flex-shrink-0 text-white rounded-full p-1.5 shadow-lg border border-white/30',
-                isEditMode
+                editMode !== null
                   ? 'bg-gradient-to-r from-green-600 to-emerald-600 scale-125 animate-pulse'
                   : 'bg-gradient-to-r from-green-500 via-emerald-400 to-emerald-600'
               )}
