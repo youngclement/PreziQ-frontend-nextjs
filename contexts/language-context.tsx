@@ -70,6 +70,8 @@ i18next
             "Elevate presentations with PreziQ!'s interactive, real-time gamified platform",
           getStarted: 'Get Started',
           learnMore: 'Learn More',
+          startForFree: 'Start for free',
+          viewCollections: 'View Collections',
 
           // Features Section
           featuresTitle: 'Powerful Features',
@@ -1477,6 +1479,8 @@ i18next
             'Nâng tầm thuyết trình với nền tảng tương tác, game hóa thời gian thực của PreziQ!',
           getStarted: 'Bắt đầu ngay',
           learnMore: 'Tìm hiểu thêm',
+          startForFree: 'Bắt đầu miễn phí',
+          viewCollections: 'Xem bộ sưu tập',
 
           // Features Section
           featuresTitle: 'Tính năng mạnh mẽ',

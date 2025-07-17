@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
 import { useEffect, useState, ReactNode } from 'react';
 import { TypingAnimation } from '@/components/magicui/typing-animation';
+import { useLanguage } from '@/contexts/language-context';
 // Import font từ Fontsource thay thế cho Google Fonts
 import '@fontsource/dancing-script/700.css'; // Weight 700
 
@@ -115,6 +116,7 @@ export default function HeroGeometric({
   title2?: ReactNode;
   description?: string;
 }) {
+  const { t } = useLanguage();
   const fadeUpVariants = {
     hidden: { opacity: 0, y: 30 },
     visible: (i: number) => ({
@@ -315,7 +317,7 @@ export default function HeroGeometric({
                 'flex items-center justify-center'
               )}
             >
-              Start for free
+              {t('startForFree')}
             </a>
             <a
               href='/collections'
@@ -328,7 +330,7 @@ export default function HeroGeometric({
                 'flex items-center justify-center'
               )}
             >
-              Xem các bộ sưu tập
+              {t('viewCollections')}
             </a>
           </motion.div>
 
