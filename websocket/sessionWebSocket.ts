@@ -444,9 +444,9 @@ export class LeaderboardManager {
         '[LeaderboardManager] ActivityId không được trống khi publish bảng xếp hạng.'
       );
       // Tạo dữ liệu mặc định nếu không có activityId
-      const currentActivityId = this.getCurrentActivityId() || 'unknown';
+      const defaultActivityId = 'unknown';
       return LeaderboardManager.getInstance().publishRankingDataImmediately(
-        currentActivityId
+        defaultActivityId
       );
     }
 
@@ -606,12 +606,12 @@ export class LeaderboardManager {
       {
         previous: this.hostRankingData.previous,
         current: this.hostRankingData.current,
-        changes: Object.keys(this.latestRankingChangeData.changes).map(
-          (name) => ({
-            name,
-            ...this.latestRankingChangeData.changes[name],
-          })
-        ),
+        changes: this.latestRankingChangeData
+          ? Object.keys(this.latestRankingChangeData.changes).map((name) => ({
+              name,
+              ...this.latestRankingChangeData!.changes[name],
+            }))
+          : [],
       }
     );
 
