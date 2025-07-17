@@ -146,8 +146,10 @@ export default function HostSessionSummary({
           className='mb-8 flex flex-wrap justify-center gap-3'
           variants={itemVariants}
         >
-          <Button variant='outline' onClick={onNavigateToHome}>
-            <ArrowLeft className='mr-2 h-4 w-4' /> Quay lại
+          <Button variant='outline' asChild>
+            <Link href={`/collections`}>
+              <ArrowLeft className='mr-2 h-4 w-4' /> Quay lại
+            </Link>
           </Button>
 
           <Button
